@@ -1,5 +1,3 @@
-import { getRaster } from "@/pli/raster";
-
 export type Plate = {
   src: string;
   alt: string;
@@ -103,6 +101,9 @@ export const CREDIT =
 
 export type DrawKind = "text" | "image";
 
+/** Mesure d'un bloc de texte en pixels CSS. Injecté : le layout reste pur. */
+export type Measure = (style: TextStyle) => { cssW: number; cssH: number };
+
 export type TextStyle = {
   text: string;
   size: number;
@@ -162,6 +163,7 @@ function placeImage(
 }
 
 function textLayer(
+  measure: Measure,
   layers: DrawLayer[],
   id: string,
   text: string,
@@ -175,7 +177,7 @@ function textLayer(
   color: string,
 ): number {
   const style: TextStyle = { text, size, weight, line, tracking, color, width };
-  const h = getRaster(style, activeDpr).cssH;
+  const h = measure(style).cssH;
   layers.push({
     id,
     kind: "text",
@@ -191,10 +193,11 @@ function textLayer(
   return h;
 }
 
-let activeDpr = 1;
-
-export function layoutPage(pageIndex: number, width: number, dpr: number): { layers: DrawLayer[]; height: number } {
-  activeDpr = dpr;
+export function layoutPage(
+  pageIndex: number,
+  width: number,
+  measure: Measure,
+): { layers: DrawLayer[]; height: number } {
   const page = PAGES[pageIndex] ?? PAGES[0]!;
   const narrow = width < 860;
   const pad = narrow ? 20 : 48;
@@ -204,6 +207,7 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
   let y = narrow ? 108 : 96;
 
   const kickerH = textLayer(
+    measure,
     layers,
     `${page.id}-kicker`,
     page.kicker,
@@ -221,6 +225,7 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
   const titleW = narrow ? inner : Math.min(640, inner * 0.5);
   const tSize = titleSize(width);
   const titleH = textLayer(
+    measure,
     layers,
     `${page.id}-title`,
     page.title,
@@ -240,10 +245,19 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
       const thumb = (inner - gap * 2) / 3;
       const plates = [FIG, STEEL, FLOWER];
       plates.forEach((plate, i) => {
-        placeImage(layers, `img-${page.id}-${i}`, plate, pad + i * (thumb + gap), y, thumb, 10 + i * 4);
+        placeImage(
+          layers,
+          `img-${page.id}-${i}`,
+          plate,
+          pad + i * (thumb + gap),
+          y,
+          thumb,
+          10 + i * 4,
+        );
       });
       y += thumb + 22;
       const bodyH = textLayer(
+        measure,
         layers,
         `${page.id}-body`,
         page.body,
@@ -259,21 +273,56 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
       y += bodyH + 36;
       const h1 = placeImage(layers, `img-${page.id}-a`, VANILLA, pad, y, inner, 16);
       y += h1 + 10;
-      const cap = textLayer(layers, `${page.id}-cap-a`, "Gousse — plan large", pad, y, inner, 12, 500, 1.3, "0.08em", MUTE);
+      const cap = textLayer(
+        measure,
+        layers,
+        `${page.id}-cap-a`,
+        "Gousse — plan large",
+        pad,
+        y,
+        inner,
+        12,
+        500,
+        1.3,
+        "0.08em",
+        MUTE,
+      );
       y += cap + 22;
       const h2 = placeImage(layers, `img-${page.id}-b`, GLASS, pad, y, inner, 20);
       y += h2 + 10;
-      const cap2 = textLayer(layers, `${page.id}-cap-b`, "Verre — réfraction", pad, y, inner, 12, 500, 1.3, "0.08em", MUTE);
+      const cap2 = textLayer(
+        measure,
+        layers,
+        `${page.id}-cap-b`,
+        "Verre — réfraction",
+        pad,
+        y,
+        inner,
+        12,
+        500,
+        1.3,
+        "0.08em",
+        MUTE,
+      );
       y += cap2 + 28;
     } else {
       const rightX = pad + titleW + gap * 2;
       const rightW = Math.max(180, width - pad - rightX);
       const thumb = (rightW - gap * 2) / 3;
       [FIG, STEEL, FLOWER].forEach((plate, i) => {
-        placeImage(layers, `img-${page.id}-${i}`, plate, rightX + i * (thumb + gap), 96, thumb, 8 + i * 5);
+        placeImage(
+          layers,
+          `img-${page.id}-${i}`,
+          plate,
+          rightX + i * (thumb + gap),
+          96,
+          thumb,
+          8 + i * 5,
+        );
       });
       const bodyY = y + titleH + 22;
       const bodyH = textLayer(
+        measure,
         layers,
         `${page.id}-body`,
         page.body,
@@ -292,8 +341,22 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
       const h1 = placeImage(layers, `img-${page.id}-a`, VANILLA, pad, y, leftW, 14);
       const h2 = placeImage(layers, `img-${page.id}-b`, GLASS, pad + leftW + gap, y, rightImgW, 22);
       const capY = y + Math.max(h1, h2) + 10;
-      textLayer(layers, `${page.id}-cap-a`, "Gousse — plan large", pad, capY, leftW, 12, 500, 1.3, "0.08em", MUTE);
+      textLayer(
+        measure,
+        layers,
+        `${page.id}-cap-a`,
+        "Gousse — plan large",
+        pad,
+        capY,
+        leftW,
+        12,
+        500,
+        1.3,
+        "0.08em",
+        MUTE,
+      );
       const capH = textLayer(
+        measure,
         layers,
         `${page.id}-cap-b`,
         "Verre — réfraction",
@@ -311,13 +374,34 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
   } else if (pageIndex === 1) {
     if (narrow) {
       y += titleH + 18;
-      const bodyH = textLayer(layers, `${page.id}-body`, page.body, pad, y, inner, 15, 400, 1.45, "0em", INK);
+      const bodyH = textLayer(
+        measure,
+        layers,
+        `${page.id}-body`,
+        page.body,
+        pad,
+        y,
+        inner,
+        15,
+        400,
+        1.45,
+        "0em",
+        INK,
+      );
       y += bodyH + 28;
       const hero = placeImage(layers, `img-${page.id}-hero`, BOWL, pad, y, inner, 18);
       y += hero + 18;
       const thumb = (inner - gap * 2) / 3;
       [FIG, FLOWER, STEEL].forEach((plate, i) => {
-        placeImage(layers, `img-${page.id}-r${i}`, plate, pad + i * (thumb + gap), y, thumb, 8 + i * 4);
+        placeImage(
+          layers,
+          `img-${page.id}-r${i}`,
+          plate,
+          pad + i * (thumb + gap),
+          y,
+          thumb,
+          8 + i * 4,
+        );
       });
       y += thumb + 36;
     } else {
@@ -325,6 +409,7 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
       const heroX = width - pad - heroW;
       const heroH = placeImage(layers, `img-${page.id}-hero`, BOWL, heroX, y, heroW, 18);
       const bodyH = textLayer(
+        measure,
         layers,
         `${page.id}-body`,
         page.body,
@@ -340,13 +425,22 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
       y = Math.max(y + titleH + 22 + bodyH, y + heroH) + 48;
       const thumb = (inner - gap * 2) / 3;
       [FIG, FLOWER, STEEL].forEach((plate, i) => {
-        placeImage(layers, `img-${page.id}-r${i}`, plate, pad + i * (thumb + gap), y, thumb, 10 + i * 3);
+        placeImage(
+          layers,
+          `img-${page.id}-r${i}`,
+          plate,
+          pad + i * (thumb + gap),
+          y,
+          thumb,
+          10 + i * 3,
+        );
       });
       y += thumb + 48;
     }
   } else {
     const bodyW = narrow ? inner : Math.min(560, inner * 0.62);
     const bodyH = textLayer(
+      measure,
       layers,
       `${page.id}-body`,
       page.body,
@@ -365,21 +459,56 @@ export function layoutPage(pageIndex: number, width: number, dpr: number): { lay
     if (narrow) {
       const hero = placeImage(layers, `img-${page.id}-hero`, GLASS, pad, y, inner, 16);
       y += hero + 20;
-      const listH = textLayer(layers, `${page.id}-list`, list, pad, y, inner, 18, 600, 1.55, "0.04em", INK);
+      const listH = textLayer(
+        measure,
+        layers,
+        `${page.id}-list`,
+        list,
+        pad,
+        y,
+        inner,
+        18,
+        600,
+        1.55,
+        "0.04em",
+        INK,
+      );
       y += listH + 16;
       const h = placeImage(layers, `img-${page.id}-side`, VANILLA, pad, y, inner, 12);
       y += h + 28;
     } else {
       const listW = inner * 0.34;
       const imgW = inner - listW - gap * 2;
-      const listH = textLayer(layers, `${page.id}-list`, list, pad, y, listW, 22, 600, 1.45, "0.03em", INK);
-      const imgH = placeImage(layers, `img-${page.id}-hero`, GLASS, pad + listW + gap * 2, y, imgW, 18);
+      const listH = textLayer(
+        measure,
+        layers,
+        `${page.id}-list`,
+        list,
+        pad,
+        y,
+        listW,
+        22,
+        600,
+        1.45,
+        "0.03em",
+        INK,
+      );
+      const imgH = placeImage(
+        layers,
+        `img-${page.id}-hero`,
+        GLASS,
+        pad + listW + gap * 2,
+        y,
+        imgW,
+        18,
+      );
       y += Math.max(listH, imgH) + 28;
       const sideW = inner * 0.46;
       const sideH = placeImage(layers, `img-${page.id}-side`, VANILLA, pad, y, sideW, 12);
       y += sideH + 20;
     }
     const creditH = textLayer(
+      measure,
       layers,
       `${page.id}-credit`,
       CREDIT,

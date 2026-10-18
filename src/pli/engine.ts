@@ -1,5 +1,6 @@
-import { layoutPage, type DrawLayer, type World } from "@/pli/content";
+import { layoutPage, type Measure, type World } from "@/pli/content";
 import { getRaster, rasterKey, retainRasters } from "@/pli/raster";
+import { createStage, type Placed } from "@/pli/stage";
 
 export type FrameInfo = {
   scroll: number;
@@ -12,16 +13,6 @@ export type EngineHandle = {
   destroy: () => void;
   pick: (x: number, y: number) => string | null;
   addScroll: (dy: number) => void;
-};
-
-type Hit = { id: string; x: number; y: number; w: number; h: number };
-
-type Placed = {
-  layer: DrawLayer;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
 };
 
 const PAPER_RGB = [0.953, 0.945, 0.925, 1] as const;
@@ -227,10 +218,17 @@ async function tryWebGPU(
   }
   if (!adapter) return null;
   const device = await adapter.requestDevice();
-  const shadowMod = device.createShaderModule({ label: "shadow", code: `${LAYER_VS}\n${SHADOW_FS}` });
-  const contentMod = device.createShaderModule({ label: "content", code: `${LAYER_VS}\n${CONTENT_FS}` });
+  const shadowMod = device.createShaderModule({
+    label: "shadow",
+    code: `${LAYER_VS}\n${SHADOW_FS}`,
+  });
+  const contentMod = device.createShaderModule({
+    label: "content",
+    code: `${LAYER_VS}\n${CONTENT_FS}`,
+  });
   const postMod = device.createShaderModule({ label: "post", code: POST });
-  const ok = (await shaderOk(shadowMod)) && (await shaderOk(contentMod)) && (await shaderOk(postMod));
+  const ok =
+    (await shaderOk(shadowMod)) && (await shaderOk(contentMod)) && (await shaderOk(postMod));
   if (!ok) {
     device.destroy();
     return null;
@@ -274,7 +272,11 @@ async function tryWebGPU(
   const shadowPipe = device.createRenderPipeline({
     layout: device.createPipelineLayout({ bindGroupLayouts: [uniLayout] }),
     vertex: { module: shadowMod, entryPoint: "vs" },
-    fragment: { module: shadowMod, entryPoint: "fs", targets: [{ format: "rgba8unorm", blend: blend() }] },
+    fragment: {
+      module: shadowMod,
+      entryPoint: "fs",
+      targets: [{ format: "rgba8unorm", blend: blend() }],
+    },
     primitive: { topology: "triangle-strip" },
   });
   const contentPipe = device.createRenderPipeline({
@@ -306,9 +308,14 @@ async function tryWebGPU(
     layout: uniLayout,
     entries: [{ binding: 0, resource: { buffer: uniBuffer, size: 80 } }],
   });
-  const sampler = device.createSampler({ magFilter: "linear", minFilter: "linear", addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge" });
+  const sampler = device.createSampler({
+    magFilter: "linear",
+    minFilter: "linear",
+    addressModeU: "clamp-to-edge",
+    addressModeV: "clamp-to-edge",
+  });
 
-  const slab = new Float32Array(STRIDE * MAX_LAYERS / 4);
+  const slab = new Float32Array((STRIDE * MAX_LAYERS) / 4);
   const postSlab = new Float32Array(16);
   const textTextures = new Map<string, GPUTexture>();
   const textBinds = new Map<string, GPUBindGroup>();
@@ -323,13 +330,17 @@ async function tryWebGPU(
   let postBind: GPUBindGroup | null = null;
   let alive = true;
   let raf = 0;
-  const stage = createStage();
+  let frameDpr = 1;
+  const stage = stageFor(() => frameDpr);
 
   const uploadRGBA = (width: number, height: number, pixels: Uint8ClampedArray) => {
     const texture = device.createTexture({
       size: [width, height],
       format: "rgba8unorm",
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
     });
     const row = width * 4;
     const bytesPerRow = Math.ceil(row / 256) * 256;
@@ -338,9 +349,15 @@ async function tryWebGPU(
       data = new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength);
     } else {
       data = new Uint8Array(bytesPerRow * height);
-      for (let y = 0; y < height; y++) data.set(pixels.subarray(y * row, (y + 1) * row), y * bytesPerRow);
+      for (let y = 0; y < height; y++)
+        data.set(pixels.subarray(y * row, (y + 1) * row), y * bytesPerRow);
     }
-    device.queue.writeTexture({ texture }, data, { bytesPerRow, rowsPerImage: height }, { width, height });
+    device.queue.writeTexture(
+      { texture },
+      data,
+      { bytesPerRow, rowsPerImage: height },
+      { width, height },
+    );
     return texture;
   };
 
@@ -426,11 +443,20 @@ async function tryWebGPU(
     }
     ensureScene(pw, ph);
 
-    const placed = stage.place(world, cssW, cssH, dpr);
+    frameDpr = dpr;
+    const placed = stage.place(world, cssW, cssH);
+    checkLayerBudget(placed.layers.length);
     const usedText = new Set<string>();
     let slot = 0;
 
-    const writeSlot = (p: Placed, spread: number, shadowA: number, offY: number, alpha: number, radius: number) => {
+    const writeSlot = (
+      p: Placed,
+      spread: number,
+      shadowA: number,
+      offY: number,
+      alpha: number,
+      radius: number,
+    ) => {
       const o = (slot * STRIDE) / 4;
       const margin = spread + Math.abs(offY) + 2;
       slab[o + 0] = pw;
@@ -458,8 +484,10 @@ async function tryWebGPU(
     for (const p of placed.layers) {
       if (slot >= MAX_LAYERS - 1 || p.layer.alpha < 0.01) continue;
       const radius = p.layer.kind === "image" ? world.fx.radius * dpr : 0;
-      const spread = p.layer.kind === "image" ? (8 + 26 * world.fx.shadow) * dpr * p.layer.shadow : 0;
-      const shadowA = p.layer.kind === "image" ? 0.2 * world.fx.shadow * p.layer.shadow * p.layer.alpha : 0;
+      const spread =
+        p.layer.kind === "image" ? (8 + 26 * world.fx.shadow) * dpr * p.layer.shadow : 0;
+      const shadowA =
+        p.layer.kind === "image" ? 0.2 * world.fx.shadow * p.layer.shadow * p.layer.alpha : 0;
       const offY = 8 * dpr * world.fx.shadow;
       let bind: GPUBindGroup | null = null;
       if (p.layer.kind === "text" && p.layer.text) {
@@ -577,145 +605,20 @@ async function tryWebGPU(
   };
 }
 
-type Stage = ReturnType<typeof createStage>;
+/** Layout de page pour un DPR donné : le raster sert de mesureur de texte. */
+function stageFor(getDpr: () => number) {
+  const measure: Measure = (style) => getRaster(style, getDpr());
+  return createStage({ layout: (page, cssW) => layoutPage(page, cssW, measure) });
+}
 
-function createStage() {
-  let scroll = 0;
-  let target = 0;
-  let page = -1;
-  let focusT = 0;
-  let clock = 0;
-  let max = 0;
-  const scales = new Map<string, number>();
-  let hits: Hit[] = [];
-  let last = performance.now();
-
-  const place = (world: World, cssW: number, cssH: number, dpr: number) => {
-    const now = performance.now();
-    const dt = Math.min(0.05, (now - last) / 1000);
-    last = now;
-    if (!world.reduced) clock += dt;
-    if (world.page !== page) {
-      page = world.page;
-      scroll = 0;
-      target = 0;
-      focusT = world.focusId ? 1 : 0;
-    }
-    const built = layoutPage(world.page, cssW, dpr);
-    max = Math.max(0, built.height - cssH);
-    target = Math.min(max, Math.max(0, target));
-    scroll += (target - scroll) * (world.reduced ? 1 : 0.18);
-    if (Math.abs(target - scroll) < 0.2) scroll = target;
-
-    const goal = world.focusId ? 1 : 0;
-    focusT += (goal - focusT) * (world.reduced ? 1 : 0.14);
-
-    const nx = world.pointerInside ? world.pointerX / cssW - 0.5 : 0;
-    const ny = world.pointerInside ? world.pointerY / cssH - 0.5 : 0;
-
-    const natural: Placed[] = built.layers.map((layer) => ({
-      layer: { ...layer },
-      x: layer.x,
-      y: layer.y - scroll,
-      w: layer.w,
-      h: layer.h,
-    }));
-
-    let hover: string | null = null;
-    if (world.pointerInside && !world.focusId) {
-      for (let i = natural.length - 1; i >= 0; i--) {
-        const p = natural[i]!;
-        if (p.layer.kind !== "image") continue;
-        if (
-          world.pointerX >= p.x &&
-          world.pointerX <= p.x + p.w &&
-          world.pointerY >= p.y &&
-          world.pointerY <= p.y + p.h
-        ) {
-          hover = p.layer.id;
-          break;
-        }
-      }
-    }
-
-    const focusLayer = natural.find((p) => p.layer.id === world.focusId && p.layer.kind === "image");
-    let hero: { x: number; y: number; w: number; h: number } | null = null;
-    if (focusLayer) {
-      const aspect = focusLayer.w / Math.max(1, focusLayer.h);
-      let dw = Math.min(cssW - 40, 980);
-      let dh = dw / aspect;
-      const maxH = cssH - 140;
-      if (dh > maxH) {
-        dh = maxH;
-        dw = dh * aspect;
-      }
-      hero = { x: (cssW - dw) / 2, y: Math.max(88, (cssH - dh) / 2), w: dw, h: dh };
-    }
-
-    const layers: Placed[] = [];
-    const nextHits: Hit[] = [];
-    for (const p of natural) {
-      const depth = world.reduced || world.focusId ? 0 : 1;
-      p.x += nx * p.layer.parallax * 1.1 * depth;
-      p.y += ny * p.layer.parallax * 0.55 * depth;
-      const current = scales.get(p.layer.id) ?? 1;
-      const want = hover === p.layer.id ? 1.018 : 1;
-      const scale = current + (want - current) * (world.reduced ? 1 : 0.16);
-      scales.set(p.layer.id, scale);
-      if (p.layer.kind === "image" && Math.abs(scale - 1) > 0.001) {
-        const cx = p.x + p.w / 2;
-        const cy = p.y + p.h / 2;
-        p.w *= scale;
-        p.h *= scale;
-        p.x = cx - p.w / 2;
-        p.y = cy - p.h / 2;
-      }
-      const focused = focusLayer && p.layer.id === focusLayer.layer.id;
-      if (focused && hero) {
-        p.x += (hero.x - p.x) * focusT;
-        p.y += (hero.y - p.y) * focusT;
-        p.w += (hero.w - p.w) * focusT;
-        p.h += (hero.h - p.h) * focusT;
-        p.layer.alpha = 1;
-      } else {
-        p.layer.alpha = 1 - focusT * 0.84;
-      }
-      layers.push(p);
-      if (p.layer.kind === "image" && p.layer.alpha > 0.4) {
-        nextHits.push({ id: p.layer.id, x: p.x, y: p.y, w: p.w, h: p.h });
-      }
-    }
-    if (focusLayer) {
-      const i = layers.findIndex((p) => p.layer.id === focusLayer.layer.id);
-      if (i >= 0) layers.push(layers.splice(i, 1)[0]!);
-    }
-    hits = nextHits;
-    return { layers };
-  };
-
-  return {
-    place,
-    addScroll: (dy: number, world: World) => {
-      if (world.focusId) return;
-      target += dy;
-    },
-    pick: (x: number, y: number) => {
-      for (let i = hits.length - 1; i >= 0; i--) {
-        const h = hits[i]!;
-        if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return h.id;
-      }
-      return null;
-    },
-    get scroll() {
-      return scroll;
-    },
-    get max() {
-      return max;
-    },
-    get clock() {
-      return clock;
-    },
-  };
+let warnedLayers = false;
+/** Garde-fou dev : au-delà de MAX_LAYERS - 1, des calques ne sont pas dessinés. */
+function checkLayerBudget(count: number) {
+  if (!import.meta.env.DEV || warnedLayers || count < MAX_LAYERS - 4) return;
+  warnedLayers = true;
+  console.warn(
+    `[pli] ${count} calques placés pour ${MAX_LAYERS - 1} emplacements : au-delà, ils sont ignorés.`,
+  );
 }
 
 function startCanvas(
@@ -732,7 +635,8 @@ function startCanvas(
       addScroll: () => {},
     };
   }
-  const stage = createStage();
+  let frameDpr = 1;
+  const stage = stageFor(() => frameDpr);
   const images = new Map<string, HTMLImageElement>();
   const loading = new Set<string>();
   let alive = true;
@@ -803,9 +707,16 @@ function startCanvas(
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#f3f1ec";
     ctx.fillRect(0, 0, cssW, cssH);
-    const { layers } = stage.place(world, cssW, cssH, dpr);
+    frameDpr = dpr;
+    const { layers } = stage.place(world, cssW, cssH);
     const fx = world.fx;
-    const post = fx.distort > 0.01 || fx.rgb > 0.01 || fx.pixel > 0.01 || fx.blur > 0.01 || fx.grain > 0.01 || fx.split;
+    const post =
+      fx.distort > 0.01 ||
+      fx.rgb > 0.01 ||
+      fx.pixel > 0.01 ||
+      fx.blur > 0.01 ||
+      fx.grain > 0.01 ||
+      fx.split;
     if (!post || !sctx) {
       paintLayers(ctx, layers, world);
     } else {
