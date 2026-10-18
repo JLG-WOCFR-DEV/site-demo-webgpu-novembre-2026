@@ -43,6 +43,27 @@ function Home() {
     worldRef.current.fx = fx;
   }, [page, focusId, fx]);
 
+  // Instrumentation de recette (dev uniquement) : pilote l'état depuis
+  // tools/capture.mjs sans toucher au rendu. Absent du build de production.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { __PLI__?: unknown }).__PLI__ = {
+      setPage,
+      setFocus: setFocusId,
+      setFx: (next: Fx) => {
+        setPreset("");
+        setFx({ ...next });
+      },
+      scroll: (dy: number) => engineRef.current?.addScroll(dy),
+      state: () => ({
+        page: worldRef.current.page,
+        focusId: worldRef.current.focusId,
+        fx: worldRef.current.fx,
+      }),
+      mode: () => engineRef.current?.mode ?? "boot",
+    };
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -54,12 +75,16 @@ function Home() {
     };
     reduced.addEventListener("change", onReduced);
 
-    void createEngine(canvas, () => worldRef.current, (info) => {
-      const bar = barRef.current;
-      if (!bar) return;
-      const t = info.max <= 1 ? 1 : Math.min(1, info.scroll / info.max);
-      bar.style.transform = `scaleX(${t})`;
-    }).then((engine) => {
+    void createEngine(
+      canvas,
+      () => worldRef.current,
+      (info) => {
+        const bar = barRef.current;
+        if (!bar) return;
+        const t = info.max <= 1 ? 1 : Math.min(1, info.scroll / info.max);
+        bar.style.transform = `scaleX(${t})`;
+      },
+    ).then((engine) => {
       if (dead) {
         engine.destroy();
         return;
@@ -97,7 +122,8 @@ function Home() {
       drag.on = false;
       if (wasDrag) return;
       const rect = canvas.getBoundingClientRect();
-      const id = engineRef.current?.pick(event.clientX - rect.left, event.clientY - rect.top) ?? null;
+      const id =
+        engineRef.current?.pick(event.clientX - rect.left, event.clientY - rect.top) ?? null;
       if (worldRef.current.focusId) {
         if (id !== worldRef.current.focusId) setFocusId(null);
         return;
@@ -205,7 +231,11 @@ function Home() {
           <div className="rack-head">
             <p className="rack-title">Chaîne</p>
             <p className="rack-mode">
-              {mode === "webgpu" ? "WebGPU natif" : mode === "canvas" ? "Secours canvas" : "Composition"}
+              {mode === "webgpu"
+                ? "WebGPU natif"
+                : mode === "canvas"
+                  ? "Secours canvas"
+                  : "Composition"}
             </p>
           </div>
           <div className="presets">

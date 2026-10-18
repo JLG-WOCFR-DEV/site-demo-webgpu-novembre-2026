@@ -1,0 +1,1383 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "chromium": "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
+  "createdAt": "2026-10-18T19:40:59.253Z",
+  "shots": [
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-clair.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p2-clair.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 1,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p3-clair.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p3-bas.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-offset.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-trame.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.15,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0.48,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.35,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-voile.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-voile-split.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": true
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-distort-trame.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0.6,
+          "rgb": 0,
+          "pixel": 0.5,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-bloom-max.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 1,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-focus.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": "img-ouverture-a",
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    },
+    {
+      "file": "docs/baseline/current/webgpu/1280x800@1/p1-reduced.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 1,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-clair.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p2-clair.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 1,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p3-clair.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p3-bas.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-offset.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-trame.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.15,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0.48,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.35,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-voile.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-voile-split.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": true
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-distort-trame.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0.6,
+          "rgb": 0,
+          "pixel": 0.5,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-bloom-max.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 1,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-focus.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": "img-ouverture-a",
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    },
+    {
+      "file": "docs/baseline/current/webgpu/390x844@2/p1-reduced.png",
+      "engine": "webgpu",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "webgpu",
+      "archivo": [],
+      "dpr": 2,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-clair.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p2-clair.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 1,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p3-clair.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p3-bas.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-offset.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-trame.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.15,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0.48,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.35,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-voile.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-voile-split.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": true
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-distort-trame.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0.6,
+          "rgb": 0,
+          "pixel": 0.5,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-bloom-max.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 1,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-focus.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": "img-ouverture-a",
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    },
+    {
+      "file": "docs/baseline/current/canvas/1280x800@1/p1-reduced.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "1280x800@1",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 1,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-clair.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p2-clair.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 1,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p3-clair.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p3-bas.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 2,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-offset.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-trame.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.15,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0.48,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.35,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-voile.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-voile-split.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.2,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0.42,
+          "bloom": 0.62,
+          "grain": 0.12,
+          "split": true
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-distort-trame.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0.6,
+          "rgb": 0,
+          "pixel": 0.5,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-bloom-max.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 1,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-focus.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": "img-ouverture-a",
+        "fx": {
+          "radius": 0,
+          "shadow": 0.42,
+          "distort": 0,
+          "rgb": 0,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    },
+    {
+      "file": "docs/baseline/current/canvas/390x844@2/p1-reduced.png",
+      "engine": "canvas",
+      "viewport": {
+        "id": "390x844@2",
+        "width": 390,
+        "height": 844,
+        "dpr": 2
+      },
+      "state": {
+        "page": 0,
+        "focusId": null,
+        "fx": {
+          "radius": 0,
+          "shadow": 0.3,
+          "distort": 0.38,
+          "rgb": 0.7,
+          "pixel": 0,
+          "blur": 0,
+          "bloom": 0,
+          "grain": 0.22,
+          "split": false
+        }
+      },
+      "mode": "canvas",
+      "archivo": [],
+      "dpr": 2,
+      "errors": [
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED",
+        "error: Failed to load resource: net::ERR_TUNNEL_CONNECTION_FAILED"
+      ]
+    }
+  ]
+}
