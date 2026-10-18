@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "PLI — calques WebGPU",
+      "hasCanvas": true,
+      "bodyTextLen": 1367,
+      "bodyTextHash": "4924f6d35615f2319b30b7d0aad80693bf0849136745018a5ae891e6cf4dbc3b",
+      "bodyTextPrefix": "PLI 01 / 03 NOTE PRÉC. SUIV. FERMER PLI, compositeur de calques ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "PLI — calques WebGPU",
+      "hasCanvas": true,
+      "bodyTextLen": 1367,
+      "bodyTextHash": "4924f6d35615f2319b30b7d0aad80693bf0849136745018a5ae891e6cf4dbc3b",
+      "bodyTextPrefix": "PLI 01 / 03 NOTE PRÉC. SUIV. FERMER PLI, compositeur de calques ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
