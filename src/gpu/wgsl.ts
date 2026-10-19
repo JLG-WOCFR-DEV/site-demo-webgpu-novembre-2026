@@ -642,6 +642,7 @@ struct Post {
   kinds: array<vec4f, ${MAX_STAGES / 4}>,
   print: vec4f,    // nombre de chapitres, largeur du front (px), actif, 0
   chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), 0
+  a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -963,6 +964,46 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     col += (n - 0.5) * 0.028;
   }
 
+  // Cours d'accessibilité : encre délavée (pour faire échouer la mesure de
+  // contraste), puis simulation de vision sur l'image finale.
+  col = mix(col, u.paper.rgb, u.a11y.y);
+  col = simulate_vision(clamp(col, vec3f(0.0), vec3f(1.0)), u.a11y.x);
+
   return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
+}
+
+fn to_linear(c: vec3f) -> vec3f {
+  return select(pow((c + 0.055) / 1.055, vec3f(2.4)), c / 12.92, c <= vec3f(0.04045));
+}
+fn to_srgb(c: vec3f) -> vec3f {
+  return select(1.055 * pow(c, vec3f(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3f(0.0031308));
+}
+
+// Machado, Oliveira, Fernandes (2009), sévérité 1. Matrices en lumière
+// linéaire, écrites ligne par ligne.
+fn simulate_vision(srgb: vec3f, kind: f32) -> vec3f {
+  if (kind < 0.5) { return srgb; }
+  let c = to_linear(srgb);
+  var r0 = vec3f(0.0);
+  var r1 = vec3f(0.0);
+  var r2 = vec3f(0.0);
+  if (kind < 1.5) {
+    r0 = vec3f(0.152286, 1.052583, -0.204868);
+    r1 = vec3f(0.114503, 0.786281, 0.099216);
+    r2 = vec3f(-0.003882, -0.048116, 1.051998);
+  } else if (kind < 2.5) {
+    r0 = vec3f(0.367322, 0.860646, -0.227968);
+    r1 = vec3f(0.280085, 0.672501, 0.047413);
+    r2 = vec3f(-0.011820, 0.042940, 0.968881);
+  } else if (kind < 3.5) {
+    r0 = vec3f(1.255528, -0.076749, -0.178779);
+    r1 = vec3f(-0.078411, 0.930809, 0.147602);
+    r2 = vec3f(0.004733, 0.691367, 0.303900);
+  } else {
+    let y = dot(c, vec3f(0.2126, 0.7152, 0.0722));
+    return to_srgb(vec3f(y));
+  }
+  let o = vec3f(dot(r0, c), dot(r1, c), dot(r2, c));
+  return to_srgb(clamp(o, vec3f(0.0), vec3f(1.0)));
 }
 `;

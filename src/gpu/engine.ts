@@ -10,6 +10,8 @@ export type EngineHooks = {
   onTimings?: (t: Timings) => void;
   onLayout?: (info: { glyphs: number; atlas: number; msdf: number; textures: number; drops: number }) => void;
   onLost?: (reason: string) => void;
+  /** Contraste WCAG mesuré sur l'image finale (leçon 10.2). */
+  onContrast?: (ratio: number) => void;
 };
 
 const PAPER = [0.937, 0.933, 0.91] as const;
@@ -21,8 +23,9 @@ const MAX_BOXES = 512;
 const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
+const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -51,7 +54,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const context = canvas.getContext("webgpu");
   if (!context) throw new Error("Contexte webgpu indisponible");
   const format = navigator.gpu.getPreferredCanvasFormat();
-  context.configure({ device, format, alphaMode: "opaque" });
+  // COPY_SRC : la leçon 10.2 relit l'image finale pour en mesurer le contraste.
+  context.configure({ device, format, alphaMode: "opaque", usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
 
   device.pushErrorScope("validation");
 
@@ -297,6 +301,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const inkData = new Float32Array(16);
   const simData = new Float32Array(12);
   let inkTime = 0;
+  let contrastBuf: GPUBuffer | null = null;
+  let contrastBusy = false;
+  let lastContrast = 0;
   let inkPrerolled = false;
 
   let glyphBuf: GPUBuffer | null = null;
@@ -666,6 +673,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       }
     }
     postData.set([nch, cssH * 0.22 * dpr, printOn ? 1 : 0, 0], PRINT_AT);
+    postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -778,7 +786,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       );
     }
 
-    const out = context.getCurrentTexture().createView();
+    const outTex = context.getCurrentTexture();
+    const out = outTex.createView();
     const post = enc.beginRenderPass({
       label: "composite",
       colorAttachments: [{ view: out, loadOp: "clear", storeOp: "store", clearValue: [PAPER[0], PAPER[1], PAPER[2], 1] }],
@@ -803,7 +812,54 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         enc.copyBufferToBuffer(resolveBuf, 0, reader.buf, 0, groups * 16);
       }
     }
+    // Leçon 10.2 : copie de la zone du paragraphe témoin, deux fois par seconde.
+    let probeRead: { bytesPerRow: number; w: number; h: number } | null = null;
+    if (!contrastBusy && now - lastContrast > 500 && hooks.onContrast) {
+      const probe = document.querySelector<HTMLElement>("[data-contrast-probe]");
+      const pr = probe?.getBoundingClientRect();
+      // On ne mesure qu'un paragraphe entièrement imprimé : sinon on lirait du
+      // papier vierge et le rapport tomberait à 1:1.
+      const ch = probe?.closest(".chapter");
+      const st = ch ? printDepth.get(ch) : undefined;
+      const inked = !printOn || (!!st && !!pr && st.shown >= pr.bottom - ch!.getBoundingClientRect().top);
+      if (pr && inked && pr.bottom > 0 && pr.top < cssH && pr.width > 0) {
+        const x0 = Math.max(0, Math.floor(pr.left * dpr));
+        const y0 = Math.max(0, Math.floor(pr.top * dpr));
+        const x1 = Math.min(w, Math.ceil(pr.right * dpr));
+        const y1 = Math.min(h, Math.ceil(pr.bottom * dpr));
+        const rw = Math.min(1600, x1 - x0);
+        const rh = Math.min(600, y1 - y0);
+        if (rw > 8 && rh > 8) {
+          const bytesPerRow = Math.ceil((rw * 4) / 256) * 256;
+          const need = bytesPerRow * rh;
+          if (!contrastBuf || contrastBuf.size < need) {
+            contrastBuf?.destroy();
+            contrastBuf = device.createBuffer({ size: need, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+          }
+          enc.copyTextureToBuffer({ texture: outTex, origin: [x0, y0] }, { buffer: contrastBuf, bytesPerRow }, [rw, rh]);
+          probeRead = { bytesPerRow, w: rw, h: rh };
+          lastContrast = now;
+        }
+      }
+    }
     device.queue.submit([enc.finish()]);
+    if (probeRead && contrastBuf) {
+      const buf = contrastBuf;
+      const pr = probeRead;
+      contrastBuf = null; // pas réutilisé pendant la lecture
+      contrastBusy = true;
+      buf
+        .mapAsync(GPUMapMode.READ)
+        .then(() => {
+          hooks.onContrast?.(measureContrast(new Uint8Array(buf.getMappedRange()), pr.bytesPerRow, pr.w, pr.h, format === "bgra8unorm"));
+          buf.unmap();
+          contrastBuf ??= buf;
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          contrastBusy = false;
+        });
+    }
 
     if (reader) {
       const r = reader;
@@ -859,6 +915,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       images.destroy();
       text.texture.destroy();
       msdfTex.destroy();
+      contrastBuf?.destroy();
       bodyBuf.destroy();
       dropBuf.destroy();
       scene?.destroy();
@@ -869,6 +926,31 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 }
 
 export type Engine = Awaited<ReturnType<typeof createEngine>>;
+
+/**
+ * Rapport de contraste WCAG d'une zone de texte : le papier est la luminance
+ * médiane, l'encre le 1er centile (le cœur des lettres, pas leurs bords lissés).
+ */
+export function measureContrast(px: Uint8Array, bytesPerRow: number, w: number, h: number, bgra: boolean) {
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const L: number[] = [];
+  for (let y = 0; y < h; y += 2) {
+    for (let x = 0; x < w; x += 2) {
+      const o = y * bytesPerRow + x * 4;
+      const r = px[o + (bgra ? 2 : 0)]!;
+      const g = px[o + 1]!;
+      const b = px[o + (bgra ? 0 : 2)]!;
+      L.push(0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b));
+    }
+  }
+  L.sort((a, b) => a - b);
+  const ink = L[Math.floor(L.length * 0.01)] ?? 0;
+  const paper = L[Math.floor(L.length * 0.5)] ?? 1;
+  return (paper + 0.05) / (ink + 0.05);
+}
 
 function ease(t: number) {
   return 1 - Math.pow(1 - t, 3);

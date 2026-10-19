@@ -46,6 +46,15 @@ const STEPS = [
   { name: "23-ink-stir", go: "#ch-ink", sweep: [[0.5, 0.35], [0.95, 0.6]] },
   { name: "24-cost", go: "#ch-cost" },
   { name: "25-a11y", go: "#ch-a11y" },
+  { name: "25a-reader", go: "#l-dom", set: ["a11y", "reader", true] },
+  { name: "25b-contrast", go: "#l-contrast", wait: 2500 },
+  { name: "25c-contrast-fail", go: "#l-contrast", range: ["a11y", "fade", 0.75], wait: 2500 },
+  { name: "25d-vision-deut", go: "#ch-filtre", radio: ["a11y", "vision", 2], range: ["a11y", "fade", 0] },
+  { name: "25e-vision-achro", go: "#ch-trame", radio: ["a11y", "vision", 4] },
+  { name: "25f-vision-off", go: "#l-vision", radio: ["a11y", "vision", 0] },
+  { name: "25g-motion", go: "#l-motion" },
+  { name: "25h-spacing", go: "#l-zoom", set: ["a11y", "spacing", true], wait: 2500 },
+  { name: "25i-check", go: "#l-check" },
   { name: "26-colophon", go: ".colophon" },
 ];
 

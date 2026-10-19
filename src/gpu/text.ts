@@ -42,7 +42,7 @@ export type TextElem = {
   revealStart: number;
 };
 
-const SKIP = "a, button, label, input, select, textarea, pre, [data-gl-skip]";
+const SKIP = "a, button, label, input, select, textarea, pre, .sr-only, [data-gl-skip]";
 
 export class TextLayer {
   readonly texture: GPUTexture;
