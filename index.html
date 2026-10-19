@@ -228,7 +228,9 @@
                 Le mélange câblé du GPU ne sait faire que les opérations les plus simples. Pour les autres, le shader lit
                 toutes les sources d'un coup et applique les formules lui-même, du calque du dessous vers celui du
                 dessus, avec opacité et masque. C'est le modèle des bibliothèques de shaders récentes : une pile de
-                calques évaluée par le GPU, réordonnable comme dans un logiciel de retouche.
+                calques évaluée par le GPU, réordonnable comme dans un logiciel de retouche. Sans WebGPU, la même pile est rendue en CSS avec
+                <span class="code-inline">mix-blend-mode</span> : les formules sont celles de la même norme, le repli
+                donne la même image.
               </p>
             </div>
             <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous.">
