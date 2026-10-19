@@ -774,6 +774,11 @@ input[type="range"]::-moz-range-thumb {
   .toc a {
     font-size: 10px;
   }
+  /* Le sommaire défile de côté : le bord droit s'efface pour le dire. */
+  .toc {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    padding-right: 24px;
+  }
 }
 
 @media (max-width: 640px) {

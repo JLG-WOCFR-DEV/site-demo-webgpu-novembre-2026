@@ -133,7 +133,14 @@ export function trackChapters() {
       for (const e of entries) {
         if (!e.isIntersecting) continue;
         for (const a of links.values()) a.removeAttribute("aria-current");
-        links.get(e.target.id)?.setAttribute("aria-current", "true");
+        const cur = links.get(e.target.id);
+        cur?.setAttribute("aria-current", "true");
+        // Sur petit écran, le sommaire défile : on y garde le chapitre courant visible.
+        const toc = cur?.closest<HTMLElement>(".toc");
+        if (cur && toc && toc.scrollWidth > toc.clientWidth) {
+          const li = cur.parentElement!;
+          toc.scrollTo({ left: Math.max(0, li.offsetLeft - toc.clientWidth / 3), behavior: "smooth" });
+        }
       }
     },
     { rootMargin: "-40% 0px -55% 0px" },
