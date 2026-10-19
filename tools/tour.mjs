@@ -33,6 +33,20 @@ const STEPS = [
   { name: "09-glyph-scatter", go: "#ch-glyph", range: ["glyph", "scatter", 0.6] },
   { name: "10-glyph-atlas", go: "#ch-glyph", set: ["glyph", "atlas", true] },
   { name: "11-chain", go: "#ch-chain" },
+  { name: "11a-transitions", go: "#ch-transitions" },
+  { name: "11a-pop", go: "#ch-trame", click: "[popovertarget='tr-pop']", wait: 1200 },
+  { name: "26a-tr-impression", go: "#ch-trame", range: ["transition", "speed", 1.5], radio: ["transition", "style", 0], wait: 1200 },
+  { name: "26b-tr-trame", go: "#ch-trame", radio: ["transition", "style", 1], wait: 1200 },
+  { name: "26c-tr-quadri", go: "#ch-trame", radio: ["transition", "style", 2], wait: 1200 },
+  { name: "26d-tr-buvard", go: "#ch-trame", radio: ["transition", "style", 3], wait: 1200 },
+  { name: "26e-tr-massicot", go: "#ch-trame", radio: ["transition", "style", 4], wait: 1200 },
+  { name: "26f-tr-fondu", go: "#ch-trame", radio: ["transition", "style", 5], wait: 1200 },
+  { name: "26h-tr-rouleau", go: "#ch-trame", radio: ["transition", "style", 6], wait: 1200 },
+  { name: "26i-tr-composition", go: "#ch-trame", radio: ["transition", "style", 7], wait: 1200 },
+  { name: "26j-tr-ligne", go: "#ch-trame", radio: ["transition", "style", 8], wait: 1200 },
+  { name: "26k-tr-revelateur", go: "#ch-trame", radio: ["transition", "style", 9], wait: 4000 },
+  { name: "26l-tr-pli", go: "#ch-trame", radio: ["transition", "style", 10], wait: 1200 },
+  { name: "26g-tr-aucune", go: "#ch-trame", radio: ["transition", "style", 11], range: ["transition", "speed", 4.5], wait: 1200 },
   { name: "11b-calques", go: "#ch-calques", mouse: [0.72, 0.45] },
   { name: "12-chain-split", go: "#ch-trame", set: ["chain", "split", true], mouse: [0.7, 0.5] },
   { name: "13-trame", go: "#ch-trame" },
@@ -52,7 +66,7 @@ const STEPS = [
   { name: "25-a11y", go: "#ch-a11y" },
   { name: "25-hic", go: "#l-dom" },
   { name: "25a-reader", go: "#l-dom", set: ["a11y", "reader", true] },
-  { name: "25b-contrast", go: "#l-contrast", wait: 2500 },
+  { name: "25b-contrast", go: "#l-contrast", wait: 5000 },
   { name: "25c-contrast-fail", go: "#l-contrast", range: ["a11y", "fade", 0.75], wait: 2500 },
   { name: "25d-vision-deut", go: "#ch-filtre", radio: ["a11y", "vision", 2], range: ["a11y", "fade", 0] },
   { name: "25e-vision-achro", go: "#ch-trame", radio: ["a11y", "vision", 4] },
@@ -109,6 +123,7 @@ for (const s of STEPS) {
   if (s.set) await flip(...s.set);
   if (s.range) await flip(...s.range);
   if (s.radio) await flip(...s.radio);
+  if (s.click) await p.click(s.click);
   if (s.sweep) {
     const [[x0, y0], [x1, y1]] = s.sweep;
     await p.mouse.move(x0 * vw, y0 * vh);
@@ -126,6 +141,7 @@ for (const s of STEPS) {
   const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
   writeFileSync(join(dir, `${s.name}.png`), Buffer.from(data, "base64"));
   if (s.set) await flip(s.set[0], s.set[1], !s.set[2]);
+  if (s.click) await p.keyboard.press("Escape");
   process.stdout.write(`${s.name}\n`);
 }
 console.log("status:", await p.textContent("#status-text"));

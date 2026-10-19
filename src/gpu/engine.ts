@@ -1,4 +1,4 @@
-import { motion, pointer, settings } from "../state.ts";
+import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
@@ -713,10 +713,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([F.kind, F.size, F.amount, 0], 24);
 
     /* Transition : impression des chapitres */
-    const printOn = c.print && !reduced;
+    const P = settings.transition;
+    const printOn = c.print && !reduced && P.style !== TRANSITION_NONE;
     const atBottom = scrollY + innerHeight >= document.documentElement.scrollHeight - 2;
     let nch = 0;
-    const printEase = 1 - Math.exp(-dt * 4.5);
+    const printEase = 1 - Math.exp(-dt * P.speed);
     for (const ch of document.querySelectorAll(".chapter, .colophon")) {
       const r = ch.getBoundingClientRect();
       let st = printDepth.get(ch);
@@ -724,9 +725,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         st = { shown: 0, target: 0 };
         printDepth.set(ch, st);
       }
-      // La ligne d'impression est à 86 % de la hauteur de l'écran. En bas de
-      // page, rien ne peut plus monter : tout ce qui est visible s'imprime.
-      st.target = Math.max(st.target, atBottom && r.top < cssH ? 1e6 : cssH * 0.86 - r.top);
+      // La ligne d'impression est à une fraction réglable de la hauteur de
+      // l'écran (86 % par défaut). En bas de page, rien ne peut plus monter :
+      // tout ce qui est visible s'imprime.
+      st.target = Math.max(st.target, atBottom && r.top < cssH ? 1e6 : cssH * P.line - r.top);
+      // Arrivé par une ancre au milieu d'un long chapitre : le front part du
+      // haut de l'écran, pas du haut du chapitre, sinon l'écran reste vierge.
+      if (st.target > -r.top) st.shown = Math.max(st.shown, -r.top - cssH * P.width);
       st.shown = Math.max(st.shown, st.shown + (st.target - st.shown) * printEase);
       if (nch < MAX_CHAPTERS && r.bottom > 0 && r.top < cssH) {
         postData.set([r.top * dpr, r.bottom * dpr, st.shown * dpr, 0], PRINT_AT + 4 + nch * 4);
@@ -737,7 +742,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         }
       }
     }
-    postData.set([nch, cssH * 0.22 * dpr, printOn ? 1 : 0, 0], PRINT_AT);
+    postData.set([nch, cssH * P.width * dpr, printOn ? 1 : 0, P.style], PRINT_AT);
     postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
     postData.set(casseData, CASSE_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
@@ -951,7 +956,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       // papier vierge et le rapport tomberait à 1:1.
       const ch = probe?.closest(".chapter");
       const st = ch ? printDepth.get(ch) : undefined;
-      const inked = !printOn || (!!st && !!pr && st.shown >= pr.bottom - ch!.getBoundingClientRect().top);
+      const printedOk = !printOn || (!!st && !!pr && st.shown >= pr.bottom - ch!.getBoundingClientRect().top);
+      // Les lettres apparaissent aussi une à une : on attend la fin de leur entrée.
+      const te = probe ? text.elems.find((e) => e.el === probe || e.el.contains(probe) || probe.contains(e.el)) : undefined;
+      const inked = printedOk && (reduced || !te || (te.revealStart >= 0 && now - te.revealStart > 1000));
       if (pr && inked && pr.bottom > 0 && pr.top < cssH && pr.width > 0) {
         const x0 = Math.max(0, Math.floor(pr.left * dpr));
         const y0 = Math.max(0, Math.floor(pr.top * dpr));
@@ -964,7 +972,6 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           const need = bytesPerRow * rh;
           if (!contrastBuf || contrastBuf.size < need) {
             contrastBuf?.destroy();
-      fluid.destroy();
             contrastBuf = device.createBuffer({ size: need, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
           }
           enc.copyTextureToBuffer({ texture: outTex, origin: [x0, y0] }, { buffer: contrastBuf, bytesPerRow }, [rw, rh]);
@@ -1038,6 +1045,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     pause: (v: boolean) => {
       paused = v;
     },
+    /** Remet chaque chapitre au papier vierge : les transitions se rejouent. */
+    replayPrint: () => {
+      for (const ch of document.querySelectorAll(".chapter, .colophon")) printDepth.set(ch, { shown: 0, target: 0 });
+      for (const el of document.querySelectorAll(".is-printed")) el.classList.remove("is-printed");
+    },
     destroy: () => {
       destroyed = true;
       cancelAnimationFrame(raf);
@@ -1047,6 +1059,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       text.texture.destroy();
       msdfTex.destroy();
       contrastBuf?.destroy();
+      fluid.destroy();
       bodyBuf.destroy();
       dropBuf.destroy();
       scene?.destroy();

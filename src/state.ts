@@ -11,8 +11,19 @@ export type Settings = {
   a11y: { reader: boolean; fade: number; vision: number; spacing: boolean };
   fluid: { force: number; dry: number };
   /** Chapitre 04.2 : pile de calques, du dessous vers le dessus. */
+  /**
+   * Transitions au défilement (leçon 04.1 et panneau de la barre).
+   * style : 0 impression, 1 trame, 2 quadrichromie, 3 buvard, 4 massicot,
+   * 5 fondu, 6 rouleau, 7 composition, 8 ligne à ligne, 9 révélateur, 10 pli,
+   * 11 aucune. speed : taux de l'amorti (1/s). line : hauteur de la
+   * ligne d'impression (part de l'écran). width : largeur du front (part de l'écran).
+   */
+  transition: { style: number; speed: number; line: number; width: number };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
+
+export const TRANSITIONS = ["impression", "trame", "quadri", "buvard", "massicot", "fondu", "rouleau", "composition", "ligne", "revelateur", "pli", "aucune"] as const;
+export const TRANSITION_NONE = 11;
 
 export type LayerId = "glass" | "flower" | "spot";
 
@@ -27,6 +38,7 @@ export const settings: Settings = {
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },
+  transition: { style: 0, speed: 4.5, line: 0.86, width: 0.22 },
   layers: {
     order: ["glass", "flower", "spot"],
     mode: { glass: 0, flower: 1, spot: 3 },
