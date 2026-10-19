@@ -13,6 +13,7 @@ export type Plate = {
   height: number;
   radius: number;
   quad: boolean;
+  lab: boolean;
   hover: number;
 };
 
@@ -24,6 +25,7 @@ export class ImageLayer {
   private device: GPUDevice;
   private texLayout: GPUBindGroupLayout;
   private sampler: GPUSampler;
+  private destroyed = false;
 
   constructor(device: GPUDevice, texLayout: GPUBindGroupLayout, sampler: GPUSampler) {
     this.device = device;
@@ -42,6 +44,10 @@ export class ImageLayer {
 
   collect() {
     const imgs = [...document.querySelectorAll<HTMLImageElement>("img[data-gl-img]")];
+    for (const img of imgs) {
+      img.removeAttribute("data-gl-ready");
+      img.removeAttribute("data-gl-error");
+    }
     this.plates = imgs.map((img) => ({
       img,
       texture: null,
@@ -50,15 +56,27 @@ export class ImageLayer {
       height: img.naturalHeight || Number(img.getAttribute("height")) || 1,
       radius: Number.parseFloat(getComputedStyle(img.parentElement ?? img).borderTopLeftRadius) || 0,
       quad: img.hasAttribute("data-gl-quad"),
+      lab: img.hasAttribute("data-gl-lab"),
       hover: 0,
     }));
-    for (const p of this.plates) void this.load(p);
+    for (const p of this.plates) void this.load(p).catch((error: unknown) => {
+      if (this.destroyed) return;
+      // Garder la photographie HTML tant que sa texture n'est pas disponible.
+      p.img.setAttribute("data-gl-error", "");
+      console.warn("[pli] Texture indisponible, image HTML conservée", error);
+    });
   }
 
   private async load(p: Plate) {
     const res = await fetch(p.img.currentSrc || p.img.src);
+    if (!res.ok) throw new Error(`Image HTTP ${res.status}`);
     const blob = await res.blob();
+    if (this.destroyed) return;
     const bitmap = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+    if (this.destroyed) {
+      bitmap.close();
+      return;
+    }
     const levels = Math.floor(Math.log2(Math.max(bitmap.width, bitmap.height))) + 1;
     const texture = this.device.createTexture({
       label: p.img.alt.slice(0, 40),
@@ -79,6 +97,7 @@ export class ImageLayer {
     bitmap.close();
     p.texture = texture;
     p.bind = this.bindFor(texture);
+    p.img.setAttribute("data-gl-ready", "");
     // Estimation : 4 octets par texel, ×4/3 pour la chaîne de mips.
     this.bytes += Math.round(p.width * p.height * 4 * (4 / 3));
   }
@@ -122,7 +141,11 @@ export class ImageLayer {
   }
 
   destroy() {
-    for (const p of this.plates) p.texture?.destroy();
+    this.destroyed = true;
+    for (const p of this.plates) {
+      p.texture?.destroy();
+      p.img.removeAttribute("data-gl-ready");
+    }
     this.plates = [];
   }
 }

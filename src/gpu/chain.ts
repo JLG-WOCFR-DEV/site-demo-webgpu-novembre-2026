@@ -16,7 +16,7 @@ export type ChainStep = {
 };
 
 export const CHAIN: readonly ChainStep[] = [
-  { id: "scene", label: "Plans et glyphes → cible flottante", res: "pleine", pass: "scene" },
+  { id: "scene", label: "Plans, matières et glyphes → cible flottante", res: "pleine", pass: "scene" },
   { id: "extract", label: "Extraction des hautes lumières", res: "½", pass: "bloom-pre", toggle: "bloom" },
   { id: "down", label: "Flou, 4 descentes", res: "¼ → 1⁄32", pass: "bloom-down", toggle: "bloom" },
   { id: "up", label: "Flou, 4 remontées", res: "1⁄32 → ½", pass: "bloom-up", toggle: "bloom" },

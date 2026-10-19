@@ -8,6 +8,9 @@ const UNITS: Record<string, (v: number) => string> = {
   radius: (v) => `${Math.round(v)} px`,
   cell: (v) => `${fmt(v, 1)} px`,
   threshold: (v) => `+${fmt(v, 3)}`,
+  strength: (v) => `${Math.round(v * 100)} %`,
+  scale: (v) => `${Math.round(v * 100)} %`,
+  speed: (v) => `× ${fmt(v, 1)}`,
 };
 
 /** Relie chaque formulaire [data-controls] à sa section de `settings`. */
@@ -20,9 +23,11 @@ export function bindControls(onChange: () => void) {
     if (!target) continue;
     const sync = (input: HTMLInputElement) => {
       if (!(input.name in target)) return;
+      if (input.type === "radio" && !input.checked) return;
       if (input.type === "checkbox") target[input.name] = input.checked;
       else {
         const v = Number(input.value);
+        if (!Number.isFinite(v)) return;
         target[input.name] = v;
         const out = input.parentElement?.querySelector("output");
         if (out) out.textContent = (UNITS[input.name] ?? ((x: number) => fmt(x)))(v);
@@ -31,6 +36,7 @@ export function bindControls(onChange: () => void) {
     for (const input of form.querySelectorAll<HTMLInputElement>("input[name]")) {
       // L'état initial vient du HTML ; le navigateur peut avoir restauré des valeurs.
       if (input.type === "checkbox" && input.name in target) input.checked = Boolean(target[input.name]);
+      if (input.type === "radio" && input.name in target) input.checked = Number(input.value) === target[input.name];
       sync(input);
       input.addEventListener("input", () => {
         sync(input);

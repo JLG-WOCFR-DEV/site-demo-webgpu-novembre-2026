@@ -29,6 +29,7 @@
           <li><a href="#ch-light">Lumière</a></li>
           <li><a href="#ch-cost">Coût</a></li>
           <li><a href="#ch-a11y">Accès</a></li>
+          <li><a href="#ch-lab">Matières</a></li>
         </ol>
       </nav>
       <div class="status" role="status" aria-live="polite">
@@ -309,8 +310,9 @@
             </p>
             <p>
               Si vous avez demandé moins d'animations à votre système, les ondes, les dispersions et l'apparition des
-              lettres sont coupées ; les effets fixes restent réglables. Sans WebGPU, ou si le GPU décroche en cours de
-              route, la page retombe sur son HTML, tel quel : pas un canvas au rabais.
+              lettres sont coupées ; les effets fixes restent réglables. Les matières du laboratoire conservent un
+              aperçu fixe, que vous pouvez comparer et régler. Sans WebGPU, ou si le GPU décroche en cours de route,
+              la page retombe sur son HTML, tel quel : pas un canvas au rabais.
             </p>
           </div>
           <form class="controls" aria-labelledby="c-a11y" data-controls="a11y">
@@ -318,6 +320,120 @@
             <button type="button" class="btn" data-action="toggle-gpu">Couper WebGPU</button>
             <p class="readout" data-readout="motion"></p>
           </form>
+        </div>
+      </section>
+
+      <!-- ───────────── 09 MATIÈRES ───────────── -->
+      <section id="ch-lab" class="chapter" aria-labelledby="t-lab">
+        <header class="ch-head">
+          <p class="ch-num" data-gl-text>09</p>
+          <h2 id="t-lab" data-gl-text>Une image, six matières</h2>
+        </header>
+        <div class="ch-body lab-body">
+          <div class="prose lab-intro">
+            <p>
+              La figue de l'ouverture devient eau, givre ou tissu. La photographie reste la même : le shader change
+              l'endroit où il prélève ses couleurs, puis la façon de les restituer. Choisissez une matière et
+              manipulez la planche pour comprendre ce qui crée l'illusion.
+            </p>
+            <p>
+              Ces expériences sont des interprétations indépendantes des effets de
+              <a href="https://canvasui.dev/components">Canvas UI</a>, écrites pour le moteur WebGPU natif de PLI.
+              Elles utilisent les textures de nos photos, sans API expérimentale de capture du HTML.
+            </p>
+          </div>
+
+          <figure class="lab-figure">
+            <button
+              type="button"
+              class="lab-surface"
+              data-lab-surface
+              data-gl-stage="lab"
+              aria-label="Déclencher la matière sur la photographie de figue"
+              aria-describedby="lab-interaction-help"
+            >
+              <img
+                data-gl-img
+                data-gl-lab
+                src="./plates/fig.jpg"
+                width="1408"
+                height="1408"
+                alt="Une figue coupée en deux, à la chair rose et aux pépins dorés, sur une pierre calcaire."
+              />
+            </button>
+            <figcaption class="lab-caption">
+              <span class="lab-caption-label">Planche 09 · La figue</span>
+              <p id="lab-interaction-help">
+                Cliquez ou touchez la planche. Au clavier, les flèches déplacent le point ; Maj affine le déplacement,
+                Home / Début le recentre. Entrée ou Espace déclenche à cette position ; le bouton
+                « Déclencher au centre » recentre puis déclenche. En comparaison : à gauche sans la matière,
+                à droite avec la matière.
+              </p>
+            </figcaption>
+          </figure>
+
+          <form class="controls lab-controls" aria-labelledby="c-lab" data-controls="lab">
+            <fieldset class="lab-modes">
+              <legend id="c-lab" class="controls-title">Choisir une matière</legend>
+              <div class="lab-choices">
+                <label class="lab-choice"><input type="radio" name="mode" value="1" checked /> <span>Ondes</span></label>
+                <label class="lab-choice"><input type="radio" name="mode" value="2" /> <span>Givre</span></label>
+                <label class="lab-choice"><input type="radio" name="mode" value="3" /> <span>Tissu</span></label>
+                <label class="lab-choice"><input type="radio" name="mode" value="4" /> <span>Trame rétro</span></label>
+                <label class="lab-choice"><input type="radio" name="mode" value="5" /> <span>Loupe chromatique</span></label>
+                <label class="lab-choice"><input type="radio" name="mode" value="6" /> <span>ASCII</span></label>
+              </div>
+            </fieldset>
+            <label class="range"><span>Intensité</span><input type="range" name="strength" min="0" max="1" step="0.01" value="0.8" /><output>0,80</output></label>
+            <label class="range"><span>Échelle</span><input type="range" name="scale" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
+            <label class="range" data-lab-speed><span>Vitesse</span><input type="range" name="speed" min="0.1" max="2" step="0.1" value="1" /><output>1,00</output></label>
+            <div class="lab-toggles">
+              <label class="toggle"><input type="checkbox" name="paused" /> Mettre en pause</label>
+              <label class="toggle"><input type="checkbox" name="compare" /> Comparer avant / après</label>
+            </div>
+            <div class="lab-actions">
+              <button type="button" class="btn" data-action="lab-replay">Déclencher au centre</button>
+              <button type="button" class="btn lab-reset" data-action="lab-reset">Réinitialiser</button>
+            </div>
+            <p class="readout lab-readout" data-readout="lab" role="status" aria-live="polite">
+              Aperçu HTML : la photographie et les explications restent disponibles ; les matières s'affichent
+              lorsque WebGPU est prêt.
+            </p>
+          </form>
+
+          <div class="lab-details" aria-labelledby="lab-effect-title">
+            <p class="lab-detail-label">Comprendre la matière</p>
+            <h3 id="lab-effect-title">Ondes</h3>
+            <p id="lab-effect-description">
+              Des anneaux traversent la photographie et déplacent ses détails, comme une onde à la surface de l'eau.
+              Déclenchez-les à plusieurs endroits, puis figez l'image pour observer la déformation.
+            </p>
+            <dl class="lab-explanation">
+              <div>
+                <dt>Procédé</dt>
+                <dd id="lab-effect-technique">
+                  Une onde radiale décale les coordonnées UV : chaque pixel lit une couleur un peu plus loin dans
+                  la photo. C'est une approximation de réfraction sur une image, sans simulation de fluide en 3D.
+                </dd>
+              </div>
+              <div>
+                <dt>À quoi cela sert</dt>
+                <dd id="lab-effect-use">
+                  Donner une réponse visuelle à un clic, évoquer une surface d'eau ou faire apparaître un détail
+                  dans une image éditoriale.
+                </dd>
+              </div>
+            </dl>
+            <p class="lab-source">
+              Inspiration : <a id="lab-effect-source" href="https://canvasui.dev/docs/components/ripple">Ripple · Canvas UI</a>.
+            </p>
+            <p class="lab-method">
+              La matière s'applique seulement à la photo ; les textes et les commandes restent du HTML.
+              Son coût est inclus dans la passe « Scène » du <a href="#ch-cost">chapitre Coût</a>.
+              La planche isole la matière : les passes d'imprimerie des autres chapitres ne s'y ajoutent pas.
+              <a href="https://canvasui.dev/docs/rendering">Voir l'approche de rendu de Canvas UI</a>.
+            </p>
+          </div>
         </div>
       </section>
     </main>

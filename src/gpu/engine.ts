@@ -1,4 +1,5 @@
-import { motion, pointer, settings } from "../state.ts";
+import { labClock, motion, pointer, settings } from "../state.ts";
+import { materialFor } from "../lab.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer } from "./text.ts";
@@ -15,10 +16,11 @@ export type EngineHooks = {
 const PAPER = [0.937, 0.933, 0.91] as const;
 const SCENE_FORMAT: GPUTextureFormat = "rgba16float";
 const PLANE_STRIDE = 256;
+const PLANE_UNIFORM_BYTES = 112; // 4 vec4 de plan + 3 vec4 de matière ; stride dynamique inchangé.
 const MAX_PLANES = 16;
 const BLOOM_LEVELS = 5;
 const MAX_BOXES = 512;
-const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2 };
+const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, lab: 3 };
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -60,7 +62,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       {
         binding: 0,
         visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 64 },
+        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: PLANE_UNIFORM_BYTES },
       },
     ],
   });
@@ -179,7 +181,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
   const planeBind = device.createBindGroup({
     layout: planeLayout,
-    entries: [{ binding: 0, resource: { buffer: planeBuf, size: 64 } }],
+    entries: [{ binding: 0, resource: { buffer: planeBuf, size: PLANE_UNIFORM_BYTES } }],
   });
   const boxBuf = device.createBuffer({ size: 32 * MAX_BOXES, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
   const boxBind = device.createBindGroup({ layout: boxLayout, entries: [{ binding: 0, resource: { buffer: boxBuf } }] });
@@ -351,7 +353,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const frame = () => {
     if (destroyed) return;
     raf = requestAnimationFrame(frame);
-    if (paused) return;
+    if (paused || document.hidden) {
+      labClock.suspend();
+      return;
+    }
     const cpuStart = performance.now();
     const cssW = canvas.clientWidth;
     const cssH = canvas.clientHeight;
@@ -409,23 +414,45 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     type Job = { offset: number; bind: GPUBindGroup; shadow: boolean };
     const jobs: Job[] = [];
     let slot = 0;
-    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean) => {
+    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean, material?: readonly number[]) => {
       if (slot >= MAX_PLANES) return;
       const o = (slot * PLANE_STRIDE) / 4;
       planeData.set([rect.left, rect.top, rect.width, rect.height], o);
       planeData.set(uv, o + 4);
       planeData.set(params, o + 8);
       planeData.set(flags, o + 12);
+      // Les slots sont réutilisés au défilement : effacer les champs labo pour
+      // qu'une photo ordinaire ne récupère jamais la matière du slot précédent.
+      planeData.fill(0, o + 16, o + 28);
+      if (material) planeData.set(material, o + 16);
       jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow });
       slot++;
     };
     for (const p of images.plates) {
       const r = p.img.getBoundingClientRect();
       const visible = r.bottom > -80 && r.top < cssH + 80 && r.width > 0;
+      if (p.lab) {
+        labClock.tick(now, {
+          active: !!p.bind && r.bottom > 0 && r.top < cssH && r.width > 0,
+          reduced, paused: settings.lab.paused, speed: settings.lab.speed,
+          animated: materialFor(settings.lab.mode).animated,
+        });
+      }
       const over = pointer.inside && pointer.x >= r.left && pointer.x <= r.right && pointer.y >= r.top && pointer.y <= r.bottom;
       p.hover += ((over ? 1 : 0) - p.hover) * (reduced ? 1 : 0.12);
       if (settings.dom.boxes && visible) boxes.push(r.left, r.top, r.width, r.height, 0.894, 0, 0.486, 0.95);
       if (!visible || !p.bind) continue;
+      if (p.lab) {
+        const lab = settings.lab;
+        // Rectangle fixe aligné sur le bouton HTML. Aucun HDR, ombre ou lift
+        // ajouté : la comparaison montre seulement la matière sélectionnée.
+        pushPlane(r, coverUV(r.width, r.height, p.width, p.height), [p.radius, 0, 0, 1], [0, 0, 0, 0], p.bind, false, [
+          lab.mode, lab.strength, lab.scale, labClock.elapsed,
+          labClock.x, labClock.y, labClock.rippleAge, reduced ? 1 : 0,
+          labClock.originX, labClock.originY, lab.compare ? 1 : 0, 0,
+        ]);
+        continue;
+      }
       const q = settings.quad;
       const radius = p.quad ? q.radius : p.radius;
       const shadow = p.quad ? q.shadow : 0.32;
@@ -589,6 +616,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
   };
 
+  // Le navigateur peut suspendre le RAF dès le masquage de l'onglet :
+  // réinitialiser l'intervalle ici, même pour un aller-retour très court.
+  const onVisibility = () => labClock.suspend();
+  document.addEventListener("visibilitychange", onVisibility);
   images.collect();
   raf = requestAnimationFrame(frame);
 
@@ -600,10 +631,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     },
     pause: (v: boolean) => {
       paused = v;
+      labClock.suspend();
     },
     destroy: () => {
       destroyed = true;
+      labClock.suspend();
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
       images.destroy();
       text.texture.destroy();
       scene?.destroy();
