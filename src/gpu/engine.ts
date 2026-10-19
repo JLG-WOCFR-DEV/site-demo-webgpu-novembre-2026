@@ -2,7 +2,7 @@ import { motion, pointer, settings } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SIM } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -23,9 +23,10 @@ const MAX_BOXES = 512;
 const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
+const CASSE_AT = A11Y_AT + 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -107,6 +108,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
     ],
   });
+  const layersLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+      { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+    ],
+  });
   const boxLayout = device.createBindGroupLayout({
     entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }],
   });
@@ -123,6 +132,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
     ],
   });
 
@@ -133,8 +143,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const bloomMod = device.createShaderModule({ label: "bloom", code: BLOOM });
   const postMod = device.createShaderModule({ label: "composite", code: COMPOSITE });
   const simMod = device.createShaderModule({ label: "sim", code: SIM });
+  const layersMod = device.createShaderModule({ label: "layers", code: LAYERS });
   const inkMod = device.createShaderModule({ label: "ink", code: INK });
-  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod]) {
+  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod]) {
     const info = await m.getCompilationInfo();
     const errors = info.messages.filter((x) => x.type === "error");
     if (errors.length) throw new Error(`WGSL ${m.label}: ${errors.map((e) => `${e.lineNum}:${e.message}`).join(" | ")}`);
@@ -218,6 +229,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: strip,
   });
 
+  const layersPipe = device.createRenderPipeline({
+    label: "layers",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, layersLayout] }),
+    vertex: { module: layersMod, entryPoint: "vs" },
+    fragment: { module: layersMod, entryPoint: "fs", targets: [{ format: SCENE_FORMAT, blend: premul }] },
+    primitive: strip,
+  });
+
   const validation = await device.popErrorScope();
   if (validation) throw new Error(`Validation : ${validation.message}`);
 
@@ -248,6 +267,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
 
   const text = new TextLayer(device);
+  const casseData = new Float32Array(4 + 16 * 4);
   // Atlas MTSDF des titres. S'il manque, les titres restent en SDF simple.
   let msdfTex = device.createTexture({ size: [1, 1], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING });
   try {
@@ -267,6 +287,15 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       device.queue.copyExternalImageToTexture({ source: bmp }, { texture: msdfTex, premultipliedAlpha: false }, [bmp.width, bmp.height]);
       bmp.close();
       text.msdf = meta;
+      // Casse de plomb : la rampe de caractères, du plus clair au plus noir.
+      const chars = meta.fonts["900|125"]?.chars ?? {};
+      const ramp = (meta.ramp ?? []).filter((c) => chars[c]).slice(0, 16);
+      casseData[0] = ramp.length;
+      casseData.set([meta.width, meta.height, meta.size], 1);
+      ramp.forEach((c, i) => {
+        const [x, y, w, h] = chars[c]!;
+        casseData.set([x, y, w, h], 4 + i * 4);
+      });
     }
   } catch (err) {
     console.warn("[pli] atlas MTSDF indisponible", err);
@@ -311,6 +340,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const inkData = new Float32Array(16);
   const simData = new Float32Array(12);
   let inkTime = 0;
+  /* Chapitre 08.2 : encre fraîche, fluides stables */
+  const fluid = createFluid(device, linear);
+  /* Chapitre 04.2 : calques */
+  const layersBuf = device.createBuffer({ size: 144, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const layersData = new Float32Array(36);
+  let layersBind: GPUBindGroup | null = null;
+  let layersKey = "";
   let contrastBuf: GPUBuffer | null = null;
   let contrastBusy = false;
   let lastContrast = 0;
@@ -463,6 +499,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         { binding: 1, resource: linear },
         { binding: 2, resource: scene.createView() },
         { binding: 3, resource: bloomTex.createView({ baseMipLevel: 0, mipLevelCount: 1 }) },
+        { binding: 4, resource: msdfTex.createView() },
       ],
     });
   };
@@ -511,7 +548,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const printDepth = new WeakMap<Element, { shown: number; target: number }>();
   // Ce que le DOM peint lui-même (réglages, code, liens) apparaît quand le
   // front d'impression l'atteint. Le focus clavier imprime tout le chapitre.
-  const DOM_INK = ".controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button";
+  const DOM_INK = ".controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button";
   const onFocus = (e: FocusEvent) => {
     const ch = (e.target as Element | null)?.closest?.(".chapter, .colophon");
     const st = ch ? printDepth.get(ch) : undefined;
@@ -594,6 +631,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
     /* Plans */
     type Job = { offset: number; bind: GPUBindGroup; shadow: boolean; peel: boolean };
+    let fluidPlate: { plate: (typeof images.plates)[number]; rect: DOMRect } | null = null;
     const jobs: Job[] = [];
     let slot = 0;
     const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean, peel = 0) => {
@@ -614,6 +652,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       p.hover += ((over ? 1 : 0) - p.hover) * (reduced ? 1 : 0.12);
       if (settings.dom.boxes && visible) boxes.push(r.left, r.top, r.width, r.height, 0.894, 0, 0.486, 0.95);
       if (!visible || !p.bind) continue;
+      if (p.fluid && p.texture && !reduced) {
+        // Chapitre 08.2 : la plaque est dessinée depuis le colorant advecté.
+        fluidPlate = { plate: p, rect: r };
+        pushPlane(r, [0, 0, 1, 1], [p.radius, 0.32, 0.15, 1], [0, 0, 0, 1.6], fluid.dyeBind(images), true);
+        continue;
+      }
       const q = settings.quad;
       const radius = p.quad ? q.radius : p.radius;
       const shadow = p.quad ? q.shadow : 0.32;
@@ -695,6 +739,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     postData.set([nch, cssH * 0.22 * dpr, printOn ? 1 : 0, 0], PRINT_AT);
     postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
+    postData.set(casseData, CASSE_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -707,6 +752,42 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const thresh = L.naive ? [0.62, 0.0001] : [PAPER[0] + L.threshold, 0.02];
     for (const b of bloomUBufs.slice(0, 1)) device.queue.writeBuffer(b, 16, new Float32Array(thresh));
 
+    /* Chapitre 04.2 : la pile de calques */
+    let layersOn = false;
+    const layersEl = document.querySelector<HTMLElement>('[data-gl-stage="calques"]');
+    const lr = layersEl?.getBoundingClientRect();
+    const plateA = images.plates.find((p) => p.img.src.includes("glass") && p.texture);
+    const plateB = images.plates.find((p) => p.img.src.includes("flower") && p.texture);
+    if (lr && lr.width > 0 && lr.bottom > 0 && lr.top < cssH && plateA?.texture && plateB?.texture) {
+      const key = `${plateA.texture.label}|${plateB.texture.label}`;
+      if (!layersBind || key !== layersKey) {
+        layersKey = key;
+        layersBind = device.createBindGroup({
+          layout: layersLayout,
+          entries: [
+            { binding: 0, resource: { buffer: layersBuf } },
+            { binding: 1, resource: linear },
+            { binding: 2, resource: plateA.texture.createView() },
+            { binding: 3, resource: plateB.texture.createView() },
+          ],
+        });
+      }
+      const Ls = settings.layers;
+      const inside = pointer.inside && pointer.x >= lr.left && pointer.x <= lr.right && pointer.y >= lr.top && pointer.y <= lr.bottom;
+      layersData.fill(0);
+      layersData.set([lr.left, lr.top, lr.width, lr.height], 0);
+      layersData.set([Ls.mask, inside ? (pointer.x - lr.left) / lr.width : 0.62, inside ? (pointer.y - lr.top) / lr.height : 0.42, 0], 4);
+      layersData.set([0.78, 0.2, 0.11, 1], 8);
+      Ls.order.forEach((id, i) => {
+        const src = id === "glass" ? plateA : id === "flower" ? plateB : null;
+        const uv = src ? coverUV(lr.width, lr.height, src.width, src.height) : [0, 0, 1, 1];
+        layersData.set(uv, 12 + i * 8);
+        layersData.set([Ls.mode[id], Ls.opacity[id], id === "glass" ? 0 : id === "flower" ? 1 : 2, Ls.visible[id] ? 1 : 0], 16 + i * 8);
+      });
+      device.queue.writeBuffer(layersBuf, 0, layersData);
+      layersOn = true;
+    }
+
     /* Encodage */
     const enc = device.createCommandEncoder({ label: "frame" });
 
@@ -718,7 +799,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const inkEl = document.querySelector<HTMLElement>('[data-gl-stage="ink"]');
     const inkBox = inkEl?.getBoundingClientRect();
     const inkOn = !!inkBox && inkBox.width > 0 && inkBox.bottom > 0 && inkBox.top < cssH;
-    if (heroOn || inkOn) {
+    if (heroOn || inkOn || fluidPlate) {
       const cp = enc.beginComputePass({ label: "calcul", timestampWrites: ts(0, "both") });
       if (heroOn && heroBox) {
         const sub = 2;
@@ -729,6 +810,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         cp.setPipeline(simPipe);
         cp.setBindGroup(0, simBind!);
         for (let i = 0; i < sub; i++) cp.dispatchWorkgroups(Math.ceil(hero.count / 64));
+      }
+      if (fluidPlate) {
+        const fr = fluidPlate.rect;
+        const inside = pointer.inside && pointer.x >= fr.left && pointer.x <= fr.right && pointer.y >= fr.top && pointer.y <= fr.bottom;
+        fluid.step(cp, {
+          dt,
+          photo: fluidPlate.plate,
+          uv: coverUV(fr.width, fr.height, fluidPlate.plate.width, fluidPlate.plate.height),
+          aspect: fr.width / Math.max(1, fr.height),
+          pointer: [(pointer.x - fr.left) / fr.width, (pointer.y - fr.top) / fr.height],
+          inside,
+          force: [pvx / fr.width, pvy / fr.height],
+          strength: settings.fluid.force,
+          dry: settings.fluid.dry,
+        });
       }
       if (inkOn && inkBox) {
         const motionScale = reduced ? 0 : 1;
@@ -779,6 +875,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         continue;
       }
       scenePass.setPipeline(planePipe);
+      scenePass.draw(4);
+    }
+    if (layersOn && layersBind) {
+      scenePass.setPipeline(layersPipe);
+      scenePass.setBindGroup(1, layersBind);
       scenePass.draw(4);
     }
     if (inkOn) {
@@ -863,6 +964,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           const need = bytesPerRow * rh;
           if (!contrastBuf || contrastBuf.size < need) {
             contrastBuf?.destroy();
+      fluid.destroy();
             contrastBuf = device.createBuffer({ size: need, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
           }
           enc.copyTextureToBuffer({ texture: outTex, origin: [x0, y0] }, { buffer: contrastBuf, bytesPerRow }, [rw, rh]);
@@ -900,7 +1002,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           for (let g = 0; g < groups; g++) {
             const d = Number(v[g * 2 + 1]! - v[g * 2]!) / 1e6;
             const valid = Number.isFinite(d) && d >= 0 && d < 1000;
-            const skipped = (!c.bloom && g >= 2 && g <= 4) || (g === 0 && !heroOn && !inkOn);
+            const skipped = (!c.bloom && g >= 2 && g <= 4) || (g === 0 && !heroOn && !inkOn && !fluidPlate);
             avg[g] = skipped ? 0 : valid ? avg[g]! * 0.9 + d * 0.1 : avg[g]!;
           }
           r.buf.unmap();
@@ -983,4 +1085,147 @@ export function measureContrast(px: Uint8Array, bytesPerRow: number, w: number, 
 
 function ease(t: number) {
   return 1 - Math.pow(1 - t, 3);
+}
+
+/* ───────────────────────── Fluide (chapitre 08.2) ───────────────────────── */
+
+const VEL_W = 160;
+const VEL_H = 120;
+const DYE_W = 512;
+const DYE_H = 384;
+const JACOBI = 20;
+
+type FluidStep = {
+  dt: number;
+  photo: { texture: GPUTexture | null };
+  uv: readonly number[];
+  aspect: number;
+  pointer: [number, number];
+  inside: boolean;
+  force: [number, number];
+  strength: number;
+  dry: number;
+};
+
+function createFluid(device: GPUDevice, sampler: GPUSampler) {
+  const C = GPUShaderStage.COMPUTE;
+  const tex = (w: number, h: number, format: GPUTextureFormat, label: string) =>
+    device.createTexture({
+      label,
+      size: [w, h],
+      format,
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING,
+    });
+  const velA = tex(VEL_W, VEL_H, "rgba16float", "vel-a");
+  const velB = tex(VEL_W, VEL_H, "rgba16float", "vel-b");
+  const div = tex(VEL_W, VEL_H, "r32float", "div");
+  const pA = tex(VEL_W, VEL_H, "r32float", "p-a");
+  const pB = tex(VEL_W, VEL_H, "r32float", "p-b");
+  const dye = [tex(DYE_W, DYE_H, "rgba16float", "dye-a"), tex(DYE_W, DYE_H, "rgba16float", "dye-b")] as const;
+  let cur: 0 | 1 = 0;
+  let primed = false;
+
+  const ubuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const g0Layout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: C, buffer: { type: "uniform" } },
+      { binding: 1, visibility: C, sampler: { type: "filtering" } },
+    ],
+  });
+  const g0 = device.createBindGroup({
+    layout: g0Layout,
+    entries: [
+      { binding: 0, resource: { buffer: ubuf } },
+      { binding: 1, resource: sampler },
+    ],
+  });
+  const t = (sampleType: GPUTextureSampleType = "float"): GPUBindGroupLayoutEntry["texture"] => ({ sampleType });
+  const st = (format: GPUTextureFormat): GPUBindGroupLayoutEntry["storageTexture"] => ({ access: "write-only", format });
+  const layout = (...entries: Omit<GPUBindGroupLayoutEntry, "binding" | "visibility">[]) =>
+    device.createBindGroupLayout({ entries: entries.map((e, i) => ({ binding: i, visibility: C, ...e })) });
+
+  const advLayout = layout({ texture: t() }, { storageTexture: st("rgba16float") });
+  const divLayout = layout({ texture: t() }, { storageTexture: st("r32float") });
+  const jacLayout = layout({ texture: t("unfilterable-float") }, { texture: t("unfilterable-float") }, { storageTexture: st("r32float") });
+  const projLayout = layout({ texture: t("unfilterable-float") }, { texture: t() }, { storageTexture: st("rgba16float") });
+  const dyeLayout = layout({ texture: t() }, { texture: t() }, { texture: t() }, { storageTexture: st("rgba16float") });
+
+  const mod = device.createShaderModule({ label: "fluid", code: FLUID });
+  const pipe = (entryPoint: string, l: GPUBindGroupLayout) =>
+    device.createComputePipeline({
+      label: entryPoint,
+      layout: device.createPipelineLayout({ bindGroupLayouts: [g0Layout, l] }),
+      compute: { module: mod, entryPoint },
+    });
+  const advPipe = pipe("advect_vel", advLayout);
+  const divPipe = pipe("divergence", divLayout);
+  const jacPipe = pipe("jacobi", jacLayout);
+  const projPipe = pipe("project", projLayout);
+  const dyePipe = pipe("advect_dye", dyeLayout);
+
+  const bg = (l: GPUBindGroupLayout, ...res: GPUTexture[]) =>
+    device.createBindGroup({ layout: l, entries: res.map((r, i) => ({ binding: i, resource: r.createView() })) });
+  const advBind = bg(advLayout, velA, velB);
+  const divBind = bg(divLayout, velB, div);
+  const jacAB = bg(jacLayout, pA, div, pB);
+  const jacBA = bg(jacLayout, pB, div, pA);
+  const projBind = bg(projLayout, pA, velB, velA);
+  let dyeBinds: GPUBindGroup[] | null = null;
+  let dyePhoto: GPUTexture | null = null;
+  const planeBinds = new Map<GPUTexture, GPUBindGroup>();
+  const data = new Float32Array(16);
+
+  return {
+    /** Groupe de liaison du colorant courant, pour le dessin du plan. */
+    dyeBind(images: { bindFor: (t: GPUTexture) => GPUBindGroup }) {
+      const d = dye[cur];
+      let b = planeBinds.get(d);
+      if (!b) {
+        b = images.bindFor(d);
+        planeBinds.set(d, b);
+      }
+      return b;
+    },
+    step(cp: GPUComputePassEncoder, s: FluidStep) {
+      if (!s.photo.texture) return;
+      if (dyePhoto !== s.photo.texture) {
+        dyePhoto = s.photo.texture;
+        dyeBinds = [bg(dyeLayout, dye[0], velA, dyePhoto, dye[1]), bg(dyeLayout, dye[1], velA, dyePhoto, dye[0])];
+        primed = false;
+      }
+      const dt = Math.min(1 / 30, s.dt);
+      // Séchage : part de la photo d'origine réinjectée par seconde.
+      const relax = primed ? 1 - Math.exp(-dt * (0.15 + s.dry * 1.6)) : 1;
+      primed = true;
+      data.set([dt, relax, s.aspect, 0], 0);
+      data.set([s.pointer[0], s.pointer[1], s.inside ? 1 : 0, 0.07], 4);
+      data.set([s.force[0], s.force[1], s.strength, 0], 8);
+      data.set(s.uv, 12);
+      device.queue.writeBuffer(ubuf, 0, data);
+      const wg = (w: number, h: number) => [Math.ceil(w / 8), Math.ceil(h / 8)] as const;
+      cp.setBindGroup(0, g0);
+      cp.setPipeline(advPipe);
+      cp.setBindGroup(1, advBind);
+      cp.dispatchWorkgroups(...wg(VEL_W, VEL_H));
+      cp.setPipeline(divPipe);
+      cp.setBindGroup(1, divBind);
+      cp.dispatchWorkgroups(...wg(VEL_W, VEL_H));
+      cp.setPipeline(jacPipe);
+      for (let i = 0; i < JACOBI; i++) {
+        cp.setBindGroup(1, i % 2 === 0 ? jacAB : jacBA);
+        cp.dispatchWorkgroups(...wg(VEL_W, VEL_H));
+      }
+      cp.setPipeline(projPipe);
+      cp.setBindGroup(1, projBind);
+      cp.dispatchWorkgroups(...wg(VEL_W, VEL_H));
+      cp.setPipeline(dyePipe);
+      cp.setBindGroup(1, dyeBinds![cur]!);
+      cp.dispatchWorkgroups(...wg(DYE_W, DYE_H));
+      cur = cur === 0 ? 1 : 0;
+    },
+    destroy() {
+      for (const x of [velA, velB, div, pA, pB, ...dye]) x.destroy();
+      ubuf.destroy();
+    },
+  };
 }

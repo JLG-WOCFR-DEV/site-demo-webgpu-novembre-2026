@@ -16,6 +16,8 @@ export type Plate = {
   hover: number;
   /** Décollement lissé de l'épreuve (chapitre 02). */
   peel: number;
+  /** Plaque de l'encre fraîche (chapitre 08.2) : dessinée depuis le colorant du fluide. */
+  fluid: boolean;
 };
 
 export class ImageLayer {
@@ -54,6 +56,7 @@ export class ImageLayer {
       quad: img.hasAttribute("data-gl-quad"),
       hover: 0,
       peel: 0,
+      fluid: img.hasAttribute("data-gl-fluid"),
     }));
     for (const p of this.plates) void this.load(p);
   }

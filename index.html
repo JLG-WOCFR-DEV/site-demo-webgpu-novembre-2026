@@ -214,6 +214,76 @@
             <label class="toggle"><input type="checkbox" name="split" /> Couper l'écran : brut à gauche, composite à droite</label>
           </form>
         </div>
+
+        <section id="ch-calques" class="lesson" aria-labelledby="t-calques">
+          <h3 id="t-calques" class="lesson-title" data-gl-text><span class="lesson-num">04.2</span> Calques et modes de fusion</h3>
+          <div class="ch-body ch-body--stage">
+            <div class="prose" data-gl-text>
+              <p>
+                Avant la chaîne, il y a la composition : des calques posés les uns sur les autres. Un mode de fusion est
+                une formule qui combine la couleur du calque avec ce qu'il y a dessous. Produit assombrit comme deux
+                encres superposées, Écran éclaircit comme deux projecteurs, Superposition renforce le contraste.
+              </p>
+              <p>
+                Le mélange câblé du GPU ne sait faire que les opérations les plus simples. Pour les autres, le shader lit
+                toutes les sources d'un coup et applique les formules lui-même, du calque du dessous vers celui du
+                dessus, avec opacité et masque. C'est le modèle des bibliothèques de shaders récentes : une pile de
+                calques évaluée par le GPU, réordonnable comme dans un logiciel de retouche. Sans WebGPU, la même pile est rendue en CSS avec
+                <span class="code-inline">mix-blend-mode</span> : les formules sont celles de la même norme, le repli
+                donne la même image.
+              </p>
+            </div>
+            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous.">
+              <!-- Repli sans WebGPU : la même pile en CSS (mix-blend-mode). -->
+              <div class="css-layers" aria-hidden="true">
+                <img class="css-layer" data-css-layer="glass" src="./plates/glass.jpg" alt="" />
+                <img class="css-layer" data-css-layer="flower" src="./plates/flower.jpg" alt="" />
+                <div class="css-layer" data-css-layer="spot"></div>
+              </div>
+            </div>
+            <form class="controls" aria-labelledby="c-calques" data-layers>
+              <p id="c-calques" class="controls-title">La pile, du dessus vers le dessous</p>
+              <div class="layer-stack" data-layer-stack>
+              <fieldset class="layer" data-layer="spot">
+                <legend>Aplat rouge</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3" selected>Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.7" /><output>0,7</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Aplat rouge">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Aplat rouge">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="flower">
+                <legend>Renoncule</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1" selected>Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.9" /><output>0,9</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Renoncule">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Renoncule">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="glass">
+                <legend>Verre</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0" selected>Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="1" /><output>1</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Verre">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Verre">▼</button>
+                </div>
+              </fieldset>
+              </div>
+              <fieldset class="choices">
+                <legend class="choices-legend">Masque du calque du dessus</legend>
+                <label><input type="radio" name="mask" value="0" /> Aucun</label>
+                <label><input type="radio" name="mask" value="1" checked /> Cercle sous le pointeur</label>
+                <label><input type="radio" name="mask" value="2" /> Dégradé</label>
+              </fieldset>
+            </form>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 05 TRAME ───────────── -->
@@ -254,7 +324,7 @@
       <section id="ch-filtre" class="chapter" aria-labelledby="t-filtre">
         <header class="ch-head">
           <p class="ch-num" data-gl-text>06</p>
-          <h2 id="t-filtre" data-gl-text>Cinq façons de relire une photo</h2>
+          <h2 id="t-filtre" data-gl-text>Six façons de relire une photo</h2>
         </header>
         <div class="ch-body ch-body--stage">
           <div class="prose" data-gl-text>
@@ -262,10 +332,11 @@
               Un filtre d'image n'est qu'une autre manière de lire la cible. Pour chaque pixel, il choisit où
               échantillonner, combien de fois, et ce qu'il fait de la couleur obtenue. Trame et tramage regroupent les
               pixels en cellules, le verre cannelé et la lentille déplacent l'endroit où l'on lit, le papier froissé
-              multiplie l'image par un relief.
+              multiplie l'image par un relief. La casse de plomb remplace chaque cellule par un caractère d'Archivo,
+              choisi parmi seize rangés du plus clair au plus noir : c'est l'art ASCII, version typographe.
             </p>
             <p>
-              Ces cinq filtres reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
+              Les cinq premiers reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
               chaîne que la trame : après le bloom et le repérage, dans la passe composite. La photographie n'est
               envoyée qu'une fois au GPU ; seul le chemin de lecture change.
             </p>
@@ -284,6 +355,7 @@
               <label><input type="radio" name="kind" value="2" /> Verre cannelé</label>
               <label><input type="radio" name="kind" value="3" /> Lentille</label>
               <label><input type="radio" name="kind" value="4" /> Papier froissé</label>
+              <label><input type="radio" name="kind" value="5" /> Casse de plomb</label>
             </fieldset>
             <label class="range"><span>Taille</span><input type="range" name="size" min="2" max="16" step="0.5" value="6" /><output>6,0 px</output></label>
             <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
@@ -352,6 +424,35 @@
           </form>
           <p class="readout" data-readout="ink" aria-live="off"></p>
         </div>
+
+        <section id="ch-fluid" class="lesson" aria-labelledby="t-fluid">
+          <h3 id="t-fluid" class="lesson-title" data-gl-text><span class="lesson-num">08.2</span> Encre fraîche</h3>
+          <div class="ch-body ch-body--stage">
+            <div class="prose" data-gl-text>
+              <p>
+                Ici, l'image elle-même devient liquide. Une grille de 160 × 120 cellules porte une vitesse ; à chaque frame,
+                cinq passes de calcul la font avancer : advection (la vitesse se transporte elle-même), impulsion du
+                pointeur, divergence, vingt itérations de Jacobi pour la pression, puis projection, qui retire la
+                pression pour que le fluide ne se comprime pas. C'est la méthode des fluides stables de Jos Stam (1999).
+              </p>
+              <p>
+                Le colorant transporté n'est pas une encre ajoutée : c'est la photo. Passez le pointeur dessus pour
+                l'étaler comme une épreuve dont l'encre n'a pas séché. Une part de l'original est réinjectée à chaque
+                frame : l'image sèche et se reforme.
+              </p>
+            </div>
+            <div class="stage" data-gl-stage="fluid">
+              <figure class="plate plate--fluid">
+                <img data-gl-img data-gl-fluid src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau ; au survol, l'image s'étale comme de l'encre fraîche." />
+              </figure>
+            </div>
+            <form class="controls" aria-labelledby="c-fluid" data-controls="fluid">
+              <p id="c-fluid" class="controls-title">Le fluide</p>
+              <label class="range"><span>Force du pointeur</span><input type="range" name="force" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Séchage</span><input type="range" name="dry" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
+            </form>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 09 COÛT ───────────── -->
@@ -443,6 +544,16 @@
                 <ol class="reader-list" data-reader-list></ol>
               </div>
             </form>
+            <div class="controls hic" data-hic aria-labelledby="c-hic">
+              <p id="c-hic" class="controls-title">Essai HTML-in-Canvas</p>
+              <div class="hic-card" data-hic-card drawable>
+                <p class="hic-kicker">Épreuve n° 1</p>
+                <p class="hic-title">Une carte en HTML</p>
+                <p class="hic-text">Titre, texte et bouton natifs. Si le navigateur le permet, ils sont dessinés dans le canvas et tramés par le GPU.</p>
+                <button type="button" class="btn" data-hic-button>Tamponner</button>
+              </div>
+              <p class="readout" data-readout="hic" aria-live="polite"></p>
+            </div>
           </div>
         </section>
 
@@ -637,7 +748,7 @@
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
-          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle s'inspire du composant Peel de canvasui.dev ; la simulation de vision suit Machado, Oliveira et Fernandes (2009).
+          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle et l'encre fraîche s'inspirent des composants Peel et Liquid de canvasui.dev, la pile de calques du modèle de composition de la bibliothèque shaders (MIT). Fluides stables d'après Jos Stam (1999) ; simulation de vision d'après Machado, Oliveira et Fernandes (2009).
           Archivo par Omnibus-Type, IBM Plex Mono par IBM, toutes deux sous licence SIL OFL, servies depuis ce site.
         </p>
         <p>

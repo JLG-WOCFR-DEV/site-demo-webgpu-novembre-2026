@@ -266,6 +266,89 @@ fn fs_peel_curl(in: PeelOut) -> @location(0) vec4f {
 }
 `;
 
+/* ───────────────────────── Calques et modes de fusion ───────────────────────── */
+
+export const LAYERS = /* wgsl */ `
+${FRAME_STRUCT}
+
+struct Layer {
+  uv: vec4f,      // recadrage cover de la source
+  params: vec4f,  // mode, opacité, source (0 photo A, 1 photo B, 2 aplat), visible
+};
+
+struct LayersU {
+  rect: vec4f,    // plaque (css)
+  mask: vec4f,    // type (0 aucun, 1 cercle au pointeur, 2 dégradé), cx, cy (0…1), 0
+  spot: vec4f,    // couleur de l'aplat
+  layers: array<Layer, 3>,  // du dessous vers le dessus
+};
+
+@group(0) @binding(0) var<uniform> frame: Frame;
+@group(1) @binding(0) var<uniform> L: LayersU;
+@group(1) @binding(1) var samp: sampler;
+@group(1) @binding(2) var texA: texture_2d<f32>;
+@group(1) @binding(3) var texB: texture_2d<f32>;
+
+struct VsOut {
+  @builtin(position) clip: vec4f,
+  @location(0) local: vec2f,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) vi: u32) -> VsOut {
+  let c = corner(vi);
+  var out: VsOut;
+  out.clip = to_clip(L.rect.xy + c * L.rect.zw, frame);
+  out.local = c;
+  return out;
+}
+
+// Les formules des modes de fusion, telles que les définit la norme
+// Compositing and Blending : b est le fond, s le calque posé dessus.
+fn blend(b: vec3f, s: vec3f, mode: f32) -> vec3f {
+  if (mode < 0.5) { return s; }                                   // normal
+  if (mode < 1.5) { return b * s; }                               // produit
+  if (mode < 2.5) { return 1.0 - (1.0 - b) * (1.0 - s); }         // écran
+  if (mode < 3.5) {                                               // superposition
+    return select(1.0 - 2.0 * (1.0 - b) * (1.0 - s), 2.0 * b * s, b <= vec3f(0.5));
+  }
+  if (mode < 4.5) {                                               // lumière tamisée
+    let d = select(sqrt(b), ((16.0 * b - 12.0) * b + 4.0) * b, b <= vec3f(0.25));
+    return select(b + (2.0 * s - 1.0) * (d - b), b - (1.0 - 2.0 * s) * b * (1.0 - b), s <= vec3f(0.5));
+  }
+  return abs(b - s);                                              // différence
+}
+
+@fragment
+fn fs(in: VsOut) -> @location(0) vec4f {
+  // Les deux photos sont lues sans condition (contrôle uniforme).
+  var samples: array<vec3f, 3>;
+  for (var i = 0; i < 3; i++) {
+    let l = L.layers[i];
+    let uv = mix(l.uv.xy, l.uv.zw, in.local);
+    let a = textureSample(texA, samp, uv).rgb;
+    let b = textureSample(texB, samp, uv).rgb;
+    samples[i] = select(select(a, b, l.params.z > 0.5), L.spot.rgb, l.params.z > 1.5);
+  }
+  var col = vec3f(0.937, 0.933, 0.910);
+  for (var i = 0; i < 3; i++) {
+    let l = L.layers[i];
+    if (l.params.w < 0.5) { continue; }
+    var m = 1.0;
+    if (i == 2 && L.mask.x > 0.5) {
+      if (L.mask.x < 1.5) {
+        let d = length((in.local - L.mask.yz) * vec2f(L.rect.z / L.rect.w, 1.0));
+        m = 1.0 - smoothstep(0.22, 0.30, d);
+      } else {
+        m = smoothstep(0.1, 0.9, in.local.x);
+      }
+    }
+    col = mix(col, clamp(blend(col, samples[i], l.params.x), vec3f(0.0), vec3f(1.0)), l.params.y * m);
+  }
+  return vec4f(col, 1.0);
+}
+`;
+
 /* ───────────────────────── Glyphes ───────────────────────── */
 
 export const GLYPH = /* wgsl */ `
@@ -609,6 +692,122 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 }
 `;
 
+/* ───────────────────────── Calcul : encre fraîche (fluide) ───────────────────────── */
+
+// Fluides stables (Stam, 1999) sur une grille de vitesse, puis advection de
+// la photo elle-même comme colorant. Coordonnées en uv de la plaque (0…1).
+export const FLUID = /* wgsl */ `
+struct FluidU {
+  a: vec4f,    // dt, relâchement vers la photo, aspect (l/h), 0
+  splat: vec4f, // pointeur (uv), dedans, rayon (uv)
+  force: vec4f, // vitesse du pointeur (uv/s), intensité, 0
+  photo: vec4f, // recadrage cover de la photo source
+};
+
+@group(0) @binding(0) var<uniform> u: FluidU;
+@group(0) @binding(1) var samp: sampler;
+
+// Advection de la vitesse + impulsion du pointeur.
+@group(1) @binding(0) var velIn: texture_2d<f32>;
+@group(1) @binding(1) var velOut: texture_storage_2d<rgba16float, write>;
+
+@compute @workgroup_size(8, 8)
+fn advect_vel(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(velOut);
+  if (any(id.xy >= size)) { return; }
+  let uv = (vec2f(id.xy) + 0.5) / vec2f(size);
+  let v = textureSampleLevel(velIn, samp, uv, 0.0).xy;
+  var nv = textureSampleLevel(velIn, samp, uv - v * u.a.x, 0.0).xy * 0.985;
+  if (u.splat.z > 0.5) {
+    let d = (uv - u.splat.xy) * vec2f(u.a.z, 1.0);
+    nv += u.force.xy * u.force.z * exp(-dot(d, d) / (u.splat.w * u.splat.w)) * u.a.x * 6.0;
+  }
+  textureStore(velOut, id.xy, vec4f(nv, 0.0, 1.0));
+}
+
+// Divergence de la vitesse.
+@group(1) @binding(0) var velTex: texture_2d<f32>;
+@group(1) @binding(1) var divOut: texture_storage_2d<r32float, write>;
+
+fn vel_at(p: vec2i) -> vec2f {
+  let size = vec2i(textureDimensions(velTex));
+  // Bords pleins : la vitesse normale s'y annule.
+  if (p.x < 0 || p.y < 0 || p.x >= size.x || p.y >= size.y) { return vec2f(0.0); }
+  return textureLoad(velTex, p, 0).xy;
+}
+
+@compute @workgroup_size(8, 8)
+fn divergence(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(divOut);
+  if (any(id.xy >= size)) { return; }
+  let p = vec2i(id.xy);
+  let h = 1.0 / vec2f(size);
+  let dx = (vel_at(p + vec2i(1, 0)).x - vel_at(p - vec2i(1, 0)).x) / (2.0 * h.x);
+  let dy = (vel_at(p + vec2i(0, 1)).y - vel_at(p - vec2i(0, 1)).y) / (2.0 * h.y);
+  textureStore(divOut, id.xy, vec4f(dx + dy, 0.0, 0.0, 1.0));
+}
+
+// Pression : une itération de Jacobi.
+@group(1) @binding(0) var pIn: texture_2d<f32>;
+@group(1) @binding(1) var divTex: texture_2d<f32>;
+@group(1) @binding(2) var pOut: texture_storage_2d<r32float, write>;
+
+fn p_at(p: vec2i) -> f32 {
+  let size = vec2i(textureDimensions(pIn));
+  return textureLoad(pIn, clamp(p, vec2i(0), size - 1), 0).r;
+}
+
+@compute @workgroup_size(8, 8)
+fn jacobi(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(pOut);
+  if (any(id.xy >= size)) { return; }
+  let p = vec2i(id.xy);
+  let h = 1.0 / vec2f(size);
+  let div = textureLoad(divTex, p, 0).r;
+  let sum = p_at(p + vec2i(1, 0)) + p_at(p - vec2i(1, 0)) + p_at(p + vec2i(0, 1)) + p_at(p - vec2i(0, 1));
+  textureStore(pOut, id.xy, vec4f((sum - div * h.x * h.y) * 0.25, 0.0, 0.0, 1.0));
+}
+
+// Projection : on retire le gradient de pression, la vitesse devient sans divergence.
+@group(1) @binding(0) var pTex: texture_2d<f32>;
+@group(1) @binding(1) var velSrc: texture_2d<f32>;
+@group(1) @binding(2) var velDst: texture_storage_2d<rgba16float, write>;
+
+fn pt_at(p: vec2i) -> f32 {
+  let size = vec2i(textureDimensions(pTex));
+  return textureLoad(pTex, clamp(p, vec2i(0), size - 1), 0).r;
+}
+
+@compute @workgroup_size(8, 8)
+fn project(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(velDst);
+  if (any(id.xy >= size)) { return; }
+  let p = vec2i(id.xy);
+  let h = 1.0 / vec2f(size);
+  let g = vec2f(pt_at(p + vec2i(1, 0)) - pt_at(p - vec2i(1, 0)), pt_at(p + vec2i(0, 1)) - pt_at(p - vec2i(0, 1))) / (2.0 * h);
+  let v = textureLoad(velSrc, p, 0).xy - g;
+  textureStore(velDst, id.xy, vec4f(v, 0.0, 1.0));
+}
+
+// Le colorant est la photo : advectée par le fluide, rappelée doucement vers
+// l'original pour que l'encre « sèche ».
+@group(1) @binding(0) var dyeIn: texture_2d<f32>;
+@group(1) @binding(1) var dyeVel: texture_2d<f32>;
+@group(1) @binding(2) var photo: texture_2d<f32>;
+@group(1) @binding(3) var dyeOut: texture_storage_2d<rgba16float, write>;
+
+@compute @workgroup_size(8, 8)
+fn advect_dye(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dyeOut);
+  if (any(id.xy >= size)) { return; }
+  let uv = (vec2f(id.xy) + 0.5) / vec2f(size);
+  let v = textureSampleLevel(dyeVel, samp, uv, 0.0).xy;
+  let moved = textureSampleLevel(dyeIn, samp, uv - v * u.a.x, 0.0);
+  let src = textureSampleLevel(photo, samp, mix(u.photo.xy, u.photo.zw, uv), 0.0);
+  textureStore(dyeOut, id.xy, mix(moved, src, u.a.y));
+}
+`;
+
 /* ───────────────────────── Boîtes de debug ───────────────────────── */
 
 export const BOXES = /* wgsl */ `
@@ -759,12 +958,15 @@ struct Post {
   print: vec4f,    // nombre de chapitres, largeur du front (px), actif, 0
   chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), 0
   a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
+  casse: vec4f,    // nombre de caractères, largeur et hauteur de l'atlas, corps (px d'atlas)
+  ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
 @group(0) @binding(1) var samp: sampler;
 @group(0) @binding(2) var scene: texture_2d<f32>;
 @group(0) @binding(3) var bloom: texture_2d<f32>;
+@group(0) @binding(4) var msdf: texture_2d<f32>;
 
 const LENS_R: f32 = 130.0;
 
@@ -996,6 +1198,32 @@ fn f_paper(px: vec2f, st: vec4f, size: f32, amt: f32) -> vec3f {
   return col * mix(1.0, 0.72 + light * 0.42, amt);
 }
 
+// Casse de plomb : chaque cellule devient le caractère dont la noirceur
+// correspond à la sienne, tiré de l'atlas MTSDF des titres. Même corps pour
+// tous, comme dans une vraie casse : le point reste petit, le M reste lourd.
+fn f_casse(px: vec2f, st: vec4f, size: f32, amt: f32) -> vec3f {
+  let cell = max(size * 2.2, 5.0) * u.res.z;
+  let rel = px - st.xy;
+  let block = floor(rel / cell);
+  let center = st.xy + (block + 0.5) * cell;
+  let c = source(in_stage(center, st), vec2f(0.0));
+  let dark = clamp(1.0 - luma(c) / u.paper.g, 0.0, 1.0);
+  let n = u.casse.x;
+  let idx = i32(floor(dark * (n + 0.999)) - 1.0);
+  if (idx < 0) { return u.paper.rgb; }
+  let g = u.ramp[min(idx, i32(n) - 1)];
+  let k = cell / (0.8 * u.casse.w);            // px écran par px d'atlas
+  let local = rel - block * cell;               // px dans la cellule
+  let q = (local - cell * 0.5) / k + g.zw * 0.5; // px dans le glyphe
+  if (any(q < vec2f(0.0)) || any(q > g.zw)) { return u.paper.rgb; }
+  let m = textureSampleLevel(msdf, samp, (g.xy + q) / u.casse.yz, 0.0).rgb;
+  let med = max(min(m.r, m.g), min(max(m.r, m.g), m.b));
+  // Bord analytique : 8 px d'atlas de distance, ramenés en px d'écran.
+  let a = clamp((med - 0.5) * 8.0 * k + 0.5, 0.0, 1.0);
+  let ink = mix(INK_C, c * 0.85, amt);
+  return mix(u.paper.rgb, ink, a);
+}
+
 fn image_filter(px: vec2f, st: vec4f) -> vec3f {
   let id = u.filt.x;
   let size = u.filt.y;
@@ -1004,7 +1232,8 @@ fn image_filter(px: vec2f, st: vec4f) -> vec3f {
   if (id < 1.5) { return f_dither(px, st, size, amt); }
   if (id < 2.5) { return f_flute(px, st, size, amt); }
   if (id < 3.5) { return f_lens(px, st, size, amt); }
-  return f_paper(px, st, size, amt);
+  if (id < 4.5) { return f_paper(px, st, size, amt); }
+  return f_casse(px, st, size, amt);
 }
 
 @fragment

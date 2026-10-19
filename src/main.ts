@@ -1,5 +1,7 @@
 import "./styles.css";
 import { createEngine, type Engine } from "./gpu/engine.ts";
+import { setupHtmlInCanvas } from "./html-in-canvas.ts";
+import { bindLayers } from "./layers-ui.ts";
 import { motion, pointer, settings } from "./state.ts";
 import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayout, showMotion, showTimings, trackChapters, trackFocus } from "./ui.ts";
 
@@ -15,6 +17,7 @@ let retried = false;
 let userOff = false;
 
 function fallback(reason: string) {
+  setupHtmlInCanvas(null);
   root.classList.remove("gl-on");
   engine?.destroy();
   engine = null;
@@ -59,6 +62,7 @@ async function start() {
     engine.pause(settings.dom.hideGpu);
     if (!settings.dom.hideGpu) root.classList.add("gl-on");
     setStatus(`WebGPU natif${engine.canTime ? " · horodaté" : ""}`);
+    setupHtmlInCanvas(engine.device);
     const btn = document.querySelector<HTMLButtonElement>("[data-action='toggle-gpu']");
     if (btn) btn.textContent = "Couper WebGPU";
   } catch (err) {
@@ -76,6 +80,12 @@ bindControls(() => {
 });
 trackChapters();
 trackFocus();
+bindLayers();
+// La carte de la leçon 10.1 est un vrai bouton, qu'elle soit dessinée par le GPU ou non.
+document.querySelector("[data-hic-button]")?.addEventListener("click", (e) => {
+  const b = e.currentTarget as HTMLButtonElement;
+  b.textContent = b.textContent === "Tamponner" ? "Tamponné" : "Tamponner";
+});
 showMotion();
 showForced(forced.matches);
 forced.addEventListener("change", () => {

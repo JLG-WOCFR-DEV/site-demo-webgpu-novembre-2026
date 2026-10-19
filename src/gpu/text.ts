@@ -29,6 +29,8 @@ export type MsdfMeta = {
   width: number;
   height: number;
   fonts: Record<string, { base: number; chars: Record<string, [number, number, number, number, number, number]> }>;
+  /** Caractères rangés du plus clair au plus noir (casse de plomb). */
+  ramp?: string[];
 };
 
 /** En dessous de cette taille, le SDF simple suffit et le MTSDF n'apporte rien. */

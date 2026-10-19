@@ -9,7 +9,12 @@ export type Settings = {
   filter: { kind: number; size: number; amount: number };
   ink: { flow: number; stir: number };
   a11y: { reader: boolean; fade: number; vision: number; spacing: boolean };
+  fluid: { force: number; dry: number };
+  /** Chapitre 04.2 : pile de calques, du dessous vers le dessus. */
+  layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
+
+export type LayerId = "glass" | "flower" | "spot";
 
 export const settings: Settings = {
   dom: { boxes: false, hideGpu: false },
@@ -21,6 +26,14 @@ export const settings: Settings = {
   filter: { kind: 1, size: 6, amount: 0.5 },
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
+  fluid: { force: 1, dry: 0.5 },
+  layers: {
+    order: ["glass", "flower", "spot"],
+    mode: { glass: 0, flower: 1, spot: 3 },
+    opacity: { glass: 1, flower: 0.9, spot: 0.7 },
+    visible: { glass: true, flower: true, spot: true },
+    mask: 1,
+  },
 };
 
 export type Pointer = { x: number; y: number; inside: boolean };
