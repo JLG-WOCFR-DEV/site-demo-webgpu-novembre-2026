@@ -415,6 +415,35 @@
           </form>
           <p class="readout" data-readout="ink" aria-live="off"></p>
         </div>
+
+        <section id="ch-fluid" class="lesson" aria-labelledby="t-fluid">
+          <h3 id="t-fluid" class="lesson-title" data-gl-text><span class="lesson-num">08.2</span> Encre fraîche</h3>
+          <div class="ch-body ch-body--stage">
+            <div class="prose" data-gl-text>
+              <p>
+                Ici, l'image elle-même devient liquide. Une grille de 160 × 120 cellules porte une vitesse ; à chaque frame,
+                cinq passes de calcul la font avancer : advection (la vitesse se transporte elle-même), impulsion du
+                pointeur, divergence, vingt itérations de Jacobi pour la pression, puis projection, qui retire la
+                pression pour que le fluide ne se comprime pas. C'est la méthode des fluides stables de Jos Stam (1999).
+              </p>
+              <p>
+                Le colorant transporté n'est pas une encre ajoutée : c'est la photo. Passez le pointeur dessus pour
+                l'étaler comme une épreuve dont l'encre n'a pas séché. Une part de l'original est réinjectée à chaque
+                frame : l'image sèche et se reforme.
+              </p>
+            </div>
+            <div class="stage" data-gl-stage="fluid">
+              <figure class="plate plate--fluid">
+                <img data-gl-img data-gl-fluid src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau ; au survol, l'image s'étale comme de l'encre fraîche." />
+              </figure>
+            </div>
+            <form class="controls" aria-labelledby="c-fluid" data-controls="fluid">
+              <p id="c-fluid" class="controls-title">Le fluide</p>
+              <label class="range"><span>Force du pointeur</span><input type="range" name="force" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Séchage</span><input type="range" name="dry" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
+            </form>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 09 COÛT ───────────── -->

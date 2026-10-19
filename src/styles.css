@@ -1134,3 +1134,11 @@ html.gl-on .stage--layers {
   text-transform: uppercase;
   color: var(--ink-soft);
 }
+
+/* ───────── 08.2 Encre fraîche ───────── */
+
+.plate--fluid img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}

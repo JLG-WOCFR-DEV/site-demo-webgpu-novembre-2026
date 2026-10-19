@@ -692,6 +692,122 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 }
 `;
 
+/* ───────────────────────── Calcul : encre fraîche (fluide) ───────────────────────── */
+
+// Fluides stables (Stam, 1999) sur une grille de vitesse, puis advection de
+// la photo elle-même comme colorant. Coordonnées en uv de la plaque (0…1).
+export const FLUID = /* wgsl */ `
+struct FluidU {
+  a: vec4f,    // dt, relâchement vers la photo, aspect (l/h), 0
+  splat: vec4f, // pointeur (uv), dedans, rayon (uv)
+  force: vec4f, // vitesse du pointeur (uv/s), intensité, 0
+  photo: vec4f, // recadrage cover de la photo source
+};
+
+@group(0) @binding(0) var<uniform> u: FluidU;
+@group(0) @binding(1) var samp: sampler;
+
+// Advection de la vitesse + impulsion du pointeur.
+@group(1) @binding(0) var velIn: texture_2d<f32>;
+@group(1) @binding(1) var velOut: texture_storage_2d<rgba16float, write>;
+
+@compute @workgroup_size(8, 8)
+fn advect_vel(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(velOut);
+  if (any(id.xy >= size)) { return; }
+  let uv = (vec2f(id.xy) + 0.5) / vec2f(size);
+  let v = textureSampleLevel(velIn, samp, uv, 0.0).xy;
+  var nv = textureSampleLevel(velIn, samp, uv - v * u.a.x, 0.0).xy * 0.985;
+  if (u.splat.z > 0.5) {
+    let d = (uv - u.splat.xy) * vec2f(u.a.z, 1.0);
+    nv += u.force.xy * u.force.z * exp(-dot(d, d) / (u.splat.w * u.splat.w)) * u.a.x * 6.0;
+  }
+  textureStore(velOut, id.xy, vec4f(nv, 0.0, 1.0));
+}
+
+// Divergence de la vitesse.
+@group(1) @binding(0) var velTex: texture_2d<f32>;
+@group(1) @binding(1) var divOut: texture_storage_2d<r32float, write>;
+
+fn vel_at(p: vec2i) -> vec2f {
+  let size = vec2i(textureDimensions(velTex));
+  // Bords pleins : la vitesse normale s'y annule.
+  if (p.x < 0 || p.y < 0 || p.x >= size.x || p.y >= size.y) { return vec2f(0.0); }
+  return textureLoad(velTex, p, 0).xy;
+}
+
+@compute @workgroup_size(8, 8)
+fn divergence(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(divOut);
+  if (any(id.xy >= size)) { return; }
+  let p = vec2i(id.xy);
+  let h = 1.0 / vec2f(size);
+  let dx = (vel_at(p + vec2i(1, 0)).x - vel_at(p - vec2i(1, 0)).x) / (2.0 * h.x);
+  let dy = (vel_at(p + vec2i(0, 1)).y - vel_at(p - vec2i(0, 1)).y) / (2.0 * h.y);
+  textureStore(divOut, id.xy, vec4f(dx + dy, 0.0, 0.0, 1.0));
+}
+
+// Pression : une itération de Jacobi.
+@group(1) @binding(0) var pIn: texture_2d<f32>;
+@group(1) @binding(1) var divTex: texture_2d<f32>;
+@group(1) @binding(2) var pOut: texture_storage_2d<r32float, write>;
+
+fn p_at(p: vec2i) -> f32 {
+  let size = vec2i(textureDimensions(pIn));
+  return textureLoad(pIn, clamp(p, vec2i(0), size - 1), 0).r;
+}
+
+@compute @workgroup_size(8, 8)
+fn jacobi(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(pOut);
+  if (any(id.xy >= size)) { return; }
+  let p = vec2i(id.xy);
+  let h = 1.0 / vec2f(size);
+  let div = textureLoad(divTex, p, 0).r;
+  let sum = p_at(p + vec2i(1, 0)) + p_at(p - vec2i(1, 0)) + p_at(p + vec2i(0, 1)) + p_at(p - vec2i(0, 1));
+  textureStore(pOut, id.xy, vec4f((sum - div * h.x * h.y) * 0.25, 0.0, 0.0, 1.0));
+}
+
+// Projection : on retire le gradient de pression, la vitesse devient sans divergence.
+@group(1) @binding(0) var pTex: texture_2d<f32>;
+@group(1) @binding(1) var velSrc: texture_2d<f32>;
+@group(1) @binding(2) var velDst: texture_storage_2d<rgba16float, write>;
+
+fn pt_at(p: vec2i) -> f32 {
+  let size = vec2i(textureDimensions(pTex));
+  return textureLoad(pTex, clamp(p, vec2i(0), size - 1), 0).r;
+}
+
+@compute @workgroup_size(8, 8)
+fn project(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(velDst);
+  if (any(id.xy >= size)) { return; }
+  let p = vec2i(id.xy);
+  let h = 1.0 / vec2f(size);
+  let g = vec2f(pt_at(p + vec2i(1, 0)) - pt_at(p - vec2i(1, 0)), pt_at(p + vec2i(0, 1)) - pt_at(p - vec2i(0, 1))) / (2.0 * h);
+  let v = textureLoad(velSrc, p, 0).xy - g;
+  textureStore(velDst, id.xy, vec4f(v, 0.0, 1.0));
+}
+
+// Le colorant est la photo : advectée par le fluide, rappelée doucement vers
+// l'original pour que l'encre « sèche ».
+@group(1) @binding(0) var dyeIn: texture_2d<f32>;
+@group(1) @binding(1) var dyeVel: texture_2d<f32>;
+@group(1) @binding(2) var photo: texture_2d<f32>;
+@group(1) @binding(3) var dyeOut: texture_storage_2d<rgba16float, write>;
+
+@compute @workgroup_size(8, 8)
+fn advect_dye(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dyeOut);
+  if (any(id.xy >= size)) { return; }
+  let uv = (vec2f(id.xy) + 0.5) / vec2f(size);
+  let v = textureSampleLevel(dyeVel, samp, uv, 0.0).xy;
+  let moved = textureSampleLevel(dyeIn, samp, uv - v * u.a.x, 0.0);
+  let src = textureSampleLevel(photo, samp, mix(u.photo.xy, u.photo.zw, uv), 0.0);
+  textureStore(dyeOut, id.xy, mix(moved, src, u.a.y));
+}
+`;
+
 /* ───────────────────────── Boîtes de debug ───────────────────────── */
 
 export const BOXES = /* wgsl */ `

@@ -18,6 +18,8 @@ export type ChainStep = {
 export const CHAIN: readonly ChainStep[] = [
   { id: "sim", label: "Calcul : les lettres de l'ouverture, ressorts et inertie", res: "—", pass: "compute" },
   { id: "ink", label: "Calcul : les gouttes d'encre du chapitre 08", res: "—", pass: "compute" },
+  { id: "fluid", label: "Calcul : fluide de l'encre fraîche (08.2), 24 dispatchs", res: "160 × 120", pass: "compute" },
+  { id: "layers", label: "Calques fusionnés de la page 04.2", res: "pleine", pass: "scene" },
   { id: "scene", label: "Plans et glyphes → cible flottante", res: "pleine", pass: "scene" },
   { id: "extract", label: "Extraction des hautes lumières", res: "½", pass: "bloom-pre", toggle: "bloom" },
   { id: "down", label: "Flou, 4 descentes", res: "¼ → 1⁄32", pass: "bloom-down", toggle: "bloom" },

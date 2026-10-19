@@ -47,6 +47,7 @@ const STEPS = [
   { name: "21-light-naive", go: "#ch-light", set: ["light", "naive", true] },
   { name: "22-ink", go: "#ch-ink", wait: 4000 },
   { name: "23-ink-stir", go: "#ch-ink", sweep: [[0.5, 0.35], [0.95, 0.6]] },
+  { name: "23b-fluid", go: "#ch-fluid", sweep: [[0.55, 0.3], [0.95, 0.65]] },
   { name: "24-cost", go: "#ch-cost" },
   { name: "25-a11y", go: "#ch-a11y" },
   { name: "25a-reader", go: "#l-dom", set: ["a11y", "reader", true] },
