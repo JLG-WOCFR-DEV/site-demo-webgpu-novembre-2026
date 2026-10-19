@@ -720,6 +720,14 @@ input[type="range"]::-moz-range-thumb {
   margin: 0;
   max-width: 32em;
 }
+.colophon-legacy {
+  margin: 40px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule, currentColor);
+  font: 400 12px/1.5 var(--f-mono);
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
 
 /* ───────── Étroit ───────── */
 
@@ -766,6 +774,11 @@ input[type="range"]::-moz-range-thumb {
   .toc a {
     font-size: 10px;
   }
+  /* Le sommaire défile de côté : le bord droit s'efface pour le dire. */
+  .toc {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    padding-right: 24px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -778,4 +791,55 @@ input[type="range"]::-moz-range-thumb {
   .display .line--ink {
     padding-left: 0;
   }
+}
+
+/* ───────── Filtres et encre ───────── */
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.choices label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.choices input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.choices label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.choices label:has(input:focus-visible) {
+  outline: 2px solid var(--spot);
+  outline-offset: 2px;
+}
+
+.stage--ink {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 30% 40%, color-mix(in srgb, var(--cyan) 22%, transparent), transparent 40%),
+    radial-gradient(circle at 65% 55%, color-mix(in srgb, var(--magenta) 18%, transparent), transparent 42%);
+}
+html.gl-on .stage--ink {
+  background: transparent;
 }

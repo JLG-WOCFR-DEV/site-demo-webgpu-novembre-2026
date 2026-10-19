@@ -26,7 +26,9 @@
           <li><a href="#ch-glyph">Glyphes</a></li>
           <li><a href="#ch-chain">Chaîne</a></li>
           <li><a href="#ch-trame">Trame</a></li>
+          <li><a href="#ch-filtre">Filtres</a></li>
           <li><a href="#ch-light">Lumière</a></li>
+          <li><a href="#ch-ink">Calcul</a></li>
           <li><a href="#ch-cost">Coût</a></li>
           <li><a href="#ch-a11y">Accès</a></li>
         </ol>
@@ -63,7 +65,7 @@
           chaque boîte, chaque lettre, chaque photo, et repeint la page entière dans un seul canvas, avec une chaîne
           d'effets d'imprimerie. Survolez les planches : la trame s'ouvre sous le pointeur.
         </p>
-        <p class="hint" data-gl-text>Faites défiler. Chaque chapitre explique un principe et le montre sur lui-même.</p>
+        <p class="hint" data-gl-text>Passez le pointeur sur le titre, puis faites défiler. Chaque chapitre explique un principe et le montre sur lui-même.</p>
       </section>
 
       <!-- ───────────── 01 DOM ───────────── -->
@@ -228,10 +230,51 @@
         </div>
       </section>
 
-      <!-- ───────────── 06 LUMIÈRE ───────────── -->
-      <section id="ch-light" class="chapter" aria-labelledby="t-light">
+      <!-- ───────────── 06 FILTRES ───────────── -->
+      <section id="ch-filtre" class="chapter" aria-labelledby="t-filtre">
         <header class="ch-head">
           <p class="ch-num" data-gl-text>06</p>
+          <h2 id="t-filtre" data-gl-text>Cinq façons de relire une photo</h2>
+        </header>
+        <div class="ch-body ch-body--stage">
+          <div class="prose" data-gl-text>
+            <p>
+              Un filtre d'image n'est qu'une autre manière de lire la cible. Pour chaque pixel, il choisit où
+              échantillonner, combien de fois, et ce qu'il fait de la couleur obtenue. Trame et tramage regroupent les
+              pixels en cellules, le verre cannelé et la lentille déplacent l'endroit où l'on lit, le papier froissé
+              multiplie l'image par un relief.
+            </p>
+            <p>
+              Ces cinq filtres reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
+              chaîne que la trame : après le bloom et le repérage, dans la passe composite. La photographie n'est
+              envoyée qu'une fois au GPU ; seul le chemin de lecture change.
+            </p>
+          </div>
+          <div class="stage" data-gl-stage="filtre">
+            <figure class="plate plate--sq">
+              <img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux posée sur une pierre calcaire, lumière de fenêtre." />
+            </figure>
+          </div>
+          <form class="controls" aria-labelledby="c-filtre" data-controls="filter">
+            <p id="c-filtre" class="controls-title">Le filtre</p>
+            <fieldset class="choices">
+              <legend class="sr-only">Filtre appliqué à la photo</legend>
+              <label><input type="radio" name="kind" value="0" /> Trame noire</label>
+              <label><input type="radio" name="kind" value="1" /> Tramage riso</label>
+              <label><input type="radio" name="kind" value="2" /> Verre cannelé</label>
+              <label><input type="radio" name="kind" value="3" /> Lentille</label>
+              <label><input type="radio" name="kind" value="4" /> Papier froissé</label>
+            </fieldset>
+            <label class="range"><span>Taille</span><input type="range" name="size" min="2" max="16" step="0.5" value="6" /><output>6,0 px</output></label>
+            <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
+          </form>
+        </div>
+      </section>
+
+      <!-- ───────────── 07 LUMIÈRE ───────────── -->
+      <section id="ch-light" class="chapter" aria-labelledby="t-light">
+        <header class="ch-head">
+          <p class="ch-num" data-gl-text>07</p>
           <h2 id="t-light" data-gl-text>Le papier n'émet pas</h2>
         </header>
         <div class="ch-body ch-body--stage">
@@ -261,10 +304,40 @@
         </div>
       </section>
 
-      <!-- ───────────── 07 COÛT ───────────── -->
+      <!-- ───────────── 08 ENCRE ───────────── -->
+      <section id="ch-ink" class="chapter" aria-labelledby="t-ink">
+        <header class="ch-head">
+          <p class="ch-num" data-gl-text>08</p>
+          <h2 id="t-ink" data-gl-text>Le GPU calcule aussi</h2>
+        </header>
+        <div class="ch-body ch-body--stage">
+          <div class="prose" data-gl-text>
+            <p>
+              Tout ce qui précède dessine. Ici, le GPU calcule. Une passe de calcul fait avancer des dizaines de
+              milliers de gouttes d'encre à chaque frame, sans qu'aucune ne repasse par le processeur : leurs positions
+              vivent dans un tampon de stockage, la passe de calcul les écrit, la passe de dessin les relit.
+            </p>
+            <p>
+              Leur courant est un bruit rotationnel : la vitesse dérive d'un potentiel, elle tourne sans jamais
+              converger, comme une encre qui s'étire dans l'eau. Remuez avec le pointeur. Les lettres de l'ouverture
+              utilisent la même machinerie : chacune est un ressort amorti que le pointeur bouscule et que le
+              défilement fait traîner.
+            </p>
+          </div>
+          <div class="stage stage--ink" data-gl-stage="ink" role="img" aria-label="Trois encres, cyan, magenta et noire, qui s'étirent et tournent sur le papier."></div>
+          <form class="controls" aria-labelledby="c-ink" data-controls="ink">
+            <p id="c-ink" class="controls-title">L'encre</p>
+            <label class="range"><span>Courant</span><input type="range" name="flow" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+            <label class="range"><span>Remous du pointeur</span><input type="range" name="stir" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+          </form>
+          <p class="readout" data-readout="ink" aria-live="off"></p>
+        </div>
+      </section>
+
+      <!-- ───────────── 09 COÛT ───────────── -->
       <section id="ch-cost" class="chapter" aria-labelledby="t-cost">
         <header class="ch-head">
-          <p class="ch-num" data-gl-text>07</p>
+          <p class="ch-num" data-gl-text>09</p>
           <h2 id="t-cost" data-gl-text>Ce que coûte une frame</h2>
         </header>
         <div class="ch-body">
@@ -294,10 +367,10 @@
         </div>
       </section>
 
-      <!-- ───────────── 08 ACCÈS ───────────── -->
+      <!-- ───────────── 10 ACCÈS ───────────── -->
       <section id="ch-a11y" class="chapter" aria-labelledby="t-a11y">
         <header class="ch-head">
-          <p class="ch-num" data-gl-text>08</p>
+          <p class="ch-num" data-gl-text>10</p>
           <h2 id="t-a11y" data-gl-text>Ce qui reste sans GPU</h2>
         </header>
         <div class="ch-body">
@@ -331,7 +404,7 @@
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
-          Trame quadrichromique inspirée des filtres d'image de Paper Shaders (licence Apache 2.0), réécrite en WGSL.
+          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL.
           Archivo par Omnibus-Type, IBM Plex Mono par IBM, toutes deux sous licence SIL OFL, servies depuis ce site.
         </p>
         <p>
@@ -339,6 +412,10 @@
           <a href="https://github.com/JLG-WOCFR-DEV/site-demo-webgpu-novembre-2026">site-demo-webgpu-novembre-2026</a>.
         </p>
       </div>
+      <p class="colophon-legacy" data-gl-text>
+        La toute première version, générée par Grok en une passe, reste consultable telle quelle :
+        <a href="./legacy/index.html">PLI v0</a>.
+      </p>
     </footer>
   </body>
 </html>
