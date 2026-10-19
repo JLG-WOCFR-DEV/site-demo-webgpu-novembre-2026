@@ -24,6 +24,7 @@ npm run build      # dist/, chemins relatifs, hébergeable tel quel
 | `src/gpu/text.ts` | Atlas de glyphes SDF (TinySDF) pour le texte courant, atlas MTSDF pour les titres, placement lu sur le DOM |
 | `tools/msdf.py` | Régénère `public/msdf/` : fige les instances d'Archivo des titres et lance msdfgen |
 | `src/gpu/images.ts` | `createImageBitmap` → `copyExternalImageToTexture` → mipmaps GPU |
+| `src/menu.ts` | Sommaire en feuilles (8 présentations) : une matrice par feuille, posée sur le lien du DOM en `matrix3d` et envoyée au GPU |
 | `src/gpu/atlas.ts` | Rangement d'atlas et maths de placement, purs et testés |
 | `tools/tour.mjs` | Visite de recette : une capture par chapitre (WebGPU via SwiftShader, ou `--nogpu`) |
 

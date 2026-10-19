@@ -159,7 +159,7 @@ main,
   top: env(safe-area-inset-top, 0px);
   z-index: 10;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: var(--col-gap);
   height: var(--bar-h);
@@ -783,8 +783,12 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 640px) {
   .bar {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     gap: 8px;
+  }
+  /* Sur téléphone, le sommaire de la barre cède la place au bouton Sommaire. */
+  .bar nav {
+    display: none;
   }
   .status {
     display: none;
@@ -1261,4 +1265,326 @@ div.css-layer {
 }
 html.gl-on .css-layers {
   display: none;
+}
+
+
+/* ───────── Sommaire en feuilles ───────── */
+
+.menu {
+  position: fixed;
+  inset: calc(env(safe-area-inset-top, 0px) + var(--bar-h)) 0 0 0;
+  z-index: 9;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--paper);
+  color: var(--ink);
+}
+html.gl-on .menu {
+  /* Le GPU peint le papier et les feuilles ; le DOM ne garde que le texte et les commandes. */
+  background: transparent;
+}
+.menu[hidden] {
+  display: none;
+}
+/* Opacité plutôt que visibility : la page reste mesurable (glyphes, plaques)
+   pendant que le sommaire est ouvert ; inert la retire déjà du clavier et
+   des lecteurs d'écran. */
+.menu-under {
+  opacity: 0;
+}
+.menu-head,
+.menu-foot {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px var(--gutter-r) 14px var(--gutter);
+}
+.menu-title {
+  margin: 0 8px 0 0;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.menu-styles {
+  flex: 1 1 auto;
+}
+.menu-foot {
+  justify-content: center;
+}
+.menu-counter {
+  min-width: 5.5em;
+  text-align: center;
+  font: 500 12px/1 var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.menu-hint {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.menu-foot .pause-btn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 16px;
+}
+.menu-stage {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+/* Une feuille : un lien posé par matrix3d, origine en haut à gauche. */
+.sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  transform-origin: 0 0;
+  color: var(--ink);
+  text-decoration: none;
+  background: #f6f5ef;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14);
+  -webkit-user-drag: none;
+}
+.sheet:focus-visible {
+  outline: 3px solid var(--spot);
+  outline-offset: 4px;
+}
+.sheet-photo {
+  position: absolute;
+  left: 7%;
+  top: 6%;
+  width: 86%;
+  height: 72%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.sheet-label {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 4%;
+  height: 14%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+.sheet-num {
+  font: 500 12px/1 var(--f-mono);
+  color: var(--spot);
+}
+.sheet-title {
+  font: 800 clamp(14px, 1.6vw, 22px) / 1.05 var(--f-display);
+  font-stretch: 112%;
+  letter-spacing: -0.01em;
+}
+html.gl-on .sheet {
+  background: transparent;
+  box-shadow: none;
+}
+html.gl-on .sheet-photo,
+html.gl-on .menu-preview {
+  opacity: 0 !important;
+}
+
+/* Index : de grands titres, une épreuve à droite. */
+.menu[data-style="index"] .sheet {
+  background: none;
+  box-shadow: none;
+}
+.menu[data-style="index"] .sheet-photo {
+  display: none;
+}
+.menu[data-style="index"] .sheet-label {
+  inset: 0;
+  height: auto;
+  gap: 16px;
+}
+.menu[data-style="index"] .sheet-title {
+  font-size: min(clamp(20px, 3.6vh, 42px), calc(var(--row, 60px) * 0.66));
+  color: var(--ink-soft);
+  transition: color 0.25s;
+}
+.menu[data-style="index"] .sheet-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu[data-style="index"] .sheet.is-active .sheet-title {
+  color: var(--ink);
+}
+.menu-preview {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  transform-origin: 0 0;
+  object-fit: cover;
+  pointer-events: none;
+}
+.menu[data-style="index"] .menu-preview {
+  display: block;
+}
+
+/* Planche contact : des vues de pellicule, numérotées dessous. */
+.menu[data-style="planche"] .sheet {
+  background: linear-gradient(#131210, #131210) top / 100% calc(100% - 26px) no-repeat;
+  box-shadow: none;
+}
+.menu[data-style="planche"] .sheet-photo {
+  left: 8px;
+  top: 14px;
+  width: calc(100% - 16px);
+  height: calc(100% - 26px - 28px);
+}
+.menu[data-style="planche"] .sheet-label {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  gap: 8px;
+}
+.menu[data-style="planche"] .sheet-title {
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html.gl-on .menu[data-style="planche"] .sheet {
+  background: none;
+}
+.menu-circle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200px;
+  height: 140px;
+  margin: -70px 0 0 -100px;
+  transform-origin: 100px 70px;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 50;
+}
+.menu-circle path {
+  fill: none;
+  stroke: var(--spot);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.menu-circle.draw path {
+  animation: grease 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+}
+@keyframes grease {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-circle path {
+    stroke-dashoffset: 0;
+  }
+  .menu-circle.draw path {
+    animation: none;
+  }
+}
+@media (forced-colors: active) {
+  .sheet {
+    forced-color-adjust: auto;
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Nuancier : une bande étroite, photo en haut, légende en dessous. */
+.menu[data-style="nuancier"] .sheet-photo {
+  left: 8%;
+  width: 84%;
+  top: 4%;
+  height: 54%;
+}
+.menu[data-style="nuancier"] .sheet-label {
+  top: 61%;
+  bottom: auto;
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.menu[data-style="nuancier"] .sheet-title {
+  font-size: clamp(13px, 1.3vw, 17px);
+}
+.menu[data-style="rotative"] .sheet-photo {
+  left: 4%;
+  width: 62%;
+  top: 6%;
+  height: 88%;
+}
+.menu[data-style="rotative"] .sheet-label {
+  left: 70%;
+  right: 4%;
+  top: 6%;
+  bottom: auto;
+  height: 88%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+/* Le sommaire déplace le focus sur le chapitre ouvert : pas de cadre autour de toute la section. */
+.chapter[tabindex="-1"]:focus {
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  /* Téléphone : les styles défilent sur une ligne, l'en-tête reste mince. */
+  .menu-head {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .menu-title {
+    display: none;
+  }
+  .menu-styles {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+  }
+  .menu-styles label {
+    flex: none;
+  }
+  .menu-hint {
+    display: none;
+  }
+  .menu[data-style="planche"] .sheet {
+    background-size: 100% calc(100% - 20px);
+  }
+  .menu[data-style="planche"] .sheet-photo {
+    left: 5px;
+    top: 9px;
+    width: calc(100% - 10px);
+    height: calc(100% - 20px - 18px);
+  }
+  .menu[data-style="planche"] .sheet-label {
+    height: 20px;
+    gap: 4px;
+  }
+  .menu[data-style="planche"] .sheet-title {
+    font-size: 10px;
+  }
 }

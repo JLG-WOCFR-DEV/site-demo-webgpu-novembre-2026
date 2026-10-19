@@ -37,6 +37,7 @@
         <span class="status-dot" aria-hidden="true"></span>
         <span id="status-text">Démarrage</span>
       </div>
+      <button type="button" class="pause-btn" data-action="menu" aria-haspopup="dialog" aria-expanded="false">Sommaire</button>
       <button type="button" class="pause-btn" popovertarget="tr-pop" aria-controls="tr-pop">Transitions</button>
       <button type="button" class="pause-btn" data-action="pause" aria-pressed="false">Pause</button>
       <div id="tr-pop" class="tr-pop" popover>
@@ -65,6 +66,40 @@
         <p class="tr-pop-note">Expliqué en <a href="#ch-transitions">04.1</a>. Échap pour fermer.</p>
       </div>
     </header>
+
+
+    <!-- Sommaire en feuilles : un dialogue modal. Les feuilles sont des liens
+         créés depuis le sommaire de la barre ; le GPU les peint en perspective. -->
+    <div class="menu" data-menu hidden role="dialog" aria-modal="true" aria-labelledby="menu-title" data-style="leporello">
+      <div class="menu-head">
+        <h2 id="menu-title" class="menu-title">Sommaire</h2>
+        <fieldset class="choices menu-styles">
+          <legend class="sr-only">Présentation du sommaire</legend>
+          <label><input type="radio" name="menu-style" value="leporello" checked /> Leporello</label>
+          <label><input type="radio" name="menu-style" value="index" /> Index</label>
+          <label><input type="radio" name="menu-style" value="ramette" /> Ramette</label>
+          <label><input type="radio" name="menu-style" value="planche" /> Planche contact</label>
+          <label><input type="radio" name="menu-style" value="nuancier" /> Nuancier</label>
+          <label><input type="radio" name="menu-style" value="bande" /> Bande</label>
+          <label><input type="radio" name="menu-style" value="rotative" /> Rotative</label>
+          <label><input type="radio" name="menu-style" value="galerie" /> Galerie</label>
+        </fieldset>
+        <button type="button" class="pause-btn" data-menu-close>Fermer</button>
+      </div>
+      <div class="menu-stage" data-menu-stage>
+        <img class="menu-preview" data-menu-preview alt="" />
+        <svg class="menu-circle" data-menu-circle viewBox="-100 -70 200 140" aria-hidden="true" focusable="false">
+          <path pathLength="1" d="M -86 -6 C -84 -50 64 -66 88 -14 C 104 30 22 62 -36 56 C -84 50 -100 10 -74 -28 C -62 -44 -42 -52 -18 -56" />
+        </svg>
+      </div>
+      <div class="menu-foot">
+        <button type="button" class="pause-btn" data-menu-prev aria-label="Feuille précédente">←</button>
+        <span class="menu-counter" data-menu-counter aria-hidden="true">01 / 10</span>
+        <button type="button" class="pause-btn" data-menu-next aria-label="Feuille suivante">→</button>
+        <p class="menu-hint">Flèches pour feuilleter · Entrée pour ouvrir · Échap pour fermer</p>
+        <p class="sr-only" aria-live="polite" data-menu-live></p>
+      </div>
+    </div>
 
     <main id="top">
       <!-- ───────────── Ouverture ───────────── -->
@@ -166,6 +201,40 @@
        + min(max(q.x, q.y), 0.0) - r;
 }</code></pre>
         </div>
+
+        <section id="ch-sommaire" class="lesson" aria-labelledby="t-sommaire">
+          <h3 id="t-sommaire" class="lesson-title" data-gl-text><span class="lesson-num">02.1</span> Des plans en perspective</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Un plan peut aussi quitter le plan de la page. Le sommaire, ouvert depuis la barre, pose ses feuilles en
+                3D. Huit présentations, au choix dans le sommaire : sans relief, un index typographique, une planche contact, un
+                nuancier en éventail et une bande sans fin ; en volume, un dépliant en accordéon, une ramette dont la
+                première feuille s'envole, une rotative et une galerie en profondeur. Chaque feuille reçoit une matrice
+                4 × 4 calculée en JavaScript.
+              </p>
+              <p>
+                Cette matrice sert deux fois. Le DOM la reçoit en <span class="code-inline">transform: matrix3d()</span>,
+                sous la même perspective : le lien est exactement là où la feuille est dessinée, le clic, le focus et le
+                lecteur d'écran tombent juste. Le GPU la reçoit en uniforme, la multiplie par les coins du rectangle et
+                laisse la division par w au matériel, qui interpole aussi la texture en perspective. Les plis
+                s'assombrissent vers la charnière et la lumière rasante éclaire les faces tournées vers elle.
+              </p>
+              <p>
+                Lire la boîte d'un élément transformé ne suffirait pas : <span class="code-inline">getBoundingClientRect</span>
+                rend un rectangle droit qui l'englobe, pas ses quatre coins. C'est pourquoi la matrice part d'ici et va
+                vers le DOM, et non l'inverse. Sans WebGPU, le CSS rend la même géométrie. L'index imprime son épreuve
+                avec la transition choisie au chapitre 04.1 ; sur la bande, la vitesse décale les plaques de couleur,
+                comme une presse mal calée.
+              </p>
+            </div>
+            <div class="controls">
+              <p class="controls-title">Le sommaire</p>
+              <button type="button" class="btn" data-action="menu" aria-haspopup="dialog" aria-expanded="false">Ouvrir le sommaire</button>
+              <p class="readout">Flèches, molette ou glisser pour feuilleter ; Entrée ouvre le chapitre ; Échap ferme.</p>
+            </div>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 03 GLYPHES ───────────── -->
