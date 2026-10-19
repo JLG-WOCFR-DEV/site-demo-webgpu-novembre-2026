@@ -27,6 +27,7 @@ const STEPS = [
   { name: "05-dom-boxes", go: "#ch-dom", set: ["dom", "boxes", true] },
   { name: "05b-print", go: "#ch-quad", scroll: -520, wait: 700 },
   { name: "06-quad", go: "#ch-quad" },
+  { name: "06b-quad-peel", go: "#ch-quad", range: ["quad", "peel", 0.55] },
   { name: "07-quad-wire", go: "#ch-quad", set: ["quad", "wire", true], range: ["quad", "radius", 40] },
   { name: "08-glyph", go: "#ch-glyph" },
   { name: "09-glyph-scatter", go: "#ch-glyph", range: ["glyph", "scatter", 0.6] },

@@ -114,6 +114,12 @@
               La texture est envoyée au GPU avec <span class="code-inline">copyExternalImageToTexture</span>, sans
               repasser par le processeur, puis réduite en mipmaps pour que les vignettes ne scintillent pas.
             </p>
+            <p>
+              Un quad a ses limites : il ne peut pas se plier. Pour décoller l'épreuve, le moteur remplace ses deux
+              triangles par une grille de 40 × 28 cellules, générée elle aussi dans le vertex shader. La partie proche du
+              coin s'enroule autour d'un cylindre dont l'axe suit la ligne de pli ; passé le quart de tour, on voit le
+              verso du papier. Dessous apparaît la plaque offset qui a servi à l'imprimer, en négatif.
+            </p>
           </div>
           <div class="stage" data-gl-stage="quad">
             <figure class="plate plate--wide">
@@ -125,6 +131,7 @@
             <label class="range"><span>Coins</span><input type="range" name="radius" min="0" max="64" step="1" value="6" /><output>6 px</output></label>
             <label class="range"><span>Ombre</span><input type="range" name="shadow" min="0" max="1" step="0.01" value="0.45" /><output>0,45</output></label>
             <label class="range"><span>Élévation</span><input type="range" name="lift" min="0" max="1" step="0.01" value="0.3" /><output>0,30</output></label>
+            <label class="range"><span>Décoller l'épreuve</span><input type="range" name="peel" min="0" max="1" step="0.01" value="0" /><output>0,00</output></label>
             <label class="toggle"><input type="checkbox" name="wire" /> Afficher les deux triangles</label>
           </form>
           <pre class="wgsl" aria-label="Code WGSL du coin arrondi"><code>fn sd_round_box(p: vec2f, b: vec2f, r: f32) -> f32 {
@@ -630,7 +637,7 @@
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
-          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL.
+          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle s'inspire du composant Peel de canvasui.dev ; la simulation de vision suit Machado, Oliveira et Fernandes (2009).
           Archivo par Omnibus-Type, IBM Plex Mono par IBM, toutes deux sous licence SIL OFL, servies depuis ce site.
         </p>
         <p>

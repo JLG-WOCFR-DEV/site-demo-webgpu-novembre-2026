@@ -17,7 +17,7 @@ npm run build      # dist/, chemins relatifs, hébergeable tel quel
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | Le contenu : 10 chapitres, chacun explique un principe et le montre sur lui-même |
+| `index.html` | Le contenu : 10 chapitres, chacun explique un principe et le montre sur lui-même ; le 10 est un cours d'accessibilité en huit leçons |
 | `src/gpu/engine.ts` | Pipelines, cibles, boucle, horodatages GPU, perte de device |
 | `src/gpu/wgsl.ts` | Tous les shaders : plans SDF, glyphes instanciés, calcul (lettres à ressorts, encre en bruit rotationnel), bloom dual-filter, composite fusionné (lentille, repérage, 5 filtres d'image, trame CMJN, grain) |
 | `src/gpu/chain.ts` | L'ordre réel des passes ; la page 04 en génère sa liste |

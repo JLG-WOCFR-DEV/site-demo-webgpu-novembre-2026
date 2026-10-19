@@ -45,7 +45,8 @@ struct Plane {
   rect: vec4f,    // x, y, w, h (css)
   uv: vec4f,      // u0, v0, u1, v1 (recadrage object-fit: cover)
   params: vec4f,  // radius, shadow, lift, alpha
-  flags: vec4f,   // wire, mono, hover, hdr
+  flags: vec4f,   // wire, mono (1 atlas, 2 négatif), hover, hdr
+  peel: vec4f,    // décollement 0…1, 0, 0, 0
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -117,7 +118,11 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
   let uv = mix(plane.uv.xy, plane.uv.zw, in.local);
   var col = textureSample(tex, samp, uv).rgb;
 
-  if (plane.flags.y > 0.5) {
+  if (plane.flags.y > 1.5) {
+    // Plaque offset sous l'épreuve : l'image en négatif, sur aluminium.
+    let l = dot(col, vec3f(0.299, 0.587, 0.114));
+    col = mix(vec3f(0.80, 0.82, 0.84), vec3f(0.16, 0.22, 0.30), l);
+  } else if (plane.flags.y > 0.5) {
     // Atlas de champs de distance : on l'imprime encre sur papier.
     let v = textureSample(tex, samp, uv).r;
     col = mix(vec3f(0.937, 0.933, 0.910), vec3f(0.07), v);
@@ -147,6 +152,117 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
 
   let a = fill * plane.params.w;
   return vec4f(col * a, a);
+}
+`;
+
+/* ───────────────────────── Épreuve qui se décolle ───────────────────────── */
+
+// Même module que les plans (mêmes liaisons), d'autres points d'entrée. Un
+// quad ne peut pas se courber : on tisse une grille de PEEL_X × PEEL_Y
+// cellules, générée elle aussi depuis vertex_index, et on enroule la partie
+// proche du coin autour d'un cylindre dont l'axe est la ligne de pli.
+export const PEEL_X = 40;
+export const PEEL_Y = 28;
+
+export const PEEL = /* wgsl */ `
+struct PeelOut {
+  @builtin(position) clip: vec4f,
+  @location(0) local: vec2f,
+  @location(1) theta: f32,
+  @location(2) z: f32,
+  @location(3) s: f32,
+};
+
+const PX: u32 = ${PEEL_X}u;
+const PY: u32 = ${PEEL_Y}u;
+
+fn peel_frame() -> mat2x2f {
+  // Direction du coin bas-droit vers l'intérieur de l'épreuve.
+  let d = normalize(vec2f(-1.0, -0.8));
+  return mat2x2f(d, vec2f(-d.y, d.x));
+}
+
+// La partie plate est dessinée sur la grille non déformée : la ligne de pli
+// y reste droite, au lieu de suivre les arêtes des triangles.
+@vertex
+fn vs_peel_flat(@builtin(vertex_index) vi: u32) -> PeelOut {
+  var out = peel_vertex(vi);
+  let r = lifted_rect();
+  out.clip = to_clip(r.xy + out.local * r.zw, frame);
+  return out;
+}
+
+@vertex
+fn vs_peel(@builtin(vertex_index) vi: u32) -> PeelOut {
+  return peel_vertex(vi);
+}
+
+fn peel_vertex(vi: u32) -> PeelOut {
+  let cell = vi / 6u;
+  let k = vi % 6u;
+  var corner_ = array<vec2u, 6>(vec2u(0u, 0u), vec2u(1u, 0u), vec2u(0u, 1u), vec2u(1u, 0u), vec2u(1u, 1u), vec2u(0u, 1u));
+  let g = vec2u(cell % PX, cell / PX) + corner_[k];
+  let local = vec2f(g) / vec2f(f32(PX), f32(PY));
+  let r = lifted_rect();
+  let p = r.xy + local * r.zw;
+
+  let amount = plane.peel.x;
+  let d = peel_frame()[0];
+  let cornerPt = r.xy + r.zw;
+  let diag = length(r.zw);
+  let s = dot(p - cornerPt, d);           // distance au coin le long du pli
+  let fold = amount * diag * 0.62;        // position de la ligne de pli
+  let radius = max(18.0, diag * (0.035 + 0.05 * amount));
+  var sp = s;
+  var z = 0.0;
+  var theta = 0.0;
+  if (s < fold) {
+    theta = (fold - s) / radius;
+    if (theta <= 3.14159) {
+      sp = fold - radius * sin(theta);
+      z = radius * (1.0 - cos(theta));
+    } else {
+      sp = fold + (theta - 3.14159) * radius;
+      z = 2.0 * radius;
+    }
+  }
+  let q = p + d * (sp - s);
+  var out: PeelOut;
+  out.clip = to_clip(q, frame);
+  out.local = local;
+  out.theta = theta;
+  out.z = z / radius;
+  out.s = (s - fold) / radius;
+  return out;
+}
+
+fn peel_front(in: PeelOut) -> vec3f {
+  let uv = mix(plane.uv.xy, plane.uv.zw, in.local);
+  return textureSample(tex, samp, uv).rgb;
+}
+
+// Partie restée à plat : l'image, et l'ombre portée du rabat juste après le pli.
+@fragment
+fn fs_peel_flat(in: PeelOut) -> @location(0) vec4f {
+  let col = peel_front(in);
+  if (in.s < 0.0) { discard; }
+  let shade = 1.0 - 0.35 * exp(-in.s * 1.6) * step(0.0, in.s) * step(0.001, plane.peel.x);
+  let a = plane.params.w;
+  return vec4f(col * shade * a, a);
+}
+
+// Partie enroulée : l'image s'assombrit en tournant, puis le verso du papier
+// apparaît passé le quart de tour.
+@fragment
+fn fs_peel_curl(in: PeelOut) -> @location(0) vec4f {
+  let col = peel_front(in);
+  if (in.s >= 0.0) { discard; }
+  let back = in.theta > 1.5708;
+  let light = 0.62 + 0.38 * abs(cos(in.theta));
+  let paperBack = vec3f(0.93, 0.92, 0.89) * (0.78 + 0.22 * clamp(in.z * 0.5, 0.0, 1.0));
+  let c = select(col * light, paperBack, back);
+  let a = plane.params.w;
+  return vec4f(c * a, a);
 }
 `;
 

@@ -2,7 +2,7 @@ import { motion, pointer, settings } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_CHAPTERS, MAX_STAGES, PLANE, SIM } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -68,7 +68,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       {
         binding: 0,
         visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 64 },
+        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 80 },
       },
     ],
   });
@@ -127,7 +127,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
 
   /* ───── Pipelines ───── */
-  const planeMod = device.createShaderModule({ label: "plane", code: PLANE });
+  const planeMod = device.createShaderModule({ label: "plane", code: `${PLANE}\n${PEEL}` });
   const glyphMod = device.createShaderModule({ label: "glyph", code: GLYPH });
   const boxMod = device.createShaderModule({ label: "boxes", code: BOXES });
   const bloomMod = device.createShaderModule({ label: "bloom", code: BLOOM });
@@ -156,6 +156,16 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     fragment: { module: planeMod, entryPoint: "fs_plane", targets: [{ format: SCENE_FORMAT, blend: premul }] },
     primitive: strip,
   });
+  const peelPipe = (entry: string) =>
+    device.createRenderPipeline({
+      label: entry,
+      layout: planePipeLayout,
+      vertex: { module: planeMod, entryPoint: entry === "fs_peel_flat" ? "vs_peel_flat" : "vs_peel" },
+      fragment: { module: planeMod, entryPoint: entry, targets: [{ format: SCENE_FORMAT, blend: premul }] },
+      primitive: { topology: "triangle-list" },
+    });
+  const peelFlatPipe = peelPipe("fs_peel_flat");
+  const peelCurlPipe = peelPipe("fs_peel_curl");
   const glyphPipe = device.createRenderPipeline({
     label: "glyphs",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, glyphLayout] }),
@@ -228,7 +238,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
   const planeBind = device.createBindGroup({
     layout: planeLayout,
-    entries: [{ binding: 0, resource: { buffer: planeBuf, size: 64 } }],
+    entries: [{ binding: 0, resource: { buffer: planeBuf, size: 80 } }],
   });
   const boxBuf = device.createBuffer({ size: 32 * MAX_BOXES, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
   const boxBind = device.createBindGroup({ layout: boxLayout, entries: [{ binding: 0, resource: { buffer: boxBuf } }] });
@@ -583,17 +593,18 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 8);
 
     /* Plans */
-    type Job = { offset: number; bind: GPUBindGroup; shadow: boolean };
+    type Job = { offset: number; bind: GPUBindGroup; shadow: boolean; peel: boolean };
     const jobs: Job[] = [];
     let slot = 0;
-    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean) => {
+    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean, peel = 0) => {
       if (slot >= MAX_PLANES) return;
       const o = (slot * PLANE_STRIDE) / 4;
       planeData.set([rect.left, rect.top, rect.width, rect.height], o);
       planeData.set(uv, o + 4);
       planeData.set(params, o + 8);
       planeData.set(flags, o + 12);
-      jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow });
+      planeData.set([peel, 0, 0, 0], o + 16);
+      jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow, peel: peel > 0.001 });
       slot++;
     };
     for (const p of images.plates) {
@@ -607,7 +618,17 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const radius = p.quad ? q.radius : p.radius;
       const shadow = p.quad ? q.shadow : 0.32;
       const lift = p.quad ? q.lift : 0.15;
-      pushPlane(r, coverUV(r.width, r.height, p.width, p.height), [radius, shadow, lift, 1], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01);
+      const uv = coverUV(r.width, r.height, p.width, p.height);
+      // Chapitre 02 : l'épreuve se décolle au réglage, et d'un souffle au survol.
+      const wantPeel = p.quad ? Math.max(q.peel, reduced ? 0 : p.hover * 0.22) : 0;
+      p.peel += (wantPeel - p.peel) * (reduced ? 1 : 1 - Math.exp(-dt * 7));
+      if (p.peel > 0.001) {
+        // Dessous : la plaque offset, en négatif ; dessus : l'épreuve maillée.
+        pushPlane(r, uv, [radius, shadow, lift, 1], [0, 2, p.hover, 0], p.bind, shadow > 0.01);
+        pushPlane(r, uv, [radius, 0, lift, 1], [0, 0, p.hover, 1.6], p.bind, false, p.peel);
+      } else {
+        pushPlane(r, uv, [radius, shadow, lift, 1], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01);
+      }
     }
 
     /* Plaques de démonstration */
@@ -748,6 +769,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       if (j.shadow) {
         scenePass.setPipeline(shadowPipe);
         scenePass.draw(4);
+      }
+      if (j.peel) {
+        // D'abord ce qui reste à plat, puis le rabat par-dessus.
+        scenePass.setPipeline(peelFlatPipe);
+        scenePass.draw(PEEL_X * PEEL_Y * 6);
+        scenePass.setPipeline(peelCurlPipe);
+        scenePass.draw(PEEL_X * PEEL_Y * 6);
+        continue;
       }
       scenePass.setPipeline(planePipe);
       scenePass.draw(4);
