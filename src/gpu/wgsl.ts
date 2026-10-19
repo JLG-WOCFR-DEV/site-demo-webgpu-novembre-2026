@@ -955,7 +955,7 @@ struct Post {
   filt: vec4f,     // filtre (0…4), taille (css), intensité, 0
   stages: array<vec4f, ${MAX_STAGES}>, // x, y, w, h en px
   kinds: array<vec4f, ${MAX_STAGES / 4}>,
-  print: vec4f,    // nombre de chapitres, largeur du front (px), actif, 0
+  print: vec4f,    // nombre de chapitres, largeur du front (px), actif, style
   chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), 0
   a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
   casse: vec4f,    // nombre de caractères, largeur et hauteur de l'atlas, corps (px d'atlas)
@@ -1048,25 +1048,76 @@ fn halftone(px: vec2f, lens: vec2f, cellCss: f32, gain: f32, misreg: f32) -> vec
 }
 
 // Transition : chaque chapitre s'imprime en montant dans l'écran. La
-// profondeur imprimée ne fait que croître ; un front d'encre irrégulier,
-// plus sombre là où l'encre est encore humide, la sépare du papier vierge.
-fn printed(px: vec2f) -> vec2f {
-  if (u.print.z < 0.5) { return vec2f(1.0, 0.0); }
+// profondeur imprimée ne fait que croître ; ce qui la sépare du papier vierge
+// est le front, dont la forme dépend du style choisi (u.print.w) :
+//   0 impression (encre humide), 1 trame, 2 quadrichromie, 3 buvard,
+//   4 massicot, 5 fondu.
+// Rend un masque par canal (r, g, b) et l'humidité de l'encre.
+fn printed(px: vec2f) -> vec4f {
+  if (u.print.z < 0.5) { return vec4f(1.0, 1.0, 1.0, 0.0); }
   let n = i32(u.print.x);
+  let style = i32(u.print.w + 0.5);
+  let dpr = u.res.z;
   for (var i = 0; i < ${MAX_CHAPTERS}; i++) {
     if (i >= n) { break; }
     let c = u.chapters[i];
     if (px.y >= c.x && px.y < c.y) {
       let front = u.print.y;
       let rel = px.y - c.x;
-      let grain = vnoise(px / (34.0 * u.res.z)) * 0.65 + vnoise(px / (7.0 * u.res.z)) * 0.35;
-      let t = (c.z - rel) / front + (grain - 0.5) * 1.6;
+      // 0 sur la ligne déjà imprimée la plus basse, 1 une largeur de front plus haut.
+      let base = (c.z - rel) / front;
+      if (base > 2.5) { return vec4f(1.0, 1.0, 1.0, 0.0); }
+      if (style == 1) {
+        // Trame : les points grossissent jusqu'à se toucher, puis l'aplat.
+        let cell = 9.0 * dpr;
+        let q = vec2f(px.x + px.y, px.y - px.x) * 0.70710678 / cell;
+        let d = length(fract(q) - 0.5) * 1.41421356;
+        let cov = clamp(base * 1.1 + (vnoise(px / (40.0 * dpr)) - 0.5) * 0.3, 0.0, 1.0);
+        let r = sqrt(cov) * 1.02;
+        let aa = 1.4 / cell * dpr;
+        let m = select(1.0 - smoothstep(r - aa, r + aa, d), 1.0, cov >= 0.999);
+        return vec4f(m, m, m, 0.0);
+      }
+      if (style == 2) {
+        // Quadrichromie : jaune, puis magenta, puis cyan. Le jaune retient le
+        // bleu, le magenta le vert, le cyan le rouge : épreuves progressives.
+        let g = vnoise(px / (26.0 * dpr)) - 0.5;
+        let ty = base * 1.6 + g * 0.5;
+        let my = smoothstep(-0.04, 0.04, ty);
+        let mm = smoothstep(-0.04, 0.04, ty - 0.55);
+        let mc = smoothstep(-0.04, 0.04, ty - 1.1);
+        return vec4f(mc, mm, my, 0.0);
+      }
+      if (style == 3) {
+        // Buvard : l'encre gagne par taches, avec un halo plus sombre.
+        let blot = vnoise(px / (110.0 * dpr)) * 0.6 + vnoise(px / (23.0 * dpr)) * 0.3 + vnoise(px / (5.0 * dpr)) * 0.1;
+        let t = base * 0.9 + (blot - 0.5) * 3.2;
+        let m = smoothstep(-0.03, 0.03, t);
+        let wet = (1.0 - smoothstep(0.0, 0.35, t)) * m * 1.6;
+        return vec4f(m, m, m, wet);
+      }
+      if (style == 4) {
+        // Massicot : une coupe nette, en biais, sans bavure.
+        let tilt = (px.x / u.res.x - 0.5) * front * 0.18;
+        let edge = c.z - rel - tilt;
+        let m = clamp(edge / dpr + 0.5, 0.0, 1.0);
+        let wet = (1.0 - smoothstep(0.0, 6.0 * dpr, edge)) * m * 2.5;
+        return vec4f(m, m, m, wet);
+      }
+      if (style == 5) {
+        // Fondu : ce que ferait une transition CSS. Un dégradé d'opacité.
+        let m = smoothstep(0.0, 1.0, base);
+        return vec4f(m, m, m, 0.0);
+      }
+      // Impression : front d'encre irrégulier, plus sombre là où il est humide.
+      let grain = vnoise(px / (34.0 * dpr)) * 0.65 + vnoise(px / (7.0 * dpr)) * 0.35;
+      let t = base + (grain - 0.5) * 1.6;
       let m = smoothstep(-0.08, 0.08, t);
       let wet = (1.0 - smoothstep(0.0, 0.9, t)) * m;
-      return vec2f(m, wet);
+      return vec4f(m, m, m, wet);
     }
   }
-  return vec2f(1.0, 0.0);
+  return vec4f(1.0, 1.0, 1.0, 0.0);
 }
 
 // Étape 5 : grain et fibre du papier.
@@ -1291,11 +1342,11 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   }
 
   let pr = printed(px);
-  if (pr.x < 0.999) {
+  if (min(pr.x, min(pr.y, pr.z)) < 0.999 || pr.w > 0.001) {
     // Bord humide : l'encre fraîche est plus dense. On renforce l'écart au
     // papier, pas la couleur : le papier vierge reste vierge.
-    let wetCol = u.paper.rgb - (u.paper.rgb - col) * (1.0 + 0.6 * pr.y);
-    col = mix(u.paper.rgb, wetCol, pr.x);
+    let wetCol = u.paper.rgb - (u.paper.rgb - col) * (1.0 + 0.6 * pr.w);
+    col = mix(u.paper.rgb, wetCol, pr.xyz);
   }
 
   if (u.chain2.x > 0.5) {

@@ -159,7 +159,7 @@ main,
   top: env(safe-area-inset-top, 0px);
   z-index: 10;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--col-gap);
   height: var(--bar-h);
@@ -783,8 +783,8 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 640px) {
   .bar {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 12px;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: 8px;
   }
   .status {
     display: none;
@@ -856,6 +856,15 @@ html.gl-on .colophon a.is-printed,
 html.gl-on .chapter :focus-within,
 html.gl-on .chapter :focus-visible {
   opacity: 1;
+}
+/* Le DOM suit le style du front : coupe nette au massicot, fondu plus long. */
+html.gl-on[data-transition="massicot"] .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button),
+html.gl-on[data-transition="massicot"] .colophon a {
+  transition: none;
+}
+html.gl-on[data-transition="fondu"] .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button),
+html.gl-on[data-transition="fondu"] .colophon a {
+  transition-duration: 1s;
 }
 @media (prefers-reduced-motion: reduce) {
   html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button),
@@ -1031,6 +1040,41 @@ html.gl-on .chapter :focus-visible {
 .pause-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Panneau des transitions, ouvert depuis la barre (API popover : couche
+   supérieure, Échap et clic extérieur ferment, le focus revient au bouton). */
+.tr-pop {
+  inset: auto;
+  top: calc(env(safe-area-inset-top, 0px) + var(--bar-h) + 10px);
+  right: var(--gutter-r);
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--bar-h) - 32px);
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 6px 6px 0 color-mix(in srgb, var(--ink) 85%, transparent);
+}
+.tr-pop .controls {
+  border: 0;
+}
+.tr-pop .range {
+  grid-template-columns: minmax(6.5em, 0.9fr) minmax(0, 2fr) 3.6em;
+}
+.tr-pop-note {
+  margin: 0;
+  padding: 0 20px 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+@media (max-width: 640px) {
+  .tr-pop {
+    right: 16px;
+  }
 }
 
 /* Critère 1.4.12 : valeurs minimales que la page doit supporter. */

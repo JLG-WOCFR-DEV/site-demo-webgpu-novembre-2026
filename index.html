@@ -37,7 +37,28 @@
         <span class="status-dot" aria-hidden="true"></span>
         <span id="status-text">Démarrage</span>
       </div>
+      <button type="button" class="pause-btn" popovertarget="tr-pop" aria-controls="tr-pop">Transitions</button>
       <button type="button" class="pause-btn" data-action="pause" aria-pressed="false">Pause</button>
+      <div id="tr-pop" class="tr-pop" popover>
+          <form class="controls controls--pop" aria-labelledby="p-transitions-title" data-controls="transition">
+            <p id="p-transitions-title" class="controls-title">Transitions au défilement</p>
+            <fieldset class="choices">
+              <legend class="sr-only">Style de transition</legend>
+              <label><input type="radio" name="style" value="0" checked /> Impression</label>
+              <label><input type="radio" name="style" value="1" /> Trame</label>
+              <label><input type="radio" name="style" value="2" /> Quadrichromie</label>
+              <label><input type="radio" name="style" value="3" /> Buvard</label>
+              <label><input type="radio" name="style" value="4" /> Massicot</label>
+              <label><input type="radio" name="style" value="5" /> Fondu</label>
+              <label><input type="radio" name="style" value="6" /> Aucune</label>
+            </fieldset>
+            <label class="range"><span>Vitesse</span><input type="range" name="speed" min="1" max="14" step="0.5" value="4.5" /><output>0,15 s</output></label>
+            <label class="range"><span>Ligne d'impression</span><input type="range" name="line" min="0.5" max="1" step="0.01" value="0.86" /><output>86 %</output></label>
+            <label class="range"><span>Largeur du front</span><input type="range" name="width" min="0.04" max="0.6" step="0.01" value="0.22" /><output>22 %</output></label>
+            <button type="button" class="btn" data-action="replay">Rejouer l'impression</button>
+          </form>
+        <p class="tr-pop-note">Expliqué en <a href="#ch-transitions">04.1</a>. Échap pour fermer.</p>
+      </div>
     </header>
 
     <main id="top">
@@ -214,6 +235,49 @@
             <label class="toggle"><input type="checkbox" name="split" /> Couper l'écran : brut à gauche, composite à droite</label>
           </form>
         </div>
+
+        <section id="ch-transitions" class="lesson" aria-labelledby="t-transitions">
+          <h3 id="t-transitions" class="lesson-title" data-gl-text><span class="lesson-num">04.1</span> Transitions au défilement</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Le front d'impression n'est qu'une fonction du composite. Pour chaque pixel, elle reçoit la profondeur
+                déjà imprimée du chapitre et décide combien d'encre poser. Changer de transition, c'est changer cette
+                fonction et rien d'autre : le DOM, le défilement et le reste de la chaîne ne bougent pas.
+              </p>
+              <p>
+                Impression : un front irrégulier, plus sombre là où l'encre est encore humide. Trame : des points qui
+                grossissent jusqu'à se toucher. Quadrichromie : le jaune, le magenta puis le cyan passent l'un après
+                l'autre, comme des épreuves progressives. Buvard : l'encre gagne par taches. Massicot : une coupe nette,
+                en biais. Fondu : ce que ferait une transition CSS, pour comparer. Aucune : la page est imprimée d'avance.
+              </p>
+              <p>
+                Trois réglages valent pour tous les styles. La vitesse est une demi-vie : le temps que met le front pour
+                combler la moitié de son retard. La ligne d'impression est la hauteur de l'écran où l'encre se pose ; la
+                largeur du front, l'épaisseur de la zone de transition. Changer de style rejoue l'impression de la page.
+                Le bouton Transitions de la barre donne les mêmes réglages partout dans la page. Avec le mouvement réduit
+                ou la pause, rien ne s'anime : tout est imprimé d'emblée. Sans WebGPU non plus : la page est alors son HTML, déjà là.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-transitions-title" data-controls="transition">
+            <p id="c-transitions-title" class="controls-title">Transition</p>
+            <fieldset class="choices">
+              <legend class="sr-only">Style de transition</legend>
+              <label><input type="radio" name="style" value="0" checked /> Impression</label>
+              <label><input type="radio" name="style" value="1" /> Trame</label>
+              <label><input type="radio" name="style" value="2" /> Quadrichromie</label>
+              <label><input type="radio" name="style" value="3" /> Buvard</label>
+              <label><input type="radio" name="style" value="4" /> Massicot</label>
+              <label><input type="radio" name="style" value="5" /> Fondu</label>
+              <label><input type="radio" name="style" value="6" /> Aucune</label>
+            </fieldset>
+            <label class="range"><span>Vitesse</span><input type="range" name="speed" min="1" max="14" step="0.5" value="4.5" /><output>0,15 s</output></label>
+            <label class="range"><span>Ligne d'impression</span><input type="range" name="line" min="0.5" max="1" step="0.01" value="0.86" /><output>86 %</output></label>
+            <label class="range"><span>Largeur du front</span><input type="range" name="width" min="0.04" max="0.6" step="0.01" value="0.22" /><output>22 %</output></label>
+            <button type="button" class="btn" data-action="replay">Rejouer l'impression</button>
+          </form>
+          </div>
+        </section>
 
         <section id="ch-calques" class="lesson" aria-labelledby="t-calques">
           <h3 id="t-calques" class="lesson-title" data-gl-text><span class="lesson-num">04.2</span> Calques et modes de fusion</h3>

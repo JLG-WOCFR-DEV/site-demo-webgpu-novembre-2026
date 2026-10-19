@@ -9,6 +9,10 @@ const UNITS: Record<string, (v: number) => string> = {
   cell: (v) => `${fmt(v, 1)} px`,
   size: (v) => `${fmt(v, 1)} px`,
   threshold: (v) => `+${fmt(v, 3)}`,
+  // Amorti exponentiel : la demi-vie parle plus qu'un taux.
+  speed: (v) => `${fmt(Math.LN2 / v, 2)} s`,
+  line: (v) => `${Math.round(v * 100)} %`,
+  width: (v) => `${Math.round(v * 100)} %`,
 };
 
 /** Relie chaque formulaire [data-controls] à sa section de `settings`. */
@@ -38,8 +42,27 @@ export function bindControls(onChange: () => void) {
       sync(input);
       input.addEventListener("input", () => {
         sync(input);
+        mirror(key, form, input);
         onChange();
       });
+    }
+  }
+}
+
+/** Plusieurs formulaires peuvent régler la même section : on recopie la valeur dans les autres. */
+function mirror(key: string, from: HTMLFormElement, input: HTMLInputElement) {
+  for (const form of document.querySelectorAll<HTMLFormElement>(`form[data-controls="${key}"]`)) {
+    if (form === from) continue;
+    for (const other of form.querySelectorAll<HTMLInputElement>(`input[name="${input.name}"]`)) {
+      if (input.type === "radio") {
+        if (input.checked) other.checked = other.value === input.value;
+      }
+      else if (input.type === "checkbox") other.checked = input.checked;
+      else {
+        other.value = input.value;
+        const out = other.parentElement?.querySelector("output");
+        if (out) out.textContent = (UNITS[input.name] ?? ((x: number) => fmt(x)))(Number(input.value));
+      }
     }
   }
 }

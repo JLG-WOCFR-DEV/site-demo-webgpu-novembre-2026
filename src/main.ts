@@ -2,7 +2,7 @@ import "./styles.css";
 import { createEngine, type Engine } from "./gpu/engine.ts";
 import { setupHtmlInCanvas } from "./html-in-canvas.ts";
 import { bindLayers } from "./layers-ui.ts";
-import { motion, pointer, settings } from "./state.ts";
+import { motion, pointer, settings, TRANSITIONS } from "./state.ts";
 import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayout, showMotion, showTimings, trackChapters, trackFocus } from "./ui.ts";
 
 /**
@@ -80,6 +80,23 @@ bindControls(() => {
 });
 trackChapters();
 trackFocus();
+
+/* Transitions au défilement : changer de style rejoue l'impression de la page. */
+const showTransition = () => {
+  root.dataset.transition = TRANSITIONS[settings.transition.style] ?? "impression";
+};
+showTransition();
+for (const form of document.querySelectorAll<HTMLFormElement>("form[data-controls='transition']")) {
+  form.addEventListener("input", (e) => {
+    showTransition();
+    if ((e.target as HTMLInputElement).name === "style") engine?.replayPrint();
+  });
+}
+for (const b of document.querySelectorAll("[data-action='replay']")) {
+  b.addEventListener("click", () => engine?.replayPrint());
+}
+// Le lien du panneau mène à la leçon : on referme le panneau en y allant.
+document.querySelector("#tr-pop a")?.addEventListener("click", () => document.getElementById("tr-pop")?.hidePopover?.());
 bindLayers();
 // La carte de la leçon 10.1 est un vrai bouton, qu'elle soit dessinée par le GPU ou non.
 document.querySelector("[data-hic-button]")?.addEventListener("click", (e) => {
