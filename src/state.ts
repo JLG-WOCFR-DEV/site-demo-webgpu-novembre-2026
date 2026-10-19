@@ -14,15 +14,16 @@ export type Settings = {
   /**
    * Transitions au défilement (leçon 04.1 et panneau de la barre).
    * style : 0 impression, 1 trame, 2 quadrichromie, 3 buvard, 4 massicot,
-   * 5 fondu, 6 aucune. speed : taux de l'amorti (1/s). line : hauteur de la
+   * 5 fondu, 6 rouleau, 7 composition, 8 ligne à ligne, 9 révélateur, 10 pli,
+   * 11 aucune. speed : taux de l'amorti (1/s). line : hauteur de la
    * ligne d'impression (part de l'écran). width : largeur du front (part de l'écran).
    */
   transition: { style: number; speed: number; line: number; width: number };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
-export const TRANSITIONS = ["impression", "trame", "quadri", "buvard", "massicot", "fondu", "aucune"] as const;
-export const TRANSITION_NONE = 6;
+export const TRANSITIONS = ["impression", "trame", "quadri", "buvard", "massicot", "fondu", "rouleau", "composition", "ligne", "revelateur", "pli", "aucune"] as const;
+export const TRANSITION_NONE = 11;
 
 export type LayerId = "glass" | "flower" | "spot";
 

@@ -1051,9 +1051,19 @@ fn halftone(px: vec2f, lens: vec2f, cellCss: f32, gain: f32, misreg: f32) -> vec
 // profondeur imprimée ne fait que croître ; ce qui la sépare du papier vierge
 // est le front, dont la forme dépend du style choisi (u.print.w) :
 //   0 impression (encre humide), 1 trame, 2 quadrichromie, 3 buvard,
-//   4 massicot, 5 fondu.
-// Rend un masque par canal (r, g, b) et l'humidité de l'encre.
-fn printed(px: vec2f) -> vec4f {
+//   4 massicot, 5 fondu, 6 rouleau, 7 composition, 8 ligne à ligne,
+//   9 révélateur, 10 pli.
+// Rend un masque par canal (r, g, b) et l'humidité de l'encre ; print_shade
+// assombrit ou éclaire l'image finale, papier compris (ombre d'un pli,
+// passage du rouleau, curseur).
+var<private> print_shade: f32 = 1.0;
+
+fn tr_hash(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+
+fn printed(px: vec2f, col: vec3f) -> vec4f {
+  print_shade = 1.0;
   if (u.print.z < 0.5) { return vec4f(1.0, 1.0, 1.0, 0.0); }
   let n = i32(u.print.x);
   let style = i32(u.print.w + 0.5);
@@ -1107,6 +1117,66 @@ fn printed(px: vec2f) -> vec4f {
       if (style == 5) {
         // Fondu : ce que ferait une transition CSS. Un dégradé d'opacité.
         let m = smoothstep(0.0, 1.0, base);
+        return vec4f(m, m, m, 0.0);
+      }
+      if (style == 6) {
+        // Rouleau encreur : stries verticales d'un rouleau peu chargé, et
+        // l'ombre du rouleau qui passe juste devant le front.
+        let n = vnoise(vec2f(px.x / (2.5 * dpr), px.y / (160.0 * dpr))) * 0.7
+              + vnoise(vec2f(px.x / (9.0 * dpr), px.y / (400.0 * dpr))) * 0.3;
+        let t = base + (n - 0.5) * 1.4;
+        let m = smoothstep(-0.05, 0.05, t);
+        let wet = (1.0 - smoothstep(0.0, 0.5, t)) * m * 1.2;
+        print_shade = 1.0 - 0.045 * (1.0 - smoothstep(0.0, 0.08, abs(base + 0.18)));
+        return vec4f(m, m, m, wet);
+      }
+      if (style == 7) {
+        // Composition : des blocs de plomb posés un à un, au hasard dans la
+        // ligne ; frais, ils gardent un filet de papier et l'encre est dense.
+        let cs = vec2f(15.0, 26.0) * dpr;
+        let id = floor(vec2f(px.x, rel) / cs);
+        let tb = (c.z - id.y * cs.y) / front - tr_hash(id) * 0.9;
+        let m0 = step(0.0, tb);
+        let f = fract(vec2f(px.x, rel) / cs) * cs;
+        let gap = step(dpr, f.x) * step(dpr, f.y);
+        let fresh = 1.0 - smoothstep(0.0, 0.35, tb);
+        let m = m0 * mix(1.0, gap, fresh);
+        return vec4f(m, m, m, fresh * m0 * 1.4);
+      }
+      if (style == 8) {
+        // Ligne à ligne : comme une linotype, chaque ligne se compose de gauche
+        // à droite, la suivante démarre avant la fin de la précédente.
+        let rowH = 26.0 * dpr;
+        let row = floor(rel / rowH);
+        let prog = (c.z - row * rowH) / (rowH + front * 0.35);
+        let xn = px.x / u.res.x;
+        let m = 1.0 - smoothstep(prog - 0.004, prog, xn);
+        // Curseur : un trait d'encre au bout de la ligne en cours.
+        let caret = step(0.0, prog) * step(prog, 1.0) * (1.0 - smoothstep(0.0, 2.0 * dpr, abs(xn - prog) * u.res.x));
+        print_shade = 1.0 - 0.75 * caret;
+        return vec4f(m, m, m, 0.0);
+      }
+      if (style == 9) {
+        // Révélateur : comme une épreuve dans le bain, les noirs montent
+        // d'abord, puis les gris, puis les blancs ; le canal rouge traîne, si
+        // bien que l'épreuve paraît d'abord rouge, comme sous la lampe inactinique.
+        let lum = dot(col, vec3f(0.2126, 0.7152, 0.0722));
+        let pl = dot(u.paper.rgb, vec3f(0.2126, 0.7152, 0.0722));
+        let dark = clamp(1.0 - lum / pl, 0.0, 1.0);
+        let t = base * 1.4 - (1.0 - dark) * 1.1 + (vnoise(px / (60.0 * dpr)) - 0.5) * 0.2;
+        return vec4f(smoothstep(-0.1, 0.25, t - 0.14), smoothstep(-0.1, 0.25, t), smoothstep(-0.1, 0.25, t + 0.04), 0.0);
+      }
+      if (style == 10) {
+        // Pli : la feuille se déplie. Ombre portée au creux du pli, filet de la
+        // pliure, revers du papier un peu plus clair devant.
+        let tilt = (px.x / u.res.x - 0.5) * front * 0.06;
+        let e = c.z - rel - tilt;
+        let m = clamp(e / dpr + 0.5, 0.0, 1.0);
+        var sh = 1.0;
+        if (e > 0.0) { sh = 1.0 - 0.2 * exp(-e / (18.0 * dpr)); }
+        else { sh = 1.0 + 0.035 * exp(e / (40.0 * dpr)); }
+        sh *= 1.0 - 0.3 * (1.0 - smoothstep(0.0, 1.2 * dpr, abs(e)));
+        print_shade = sh;
         return vec4f(m, m, m, 0.0);
       }
       // Impression : front d'encre irrégulier, plus sombre là où il est humide.
@@ -1341,13 +1411,14 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     }
   }
 
-  let pr = printed(px);
+  let pr = printed(px, col);
   if (min(pr.x, min(pr.y, pr.z)) < 0.999 || pr.w > 0.001) {
     // Bord humide : l'encre fraîche est plus dense. On renforce l'écart au
     // papier, pas la couleur : le papier vierge reste vierge.
     let wetCol = u.paper.rgb - (u.paper.rgb - col) * (1.0 + 0.6 * pr.w);
     col = mix(u.paper.rgb, wetCol, pr.xyz);
   }
+  col *= print_shade;
 
   if (u.chain2.x > 0.5) {
     // Fibre : bruit lent, seulement là où il y a du papier.
