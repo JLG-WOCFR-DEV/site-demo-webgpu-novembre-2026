@@ -315,7 +315,7 @@
       <section id="ch-filtre" class="chapter" aria-labelledby="t-filtre">
         <header class="ch-head">
           <p class="ch-num" data-gl-text>06</p>
-          <h2 id="t-filtre" data-gl-text>Cinq façons de relire une photo</h2>
+          <h2 id="t-filtre" data-gl-text>Six façons de relire une photo</h2>
         </header>
         <div class="ch-body ch-body--stage">
           <div class="prose" data-gl-text>
@@ -323,10 +323,11 @@
               Un filtre d'image n'est qu'une autre manière de lire la cible. Pour chaque pixel, il choisit où
               échantillonner, combien de fois, et ce qu'il fait de la couleur obtenue. Trame et tramage regroupent les
               pixels en cellules, le verre cannelé et la lentille déplacent l'endroit où l'on lit, le papier froissé
-              multiplie l'image par un relief.
+              multiplie l'image par un relief. La casse de plomb remplace chaque cellule par un caractère d'Archivo,
+              choisi parmi seize rangés du plus clair au plus noir : c'est l'art ASCII, version typographe.
             </p>
             <p>
-              Ces cinq filtres reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
+              Les cinq premiers reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
               chaîne que la trame : après le bloom et le repérage, dans la passe composite. La photographie n'est
               envoyée qu'une fois au GPU ; seul le chemin de lecture change.
             </p>
@@ -345,6 +346,7 @@
               <label><input type="radio" name="kind" value="2" /> Verre cannelé</label>
               <label><input type="radio" name="kind" value="3" /> Lentille</label>
               <label><input type="radio" name="kind" value="4" /> Papier froissé</label>
+              <label><input type="radio" name="kind" value="5" /> Casse de plomb</label>
             </fieldset>
             <label class="range"><span>Taille</span><input type="range" name="size" min="2" max="16" step="0.5" value="6" /><output>6,0 px</output></label>
             <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>

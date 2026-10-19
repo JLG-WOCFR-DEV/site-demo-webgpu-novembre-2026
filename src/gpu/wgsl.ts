@@ -842,12 +842,15 @@ struct Post {
   print: vec4f,    // nombre de chapitres, largeur du front (px), actif, 0
   chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), 0
   a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
+  casse: vec4f,    // nombre de caractères, largeur et hauteur de l'atlas, corps (px d'atlas)
+  ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
 @group(0) @binding(1) var samp: sampler;
 @group(0) @binding(2) var scene: texture_2d<f32>;
 @group(0) @binding(3) var bloom: texture_2d<f32>;
+@group(0) @binding(4) var msdf: texture_2d<f32>;
 
 const LENS_R: f32 = 130.0;
 
@@ -1079,6 +1082,32 @@ fn f_paper(px: vec2f, st: vec4f, size: f32, amt: f32) -> vec3f {
   return col * mix(1.0, 0.72 + light * 0.42, amt);
 }
 
+// Casse de plomb : chaque cellule devient le caractère dont la noirceur
+// correspond à la sienne, tiré de l'atlas MTSDF des titres. Même corps pour
+// tous, comme dans une vraie casse : le point reste petit, le M reste lourd.
+fn f_casse(px: vec2f, st: vec4f, size: f32, amt: f32) -> vec3f {
+  let cell = max(size * 2.2, 5.0) * u.res.z;
+  let rel = px - st.xy;
+  let block = floor(rel / cell);
+  let center = st.xy + (block + 0.5) * cell;
+  let c = source(in_stage(center, st), vec2f(0.0));
+  let dark = clamp(1.0 - luma(c) / u.paper.g, 0.0, 1.0);
+  let n = u.casse.x;
+  let idx = i32(floor(dark * (n + 0.999)) - 1.0);
+  if (idx < 0) { return u.paper.rgb; }
+  let g = u.ramp[min(idx, i32(n) - 1)];
+  let k = cell / (0.8 * u.casse.w);            // px écran par px d'atlas
+  let local = rel - block * cell;               // px dans la cellule
+  let q = (local - cell * 0.5) / k + g.zw * 0.5; // px dans le glyphe
+  if (any(q < vec2f(0.0)) || any(q > g.zw)) { return u.paper.rgb; }
+  let m = textureSampleLevel(msdf, samp, (g.xy + q) / u.casse.yz, 0.0).rgb;
+  let med = max(min(m.r, m.g), min(max(m.r, m.g), m.b));
+  // Bord analytique : 8 px d'atlas de distance, ramenés en px d'écran.
+  let a = clamp((med - 0.5) * 8.0 * k + 0.5, 0.0, 1.0);
+  let ink = mix(INK_C, c * 0.85, amt);
+  return mix(u.paper.rgb, ink, a);
+}
+
 fn image_filter(px: vec2f, st: vec4f) -> vec3f {
   let id = u.filt.x;
   let size = u.filt.y;
@@ -1087,7 +1116,8 @@ fn image_filter(px: vec2f, st: vec4f) -> vec3f {
   if (id < 1.5) { return f_dither(px, st, size, amt); }
   if (id < 2.5) { return f_flute(px, st, size, amt); }
   if (id < 3.5) { return f_lens(px, st, size, amt); }
-  return f_paper(px, st, size, amt);
+  if (id < 4.5) { return f_paper(px, st, size, amt); }
+  return f_casse(px, st, size, amt);
 }
 
 @fragment

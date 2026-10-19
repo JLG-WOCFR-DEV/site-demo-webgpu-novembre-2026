@@ -23,9 +23,10 @@ const MAX_BOXES = 512;
 const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
+const CASSE_AT = A11Y_AT + 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -131,6 +132,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
     ],
   });
 
@@ -265,6 +267,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
 
   const text = new TextLayer(device);
+  const casseData = new Float32Array(4 + 16 * 4);
   // Atlas MTSDF des titres. S'il manque, les titres restent en SDF simple.
   let msdfTex = device.createTexture({ size: [1, 1], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING });
   try {
@@ -284,6 +287,15 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       device.queue.copyExternalImageToTexture({ source: bmp }, { texture: msdfTex, premultipliedAlpha: false }, [bmp.width, bmp.height]);
       bmp.close();
       text.msdf = meta;
+      // Casse de plomb : la rampe de caractères, du plus clair au plus noir.
+      const chars = meta.fonts["900|125"]?.chars ?? {};
+      const ramp = (meta.ramp ?? []).filter((c) => chars[c]).slice(0, 16);
+      casseData[0] = ramp.length;
+      casseData.set([meta.width, meta.height, meta.size], 1);
+      ramp.forEach((c, i) => {
+        const [x, y, w, h] = chars[c]!;
+        casseData.set([x, y, w, h], 4 + i * 4);
+      });
     }
   } catch (err) {
     console.warn("[pli] atlas MTSDF indisponible", err);
@@ -485,6 +497,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         { binding: 1, resource: linear },
         { binding: 2, resource: scene.createView() },
         { binding: 3, resource: bloomTex.createView({ baseMipLevel: 0, mipLevelCount: 1 }) },
+        { binding: 4, resource: msdfTex.createView() },
       ],
     });
   };
@@ -717,6 +730,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     postData.set([nch, cssH * 0.22 * dpr, printOn ? 1 : 0, 0], PRINT_AT);
     postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
+    postData.set(casseData, CASSE_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);

@@ -39,6 +39,40 @@ CHARSET = (
 )
 
 
+def ink_ramp(sheet, chars, steps=16):
+    """
+    Casse de plomb : 16 caractères rangés du plus clair au plus noir.
+
+    Comme une vraie casse, tous les caractères gardent le même corps : la
+    cellule carrée fait 0,8 em et le glyphe y est centré à sa taille réelle.
+    La noirceur est la part d'encre de cette cellule, mesurée sur la médiane
+    MSDF de l'atlas.
+    """
+    import numpy as np
+
+    px = np.asarray(sheet.convert("RGB"), dtype=np.float32) / 255.0
+    med = np.maximum(np.minimum(px[..., 0], px[..., 1]), np.minimum(np.maximum(px[..., 0], px[..., 1]), px[..., 2]))
+    candidates = ".,:;'-~=+*^\"!/|()<>[]{}?ilrtcxzsvoeanuwkhdbpqgyjfITLJCOQSZXVYAKUNHDRPBGEFWM#%&@$0123456789"
+    scored = []
+    for ch in candidates:
+        if ch not in chars:
+            continue
+        x, y, w, h, _, _ = chars[ch]
+        ink = float((med[y : y + h, x : x + w] > 0.5).sum())
+        side = 0.8 * SIZE
+        scored.append((ink / (side * side), ch))
+    scored.sort()
+    lo, hi = scored[0][0], scored[-1][0]
+    ramp, used = [], set()
+    for k in range(steps):
+        target = lo + (hi - lo) * k / (steps - 1)
+        best = min((s for s in scored if s[1] not in used), key=lambda s: abs(s[0] - target))
+        used.add(best[1])
+        ramp.append(best[1])
+    ramp.sort(key=lambda c: next(s for s, ch in scored if ch == c))
+    return ramp
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix="pli-msdf-")
@@ -86,8 +120,9 @@ def main():
     # Sans canal alpha : un navigateur qui prémultiplie au décodage détruirait
     # les distances des texels peu opaques (points parasites dans les lettres).
     sheet.convert("RGB").save(os.path.join(OUT, "display.png"), optimize=True)
+    ramp = ink_ramp(sheet, fonts["900|125"]["chars"])
     with open(os.path.join(OUT, "display.json"), "w", encoding="utf8") as f:
-        json.dump({"size": SIZE, "range": RANGE, "width": width, "height": height, "fonts": fonts}, f,
+        json.dump({"size": SIZE, "range": RANGE, "width": width, "height": height, "fonts": fonts, "ramp": ramp}, f,
                   ensure_ascii=False, separators=(",", ":"))
     print(f"display.png {width}×{height}, {sum(len(v['chars']) for v in fonts.values())} glyphes")
 

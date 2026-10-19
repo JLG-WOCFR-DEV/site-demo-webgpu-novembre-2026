@@ -42,6 +42,7 @@ const STEPS = [
   { name: "17-filtre-flute", go: "#ch-filtre", radio: ["filter", "kind", 2] },
   { name: "18-filtre-lens", go: "#ch-filtre", radio: ["filter", "kind", 3], mouse: [0.72, 0.42] },
   { name: "19-filtre-paper", go: "#ch-filtre", radio: ["filter", "kind", 4], range: ["filter", "amount", 0.9] },
+  { name: "19b-filtre-casse", go: "#ch-filtre", radio: ["filter", "kind", 5], range: ["filter", "size", 5] },
   { name: "20-light", go: "#ch-light", radio: ["filter", "kind", 1] },
   { name: "21-light-naive", go: "#ch-light", set: ["light", "naive", true] },
   { name: "22-ink", go: "#ch-ink", wait: 4000 },
