@@ -1,15 +1,17 @@
 import { motion, pointer, settings } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
-import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, GLYPH, MAX_STAGES, PLANE } from "./wgsl.ts";
+import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
+import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
 export type EngineHooks = {
   onTimings?: (t: Timings) => void;
-  onLayout?: (info: { glyphs: number; atlas: number; textures: number }) => void;
+  onLayout?: (info: { glyphs: number; atlas: number; msdf: number; textures: number; drops: number }) => void;
   onLost?: (reason: string) => void;
+  /** Contraste WCAG mesuré sur l'image finale (leçon 10.2). */
+  onContrast?: (ratio: number) => void;
 };
 
 const PAPER = [0.937, 0.933, 0.91] as const;
@@ -18,7 +20,12 @@ const PLANE_STRIDE = 256;
 const MAX_PLANES = 16;
 const BLOOM_LEVELS = 5;
 const MAX_BOXES = 512;
-const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2 };
+const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
+const BODY_STRIDE = 32;
+const DROP_STRIDE = 32;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1;
+const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
+const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -47,7 +54,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const context = canvas.getContext("webgpu");
   if (!context) throw new Error("Contexte webgpu indisponible");
   const format = navigator.gpu.getPreferredCanvasFormat();
-  context.configure({ device, format, alphaMode: "opaque" });
+  // COPY_SRC : la leçon 10.2 relit l'image finale pour en mesurer le contraste.
+  context.configure({ device, format, alphaMode: "opaque", usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
 
   device.pushErrorScope("validation");
 
@@ -60,7 +68,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       {
         binding: 0,
         visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 64 },
+        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 80 },
       },
     ],
   });
@@ -76,6 +84,27 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 4, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
+      { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+    ],
+  });
+  const simLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+      { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+    ],
+  });
+  const inkSimLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+    ],
+  });
+  const inkDrawLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
     ],
   });
   const boxLayout = device.createBindGroupLayout({
@@ -98,12 +127,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
 
   /* ───── Pipelines ───── */
-  const planeMod = device.createShaderModule({ label: "plane", code: PLANE });
+  const planeMod = device.createShaderModule({ label: "plane", code: `${PLANE}\n${PEEL}` });
   const glyphMod = device.createShaderModule({ label: "glyph", code: GLYPH });
   const boxMod = device.createShaderModule({ label: "boxes", code: BOXES });
   const bloomMod = device.createShaderModule({ label: "bloom", code: BLOOM });
   const postMod = device.createShaderModule({ label: "composite", code: COMPOSITE });
-  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod]) {
+  const simMod = device.createShaderModule({ label: "sim", code: SIM });
+  const inkMod = device.createShaderModule({ label: "ink", code: INK });
+  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod]) {
     const info = await m.getCompilationInfo();
     const errors = info.messages.filter((x) => x.type === "error");
     if (errors.length) throw new Error(`WGSL ${m.label}: ${errors.map((e) => `${e.lineNum}:${e.message}`).join(" | ")}`);
@@ -125,6 +156,16 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     fragment: { module: planeMod, entryPoint: "fs_plane", targets: [{ format: SCENE_FORMAT, blend: premul }] },
     primitive: strip,
   });
+  const peelPipe = (entry: string) =>
+    device.createRenderPipeline({
+      label: entry,
+      layout: planePipeLayout,
+      vertex: { module: planeMod, entryPoint: entry === "fs_peel_flat" ? "vs_peel_flat" : "vs_peel" },
+      fragment: { module: planeMod, entryPoint: entry, targets: [{ format: SCENE_FORMAT, blend: premul }] },
+      primitive: { topology: "triangle-list" },
+    });
+  const peelFlatPipe = peelPipe("fs_peel_flat");
+  const peelCurlPipe = peelPipe("fs_peel_curl");
   const glyphPipe = device.createRenderPipeline({
     label: "glyphs",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, glyphLayout] }),
@@ -159,6 +200,24 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: { topology: "triangle-list" },
   });
 
+  const simPipe = device.createComputePipeline({
+    label: "sim",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [simLayout] }),
+    compute: { module: simMod, entryPoint: "main" },
+  });
+  const inkSimPipe = device.createComputePipeline({
+    label: "ink-sim",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [inkSimLayout] }),
+    compute: { module: inkMod, entryPoint: "sim" },
+  });
+  const inkDrawPipe = device.createRenderPipeline({
+    label: "ink-draw",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, inkDrawLayout] }),
+    vertex: { module: inkMod, entryPoint: "vs" },
+    fragment: { module: inkMod, entryPoint: "fs", targets: [{ format: SCENE_FORMAT, blend: premul }] },
+    primitive: strip,
+  });
+
   const validation = await device.popErrorScope();
   if (validation) throw new Error(`Validation : ${validation.message}`);
 
@@ -179,18 +238,83 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
   const planeBind = device.createBindGroup({
     layout: planeLayout,
-    entries: [{ binding: 0, resource: { buffer: planeBuf, size: 64 } }],
+    entries: [{ binding: 0, resource: { buffer: planeBuf, size: 80 } }],
   });
   const boxBuf = device.createBuffer({ size: 32 * MAX_BOXES, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
   const boxBind = device.createBindGroup({ layout: boxLayout, entries: [{ binding: 0, resource: { buffer: boxBuf } }] });
   const postBuf = device.createBuffer({
-    size: 16 * (6 + MAX_STAGES + MAX_STAGES / 4),
+    size: 16 * POST_VEC4,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
   const text = new TextLayer(device);
+  // Atlas MTSDF des titres. S'il manque, les titres restent en SDF simple.
+  let msdfTex = device.createTexture({ size: [1, 1], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING });
+  try {
+    const [meta, blob] = await Promise.all([
+      fetch(new URL("./msdf/display.json", document.baseURI)).then((r) => (r.ok ? (r.json() as Promise<MsdfMeta>) : null)),
+      fetch(new URL("./msdf/display.png", document.baseURI)).then((r) => (r.ok ? r.blob() : null)),
+    ]);
+    if (meta && blob) {
+      const bmp = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+      msdfTex.destroy();
+      msdfTex = device.createTexture({
+        label: "atlas-mtsdf",
+        size: [bmp.width, bmp.height],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+      device.queue.copyExternalImageToTexture({ source: bmp }, { texture: msdfTex, premultipliedAlpha: false }, [bmp.width, bmp.height]);
+      bmp.close();
+      text.msdf = meta;
+    }
+  } catch (err) {
+    console.warn("[pli] atlas MTSDF indisponible", err);
+  }
   const images = new ImageLayer(device, texLayout, linear);
   const atlasBind = images.bindFor(text.texture);
+
+  /* Calcul : lettres de l'ouverture */
+  const simBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  let bodyBuf = device.createBuffer({ size: BODY_STRIDE, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  let simBind: GPUBindGroup | null = null;
+  let hero = { index: -1, first: 0, count: 0 };
+  let introPending = !motion.reduced;
+  let introStart = -1;
+
+  /* Calcul : encre */
+  const inkCount = innerWidth < 900 ? 16384 : 65536;
+  const inkBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const dropBuf = device.createBuffer({ size: inkCount * DROP_STRIDE, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  {
+    const init = new Float32Array(inkCount * 8);
+    for (let i = 0; i < inkCount; i++) {
+      // Vies négatives et étalées : les gouttes naissent au fil des secondes.
+      init.set([Math.random(), Math.random() * 0.66, 0, 0, -Math.random() * 1.5, i % 3, Math.random(), 0], i * 8);
+    }
+    device.queue.writeBuffer(dropBuf, 0, init);
+  }
+  const inkSimBind = device.createBindGroup({
+    layout: inkSimLayout,
+    entries: [
+      { binding: 0, resource: { buffer: inkBuf } },
+      { binding: 1, resource: { buffer: dropBuf } },
+    ],
+  });
+  const inkDrawBind = device.createBindGroup({
+    layout: inkDrawLayout,
+    entries: [
+      { binding: 0, resource: { buffer: inkBuf } },
+      { binding: 1, resource: { buffer: dropBuf } },
+    ],
+  });
+  const inkData = new Float32Array(16);
+  const simData = new Float32Array(12);
+  let inkTime = 0;
+  let contrastBuf: GPUBuffer | null = null;
+  let contrastBusy = false;
+  let lastContrast = 0;
+  let inkPrerolled = false;
 
   let glyphBuf: GPUBuffer | null = null;
   let elemBuf: GPUBuffer | null = null;
@@ -211,6 +335,42 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       elemBuf = device.createBuffer({ size: esize * 2, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
       glyphBind = null;
     }
+    // Corps simulés : un par lettre de l'ouverture.
+    const hi = text.elems.findIndex((e) => e.fx === 1);
+    const he = hi >= 0 ? text.elems[hi]! : null;
+    const count = he?.count ?? 0;
+    if (count !== hero.count || hi !== hero.index) {
+      const need = Math.max(BODY_STRIDE, count * BODY_STRIDE);
+      if (bodyBuf.size < need) {
+        bodyBuf.destroy();
+        bodyBuf = device.createBuffer({ size: need, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+        glyphBind = null;
+      }
+      const init = new Float32Array(Math.max(8, count * 8));
+      if (introPending && count) {
+        // Arrivée : les caractères tombent de haut, en ordre de lecture, et
+        // rebondissent dans la forme.
+        for (let i = 0; i < count; i++) {
+          const k = i / count;
+          init.set(
+            [(Math.random() - 0.5) * 260, -innerHeight * (0.55 + Math.random() * 0.5), 0, 0, (Math.random() - 0.5) * 2.4, 0, 0.15 + k * 0.9 + Math.random() * 0.08, 0],
+            i * 8,
+          );
+        }
+        introPending = false;
+        introStart = -2; // démarre à la première frame visible
+      }
+      device.queue.writeBuffer(bodyBuf, 0, init);
+    }
+    hero = { index: hi, first: he?.first ?? 0, count };
+    simBind = device.createBindGroup({
+      layout: simLayout,
+      entries: [
+        { binding: 0, resource: { buffer: simBuf } },
+        { binding: 1, resource: { buffer: glyphBuf! } },
+        { binding: 2, resource: { buffer: bodyBuf } },
+      ],
+    });
     if (!glyphBind) {
       glyphBind = device.createBindGroup({
         layout: glyphLayout,
@@ -219,10 +379,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           { binding: 1, resource: { buffer: elemBuf } },
           { binding: 2, resource: linear },
           { binding: 3, resource: text.texture.createView() },
+          { binding: 4, resource: { buffer: bodyBuf } },
+          { binding: 5, resource: msdfTex.createView() },
         ],
       });
     }
-    hooks.onLayout?.({ glyphs: text.glyphCount, atlas: text.atlasGlyphs, textures: images.bytes });
+    hooks.onLayout?.({ glyphs: text.glyphCount, atlas: text.atlasGlyphs, msdf: text.msdfGlyphs, textures: images.bytes, drops: inkCount });
   };
 
   /* ───── Cibles dépendantes de la taille ───── */
@@ -330,7 +492,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   /* ───── Boucle ───── */
   const frameData = new Float32Array(16);
   const planeData = new Float32Array((PLANE_STRIDE * MAX_PLANES) / 4);
-  const postData = new Float32Array(4 * (6 + MAX_STAGES + MAX_STAGES / 4));
+  const postData = new Float32Array(4 * POST_VEC4);
   const boxData = new Float32Array(8 * MAX_BOXES);
   let elemData = new Float32Array(0);
   let dpr = 1;
@@ -345,6 +507,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let lastScroll = scrollY;
   let velocity = 0;
   let lastNow = performance.now();
+  // Profondeur imprimée de chaque chapitre (px css), qui ne fait que croître.
+  const printDepth = new WeakMap<Element, { shown: number; target: number }>();
+  // Ce que le DOM peint lui-même (réglages, code, liens) apparaît quand le
+  // front d'impression l'atteint. Le focus clavier imprime tout le chapitre.
+  const DOM_INK = ".controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button";
+  const onFocus = (e: FocusEvent) => {
+    const ch = (e.target as Element | null)?.closest?.(".chapter, .colophon");
+    const st = ch ? printDepth.get(ch) : undefined;
+    if (st) st.target = 1e6;
+  };
+  addEventListener("focusin", onFocus);
+  let lastPx = pointer.x;
+  let lastPy = pointer.y;
+  let pvx = 0;
+  let pvy = 0;
 
   const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage]")];
 
@@ -382,6 +559,16 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const v = Math.abs(dy) > 600 ? 0 : dy / dt; // px/s
     velocity += (v - velocity) * (1 - Math.exp(-dt * 10));
     const slip = reduced ? 0 : Math.max(-1, Math.min(1, velocity / 4000));
+    // Vitesse du pointeur, lissée : c'est elle qui « balaie » les lettres et l'encre.
+    const k = 1 - Math.exp(-dt * 18);
+    pvx += ((pointer.x - lastPx) / dt - pvx) * k;
+    pvy += ((pointer.y - lastPy) / dt - pvy) * k;
+    lastPx = pointer.x;
+    lastPy = pointer.y;
+    if (!pointer.inside) {
+      pvx = 0;
+      pvy = 0;
+    }
 
     /* Frame uniforms */
     frameData.set([cssW, cssH, dpr, reduced ? 0 : time]);
@@ -406,17 +593,18 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 8);
 
     /* Plans */
-    type Job = { offset: number; bind: GPUBindGroup; shadow: boolean };
+    type Job = { offset: number; bind: GPUBindGroup; shadow: boolean; peel: boolean };
     const jobs: Job[] = [];
     let slot = 0;
-    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean) => {
+    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean, peel = 0) => {
       if (slot >= MAX_PLANES) return;
       const o = (slot * PLANE_STRIDE) / 4;
       planeData.set([rect.left, rect.top, rect.width, rect.height], o);
       planeData.set(uv, o + 4);
       planeData.set(params, o + 8);
       planeData.set(flags, o + 12);
-      jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow });
+      planeData.set([peel, 0, 0, 0], o + 16);
+      jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow, peel: peel > 0.001 });
       slot++;
     };
     for (const p of images.plates) {
@@ -430,7 +618,17 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const radius = p.quad ? q.radius : p.radius;
       const shadow = p.quad ? q.shadow : 0.32;
       const lift = p.quad ? q.lift : 0.15;
-      pushPlane(r, coverUV(r.width, r.height, p.width, p.height), [radius, shadow, lift, 1], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01);
+      const uv = coverUV(r.width, r.height, p.width, p.height);
+      // Chapitre 02 : l'épreuve se décolle au réglage, et d'un souffle au survol.
+      const wantPeel = p.quad ? Math.max(q.peel, reduced ? 0 : p.hover * 0.22) : 0;
+      p.peel += (wantPeel - p.peel) * (reduced ? 1 : 1 - Math.exp(-dt * 7));
+      if (p.peel > 0.001) {
+        // Dessous : la plaque offset, en négatif ; dessus : l'épreuve maillée.
+        pushPlane(r, uv, [radius, shadow, lift, 1], [0, 2, p.hover, 0], p.bind, shadow > 0.01);
+        pushPlane(r, uv, [radius, 0, lift, 1], [0, 0, p.hover, 1.6], p.bind, false, p.peel);
+      } else {
+        pushPlane(r, uv, [radius, shadow, lift, 1], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01);
+      }
     }
 
     /* Plaques de démonstration */
@@ -450,8 +648,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         pushPlane(a, [0, 0, 1, (ah / aw)], [2, 0, 0, 1], [0, 1, 0, 0], atlasBind, false);
       }
       if (si < MAX_STAGES && kind > 0 && r.bottom > 0 && r.top < cssH) {
-        postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 24 + si * 4);
-        postData[24 + MAX_STAGES * 4 + si] = kind;
+        postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 28 + si * 4);
+        postData[28 + MAX_STAGES * 4 + si] = kind;
         si++;
       }
     }
@@ -467,6 +665,36 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([c.grain ? 1 : 0, c.split ? 1 : 0, splitX, L.bloom], 12);
     postData.set([T.cell, T.gain, T.misreg, T.mix], 16);
     postData.set([PAPER[0], PAPER[1], PAPER[2], slip], 20);
+    const F = settings.filter;
+    postData.set([F.kind, F.size, F.amount, 0], 24);
+
+    /* Transition : impression des chapitres */
+    const printOn = c.print && !reduced;
+    const atBottom = scrollY + innerHeight >= document.documentElement.scrollHeight - 2;
+    let nch = 0;
+    const printEase = 1 - Math.exp(-dt * 4.5);
+    for (const ch of document.querySelectorAll(".chapter, .colophon")) {
+      const r = ch.getBoundingClientRect();
+      let st = printDepth.get(ch);
+      if (!st) {
+        st = { shown: 0, target: 0 };
+        printDepth.set(ch, st);
+      }
+      // La ligne d'impression est à 86 % de la hauteur de l'écran. En bas de
+      // page, rien ne peut plus monter : tout ce qui est visible s'imprime.
+      st.target = Math.max(st.target, atBottom && r.top < cssH ? 1e6 : cssH * 0.86 - r.top);
+      st.shown = Math.max(st.shown, st.shown + (st.target - st.shown) * printEase);
+      if (nch < MAX_CHAPTERS && r.bottom > 0 && r.top < cssH) {
+        postData.set([r.top * dpr, r.bottom * dpr, st.shown * dpr, 0], PRINT_AT + 4 + nch * 4);
+        nch++;
+        for (const el of ch.querySelectorAll<HTMLElement>(DOM_INK)) {
+          const on = !printOn || el.getBoundingClientRect().top - r.top < st.shown - cssH * 0.08;
+          if (el.classList.contains("is-printed") !== on) el.classList.toggle("is-printed", on);
+        }
+      }
+    }
+    postData.set([nch, cssH * 0.22 * dpr, printOn ? 1 : 0, 0], PRINT_AT);
+    postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -481,12 +709,58 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
     /* Encodage */
     const enc = device.createCommandEncoder({ label: "frame" });
+
+    /* Calcul : lettres de l'ouverture, encre */
+    const heroEl = hero.index >= 0 ? text.elems[hero.index]!.el : null;
+    const heroBox = heroEl?.getBoundingClientRect();
+    const heroOn = !reduced && !!heroBox && hero.count > 0 && simBind && heroBox.bottom > -200 && heroBox.top < cssH + 200;
+    if (heroOn && introStart === -2) introStart = now;
+    const inkEl = document.querySelector<HTMLElement>('[data-gl-stage="ink"]');
+    const inkBox = inkEl?.getBoundingClientRect();
+    const inkOn = !!inkBox && inkBox.width > 0 && inkBox.bottom > 0 && inkBox.top < cssH;
+    if (heroOn || inkOn) {
+      const cp = enc.beginComputePass({ label: "calcul", timestampWrites: ts(0, "both") });
+      if (heroOn && heroBox) {
+        const sub = 2;
+        simData.set([dt / sub, introStart < 0 ? 99 : (now - introStart) / 1000, 0, hero.count], 0);
+        simData.set([pointer.x - heroBox.left, pointer.y - heroBox.top, pointer.inside ? 1 : 0, hero.first], 4);
+        simData.set([pvx, pvy, Math.max(-3000, Math.min(3000, velocity)), 0], 8);
+        device.queue.writeBuffer(simBuf, 0, simData);
+        cp.setPipeline(simPipe);
+        cp.setBindGroup(0, simBind!);
+        for (let i = 0; i < sub; i++) cp.dispatchWorkgroups(Math.ceil(hero.count / 64));
+      }
+      if (inkOn && inkBox) {
+        const motionScale = reduced ? 0 : 1;
+        inkTime += dt * motionScale;
+        const aspect = inkBox.height / Math.max(1, inkBox.width);
+        const inside = pointer.inside && pointer.x >= inkBox.left && pointer.x <= inkBox.right && pointer.y >= inkBox.top && pointer.y <= inkBox.bottom;
+        inkData.set([dt * motionScale, inkTime, inkCount, aspect], 0);
+        inkData.set([inkBox.left, inkBox.top, inkBox.width, inkBox.height], 4);
+        inkData.set([(pointer.x - inkBox.left) / inkBox.width, ((pointer.y - inkBox.top) / inkBox.width), inside ? 1 : 0, settings.ink.stir], 8);
+        inkData.set([pvx / inkBox.width, pvy / inkBox.width, settings.ink.flow, 2.4], 12);
+        device.queue.writeBuffer(inkBuf, 0, inkData);
+        cp.setPipeline(inkSimPipe);
+        cp.setBindGroup(0, inkSimBind);
+        if (!reduced) {
+          cp.dispatchWorkgroups(Math.ceil(inkCount / 64));
+        } else if (!inkPrerolled) {
+          // Mouvement réduit : on laisse l'encre s'étaler une fois, hors champ,
+          // puis l'image reste fixe.
+          inkPrerolled = true;
+          inkData[0] = 1 / 30;
+          device.queue.writeBuffer(inkBuf, 0, inkData);
+          for (let i = 0; i < 240; i++) cp.dispatchWorkgroups(Math.ceil(inkCount / 64));
+        }
+      }
+      cp.end();
+    }
     const scenePass = enc.beginRenderPass({
       label: "scene",
       colorAttachments: [
         { view: scene!.createView(), loadOp: "clear", storeOp: "store", clearValue: [PAPER[0], PAPER[1], PAPER[2], 1] },
       ],
-      timestampWrites: ts(0, "both"),
+      timestampWrites: ts(1, "both"),
     });
     scenePass.setBindGroup(0, frameBind);
     for (const j of jobs) {
@@ -496,8 +770,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         scenePass.setPipeline(shadowPipe);
         scenePass.draw(4);
       }
+      if (j.peel) {
+        // D'abord ce qui reste à plat, puis le rabat par-dessus.
+        scenePass.setPipeline(peelFlatPipe);
+        scenePass.draw(PEEL_X * PEEL_Y * 6);
+        scenePass.setPipeline(peelCurlPipe);
+        scenePass.draw(PEEL_X * PEEL_Y * 6);
+        continue;
+      }
       scenePass.setPipeline(planePipe);
       scenePass.draw(4);
+    }
+    if (inkOn) {
+      scenePass.setPipeline(inkDrawPipe);
+      scenePass.setBindGroup(1, inkDrawBind);
+      scenePass.draw(4, inkCount);
     }
     if (glyphBind && text.glyphCount) {
       scenePass.setPipeline(glyphPipe);
@@ -519,20 +806,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       })();
 
     if (c.bloom && bloomSteps) {
-      runStep(bloomSteps.pre, 1, "both");
+      runStep(bloomSteps.pre, 2, "both");
       bloomSteps.down.forEach((s, i, a) =>
-        runStep(s, 2, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
+        runStep(s, 3, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
       );
       bloomSteps.up.forEach((s, i, a) =>
-        runStep(s, 3, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
+        runStep(s, 4, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
       );
     }
 
-    const out = context.getCurrentTexture().createView();
+    const outTex = context.getCurrentTexture();
+    const out = outTex.createView();
     const post = enc.beginRenderPass({
       label: "composite",
       colorAttachments: [{ view: out, loadOp: "clear", storeOp: "store", clearValue: [PAPER[0], PAPER[1], PAPER[2], 1] }],
-      timestampWrites: ts(4, "both"),
+      timestampWrites: ts(5, "both"),
     });
     post.setPipeline(postPipe);
     post.setBindGroup(0, postBind!);
@@ -553,7 +841,54 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         enc.copyBufferToBuffer(resolveBuf, 0, reader.buf, 0, groups * 16);
       }
     }
+    // Leçon 10.2 : copie de la zone du paragraphe témoin, deux fois par seconde.
+    let probeRead: { bytesPerRow: number; w: number; h: number } | null = null;
+    if (!contrastBusy && now - lastContrast > 500 && hooks.onContrast) {
+      const probe = document.querySelector<HTMLElement>("[data-contrast-probe]");
+      const pr = probe?.getBoundingClientRect();
+      // On ne mesure qu'un paragraphe entièrement imprimé : sinon on lirait du
+      // papier vierge et le rapport tomberait à 1:1.
+      const ch = probe?.closest(".chapter");
+      const st = ch ? printDepth.get(ch) : undefined;
+      const inked = !printOn || (!!st && !!pr && st.shown >= pr.bottom - ch!.getBoundingClientRect().top);
+      if (pr && inked && pr.bottom > 0 && pr.top < cssH && pr.width > 0) {
+        const x0 = Math.max(0, Math.floor(pr.left * dpr));
+        const y0 = Math.max(0, Math.floor(pr.top * dpr));
+        const x1 = Math.min(w, Math.ceil(pr.right * dpr));
+        const y1 = Math.min(h, Math.ceil(pr.bottom * dpr));
+        const rw = Math.min(1600, x1 - x0);
+        const rh = Math.min(600, y1 - y0);
+        if (rw > 8 && rh > 8) {
+          const bytesPerRow = Math.ceil((rw * 4) / 256) * 256;
+          const need = bytesPerRow * rh;
+          if (!contrastBuf || contrastBuf.size < need) {
+            contrastBuf?.destroy();
+            contrastBuf = device.createBuffer({ size: need, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+          }
+          enc.copyTextureToBuffer({ texture: outTex, origin: [x0, y0] }, { buffer: contrastBuf, bytesPerRow }, [rw, rh]);
+          probeRead = { bytesPerRow, w: rw, h: rh };
+          lastContrast = now;
+        }
+      }
+    }
     device.queue.submit([enc.finish()]);
+    if (probeRead && contrastBuf) {
+      const buf = contrastBuf;
+      const pr = probeRead;
+      contrastBuf = null; // pas réutilisé pendant la lecture
+      contrastBusy = true;
+      buf
+        .mapAsync(GPUMapMode.READ)
+        .then(() => {
+          hooks.onContrast?.(measureContrast(new Uint8Array(buf.getMappedRange()), pr.bytesPerRow, pr.w, pr.h, format === "bgra8unorm"));
+          buf.unmap();
+          contrastBuf ??= buf;
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          contrastBusy = false;
+        });
+    }
 
     if (reader) {
       const r = reader;
@@ -565,7 +900,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           for (let g = 0; g < groups; g++) {
             const d = Number(v[g * 2 + 1]! - v[g * 2]!) / 1e6;
             const valid = Number.isFinite(d) && d >= 0 && d < 1000;
-            const skipped = !c.bloom && g >= 1 && g <= 3;
+            const skipped = (!c.bloom && g >= 2 && g <= 4) || (g === 0 && !heroOn && !inkOn);
             avg[g] = skipped ? 0 : valid ? avg[g]! * 0.9 + d * 0.1 : avg[g]!;
           }
           r.buf.unmap();
@@ -604,8 +939,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     destroy: () => {
       destroyed = true;
       cancelAnimationFrame(raf);
+      removeEventListener("focusin", onFocus);
+      for (const el of document.querySelectorAll(".is-printed")) el.classList.remove("is-printed");
       images.destroy();
       text.texture.destroy();
+      msdfTex.destroy();
+      contrastBuf?.destroy();
+      bodyBuf.destroy();
+      dropBuf.destroy();
       scene?.destroy();
       bloomTex?.destroy();
       device.destroy();
@@ -614,6 +955,31 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 }
 
 export type Engine = Awaited<ReturnType<typeof createEngine>>;
+
+/**
+ * Rapport de contraste WCAG d'une zone de texte : le papier est la luminance
+ * médiane, l'encre le 1er centile (le cœur des lettres, pas leurs bords lissés).
+ */
+export function measureContrast(px: Uint8Array, bytesPerRow: number, w: number, h: number, bgra: boolean) {
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const L: number[] = [];
+  for (let y = 0; y < h; y += 2) {
+    for (let x = 0; x < w; x += 2) {
+      const o = y * bytesPerRow + x * 4;
+      const r = px[o + (bgra ? 2 : 0)]!;
+      const g = px[o + 1]!;
+      const b = px[o + (bgra ? 0 : 2)]!;
+      L.push(0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b));
+    }
+  }
+  L.sort((a, b) => a - b);
+  const ink = L[Math.floor(L.length * 0.01)] ?? 0;
+  const paper = L[Math.floor(L.length * 0.5)] ?? 1;
+  return (paper + 0.05) / (ink + 0.05);
+}
 
 function ease(t: number) {
   return 1 - Math.pow(1 - t, 3);

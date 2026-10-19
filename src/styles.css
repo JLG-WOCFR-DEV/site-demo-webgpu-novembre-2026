@@ -159,7 +159,7 @@ main,
   top: env(safe-area-inset-top, 0px);
   z-index: 10;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--col-gap);
   height: var(--bar-h);
@@ -720,6 +720,14 @@ input[type="range"]::-moz-range-thumb {
   margin: 0;
   max-width: 32em;
 }
+.colophon-legacy {
+  margin: 40px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule, currentColor);
+  font: 400 12px/1.5 var(--f-mono);
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
 
 /* ───────── Étroit ───────── */
 
@@ -766,16 +774,282 @@ input[type="range"]::-moz-range-thumb {
   .toc a {
     font-size: 10px;
   }
+  /* Le sommaire défile de côté : le bord droit s'efface pour le dire. */
+  .toc {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    padding-right: 24px;
+  }
 }
 
 @media (max-width: 640px) {
   .bar {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 12px;
   }
   .status {
     display: none;
   }
   .display .line--ink {
     padding-left: 0;
+  }
+}
+
+/* ───────── Filtres et encre ───────── */
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.choices label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.choices input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.choices label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.choices label:has(input:focus-visible) {
+  outline: 2px solid var(--spot);
+  outline-offset: 2px;
+}
+
+.stage--ink {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 30% 40%, color-mix(in srgb, var(--cyan) 22%, transparent), transparent 40%),
+    radial-gradient(circle at 65% 55%, color-mix(in srgb, var(--magenta) 18%, transparent), transparent 42%);
+}
+html.gl-on .stage--ink {
+  background: transparent;
+}
+
+/* Transition d'impression : ce que le DOM peint lui-même suit le front. */
+html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button),
+html.gl-on .colophon a {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button).is-printed,
+html.gl-on .colophon a.is-printed,
+html.gl-on .chapter :focus-within,
+html.gl-on .chapter :focus-visible {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button),
+  html.gl-on .colophon a {
+    opacity: 1;
+    transition: none;
+  }
+}
+
+/* ───────── Chapitre 10 : le cours ───────── */
+
+.prose--wide {
+  grid-column: 1 / 8;
+  max-width: 40em;
+}
+
+.lessons-toc {
+  grid-column: 8 / -1;
+  min-width: 0;
+}
+.lessons-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: lesson;
+  border-top: 1px solid var(--rule);
+}
+.lessons-toc li {
+  counter-increment: lesson;
+  border-bottom: 1px solid var(--rule);
+}
+.lessons-toc a {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-height: 40px;
+  padding: 10px 0;
+  font-size: 15px;
+  text-decoration: none;
+}
+.lessons-toc a::before {
+  content: "10." counter(lesson);
+  min-width: 3.2em;
+  font: 500 12px/1 var(--f-mono);
+  color: var(--spot);
+}
+.lessons-toc a:hover {
+  text-decoration: underline;
+}
+
+.lesson {
+  grid-column: 2 / -1;
+  margin-top: clamp(56px, 7vw, 104px);
+  padding-top: clamp(20px, 2vw, 28px);
+  border-top: 1px dashed var(--rule);
+}
+.lesson-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  margin: 0 0 clamp(20px, 2.4vw, 32px);
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-stretch: 112%;
+  font-size: clamp(26px, 2.8vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.lesson-num {
+  font: 500 13px/1 var(--f-mono);
+  letter-spacing: 0.06em;
+  color: var(--spot);
+}
+
+.contrast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  margin: 4px 0 0;
+}
+.contrast-ratio {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-stretch: 125%;
+  font-size: clamp(36px, 4vw, 56px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.contrast-verdict {
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.contrast[data-level="fail"] .contrast-ratio,
+.contrast[data-level="fail"] .contrast-verdict {
+  color: var(--spot);
+}
+.contrast[data-level="fail"] .contrast-verdict::before {
+  content: "✕ ";
+}
+.contrast[data-level="aa"] .contrast-verdict::before,
+.contrast[data-level="aaa"] .contrast-verdict::before {
+  content: "✓ ";
+}
+
+.reader {
+  display: grid;
+  gap: 10px;
+}
+.reader-list {
+  max-height: 22em;
+  margin: 0;
+  padding: 10px 12px 10px 2.4em;
+  overflow: auto;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  font: 400 13px/1.55 var(--f-mono);
+}
+
+.focus-now {
+  margin: 0;
+  min-height: 3em;
+  font: 500 14px/1.5 var(--f-mono);
+}
+
+.table-wrap {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-x: auto;
+}
+.wcag {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.wcag th,
+.wcag td {
+  padding: 12px 14px 12px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+}
+.wcag thead th {
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.wcag tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wcag td:last-child {
+  font: 500 13px/1.45 var(--f-mono);
+}
+
+.pause-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pause-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.pause-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Critère 1.4.12 : valeurs minimales que la page doit supporter. */
+html.wcag-spacing body * {
+  line-height: 1.5 !important;
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.16em !important;
+}
+html.wcag-spacing p {
+  margin-bottom: 2em !important;
+}
+
+@media (max-width: 900px) {
+  .prose--wide,
+  .lessons-toc,
+  .lesson {
+    grid-column: 1 / -1;
+  }
+  .wcag tbody th {
+    white-space: normal;
   }
 }

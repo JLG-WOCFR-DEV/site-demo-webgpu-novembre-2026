@@ -14,6 +14,8 @@ export type Plate = {
   radius: number;
   quad: boolean;
   hover: number;
+  /** Décollement lissé de l'épreuve (chapitre 02). */
+  peel: number;
 };
 
 export class ImageLayer {
@@ -51,6 +53,7 @@ export class ImageLayer {
       radius: Number.parseFloat(getComputedStyle(img.parentElement ?? img).borderTopLeftRadius) || 0,
       quad: img.hasAttribute("data-gl-quad"),
       hover: 0,
+      peel: 0,
     }));
     for (const p of this.plates) void this.load(p);
   }

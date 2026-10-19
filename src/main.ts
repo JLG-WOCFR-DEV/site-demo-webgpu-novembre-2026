@@ -1,7 +1,7 @@
 import "./styles.css";
 import { createEngine, type Engine } from "./gpu/engine.ts";
 import { motion, pointer, settings } from "./state.ts";
-import { bindControls, setStatus, showLayout, showMotion, showTimings, trackChapters } from "./ui.ts";
+import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayout, showMotion, showTimings, trackChapters, trackFocus } from "./ui.ts";
 
 /**
  * Démarrage. Sans WebGPU, ou si quoi que ce soit échoue, la page reste son
@@ -23,7 +23,14 @@ function fallback(reason: string) {
   if (btn) btn.textContent = userOff ? "Rallumer WebGPU" : "Réessayer WebGPU";
 }
 
+const forced = matchMedia("(forced-colors: active)");
+
 async function start() {
+  if (forced.matches) {
+    // Le système impose ses couleurs : un canvas les ignorerait.
+    fallback("couleurs forcées par le système");
+    return;
+  }
   setStatus("Démarrage");
   try {
     // Les glyphes sont mesurés et dessinés avec la vraie fonte : on l'attend.
@@ -36,6 +43,7 @@ async function start() {
     engine = await createEngine(canvas, {
       onTimings: showTimings,
       onLayout: showLayout,
+      onContrast: showContrast,
       onLost: (reason) => {
         if (!retried) {
           retried = true;
@@ -60,16 +68,30 @@ async function start() {
 }
 
 bindControls(() => {
+  applyA11y();
   if (!engine) return;
   const hide = settings.dom.hideGpu;
   root.classList.toggle("gl-on", !hide);
   engine.pause(hide);
 });
 trackChapters();
+trackFocus();
 showMotion();
+showForced(forced.matches);
+forced.addEventListener("change", () => {
+  showForced(forced.matches);
+  if (forced.matches) fallback("couleurs forcées par le système");
+  else if (!userOff) void start();
+});
+for (const b of document.querySelectorAll("[data-action='pause']")) {
+  b.addEventListener("click", () => {
+    motion.paused = !motion.paused;
+    showMotion();
+  });
+}
 
 matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => {
-  motion.reduced = e.matches;
+  motion.system = e.matches;
   showMotion();
 });
 
