@@ -214,6 +214,67 @@
             <label class="toggle"><input type="checkbox" name="split" /> Couper l'écran : brut à gauche, composite à droite</label>
           </form>
         </div>
+
+        <section id="ch-calques" class="lesson" aria-labelledby="t-calques">
+          <h3 id="t-calques" class="lesson-title" data-gl-text><span class="lesson-num">04.2</span> Calques et modes de fusion</h3>
+          <div class="ch-body ch-body--stage">
+            <div class="prose" data-gl-text>
+              <p>
+                Avant la chaîne, il y a la composition : des calques posés les uns sur les autres. Un mode de fusion est
+                une formule qui combine la couleur du calque avec ce qu'il y a dessous. Produit assombrit comme deux
+                encres superposées, Écran éclaircit comme deux projecteurs, Superposition renforce le contraste.
+              </p>
+              <p>
+                Le mélange câblé du GPU ne sait faire que les opérations les plus simples. Pour les autres, le shader lit
+                toutes les sources d'un coup et applique les formules lui-même, du calque du dessous vers celui du
+                dessus, avec opacité et masque. C'est le modèle des bibliothèques de shaders récentes : une pile de
+                calques évaluée par le GPU, réordonnable comme dans un logiciel de retouche.
+              </p>
+            </div>
+            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous."></div>
+            <form class="controls" aria-labelledby="c-calques" data-layers>
+              <p id="c-calques" class="controls-title">La pile, du dessus vers le dessous</p>
+              <div class="layer-stack" data-layer-stack>
+              <fieldset class="layer" data-layer="spot">
+                <legend>Aplat rouge</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3" selected>Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.7" /><output>0,7</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Aplat rouge">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Aplat rouge">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="flower">
+                <legend>Renoncule</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1" selected>Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.9" /><output>0,9</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Renoncule">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Renoncule">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="glass">
+                <legend>Verre</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0" selected>Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="1" /><output>1</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Verre">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Verre">▼</button>
+                </div>
+              </fieldset>
+              </div>
+              <fieldset class="choices">
+                <legend class="choices-legend">Masque du calque du dessus</legend>
+                <label><input type="radio" name="mask" value="0" /> Aucun</label>
+                <label><input type="radio" name="mask" value="1" checked /> Cercle sous le pointeur</label>
+                <label><input type="radio" name="mask" value="2" /> Dégradé</label>
+              </fieldset>
+            </form>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 05 TRAME ───────────── -->

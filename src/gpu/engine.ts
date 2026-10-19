@@ -2,7 +2,7 @@ import { motion, pointer, settings } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SIM } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -107,6 +107,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
     ],
   });
+  const layersLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+      { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+    ],
+  });
   const boxLayout = device.createBindGroupLayout({
     entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } }],
   });
@@ -133,8 +141,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const bloomMod = device.createShaderModule({ label: "bloom", code: BLOOM });
   const postMod = device.createShaderModule({ label: "composite", code: COMPOSITE });
   const simMod = device.createShaderModule({ label: "sim", code: SIM });
+  const layersMod = device.createShaderModule({ label: "layers", code: LAYERS });
   const inkMod = device.createShaderModule({ label: "ink", code: INK });
-  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod]) {
+  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod]) {
     const info = await m.getCompilationInfo();
     const errors = info.messages.filter((x) => x.type === "error");
     if (errors.length) throw new Error(`WGSL ${m.label}: ${errors.map((e) => `${e.lineNum}:${e.message}`).join(" | ")}`);
@@ -215,6 +224,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, inkDrawLayout] }),
     vertex: { module: inkMod, entryPoint: "vs" },
     fragment: { module: inkMod, entryPoint: "fs", targets: [{ format: SCENE_FORMAT, blend: premul }] },
+    primitive: strip,
+  });
+
+  const layersPipe = device.createRenderPipeline({
+    label: "layers",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, layersLayout] }),
+    vertex: { module: layersMod, entryPoint: "vs" },
+    fragment: { module: layersMod, entryPoint: "fs", targets: [{ format: SCENE_FORMAT, blend: premul }] },
     primitive: strip,
   });
 
@@ -311,6 +328,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const inkData = new Float32Array(16);
   const simData = new Float32Array(12);
   let inkTime = 0;
+  /* Chapitre 04.2 : calques */
+  const layersBuf = device.createBuffer({ size: 144, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const layersData = new Float32Array(36);
+  let layersBind: GPUBindGroup | null = null;
+  let layersKey = "";
   let contrastBuf: GPUBuffer | null = null;
   let contrastBusy = false;
   let lastContrast = 0;
@@ -511,7 +533,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const printDepth = new WeakMap<Element, { shown: number; target: number }>();
   // Ce que le DOM peint lui-même (réglages, code, liens) apparaît quand le
   // front d'impression l'atteint. Le focus clavier imprime tout le chapitre.
-  const DOM_INK = ".controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button";
+  const DOM_INK = ".controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button";
   const onFocus = (e: FocusEvent) => {
     const ch = (e.target as Element | null)?.closest?.(".chapter, .colophon");
     const st = ch ? printDepth.get(ch) : undefined;
@@ -707,6 +729,42 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const thresh = L.naive ? [0.62, 0.0001] : [PAPER[0] + L.threshold, 0.02];
     for (const b of bloomUBufs.slice(0, 1)) device.queue.writeBuffer(b, 16, new Float32Array(thresh));
 
+    /* Chapitre 04.2 : la pile de calques */
+    let layersOn = false;
+    const layersEl = document.querySelector<HTMLElement>('[data-gl-stage="calques"]');
+    const lr = layersEl?.getBoundingClientRect();
+    const plateA = images.plates.find((p) => p.img.src.includes("glass") && p.texture);
+    const plateB = images.plates.find((p) => p.img.src.includes("flower") && p.texture);
+    if (lr && lr.width > 0 && lr.bottom > 0 && lr.top < cssH && plateA?.texture && plateB?.texture) {
+      const key = `${plateA.texture.label}|${plateB.texture.label}`;
+      if (!layersBind || key !== layersKey) {
+        layersKey = key;
+        layersBind = device.createBindGroup({
+          layout: layersLayout,
+          entries: [
+            { binding: 0, resource: { buffer: layersBuf } },
+            { binding: 1, resource: linear },
+            { binding: 2, resource: plateA.texture.createView() },
+            { binding: 3, resource: plateB.texture.createView() },
+          ],
+        });
+      }
+      const Ls = settings.layers;
+      const inside = pointer.inside && pointer.x >= lr.left && pointer.x <= lr.right && pointer.y >= lr.top && pointer.y <= lr.bottom;
+      layersData.fill(0);
+      layersData.set([lr.left, lr.top, lr.width, lr.height], 0);
+      layersData.set([Ls.mask, inside ? (pointer.x - lr.left) / lr.width : 0.62, inside ? (pointer.y - lr.top) / lr.height : 0.42, 0], 4);
+      layersData.set([0.78, 0.2, 0.11, 1], 8);
+      Ls.order.forEach((id, i) => {
+        const src = id === "glass" ? plateA : id === "flower" ? plateB : null;
+        const uv = src ? coverUV(lr.width, lr.height, src.width, src.height) : [0, 0, 1, 1];
+        layersData.set(uv, 12 + i * 8);
+        layersData.set([Ls.mode[id], Ls.opacity[id], id === "glass" ? 0 : id === "flower" ? 1 : 2, Ls.visible[id] ? 1 : 0], 16 + i * 8);
+      });
+      device.queue.writeBuffer(layersBuf, 0, layersData);
+      layersOn = true;
+    }
+
     /* Encodage */
     const enc = device.createCommandEncoder({ label: "frame" });
 
@@ -779,6 +837,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         continue;
       }
       scenePass.setPipeline(planePipe);
+      scenePass.draw(4);
+    }
+    if (layersOn && layersBind) {
+      scenePass.setPipeline(layersPipe);
+      scenePass.setBindGroup(1, layersBind);
       scenePass.draw(4);
     }
     if (inkOn) {

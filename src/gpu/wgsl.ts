@@ -266,6 +266,89 @@ fn fs_peel_curl(in: PeelOut) -> @location(0) vec4f {
 }
 `;
 
+/* ───────────────────────── Calques et modes de fusion ───────────────────────── */
+
+export const LAYERS = /* wgsl */ `
+${FRAME_STRUCT}
+
+struct Layer {
+  uv: vec4f,      // recadrage cover de la source
+  params: vec4f,  // mode, opacité, source (0 photo A, 1 photo B, 2 aplat), visible
+};
+
+struct LayersU {
+  rect: vec4f,    // plaque (css)
+  mask: vec4f,    // type (0 aucun, 1 cercle au pointeur, 2 dégradé), cx, cy (0…1), 0
+  spot: vec4f,    // couleur de l'aplat
+  layers: array<Layer, 3>,  // du dessous vers le dessus
+};
+
+@group(0) @binding(0) var<uniform> frame: Frame;
+@group(1) @binding(0) var<uniform> L: LayersU;
+@group(1) @binding(1) var samp: sampler;
+@group(1) @binding(2) var texA: texture_2d<f32>;
+@group(1) @binding(3) var texB: texture_2d<f32>;
+
+struct VsOut {
+  @builtin(position) clip: vec4f,
+  @location(0) local: vec2f,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) vi: u32) -> VsOut {
+  let c = corner(vi);
+  var out: VsOut;
+  out.clip = to_clip(L.rect.xy + c * L.rect.zw, frame);
+  out.local = c;
+  return out;
+}
+
+// Les formules des modes de fusion, telles que les définit la norme
+// Compositing and Blending : b est le fond, s le calque posé dessus.
+fn blend(b: vec3f, s: vec3f, mode: f32) -> vec3f {
+  if (mode < 0.5) { return s; }                                   // normal
+  if (mode < 1.5) { return b * s; }                               // produit
+  if (mode < 2.5) { return 1.0 - (1.0 - b) * (1.0 - s); }         // écran
+  if (mode < 3.5) {                                               // superposition
+    return select(1.0 - 2.0 * (1.0 - b) * (1.0 - s), 2.0 * b * s, b <= vec3f(0.5));
+  }
+  if (mode < 4.5) {                                               // lumière tamisée
+    let d = select(sqrt(b), ((16.0 * b - 12.0) * b + 4.0) * b, b <= vec3f(0.25));
+    return select(b + (2.0 * s - 1.0) * (d - b), b - (1.0 - 2.0 * s) * b * (1.0 - b), s <= vec3f(0.5));
+  }
+  return abs(b - s);                                              // différence
+}
+
+@fragment
+fn fs(in: VsOut) -> @location(0) vec4f {
+  // Les deux photos sont lues sans condition (contrôle uniforme).
+  var samples: array<vec3f, 3>;
+  for (var i = 0; i < 3; i++) {
+    let l = L.layers[i];
+    let uv = mix(l.uv.xy, l.uv.zw, in.local);
+    let a = textureSample(texA, samp, uv).rgb;
+    let b = textureSample(texB, samp, uv).rgb;
+    samples[i] = select(select(a, b, l.params.z > 0.5), L.spot.rgb, l.params.z > 1.5);
+  }
+  var col = vec3f(0.937, 0.933, 0.910);
+  for (var i = 0; i < 3; i++) {
+    let l = L.layers[i];
+    if (l.params.w < 0.5) { continue; }
+    var m = 1.0;
+    if (i == 2 && L.mask.x > 0.5) {
+      if (L.mask.x < 1.5) {
+        let d = length((in.local - L.mask.yz) * vec2f(L.rect.z / L.rect.w, 1.0));
+        m = 1.0 - smoothstep(0.22, 0.30, d);
+      } else {
+        m = smoothstep(0.1, 0.9, in.local.x);
+      }
+    }
+    col = mix(col, clamp(blend(col, samples[i], l.params.x), vec3f(0.0), vec3f(1.0)), l.params.y * m);
+  }
+  return vec4f(col, 1.0);
+}
+`;
+
 /* ───────────────────────── Glyphes ───────────────────────── */
 
 export const GLYPH = /* wgsl */ `

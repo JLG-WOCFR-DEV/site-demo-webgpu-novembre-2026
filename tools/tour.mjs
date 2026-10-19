@@ -33,6 +33,7 @@ const STEPS = [
   { name: "09-glyph-scatter", go: "#ch-glyph", range: ["glyph", "scatter", 0.6] },
   { name: "10-glyph-atlas", go: "#ch-glyph", set: ["glyph", "atlas", true] },
   { name: "11-chain", go: "#ch-chain" },
+  { name: "11b-calques", go: "#ch-calques", mouse: [0.72, 0.45] },
   { name: "12-chain-split", go: "#ch-trame", set: ["chain", "split", true], mouse: [0.7, 0.5] },
   { name: "13-trame", go: "#ch-trame" },
   { name: "14-trame-misreg", go: "#ch-trame", range: ["trame", "misreg", 0.9] },

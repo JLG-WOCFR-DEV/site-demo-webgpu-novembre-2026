@@ -1,5 +1,6 @@
 import "./styles.css";
 import { createEngine, type Engine } from "./gpu/engine.ts";
+import { bindLayers } from "./layers-ui.ts";
 import { motion, pointer, settings } from "./state.ts";
 import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayout, showMotion, showTimings, trackChapters, trackFocus } from "./ui.ts";
 
@@ -76,6 +77,7 @@ bindControls(() => {
 });
 trackChapters();
 trackFocus();
+bindLayers();
 showMotion();
 showForced(forced.matches);
 forced.addEventListener("change", () => {
