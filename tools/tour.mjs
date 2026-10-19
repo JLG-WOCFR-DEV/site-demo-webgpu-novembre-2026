@@ -25,6 +25,7 @@ const STEPS = [
   { name: "03-hero-lens", go: "#top", scroll: 420, mouse: [0.62, 0.42] },
   { name: "04-dom", go: "#ch-dom" },
   { name: "05-dom-boxes", go: "#ch-dom", set: ["dom", "boxes", true] },
+  { name: "05b-print", go: "#ch-quad", scroll: -520, wait: 700 },
   { name: "06-quad", go: "#ch-quad" },
   { name: "07-quad-wire", go: "#ch-quad", set: ["quad", "wire", true], range: ["quad", "radius", 40] },
   { name: "08-glyph", go: "#ch-glyph" },

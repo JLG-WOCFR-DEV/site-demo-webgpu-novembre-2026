@@ -11,7 +11,7 @@ export type ChainStep = {
   label: string;
   res: string;
   pass: "compute" | "scene" | "bloom-pre" | "bloom-down" | "bloom-up" | "composite";
-  toggle?: "distort" | "rgb" | "trame" | "bloom" | "grain";
+  toggle?: "distort" | "rgb" | "trame" | "bloom" | "grain" | "print";
   fused?: boolean;
 };
 
@@ -27,6 +27,7 @@ export const CHAIN: readonly ChainStep[] = [
   { id: "rgb", label: "Repérage RVB au défilement", res: "pleine", pass: "composite", toggle: "rgb", fused: true },
   { id: "filter", label: "Filtre d'image du chapitre 06", res: "pleine", pass: "composite", fused: true },
   { id: "trame", label: "Trame CMJN", res: "pleine", pass: "composite", toggle: "trame", fused: true },
+  { id: "print", label: "Impression des chapitres au défilement", res: "pleine", pass: "composite", toggle: "print", fused: true },
   { id: "grain", label: "Fibre et grain du papier", res: "pleine", pass: "composite", toggle: "grain", fused: true },
 ];
 

@@ -2,7 +2,7 @@ import { motion, pointer, settings } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_STAGES, PLANE, SIM } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_CHAPTERS, MAX_STAGES, PLANE, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -21,7 +21,8 @@ const MAX_BOXES = 512;
 const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS;
+const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -464,6 +465,17 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let lastScroll = scrollY;
   let velocity = 0;
   let lastNow = performance.now();
+  // Profondeur imprimée de chaque chapitre (px css), qui ne fait que croître.
+  const printDepth = new WeakMap<Element, { shown: number; target: number }>();
+  // Ce que le DOM peint lui-même (réglages, code, liens) apparaît quand le
+  // front d'impression l'atteint. Le focus clavier imprime tout le chapitre.
+  const DOM_INK = ".controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button";
+  const onFocus = (e: FocusEvent) => {
+    const ch = (e.target as Element | null)?.closest?.(".chapter, .colophon");
+    const st = ch ? printDepth.get(ch) : undefined;
+    if (st) st.target = 1e6;
+  };
+  addEventListener("focusin", onFocus);
   let lastPx = pointer.x;
   let lastPy = pointer.y;
   let pvx = 0;
@@ -602,6 +614,31 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([PAPER[0], PAPER[1], PAPER[2], slip], 20);
     const F = settings.filter;
     postData.set([F.kind, F.size, F.amount, 0], 24);
+
+    /* Transition : impression des chapitres */
+    const printOn = c.print && !reduced;
+    let nch = 0;
+    const printEase = 1 - Math.exp(-dt * 4.5);
+    for (const ch of document.querySelectorAll(".chapter, .colophon")) {
+      const r = ch.getBoundingClientRect();
+      let st = printDepth.get(ch);
+      if (!st) {
+        st = { shown: 0, target: 0 };
+        printDepth.set(ch, st);
+      }
+      // La ligne d'impression est à 86 % de la hauteur de l'écran.
+      st.target = Math.max(st.target, cssH * 0.86 - r.top);
+      st.shown = Math.max(st.shown, st.shown + (st.target - st.shown) * printEase);
+      if (nch < MAX_CHAPTERS && r.bottom > 0 && r.top < cssH) {
+        postData.set([r.top * dpr, r.bottom * dpr, st.shown * dpr, 0], PRINT_AT + 4 + nch * 4);
+        nch++;
+        for (const el of ch.querySelectorAll<HTMLElement>(DOM_INK)) {
+          const on = !printOn || el.getBoundingClientRect().top - r.top < st.shown - cssH * 0.08;
+          if (el.classList.contains("is-printed") !== on) el.classList.toggle("is-printed", on);
+        }
+      }
+    }
+    postData.set([nch, cssH * 0.22 * dpr, printOn ? 1 : 0, 0], PRINT_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -790,6 +827,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     destroy: () => {
       destroyed = true;
       cancelAnimationFrame(raf);
+      removeEventListener("focusin", onFocus);
+      for (const el of document.querySelectorAll(".is-printed")) el.classList.remove("is-printed");
       images.destroy();
       text.texture.destroy();
       bodyBuf.destroy();

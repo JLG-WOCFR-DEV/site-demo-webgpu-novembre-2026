@@ -843,3 +843,23 @@ input[type="range"]::-moz-range-thumb {
 html.gl-on .stage--ink {
   background: transparent;
 }
+
+/* Transition d'impression : ce que le DOM peint lui-même suit le front. */
+html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button),
+html.gl-on .colophon a {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button).is-printed,
+html.gl-on .colophon a.is-printed,
+html.gl-on .chapter :focus-within,
+html.gl-on .chapter :focus-visible {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button),
+  html.gl-on .colophon a {
+    opacity: 1;
+    transition: none;
+  }
+}

@@ -187,6 +187,12 @@
               cible une fois au lieu de cinq. La liste ci-dessous est générée depuis le tableau que lit le moteur : elle
               ne peut pas mentir sur l'ordre.
             </p>
+            <p>
+              Les transitions passent par la même passe. Chaque chapitre s'imprime en montant dans l'écran : le moteur
+              retient, pour chacun, jusqu'où la page est passée sous la ligne d'impression, et le composite remplace le
+              reste par du papier vierge, derrière un front d'encre irrégulier encore humide. Le texte reste dans le
+              DOM pendant tout ce temps : on peut le sélectionner avant même qu'il soit imprimé.
+            </p>
           </div>
           <form class="controls controls--chain" aria-labelledby="c-chain" data-controls="chain">
             <p id="c-chain" class="controls-title">Ordre réel des passes</p>

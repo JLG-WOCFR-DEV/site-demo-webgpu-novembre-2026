@@ -614,6 +614,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 /* ───────────────────────── Composite ───────────────────────── */
 
 export const MAX_STAGES = 8;
+export const MAX_CHAPTERS = 12;
 
 export const COMPOSITE = /* wgsl */ `
 ${FULLSCREEN_VS}
@@ -628,6 +629,8 @@ struct Post {
   filt: vec4f,     // filtre (0…4), taille (css), intensité, 0
   stages: array<vec4f, ${MAX_STAGES}>, // x, y, w, h en px
   kinds: array<vec4f, ${MAX_STAGES / 4}>,
+  print: vec4f,    // nombre de chapitres, largeur du front (px), actif, 0
+  chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), 0
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -712,6 +715,28 @@ fn halftone(px: vec2f, lens: vec2f, cellCss: f32, gain: f32, misreg: f32) -> vec
     out *= mix(vec3f(1.0), inks[i], cov);
   }
   return out;
+}
+
+// Transition : chaque chapitre s'imprime en montant dans l'écran. La
+// profondeur imprimée ne fait que croître ; un front d'encre irrégulier,
+// plus sombre là où l'encre est encore humide, la sépare du papier vierge.
+fn printed(px: vec2f) -> vec2f {
+  if (u.print.z < 0.5) { return vec2f(1.0, 0.0); }
+  let n = i32(u.print.x);
+  for (var i = 0; i < ${MAX_CHAPTERS}; i++) {
+    if (i >= n) { break; }
+    let c = u.chapters[i];
+    if (px.y >= c.x && px.y < c.y) {
+      let front = u.print.y;
+      let rel = px.y - c.x;
+      let grain = vnoise(px / (34.0 * u.res.z)) * 0.65 + vnoise(px / (7.0 * u.res.z)) * 0.35;
+      let t = (c.z - rel) / front + (grain - 0.5) * 1.6;
+      let m = smoothstep(-0.08, 0.08, t);
+      let wet = (1.0 - smoothstep(0.0, 0.9, t)) * m;
+      return vec2f(m, wet);
+    }
+  }
+  return vec2f(1.0, 0.0);
 }
 
 // Étape 5 : grain et fibre du papier.
@@ -906,6 +931,14 @@ fn fs(in: VsOut) -> @location(0) vec4f {
       let ht = halftone(px, vec2f(0.0), u.trame.x, u.trame.y, u.trame.z);
       col = mix(col, ht, u.trame.w);
     }
+  }
+
+  let pr = printed(px);
+  if (pr.x < 0.999) {
+    // Bord humide : l'encre fraîche est plus dense. On renforce l'écart au
+    // papier, pas la couleur : le papier vierge reste vierge.
+    let wetCol = u.paper.rgb - (u.paper.rgb - col) * (1.0 + 0.6 * pr.y);
+    col = mix(u.paper.rgb, wetCol, pr.x);
   }
 
   if (u.chain2.x > 0.5) {
