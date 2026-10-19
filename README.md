@@ -17,14 +17,19 @@ npm run build      # dist/, chemins relatifs, hébergeable tel quel
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | Le contenu : 8 chapitres, chacun explique un principe et le montre sur lui-même |
+| `index.html` | Le contenu : 10 chapitres, chacun explique un principe et le montre sur lui-même |
 | `src/gpu/engine.ts` | Pipelines, cibles, boucle, horodatages GPU, perte de device |
-| `src/gpu/wgsl.ts` | Tous les shaders : plans SDF, glyphes instanciés, bloom dual-filter, composite fusionné (lentille, repérage, trame CMJN, grain) |
+| `src/gpu/wgsl.ts` | Tous les shaders : plans SDF, glyphes instanciés, calcul (lettres à ressorts, encre en bruit rotationnel), bloom dual-filter, composite fusionné (lentille, repérage, 5 filtres d'image, trame CMJN, grain) |
 | `src/gpu/chain.ts` | L'ordre réel des passes ; la page 04 en génère sa liste |
-| `src/gpu/text.ts` | Atlas de glyphes SDF (TinySDF) et placement lu sur le DOM |
+| `src/gpu/text.ts` | Atlas de glyphes SDF (TinySDF) pour le texte courant, atlas MTSDF pour les titres, placement lu sur le DOM |
+| `tools/msdf.py` | Régénère `public/msdf/` : fige les instances d'Archivo des titres et lance msdfgen |
 | `src/gpu/images.ts` | `createImageBitmap` → `copyExternalImageToTexture` → mipmaps GPU |
 | `src/gpu/atlas.ts` | Rangement d'atlas et maths de placement, purs et testés |
 | `tools/tour.mjs` | Visite de recette : une capture par chapitre (WebGPU via SwiftShader, ou `--nogpu`) |
+
+## Ancienne démo
+
+La première version (générée par Grok) reste servie telle quelle sous `legacy/`, liée depuis le colophon.
 
 ## Historique
 
