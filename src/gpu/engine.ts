@@ -1,8 +1,9 @@
+import { menuGL } from "../menu.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SIM } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SHEET, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -18,6 +19,8 @@ const PAPER = [0.937, 0.933, 0.91] as const;
 const SCENE_FORMAT: GPUTextureFormat = "rgba16float";
 const PLANE_STRIDE = 256;
 const MAX_PLANES = 16;
+const MAX_SHEETS = 24;
+const SHEET_BYTES = 144;
 const BLOOM_LEVELS = 5;
 const MAX_BOXES = 512;
 const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
@@ -144,8 +147,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const postMod = device.createShaderModule({ label: "composite", code: COMPOSITE });
   const simMod = device.createShaderModule({ label: "sim", code: SIM });
   const layersMod = device.createShaderModule({ label: "layers", code: LAYERS });
+  const sheetMod = device.createShaderModule({ label: "sheet", code: SHEET });
   const inkMod = device.createShaderModule({ label: "ink", code: INK });
-  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod]) {
+  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod, sheetMod]) {
     const info = await m.getCompilationInfo();
     const errors = info.messages.filter((x) => x.type === "error");
     if (errors.length) throw new Error(`WGSL ${m.label}: ${errors.map((e) => `${e.lineNum}:${e.message}`).join(" | ")}`);
@@ -237,6 +241,24 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: strip,
   });
 
+  // Sommaire : une feuille par appel, matrice et photo dans un uniforme à décalage dynamique.
+  const sheetLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: SHEET_BYTES },
+      },
+    ],
+  });
+  const sheetPipe = device.createRenderPipeline({
+    label: "sheet",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, sheetLayout, texLayout] }),
+    vertex: { module: sheetMod, entryPoint: "vs_sheet" },
+    fragment: { module: sheetMod, entryPoint: "fs_sheet", targets: [{ format: SCENE_FORMAT, blend: premul }] },
+    primitive: strip,
+  });
+
   const validation = await device.popErrorScope();
   if (validation) throw new Error(`Validation : ${validation.message}`);
 
@@ -259,6 +281,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     layout: planeLayout,
     entries: [{ binding: 0, resource: { buffer: planeBuf, size: 80 } }],
   });
+  const sheetBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_SHEETS, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const sheetBind = device.createBindGroup({ layout: sheetLayout, entries: [{ binding: 0, resource: { buffer: sheetBuf, size: SHEET_BYTES } }] });
+  const sheetData = new Float32Array((PLANE_STRIDE * MAX_SHEETS) / 4);
   const boxBuf = device.createBuffer({ size: 32 * MAX_BOXES, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
   const boxBind = device.createBindGroup({ layout: boxLayout, entries: [{ binding: 0, resource: { buffer: boxBuf } }] });
   const postBuf = device.createBuffer({
@@ -587,6 +612,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const now = performance.now();
     const time = (now - t0) / 1000;
     const reduced = motion.reduced;
+    // Sommaire ouvert : la page est masquée (inert), le GPU ne peint que les feuilles.
+    const menuOpen = menuGL.open;
+    if (menuOpen) menuGL.step?.(now);
     // Vitesse de défilement : les plaques glissent quand le papier court.
     // Un saut (ancre, sommaire) n'est pas un geste : on l'ignore.
     const dy = scrollY - lastScroll;
@@ -645,7 +673,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow, peel: peel > 0.001 });
       slot++;
     };
-    for (const p of images.plates) {
+    for (const p of menuOpen ? [] : images.plates) {
       const r = p.img.getBoundingClientRect();
       const visible = r.bottom > -80 && r.top < cssH + 80 && r.width > 0;
       const over = pointer.inside && pointer.x >= r.left && pointer.x <= r.right && pointer.y >= r.top && pointer.y <= r.bottom;
@@ -676,7 +704,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
 
     /* Plaques de démonstration */
-    const stageEls = stages();
+    const stageEls = menuOpen ? [] : stages();
     postData.fill(0);
     let si = 0;
     for (const s of stageEls) {
@@ -718,7 +746,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const atBottom = scrollY + innerHeight >= document.documentElement.scrollHeight - 2;
     let nch = 0;
     const printEase = 1 - Math.exp(-dt * P.speed);
-    for (const ch of document.querySelectorAll(".chapter, .colophon")) {
+    for (const ch of menuOpen ? [] : document.querySelectorAll(".chapter, .colophon")) {
       const r = ch.getBoundingClientRect();
       let st = printDepth.get(ch);
       if (!st) {
@@ -742,7 +770,32 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         }
       }
     }
+    if (menuOpen && menuGL.print) {
+      // Index du sommaire : l'épreuve choisie s'imprime avec la même transition.
+      const mp = menuGL.print;
+      postData.set([mp.top * dpr, mp.bottom * dpr, mp.depth * dpr, mp.x0 * dpr], PRINT_AT + 4);
+      nch = 1;
+    }
     postData.set([nch, cssH * P.width * dpr, printOn ? 1 : 0, P.style], PRINT_AT);
+
+    /* Sommaire : feuilles en perspective */
+    const sheetJobs: { offset: number; bind: GPUBindGroup }[] = [];
+    if (menuOpen) {
+      for (const q of menuGL.quads) {
+        if (sheetJobs.length >= MAX_SHEETS) break;
+        const plate = images.plates.find((p) => p.bind && p.img.src.endsWith(q.src.replace(/^\.\//, "")));
+        if (!plate?.bind) continue;
+        const o = (sheetJobs.length * PLANE_STRIDE) / 4;
+        sheetData.set(q.m, o);
+        sheetData.set([q.w, q.h, q.alpha, q.shade], o + 16);
+        sheetData.set(q.photo, o + 20);
+        sheetData.set(coverUV(q.photo[2], q.photo[3], plate.width, plate.height), o + 24);
+        sheetData.set(q.look, o + 28);
+        sheetData.set([q.misreg, 0, 0, 0], o + 32);
+        sheetJobs.push({ offset: sheetJobs.length * PLANE_STRIDE, bind: plate.bind });
+      }
+      if (sheetJobs.length) device.queue.writeBuffer(sheetBuf, 0, sheetData, 0, (sheetJobs.length * PLANE_STRIDE) / 4);
+    }
     postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
     postData.set(casseData, CASSE_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
@@ -763,7 +816,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const lr = layersEl?.getBoundingClientRect();
     const plateA = images.plates.find((p) => p.img.src.includes("glass") && p.texture);
     const plateB = images.plates.find((p) => p.img.src.includes("flower") && p.texture);
-    if (lr && lr.width > 0 && lr.bottom > 0 && lr.top < cssH && plateA?.texture && plateB?.texture) {
+    if (!menuOpen && lr && lr.width > 0 && lr.bottom > 0 && lr.top < cssH && plateA?.texture && plateB?.texture) {
       const key = `${plateA.texture.label}|${plateB.texture.label}`;
       if (!layersBind || key !== layersKey) {
         layersKey = key;
@@ -799,11 +852,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     /* Calcul : lettres de l'ouverture, encre */
     const heroEl = hero.index >= 0 ? text.elems[hero.index]!.el : null;
     const heroBox = heroEl?.getBoundingClientRect();
-    const heroOn = !reduced && !!heroBox && hero.count > 0 && simBind && heroBox.bottom > -200 && heroBox.top < cssH + 200;
+    const heroOn = !menuOpen && !reduced && !!heroBox && hero.count > 0 && simBind && heroBox.bottom > -200 && heroBox.top < cssH + 200;
     if (heroOn && introStart === -2) introStart = now;
     const inkEl = document.querySelector<HTMLElement>('[data-gl-stage="ink"]');
     const inkBox = inkEl?.getBoundingClientRect();
-    const inkOn = !!inkBox && inkBox.width > 0 && inkBox.bottom > 0 && inkBox.top < cssH;
+    const inkOn = !menuOpen && !!inkBox && inkBox.width > 0 && inkBox.bottom > 0 && inkBox.top < cssH;
     if (heroOn || inkOn || fluidPlate) {
       const cp = enc.beginComputePass({ label: "calcul", timestampWrites: ts(0, "both") });
       if (heroOn && heroBox) {
@@ -892,7 +945,15 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       scenePass.setBindGroup(1, inkDrawBind);
       scenePass.draw(4, inkCount);
     }
-    if (glyphBind && text.glyphCount) {
+    if (menuOpen) {
+      for (const j of sheetJobs) {
+        scenePass.setPipeline(sheetPipe);
+        scenePass.setBindGroup(1, sheetBind, [j.offset]);
+        scenePass.setBindGroup(2, j.bind);
+        scenePass.draw(4);
+      }
+    }
+    if (!menuOpen && glyphBind && text.glyphCount) {
       scenePass.setPipeline(glyphPipe);
       scenePass.setBindGroup(1, glyphBind);
       scenePass.draw(4, text.glyphCount);
@@ -949,7 +1010,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     // Leçon 10.2 : copie de la zone du paragraphe témoin, deux fois par seconde.
     let probeRead: { bytesPerRow: number; w: number; h: number } | null = null;
-    if (!contrastBusy && now - lastContrast > 500 && hooks.onContrast) {
+    if (!menuOpen && !contrastBusy && now - lastContrast > 500 && hooks.onContrast) {
       const probe = document.querySelector<HTMLElement>("[data-contrast-probe]");
       const pr = probe?.getBoundingClientRect();
       // On ne mesure qu'un paragraphe entièrement imprimé : sinon on lirait du
@@ -1060,6 +1121,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       msdfTex.destroy();
       contrastBuf?.destroy();
       fluid.destroy();
+      sheetBuf.destroy();
       bodyBuf.destroy();
       dropBuf.destroy();
       scene?.destroy();

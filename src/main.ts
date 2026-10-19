@@ -2,6 +2,7 @@ import "./styles.css";
 import { createEngine, type Engine } from "./gpu/engine.ts";
 import { setupHtmlInCanvas } from "./html-in-canvas.ts";
 import { bindLayers } from "./layers-ui.ts";
+import { setupMenu } from "./menu.ts";
 import { motion, pointer, settings, TRANSITIONS } from "./state.ts";
 import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayout, showMotion, showTimings, trackChapters, trackFocus } from "./ui.ts";
 
@@ -98,6 +99,7 @@ for (const b of document.querySelectorAll("[data-action='replay']")) {
 // Le lien du panneau mène à la leçon : on referme le panneau en y allant.
 document.querySelector("#tr-pop a")?.addEventListener("click", () => document.getElementById("tr-pop")?.hidePopover?.());
 bindLayers();
+setupMenu();
 // La carte de la leçon 10.1 est un vrai bouton, qu'elle soit dessinée par le GPU ou non.
 document.querySelector("[data-hic-button]")?.addEventListener("click", (e) => {
   const b = e.currentTarget as HTMLButtonElement;

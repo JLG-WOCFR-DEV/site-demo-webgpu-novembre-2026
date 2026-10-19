@@ -937,6 +937,104 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 }
 `;
 
+/* ───────────────────────── Sommaire en feuilles ───────────────────────── */
+
+// Une feuille du sommaire : un rectangle plat, posé en 3D par une matrice que
+// le DOM reçoit aussi (matrix3d). La matrice inclut la perspective de la
+// scène ; le GPU fait la division par w et l'interpolation correcte en
+// perspective des coordonnées de texture.
+export const SHEET = /* wgsl */ `
+${FRAME_STRUCT}
+
+struct Sheet {
+  m: mat4x4f,     // feuille (px css) → écran (px css, homogène)
+  size: vec4f,    // largeur, hauteur, alpha, éclairage
+  photo: vec4f,   // x, y, l, h de la photo dans la feuille
+  uv: vec4f,      // recadrage object-fit: cover
+  look: vec4f,    // papier, pli gauche, pli droit, pellicule
+  fx: vec4f,      // décalage des plaques (px css), 0, 0, 0
+};
+
+@group(0) @binding(0) var<uniform> frame: Frame;
+@group(1) @binding(0) var<uniform> sheet: Sheet;
+@group(2) @binding(0) var samp: sampler;
+@group(2) @binding(1) var tex: texture_2d<f32>;
+
+struct VsOut {
+  @builtin(position) clip: vec4f,
+  @location(0) local: vec2f,
+};
+
+@vertex
+fn vs_sheet(@builtin(vertex_index) vi: u32) -> VsOut {
+  let local = corner(vi) * sheet.size.xy;
+  let h = sheet.m * vec4f(local, 0.0, 1.0);
+  var out: VsOut;
+  // Écran (px css) → clip, sans diviser : le GPU s'en charge.
+  out.clip = vec4f(h.x * 2.0 / frame.viewport.x - h.w, h.w - h.y * 2.0 / frame.viewport.y, 0.0, h.w);
+  out.local = local;
+  return out;
+}
+
+const PAPER_CARD: vec3f = vec3f(0.962, 0.958, 0.938);
+const FILM: vec3f = vec3f(0.075, 0.07, 0.065);
+
+@fragment
+fn fs_sheet(in: VsOut) -> @location(0) vec4f {
+  let p = in.local;
+  let sz = sheet.size.xy;
+  // Antialiasing analytique des bords, en pixels écran.
+  let fw = max(fwidth(p), vec2f(1e-4));
+  let edge = min(min(p.x, sz.x - p.x) / fw.x, min(p.y, sz.y - p.y) / fw.y);
+  let cover = clamp(edge + 0.5, 0.0, 1.0);
+
+  let ph = sheet.photo;
+  let t = (p - ph.xy) / max(ph.zw, vec2f(1.0));
+  let inPhotoD = min(min(p.x - ph.x, ph.x + ph.z - p.x) / fw.x, min(p.y - ph.y, ph.y + ph.w - p.y) / fw.y);
+  let inPhoto = clamp(inPhotoD + 0.5, 0.0, 1.0);
+  let uv = mix(sheet.uv.xy, sheet.uv.zw, clamp(t, vec2f(0.0), vec2f(1.0)));
+  // Bande sans fin : à grande vitesse, les plaques cyan et jaune glissent de
+  // part et d'autre du magenta (le rouge et le bleu, en lumière).
+  let du = vec2f(sheet.fx.x / max(ph.z, 1.0) * (sheet.uv.z - sheet.uv.x), 0.0);
+  let photo = vec3f(
+    textureSample(tex, samp, uv + du).r,
+    textureSample(tex, samp, uv).g,
+    textureSample(tex, samp, uv - du).b,
+  );
+
+  var base = PAPER_CARD;
+  var a = sheet.look.x;
+  if (sheet.look.w > 0.5) {
+    // Pellicule : bandes noires et perforations.
+    base = FILM;
+    a = 1.0;
+    let band = ph.y;
+    let inBand = p.y < band || p.y > ph.y + ph.w;
+    if (inBand) {
+      let cy = select(sz.y - band * 0.5, band * 0.5, p.y < band);
+      let hx = abs(fract(p.x / 13.0) - 0.5) * 13.0;
+      let hy = abs(p.y - cy);
+      let hole = max(hx - 3.2, hy - band * 0.22);
+      base = mix(vec3f(0.82, 0.8, 0.76), FILM, smoothstep(-0.6, 0.6, hole));
+    }
+  } else if (a > 0.0) {
+    // Filet gris au bord de la feuille de papier.
+    let rim = 1.0 - smoothstep(0.6, 1.6, edge);
+    base = mix(base, vec3f(0.72, 0.71, 0.67), rim * 0.6);
+  }
+  var col = mix(base, photo, inPhoto);
+  a = mix(a, 1.0, inPhoto) * cover;
+
+  // Plis : le creux s'assombrit vers la charnière.
+  let u = p.x / sz.x;
+  let crease = sheet.look.y * (1.0 - smoothstep(0.0, 0.35, u)) + sheet.look.z * (1.0 - smoothstep(0.0, 0.35, 1.0 - u));
+  col *= sheet.size.w * (1.0 - 0.32 * crease);
+
+  let alpha = a * sheet.size.z;
+  return vec4f(col * alpha, alpha);
+}
+`;
+
 /* ───────────────────────── Composite ───────────────────────── */
 
 export const MAX_STAGES = 8;
@@ -956,7 +1054,7 @@ struct Post {
   stages: array<vec4f, ${MAX_STAGES}>, // x, y, w, h en px
   kinds: array<vec4f, ${MAX_STAGES / 4}>,
   print: vec4f,    // nombre de chapitres, largeur du front (px), actif, style
-  chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), 0
+  chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), bord gauche (px)
   a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
   casse: vec4f,    // nombre de caractères, largeur et hauteur de l'atlas, corps (px d'atlas)
   ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
@@ -1072,6 +1170,8 @@ fn printed(px: vec2f, col: vec3f) -> vec4f {
     if (i >= n) { break; }
     let c = u.chapters[i];
     if (px.y >= c.x && px.y < c.y) {
+      // Le sommaire n'imprime que la colonne de son épreuve : à gauche de c.w, rien.
+      if (px.x < c.w) { return vec4f(1.0, 1.0, 1.0, 0.0); }
       let front = u.print.y;
       let rel = px.y - c.x;
       // 0 sur la ligne déjà imprimée la plus basse, 1 une largeur de front plus haut.
