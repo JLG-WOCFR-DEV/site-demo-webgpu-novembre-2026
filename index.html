@@ -535,6 +535,16 @@
                 <ol class="reader-list" data-reader-list></ol>
               </div>
             </form>
+            <div class="controls hic" data-hic aria-labelledby="c-hic">
+              <p id="c-hic" class="controls-title">Essai HTML-in-Canvas</p>
+              <div class="hic-card" data-hic-card drawable>
+                <p class="hic-kicker">Épreuve n° 1</p>
+                <p class="hic-title">Une carte en HTML</p>
+                <p class="hic-text">Titre, texte et bouton natifs. Si le navigateur le permet, ils sont dessinés dans le canvas et tramés par le GPU.</p>
+                <button type="button" class="btn" data-hic-button>Tamponner</button>
+              </div>
+              <p class="readout" data-readout="hic" aria-live="polite"></p>
+            </div>
           </div>
         </section>
 
@@ -729,7 +739,7 @@
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
-          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle s'inspire du composant Peel de canvasui.dev ; la simulation de vision suit Machado, Oliveira et Fernandes (2009).
+          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle et l'encre fraîche s'inspirent des composants Peel et Liquid de canvasui.dev, la pile de calques du modèle de composition de la bibliothèque shaders (MIT). Fluides stables d'après Jos Stam (1999) ; simulation de vision d'après Machado, Oliveira et Fernandes (2009).
           Archivo par Omnibus-Type, IBM Plex Mono par IBM, toutes deux sous licence SIL OFL, servies depuis ce site.
         </p>
         <p>

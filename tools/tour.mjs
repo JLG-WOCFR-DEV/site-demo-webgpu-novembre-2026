@@ -50,6 +50,7 @@ const STEPS = [
   { name: "23b-fluid", go: "#ch-fluid", sweep: [[0.55, 0.3], [0.95, 0.65]] },
   { name: "24-cost", go: "#ch-cost" },
   { name: "25-a11y", go: "#ch-a11y" },
+  { name: "25-hic", go: "#l-dom" },
   { name: "25a-reader", go: "#l-dom", set: ["a11y", "reader", true] },
   { name: "25b-contrast", go: "#l-contrast", wait: 2500 },
   { name: "25c-contrast-fail", go: "#l-contrast", range: ["a11y", "fade", 0.75], wait: 2500 },

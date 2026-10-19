@@ -1142,3 +1142,53 @@ html.gl-on .stage--layers {
   aspect-ratio: 4 / 3;
   object-fit: cover;
 }
+
+/* ───────── 10.1 Essai HTML-in-Canvas ───────── */
+
+.hic {
+  grid-column: 7 / -1;
+}
+.hic-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+}
+.hic-card p {
+  margin: 0;
+}
+.hic-kicker {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.hic-title {
+  font: 800 22px/1.1 var(--f-display);
+  font-stretch: 112%;
+}
+.hic-text {
+  font-size: 14px;
+}
+.hic-card .btn {
+  justify-self: start;
+  margin-top: 6px;
+}
+.hic-canvas {
+  display: block;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .hic {
+    grid-column: 1 / -1;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+/* 10.1 : la prose occupe deux rangées, les deux boîtes s'empilent à droite. */
+#l-dom .prose {
+  grid-row: span 2;
+}
