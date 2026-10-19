@@ -1192,3 +1192,29 @@ html.gl-on .stage--layers {
 #l-dom .prose {
   grid-row: span 2;
 }
+
+/* 04.2 sans WebGPU : la pile en CSS. */
+.stage--layers {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.css-layers {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  isolation: isolate;
+}
+.css-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+div.css-layer {
+  background: #c7331c;
+}
+html.gl-on .css-layers {
+  display: none;
+}

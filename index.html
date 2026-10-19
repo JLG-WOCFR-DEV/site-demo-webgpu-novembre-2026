@@ -231,7 +231,14 @@
                 calques évaluée par le GPU, réordonnable comme dans un logiciel de retouche.
               </p>
             </div>
-            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous."></div>
+            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous.">
+              <!-- Repli sans WebGPU : la même pile en CSS (mix-blend-mode). -->
+              <div class="css-layers" aria-hidden="true">
+                <img class="css-layer" data-css-layer="glass" src="./plates/glass.jpg" alt="" />
+                <img class="css-layer" data-css-layer="flower" src="./plates/flower.jpg" alt="" />
+                <div class="css-layer" data-css-layer="spot"></div>
+              </div>
+            </div>
             <form class="controls" aria-labelledby="c-calques" data-layers>
               <p id="c-calques" class="controls-title">La pile, du dessus vers le dessous</p>
               <div class="layer-stack" data-layer-stack>

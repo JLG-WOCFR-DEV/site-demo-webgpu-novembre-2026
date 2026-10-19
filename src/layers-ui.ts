@@ -30,6 +30,30 @@ export function bindLayers() {
     });
     const mask = form.querySelector<HTMLInputElement>("input[name=mask]:checked");
     settings.layers.mask = mask ? Number(mask.value) : 0;
+    applyCss();
+  };
+
+  // Repli sans WebGPU : CSS connaît les mêmes modes de fusion.
+  const CSS_MODES = ["normal", "multiply", "screen", "overlay", "soft-light", "difference"];
+  const applyCss = () => {
+    const L = settings.layers;
+    L.order.forEach((id, i) => {
+      const el = document.querySelector<HTMLElement>(`[data-css-layer="${id}"]`);
+      if (!el) return;
+      el.style.zIndex = String(i + 1);
+      el.style.mixBlendMode = CSS_MODES[L.mode[id]] ?? "normal";
+      el.style.opacity = String(L.opacity[id]);
+      el.style.visibility = L.visible[id] ? "visible" : "hidden";
+      const top = i === L.order.length - 1;
+      const mask =
+        !top || L.mask === 0
+          ? "none"
+          : L.mask === 1
+            ? "radial-gradient(circle at 62% 42%, #000 0 22%, transparent 30%)"
+            : "linear-gradient(to right, transparent 10%, #000 90%)";
+      el.style.maskImage = mask;
+      el.style.webkitMaskImage = mask;
+    });
   };
 
   form.addEventListener("input", sync);
