@@ -7,6 +7,7 @@ const fmt = (v: number, digits = 2) => v.toLocaleString("fr-FR", { minimumFracti
 const UNITS: Record<string, (v: number) => string> = {
   radius: (v) => `${Math.round(v)} px`,
   cell: (v) => `${fmt(v, 1)} px`,
+  size: (v) => `${fmt(v, 1)} px`,
   threshold: (v) => `+${fmt(v, 3)}`,
 };
 
@@ -21,7 +22,9 @@ export function bindControls(onChange: () => void) {
     const sync = (input: HTMLInputElement) => {
       if (!(input.name in target)) return;
       if (input.type === "checkbox") target[input.name] = input.checked;
-      else {
+      else if (input.type === "radio") {
+        if (input.checked) target[input.name] = Number(input.value);
+      } else {
         const v = Number(input.value);
         target[input.name] = v;
         const out = input.parentElement?.querySelector("output");
@@ -31,6 +34,7 @@ export function bindControls(onChange: () => void) {
     for (const input of form.querySelectorAll<HTMLInputElement>("input[name]")) {
       // L'état initial vient du HTML ; le navigateur peut avoir restauré des valeurs.
       if (input.type === "checkbox" && input.name in target) input.checked = Boolean(target[input.name]);
+      if (input.type === "radio" && input.name in target) input.checked = Number(input.value) === target[input.name];
       sync(input);
       input.addEventListener("input", () => {
         sync(input);
@@ -97,7 +101,9 @@ export function showTimings(t: Timings) {
   }
 }
 
-export function showLayout(info: { glyphs: number; atlas: number; textures: number }) {
+export function showLayout(info: { glyphs: number; atlas: number; textures: number; drops: number }) {
+  const ink = document.querySelector("[data-readout='ink']");
+  if (ink) ink.textContent = `${info.drops.toLocaleString("fr-FR")} gouttes, 1 dispatch de calcul et 1 appel de dessin par frame`;
   const el = document.querySelector("[data-readout='glyphs']");
   if (el) {
     el.textContent = `${info.glyphs.toLocaleString("fr-FR")} glyphes à l'écran, ${info.atlas} dans l'atlas, 1 appel de dessin`;

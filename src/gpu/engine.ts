@@ -2,13 +2,13 @@ import { motion, pointer, settings } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, GLYPH, MAX_STAGES, PLANE } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_STAGES, PLANE, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
 export type EngineHooks = {
   onTimings?: (t: Timings) => void;
-  onLayout?: (info: { glyphs: number; atlas: number; textures: number }) => void;
+  onLayout?: (info: { glyphs: number; atlas: number; textures: number; drops: number }) => void;
   onLost?: (reason: string) => void;
 };
 
@@ -18,7 +18,10 @@ const PLANE_STRIDE = 256;
 const MAX_PLANES = 16;
 const BLOOM_LEVELS = 5;
 const MAX_BOXES = 512;
-const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2 };
+const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
+const BODY_STRIDE = 32;
+const DROP_STRIDE = 32;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -76,6 +79,26 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 4, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
+    ],
+  });
+  const simLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+      { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+    ],
+  });
+  const inkSimLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+    ],
+  });
+  const inkDrawLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
     ],
   });
   const boxLayout = device.createBindGroupLayout({
@@ -103,7 +126,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const boxMod = device.createShaderModule({ label: "boxes", code: BOXES });
   const bloomMod = device.createShaderModule({ label: "bloom", code: BLOOM });
   const postMod = device.createShaderModule({ label: "composite", code: COMPOSITE });
-  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod]) {
+  const simMod = device.createShaderModule({ label: "sim", code: SIM });
+  const inkMod = device.createShaderModule({ label: "ink", code: INK });
+  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod]) {
     const info = await m.getCompilationInfo();
     const errors = info.messages.filter((x) => x.type === "error");
     if (errors.length) throw new Error(`WGSL ${m.label}: ${errors.map((e) => `${e.lineNum}:${e.message}`).join(" | ")}`);
@@ -159,6 +184,24 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: { topology: "triangle-list" },
   });
 
+  const simPipe = device.createComputePipeline({
+    label: "sim",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [simLayout] }),
+    compute: { module: simMod, entryPoint: "main" },
+  });
+  const inkSimPipe = device.createComputePipeline({
+    label: "ink-sim",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [inkSimLayout] }),
+    compute: { module: inkMod, entryPoint: "sim" },
+  });
+  const inkDrawPipe = device.createRenderPipeline({
+    label: "ink-draw",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, inkDrawLayout] }),
+    vertex: { module: inkMod, entryPoint: "vs" },
+    fragment: { module: inkMod, entryPoint: "fs", targets: [{ format: SCENE_FORMAT, blend: premul }] },
+    primitive: strip,
+  });
+
   const validation = await device.popErrorScope();
   if (validation) throw new Error(`Validation : ${validation.message}`);
 
@@ -184,13 +227,52 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const boxBuf = device.createBuffer({ size: 32 * MAX_BOXES, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
   const boxBind = device.createBindGroup({ layout: boxLayout, entries: [{ binding: 0, resource: { buffer: boxBuf } }] });
   const postBuf = device.createBuffer({
-    size: 16 * (6 + MAX_STAGES + MAX_STAGES / 4),
+    size: 16 * POST_VEC4,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
   const text = new TextLayer(device);
   const images = new ImageLayer(device, texLayout, linear);
   const atlasBind = images.bindFor(text.texture);
+
+  /* Calcul : lettres de l'ouverture */
+  const simBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  let bodyBuf = device.createBuffer({ size: BODY_STRIDE, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  let simBind: GPUBindGroup | null = null;
+  let hero = { index: -1, first: 0, count: 0 };
+  let introPending = !motion.reduced;
+  let introStart = -1;
+
+  /* Calcul : encre */
+  const inkCount = innerWidth < 900 ? 16384 : 65536;
+  const inkBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const dropBuf = device.createBuffer({ size: inkCount * DROP_STRIDE, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  {
+    const init = new Float32Array(inkCount * 8);
+    for (let i = 0; i < inkCount; i++) {
+      // Vies négatives et étalées : les gouttes naissent au fil des secondes.
+      init.set([Math.random(), Math.random() * 0.66, 0, 0, -Math.random() * 1.5, i % 3, Math.random(), 0], i * 8);
+    }
+    device.queue.writeBuffer(dropBuf, 0, init);
+  }
+  const inkSimBind = device.createBindGroup({
+    layout: inkSimLayout,
+    entries: [
+      { binding: 0, resource: { buffer: inkBuf } },
+      { binding: 1, resource: { buffer: dropBuf } },
+    ],
+  });
+  const inkDrawBind = device.createBindGroup({
+    layout: inkDrawLayout,
+    entries: [
+      { binding: 0, resource: { buffer: inkBuf } },
+      { binding: 1, resource: { buffer: dropBuf } },
+    ],
+  });
+  const inkData = new Float32Array(16);
+  const simData = new Float32Array(12);
+  let inkTime = 0;
+  let inkPrerolled = false;
 
   let glyphBuf: GPUBuffer | null = null;
   let elemBuf: GPUBuffer | null = null;
@@ -211,6 +293,42 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       elemBuf = device.createBuffer({ size: esize * 2, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
       glyphBind = null;
     }
+    // Corps simulés : un par lettre de l'ouverture.
+    const hi = text.elems.findIndex((e) => e.fx === 1);
+    const he = hi >= 0 ? text.elems[hi]! : null;
+    const count = he?.count ?? 0;
+    if (count !== hero.count || hi !== hero.index) {
+      const need = Math.max(BODY_STRIDE, count * BODY_STRIDE);
+      if (bodyBuf.size < need) {
+        bodyBuf.destroy();
+        bodyBuf = device.createBuffer({ size: need, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+        glyphBind = null;
+      }
+      const init = new Float32Array(Math.max(8, count * 8));
+      if (introPending && count) {
+        // Arrivée : les caractères tombent de haut, en ordre de lecture, et
+        // rebondissent dans la forme.
+        for (let i = 0; i < count; i++) {
+          const k = i / count;
+          init.set(
+            [(Math.random() - 0.5) * 260, -innerHeight * (0.55 + Math.random() * 0.5), 0, 0, (Math.random() - 0.5) * 2.4, 0, 0.15 + k * 0.9 + Math.random() * 0.08, 0],
+            i * 8,
+          );
+        }
+        introPending = false;
+        introStart = -2; // démarre à la première frame visible
+      }
+      device.queue.writeBuffer(bodyBuf, 0, init);
+    }
+    hero = { index: hi, first: he?.first ?? 0, count };
+    simBind = device.createBindGroup({
+      layout: simLayout,
+      entries: [
+        { binding: 0, resource: { buffer: simBuf } },
+        { binding: 1, resource: { buffer: glyphBuf! } },
+        { binding: 2, resource: { buffer: bodyBuf } },
+      ],
+    });
     if (!glyphBind) {
       glyphBind = device.createBindGroup({
         layout: glyphLayout,
@@ -219,10 +337,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           { binding: 1, resource: { buffer: elemBuf } },
           { binding: 2, resource: linear },
           { binding: 3, resource: text.texture.createView() },
+          { binding: 4, resource: { buffer: bodyBuf } },
         ],
       });
     }
-    hooks.onLayout?.({ glyphs: text.glyphCount, atlas: text.atlasGlyphs, textures: images.bytes });
+    hooks.onLayout?.({ glyphs: text.glyphCount, atlas: text.atlasGlyphs, textures: images.bytes, drops: inkCount });
   };
 
   /* ───── Cibles dépendantes de la taille ───── */
@@ -330,7 +449,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   /* ───── Boucle ───── */
   const frameData = new Float32Array(16);
   const planeData = new Float32Array((PLANE_STRIDE * MAX_PLANES) / 4);
-  const postData = new Float32Array(4 * (6 + MAX_STAGES + MAX_STAGES / 4));
+  const postData = new Float32Array(4 * POST_VEC4);
   const boxData = new Float32Array(8 * MAX_BOXES);
   let elemData = new Float32Array(0);
   let dpr = 1;
@@ -345,6 +464,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let lastScroll = scrollY;
   let velocity = 0;
   let lastNow = performance.now();
+  let lastPx = pointer.x;
+  let lastPy = pointer.y;
+  let pvx = 0;
+  let pvy = 0;
 
   const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage]")];
 
@@ -382,6 +505,16 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const v = Math.abs(dy) > 600 ? 0 : dy / dt; // px/s
     velocity += (v - velocity) * (1 - Math.exp(-dt * 10));
     const slip = reduced ? 0 : Math.max(-1, Math.min(1, velocity / 4000));
+    // Vitesse du pointeur, lissée : c'est elle qui « balaie » les lettres et l'encre.
+    const k = 1 - Math.exp(-dt * 18);
+    pvx += ((pointer.x - lastPx) / dt - pvx) * k;
+    pvy += ((pointer.y - lastPy) / dt - pvy) * k;
+    lastPx = pointer.x;
+    lastPy = pointer.y;
+    if (!pointer.inside) {
+      pvx = 0;
+      pvy = 0;
+    }
 
     /* Frame uniforms */
     frameData.set([cssW, cssH, dpr, reduced ? 0 : time]);
@@ -450,8 +583,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         pushPlane(a, [0, 0, 1, (ah / aw)], [2, 0, 0, 1], [0, 1, 0, 0], atlasBind, false);
       }
       if (si < MAX_STAGES && kind > 0 && r.bottom > 0 && r.top < cssH) {
-        postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 24 + si * 4);
-        postData[24 + MAX_STAGES * 4 + si] = kind;
+        postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 28 + si * 4);
+        postData[28 + MAX_STAGES * 4 + si] = kind;
         si++;
       }
     }
@@ -467,6 +600,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([c.grain ? 1 : 0, c.split ? 1 : 0, splitX, L.bloom], 12);
     postData.set([T.cell, T.gain, T.misreg, T.mix], 16);
     postData.set([PAPER[0], PAPER[1], PAPER[2], slip], 20);
+    const F = settings.filter;
+    postData.set([F.kind, F.size, F.amount, 0], 24);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -481,12 +616,58 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
     /* Encodage */
     const enc = device.createCommandEncoder({ label: "frame" });
+
+    /* Calcul : lettres de l'ouverture, encre */
+    const heroEl = hero.index >= 0 ? text.elems[hero.index]!.el : null;
+    const heroBox = heroEl?.getBoundingClientRect();
+    const heroOn = !reduced && !!heroBox && hero.count > 0 && simBind && heroBox.bottom > -200 && heroBox.top < cssH + 200;
+    if (heroOn && introStart === -2) introStart = now;
+    const inkEl = document.querySelector<HTMLElement>('[data-gl-stage="ink"]');
+    const inkBox = inkEl?.getBoundingClientRect();
+    const inkOn = !!inkBox && inkBox.width > 0 && inkBox.bottom > 0 && inkBox.top < cssH;
+    if (heroOn || inkOn) {
+      const cp = enc.beginComputePass({ label: "calcul", timestampWrites: ts(0, "both") });
+      if (heroOn && heroBox) {
+        const sub = 2;
+        simData.set([dt / sub, introStart < 0 ? 99 : (now - introStart) / 1000, 0, hero.count], 0);
+        simData.set([pointer.x - heroBox.left, pointer.y - heroBox.top, pointer.inside ? 1 : 0, hero.first], 4);
+        simData.set([pvx, pvy, Math.max(-3000, Math.min(3000, velocity)), 0], 8);
+        device.queue.writeBuffer(simBuf, 0, simData);
+        cp.setPipeline(simPipe);
+        cp.setBindGroup(0, simBind!);
+        for (let i = 0; i < sub; i++) cp.dispatchWorkgroups(Math.ceil(hero.count / 64));
+      }
+      if (inkOn && inkBox) {
+        const motionScale = reduced ? 0 : 1;
+        inkTime += dt * motionScale;
+        const aspect = inkBox.height / Math.max(1, inkBox.width);
+        const inside = pointer.inside && pointer.x >= inkBox.left && pointer.x <= inkBox.right && pointer.y >= inkBox.top && pointer.y <= inkBox.bottom;
+        inkData.set([dt * motionScale, inkTime, inkCount, aspect], 0);
+        inkData.set([inkBox.left, inkBox.top, inkBox.width, inkBox.height], 4);
+        inkData.set([(pointer.x - inkBox.left) / inkBox.width, ((pointer.y - inkBox.top) / inkBox.width), inside ? 1 : 0, settings.ink.stir], 8);
+        inkData.set([pvx / inkBox.width, pvy / inkBox.width, settings.ink.flow, 2.4], 12);
+        device.queue.writeBuffer(inkBuf, 0, inkData);
+        cp.setPipeline(inkSimPipe);
+        cp.setBindGroup(0, inkSimBind);
+        if (!reduced) {
+          cp.dispatchWorkgroups(Math.ceil(inkCount / 64));
+        } else if (!inkPrerolled) {
+          // Mouvement réduit : on laisse l'encre s'étaler une fois, hors champ,
+          // puis l'image reste fixe.
+          inkPrerolled = true;
+          inkData[0] = 1 / 30;
+          device.queue.writeBuffer(inkBuf, 0, inkData);
+          for (let i = 0; i < 240; i++) cp.dispatchWorkgroups(Math.ceil(inkCount / 64));
+        }
+      }
+      cp.end();
+    }
     const scenePass = enc.beginRenderPass({
       label: "scene",
       colorAttachments: [
         { view: scene!.createView(), loadOp: "clear", storeOp: "store", clearValue: [PAPER[0], PAPER[1], PAPER[2], 1] },
       ],
-      timestampWrites: ts(0, "both"),
+      timestampWrites: ts(1, "both"),
     });
     scenePass.setBindGroup(0, frameBind);
     for (const j of jobs) {
@@ -498,6 +679,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       }
       scenePass.setPipeline(planePipe);
       scenePass.draw(4);
+    }
+    if (inkOn) {
+      scenePass.setPipeline(inkDrawPipe);
+      scenePass.setBindGroup(1, inkDrawBind);
+      scenePass.draw(4, inkCount);
     }
     if (glyphBind && text.glyphCount) {
       scenePass.setPipeline(glyphPipe);
@@ -519,12 +705,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       })();
 
     if (c.bloom && bloomSteps) {
-      runStep(bloomSteps.pre, 1, "both");
+      runStep(bloomSteps.pre, 2, "both");
       bloomSteps.down.forEach((s, i, a) =>
-        runStep(s, 2, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
+        runStep(s, 3, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
       );
       bloomSteps.up.forEach((s, i, a) =>
-        runStep(s, 3, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
+        runStep(s, 4, a.length === 1 ? "both" : i === 0 ? "start" : i === a.length - 1 ? "end" : "none"),
       );
     }
 
@@ -532,7 +718,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const post = enc.beginRenderPass({
       label: "composite",
       colorAttachments: [{ view: out, loadOp: "clear", storeOp: "store", clearValue: [PAPER[0], PAPER[1], PAPER[2], 1] }],
-      timestampWrites: ts(4, "both"),
+      timestampWrites: ts(5, "both"),
     });
     post.setPipeline(postPipe);
     post.setBindGroup(0, postBind!);
@@ -565,7 +751,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           for (let g = 0; g < groups; g++) {
             const d = Number(v[g * 2 + 1]! - v[g * 2]!) / 1e6;
             const valid = Number.isFinite(d) && d >= 0 && d < 1000;
-            const skipped = !c.bloom && g >= 1 && g <= 3;
+            const skipped = (!c.bloom && g >= 2 && g <= 4) || (g === 0 && !heroOn && !inkOn);
             avg[g] = skipped ? 0 : valid ? avg[g]! * 0.9 + d * 0.1 : avg[g]!;
           }
           r.buf.unmap();
@@ -606,6 +792,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       cancelAnimationFrame(raf);
       images.destroy();
       text.texture.destroy();
+      bodyBuf.destroy();
+      dropBuf.destroy();
       scene?.destroy();
       bloomTex?.destroy();
       device.destroy();

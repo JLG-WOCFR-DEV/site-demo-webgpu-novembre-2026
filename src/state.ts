@@ -6,6 +6,8 @@ export type Settings = {
   chain: { distort: boolean; rgb: boolean; trame: boolean; bloom: boolean; grain: boolean; split: boolean };
   trame: { cell: number; gain: number; misreg: number; mix: number };
   light: { bloom: number; threshold: number; naive: boolean };
+  filter: { kind: number; size: number; amount: number };
+  ink: { flow: number; stir: number };
 };
 
 export const settings: Settings = {
@@ -15,6 +17,8 @@ export const settings: Settings = {
   chain: { distort: true, rgb: true, trame: true, bloom: true, grain: true, split: false },
   trame: { cell: 7, gain: 0.08, misreg: 0.15, mix: 1 },
   light: { bloom: 0.6, threshold: 0.03, naive: false },
+  filter: { kind: 1, size: 6, amount: 0.5 },
+  ink: { flow: 1, stir: 1 },
 };
 
 export type Pointer = { x: number; y: number; inside: boolean };

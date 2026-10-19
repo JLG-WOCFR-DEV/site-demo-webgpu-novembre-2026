@@ -21,23 +21,31 @@ const exe = [process.env.PLI_CHROMIUM, "/opt/pw-browsers/chromium-1194/chrome-li
 
 const STEPS = [
   { name: "01-hero", go: "#top" },
-  { name: "02-hero-lens", go: "#top", scroll: 420, mouse: [0.62, 0.42] },
-  { name: "03-dom", go: "#ch-dom" },
-  { name: "04-dom-boxes", go: "#ch-dom", set: ["dom", "boxes", true] },
-  { name: "05-quad", go: "#ch-quad" },
-  { name: "06-quad-wire", go: "#ch-quad", set: ["quad", "wire", true], range: ["quad", "radius", 40] },
-  { name: "07-glyph", go: "#ch-glyph" },
-  { name: "08-glyph-scatter", go: "#ch-glyph", range: ["glyph", "scatter", 0.6] },
-  { name: "09-glyph-atlas", go: "#ch-glyph", set: ["glyph", "atlas", true] },
-  { name: "10-chain", go: "#ch-chain" },
-  { name: "11-chain-split", go: "#ch-trame", set: ["chain", "split", true], mouse: [0.7, 0.5] },
-  { name: "12-trame", go: "#ch-trame" },
-  { name: "13-trame-misreg", go: "#ch-trame", range: ["trame", "misreg", 0.9] },
-  { name: "14-light", go: "#ch-light" },
-  { name: "15-light-naive", go: "#ch-light", set: ["light", "naive", true] },
-  { name: "16-cost", go: "#ch-cost" },
-  { name: "17-a11y", go: "#ch-a11y" },
-  { name: "18-colophon", go: ".colophon" },
+  { name: "02-hero-sweep", go: "#top", sweep: [[0.05, 0.3], [0.6, 0.45]] },
+  { name: "03-hero-lens", go: "#top", scroll: 420, mouse: [0.62, 0.42] },
+  { name: "04-dom", go: "#ch-dom" },
+  { name: "05-dom-boxes", go: "#ch-dom", set: ["dom", "boxes", true] },
+  { name: "06-quad", go: "#ch-quad" },
+  { name: "07-quad-wire", go: "#ch-quad", set: ["quad", "wire", true], range: ["quad", "radius", 40] },
+  { name: "08-glyph", go: "#ch-glyph" },
+  { name: "09-glyph-scatter", go: "#ch-glyph", range: ["glyph", "scatter", 0.6] },
+  { name: "10-glyph-atlas", go: "#ch-glyph", set: ["glyph", "atlas", true] },
+  { name: "11-chain", go: "#ch-chain" },
+  { name: "12-chain-split", go: "#ch-trame", set: ["chain", "split", true], mouse: [0.7, 0.5] },
+  { name: "13-trame", go: "#ch-trame" },
+  { name: "14-trame-misreg", go: "#ch-trame", range: ["trame", "misreg", 0.9] },
+  { name: "15-filtre-riso", go: "#ch-filtre", radio: ["filter", "kind", 1] },
+  { name: "16-filtre-dots", go: "#ch-filtre", radio: ["filter", "kind", 0] },
+  { name: "17-filtre-flute", go: "#ch-filtre", radio: ["filter", "kind", 2] },
+  { name: "18-filtre-lens", go: "#ch-filtre", radio: ["filter", "kind", 3], mouse: [0.72, 0.42] },
+  { name: "19-filtre-paper", go: "#ch-filtre", radio: ["filter", "kind", 4], range: ["filter", "amount", 0.9] },
+  { name: "20-light", go: "#ch-light", radio: ["filter", "kind", 1] },
+  { name: "21-light-naive", go: "#ch-light", set: ["light", "naive", true] },
+  { name: "22-ink", go: "#ch-ink", wait: 4000 },
+  { name: "23-ink-stir", go: "#ch-ink", sweep: [[0.5, 0.35], [0.95, 0.6]] },
+  { name: "24-cost", go: "#ch-cost" },
+  { name: "25-a11y", go: "#ch-a11y" },
+  { name: "26-colophon", go: ".colophon" },
 ];
 
 const b = await chromium.launch({
@@ -72,9 +80,11 @@ for (const s of STEPS) {
   const flip = async (form, name, value) =>
     p.evaluate(
       ({ form, name, value }) => {
-        const input = document.querySelector(`form[data-controls="${form}"] input[name="${name}"]`);
+        const radio = document.querySelector(`form[data-controls="${form}"] input[type="radio"][name="${name}"][value="${value}"]`);
+        const input = radio ?? document.querySelector(`form[data-controls="${form}"] input[name="${name}"]`);
         if (!input) return false;
         if (input.type === "checkbox") input.checked = value;
+        else if (input.type === "radio") input.checked = true;
         else input.value = String(value);
         input.dispatchEvent(new Event("input", { bubbles: true }));
         return true;
@@ -83,9 +93,21 @@ for (const s of STEPS) {
     );
   if (s.set) await flip(...s.set);
   if (s.range) await flip(...s.range);
-  if (s.mouse) await p.mouse.move(s.mouse[0] * vw, s.mouse[1] * vh);
-  else await p.mouse.move(2, vh - 2);
-  await p.waitForTimeout(1800);
+  if (s.radio) await flip(...s.radio);
+  if (s.sweep) {
+    const [[x0, y0], [x1, y1]] = s.sweep;
+    await p.mouse.move(x0 * vw, y0 * vh);
+    await p.waitForTimeout(300);
+    for (let i = 1; i <= 12; i++) {
+      await p.mouse.move((x0 + ((x1 - x0) * i) / 12) * vw, (y0 + ((y1 - y0) * i) / 12) * vh);
+      await p.waitForTimeout(40);
+    }
+    await p.waitForTimeout(250);
+  } else {
+    if (s.mouse) await p.mouse.move(s.mouse[0] * vw, s.mouse[1] * vh);
+    else await p.mouse.move(2, vh - 2);
+    await p.waitForTimeout(s.wait ?? 1800);
+  }
   const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
   writeFileSync(join(dir, `${s.name}.png`), Buffer.from(data, "base64"));
   if (s.set) await flip(s.set[0], s.set[1], !s.set[2]);
