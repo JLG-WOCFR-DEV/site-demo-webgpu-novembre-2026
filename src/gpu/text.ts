@@ -22,6 +22,18 @@ export const ELEM_STRIDE = 32;
 
 type AtlasEntry = SdfMetrics & { u0: number; v0: number; u1: number; v1: number };
 
+/** Atlas MTSDF des titres, généré par tools/msdf.py. */
+export type MsdfMeta = {
+  size: number;
+  range: number;
+  width: number;
+  height: number;
+  fonts: Record<string, { base: number; chars: Record<string, [number, number, number, number, number, number]> }>;
+};
+
+/** En dessous de cette taille, le SDF simple suffit et le MTSDF n'apporte rien. */
+const MSDF_MIN_SIZE = 24;
+
 export type TextElem = {
   el: HTMLElement;
   fx: number;
@@ -39,6 +51,8 @@ export class TextLayer {
   private sdfs = new Map<string, TinySDF>();
   private ascents = new Map<string, number>();
   private measureCtx = document.createElement("canvas").getContext("2d")!;
+  msdf: MsdfMeta | null = null;
+  msdfGlyphs = 0;
   glyphData = new ArrayBuffer(0);
   glyphCount = 0;
   elems: TextElem[] = [];
@@ -139,6 +153,7 @@ export class TextLayer {
     const out: number[] = [];
     const u32: number[] = [];
     this.elems = [];
+    this.msdfGlyphs = 0;
     let total = 0;
     const range = document.createRange();
 
@@ -166,6 +181,7 @@ export class TextLayer {
         const color = packColor(cs.color);
         const upper = cs.textTransform === "uppercase";
         const tier = tierFor(size, dpr);
+        const msdfFont = size >= MSDF_MIN_SIZE ? this.msdf?.fonts[`${weight}|${Math.round(Number.parseFloat(cs.fontStretch) || 100)}`] : undefined;
 
         for (let i = 0; i < text.length; ) {
           const cp = text.codePointAt(i)!;
@@ -178,6 +194,24 @@ export class TextLayer {
             const r = rects[0];
             if (r && r.width > 0) {
               const ch = upper ? raw.toLocaleUpperCase("fr") : raw;
+              const m = msdfFont?.chars[ch];
+              if (m && this.msdf) {
+                // MTSDF : quad lu dans l'atlas des titres, placé sur la ligne de
+                // base que donne le DOM. px < 0 signale l'atlas multicanal au shader.
+                const meta = this.msdf;
+                const k = size / meta.size;
+                const [ax, ay, aw, ah, xo, yo] = m;
+                const qx = r.left + xo * k;
+                const qy = r.top + ascent - msdfFont!.base * k + yo * k;
+                out.push(qx - box.left, qy - box.top, aw * k, ah * k, ax / meta.width, ay / meta.height, (ax + aw) / meta.width, (ay + ah) / meta.height);
+                u32.push(color, elemIndex);
+                out.push(idx, -k);
+                total++;
+                idx++;
+                this.msdfGlyphs++;
+                i += len;
+                continue;
+              }
               const g = this.glyph(ch, font, tier, family, weight, style, stretch);
               if (g) {
                 const q = placeGlyph(g, r.left, r.top + ascent, size);

@@ -190,6 +190,7 @@ struct Body {
 @group(1) @binding(2) var samp: sampler;
 @group(1) @binding(3) var atlas: texture_2d<f32>;
 @group(1) @binding(4) var<storage, read> bodies: array<Body>;
+@group(1) @binding(5) var msdf: texture_2d<f32>;
 
 struct VsOut {
   @builtin(position) clip: vec4f,
@@ -198,6 +199,7 @@ struct VsOut {
   @location(2) local: vec2f,
   @location(3) @interpolate(flat) edge: f32,
   @location(4) @interpolate(flat) size: vec2f,
+  @location(5) @interpolate(flat) multi: f32,
 };
 
 fn rot(a: f32) -> mat2x2f {
@@ -253,14 +255,23 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
   if (e.fx > 1.5) { ink = frame.glyph.y; }
   out.edge = 0.75 - ink * 0.14 + (1.0 - reveal) * 0.65;
   out.size = g.size;
+  out.multi = select(0.0, 1.0, g.px < 0.0);
   return out;
 }
 
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4f {
-  let d = textureSample(atlas, samp, in.uv).r;
+  // Les deux atlas sont lus sans condition (contrôle uniforme pour les
+  // dérivées), puis on garde le bon. MTSDF : médiane des trois canaux, bord
+  // à 0,5 ; ses angles restent vifs à toutes les tailles.
+  let single = textureSample(atlas, samp, in.uv).r;
+  let m = textureSample(msdf, samp, in.uv).rgb;
+  let med = max(min(m.r, m.g), min(max(m.r, m.g), m.b));
+  let isMulti = in.multi > 0.5;
+  let d = select(single, med, isMulti);
+  let edge = select(in.edge, 0.5 + (in.edge - 0.75) * 0.85, isMulti);
   let w = max(fwidth(d) * 0.75, 0.002);
-  var a = smoothstep(in.edge - w, in.edge + w, d) * in.color.a;
+  var a = smoothstep(edge - w, edge + w, d) * in.color.a;
   var col = in.color.rgb;
 
   if (frame.glyph.w > 0.5) {

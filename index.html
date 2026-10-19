@@ -153,6 +153,12 @@
               avec un <span class="code-inline">Range</span>. Le texte GPU tombe donc au pixel près sur le texte HTML,
               quelle que soit la largeur de l'écran.
             </p>
+            <p>
+              Deux atlas, selon la taille. Le texte courant utilise un champ de distance à un canal, généré au chargement
+              avec la vraie fonte. Les titres utilisent un atlas MTSDF, préparé à l'avance avec msdfgen : trois canaux
+              qui gardent chacun une arête, dont la médiane redonne des angles vifs même à 150 pixels. C'est la technique
+              qu'Aristide Benoist décrit pour son propre moteur.
+            </p>
           </div>
           <div class="stage stage--type" data-gl-stage="glyph">
             <p class="specimen" data-gl-text data-gl-fx="specimen">Encre &amp; plomb</p>

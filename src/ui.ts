@@ -101,12 +101,12 @@ export function showTimings(t: Timings) {
   }
 }
 
-export function showLayout(info: { glyphs: number; atlas: number; textures: number; drops: number }) {
+export function showLayout(info: { glyphs: number; atlas: number; msdf: number; textures: number; drops: number }) {
   const ink = document.querySelector("[data-readout='ink']");
   if (ink) ink.textContent = `${info.drops.toLocaleString("fr-FR")} gouttes, 1 dispatch de calcul et 1 appel de dessin par frame`;
   const el = document.querySelector("[data-readout='glyphs']");
   if (el) {
-    el.textContent = `${info.glyphs.toLocaleString("fr-FR")} glyphes à l'écran, ${info.atlas} dans l'atlas, 1 appel de dessin`;
+    el.textContent = `${info.glyphs.toLocaleString("fr-FR")} glyphes, dont ${info.msdf.toLocaleString("fr-FR")} en MTSDF pour les titres ; ${info.atlas} dans l'atlas SDF ; 1 appel de dessin`;
   }
 }
 

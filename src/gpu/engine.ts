@@ -1,14 +1,14 @@
 import { motion, pointer, settings } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
-import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer } from "./text.ts";
+import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, GLYPH, INK, MAX_CHAPTERS, MAX_STAGES, PLANE, SIM } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
 export type EngineHooks = {
   onTimings?: (t: Timings) => void;
-  onLayout?: (info: { glyphs: number; atlas: number; textures: number; drops: number }) => void;
+  onLayout?: (info: { glyphs: number; atlas: number; msdf: number; textures: number; drops: number }) => void;
   onLost?: (reason: string) => void;
 };
 
@@ -81,6 +81,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
       { binding: 4, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
+      { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
     ],
   });
   const simLayout = device.createBindGroupLayout({
@@ -233,6 +234,29 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
 
   const text = new TextLayer(device);
+  // Atlas MTSDF des titres. S'il manque, les titres restent en SDF simple.
+  let msdfTex = device.createTexture({ size: [1, 1], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING });
+  try {
+    const [meta, blob] = await Promise.all([
+      fetch(new URL("./msdf/display.json", document.baseURI)).then((r) => (r.ok ? (r.json() as Promise<MsdfMeta>) : null)),
+      fetch(new URL("./msdf/display.png", document.baseURI)).then((r) => (r.ok ? r.blob() : null)),
+    ]);
+    if (meta && blob) {
+      const bmp = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+      msdfTex.destroy();
+      msdfTex = device.createTexture({
+        label: "atlas-mtsdf",
+        size: [bmp.width, bmp.height],
+        format: "rgba8unorm",
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+      device.queue.copyExternalImageToTexture({ source: bmp }, { texture: msdfTex, premultipliedAlpha: false }, [bmp.width, bmp.height]);
+      bmp.close();
+      text.msdf = meta;
+    }
+  } catch (err) {
+    console.warn("[pli] atlas MTSDF indisponible", err);
+  }
   const images = new ImageLayer(device, texLayout, linear);
   const atlasBind = images.bindFor(text.texture);
 
@@ -339,10 +363,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
           { binding: 2, resource: linear },
           { binding: 3, resource: text.texture.createView() },
           { binding: 4, resource: { buffer: bodyBuf } },
+          { binding: 5, resource: msdfTex.createView() },
         ],
       });
     }
-    hooks.onLayout?.({ glyphs: text.glyphCount, atlas: text.atlasGlyphs, textures: images.bytes, drops: inkCount });
+    hooks.onLayout?.({ glyphs: text.glyphCount, atlas: text.atlasGlyphs, msdf: text.msdfGlyphs, textures: images.bytes, drops: inkCount });
   };
 
   /* ───── Cibles dépendantes de la taille ───── */
@@ -617,6 +642,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
     /* Transition : impression des chapitres */
     const printOn = c.print && !reduced;
+    const atBottom = scrollY + innerHeight >= document.documentElement.scrollHeight - 2;
     let nch = 0;
     const printEase = 1 - Math.exp(-dt * 4.5);
     for (const ch of document.querySelectorAll(".chapter, .colophon")) {
@@ -626,8 +652,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         st = { shown: 0, target: 0 };
         printDepth.set(ch, st);
       }
-      // La ligne d'impression est à 86 % de la hauteur de l'écran.
-      st.target = Math.max(st.target, cssH * 0.86 - r.top);
+      // La ligne d'impression est à 86 % de la hauteur de l'écran. En bas de
+      // page, rien ne peut plus monter : tout ce qui est visible s'imprime.
+      st.target = Math.max(st.target, atBottom && r.top < cssH ? 1e6 : cssH * 0.86 - r.top);
       st.shown = Math.max(st.shown, st.shown + (st.target - st.shown) * printEase);
       if (nch < MAX_CHAPTERS && r.bottom > 0 && r.top < cssH) {
         postData.set([r.top * dpr, r.bottom * dpr, st.shown * dpr, 0], PRINT_AT + 4 + nch * 4);
@@ -831,6 +858,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       for (const el of document.querySelectorAll(".is-printed")) el.classList.remove("is-printed");
       images.destroy();
       text.texture.destroy();
+      msdfTex.destroy();
       bodyBuf.destroy();
       dropBuf.destroy();
       scene?.destroy();
