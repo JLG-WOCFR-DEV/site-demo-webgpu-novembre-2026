@@ -1354,6 +1354,10 @@ html.gl-on .menu {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14);
   -webkit-user-drag: none;
 }
+/* Une feuille vue de dos ne montre pas son recto à l'envers ; le GPU en peint le verso. */
+.sheet {
+  backface-visibility: hidden;
+}
 .sheet:focus-visible {
   outline: 3px solid var(--spot);
   outline-offset: 4px;
@@ -1652,5 +1656,22 @@ html.gl-on .menu[data-style="planche"] .sheet {
 @media (max-width: 640px) {
   .matter-title {
     font-size: 28px;
+  }
+}
+
+.menu-screens {
+  align-items: center;
+}
+.menu-screens-legend {
+  float: left;
+  margin-right: 6px;
+  font: 500 11px/36px var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+@media (max-width: 640px) {
+  .menu-screens {
+    display: none;
   }
 }

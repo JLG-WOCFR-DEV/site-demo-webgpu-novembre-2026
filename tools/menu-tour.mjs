@@ -62,7 +62,7 @@ await p.keyboard.press("ArrowRight");
 await p.keyboard.press("ArrowRight");
 await shot("m02-leporello-next", 2500);
 let n = 3;
-for (const s of ["index", "ramette", "planche", "nuancier", "bande", "rotative", "galerie"]) {
+for (const s of ["index", "ramette", "planche", "nuancier", "bande", "rotative", "galerie", "salle"]) {
   await pick(s);
   await p.mouse.move(2, H - 2);
   await shot(`m${String(n++).padStart(2, "0")}-${s}`, 2500);

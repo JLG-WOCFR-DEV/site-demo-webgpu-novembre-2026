@@ -3,7 +3,7 @@ import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -52,11 +52,12 @@ const TRACE_RATES: [number, number, number, number][] = [
 export const WRAP_PAD = 56;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
 const MATTER_AT = CASSE_AT + 4 + 16 * 4;
+const SCREEN_AT = MATTER_AT + 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -177,8 +178,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const layersMod = device.createShaderModule({ label: "layers", code: LAYERS });
   const sheetMod = device.createShaderModule({ label: "sheet", code: SHEET });
   const traceMod = device.createShaderModule({ label: "trace", code: TRACE });
+  const fireMod = device.createShaderModule({ label: "fire", code: FIRE });
+  const procMod = device.createShaderModule({ label: "proc", code: PROC });
   const inkMod = device.createShaderModule({ label: "ink", code: INK });
-  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod, sheetMod, traceMod]) {
+  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod, sheetMod, traceMod, fireMod, procMod]) {
     const info = await m.getCompilationInfo();
     const errors = info.messages.filter((x) => x.type === "error");
     if (errors.length) throw new Error(`WGSL ${m.label}: ${errors.map((e) => `${e.lineNum}:${e.message}`).join(" | ")}`);
@@ -307,6 +310,35 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 2, resource: traceB.createView({ dimension: "2d-array" }) },
     ],
   });
+
+  // Matières : le feu, dessiné dans la scène en HDR avant le bloom.
+  const fireLayout = device.createBindGroupLayout({
+    entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 48 } }],
+  });
+  const firePipe = device.createRenderPipeline({
+    label: "fire",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, fireLayout] }),
+    vertex: { module: fireMod, entryPoint: "vs_fire" },
+    fragment: { module: fireMod, entryPoint: "fs_fire", targets: [{ format: SCENE_FORMAT, blend: premul }] },
+    primitive: strip,
+  });
+  // Chapitre 06 : sources animées, à la place de la photo.
+  const procLayout = device.createBindGroupLayout({
+    entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } }],
+  });
+  const procPipe = device.createRenderPipeline({
+    label: "proc",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, procLayout] }),
+    vertex: { module: procMod, entryPoint: "vs_proc" },
+    fragment: { module: procMod, entryPoint: "fs_proc", targets: [{ format: SCENE_FORMAT }] },
+    primitive: strip,
+  });
+  const procBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const procBind = device.createBindGroup({ layout: procLayout, entries: [{ binding: 0, resource: { buffer: procBuf } }] });
+  const MAX_FIRES = 4;
+  const fireBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_FIRES, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const fireBind = device.createBindGroup({ layout: fireLayout, entries: [{ binding: 0, resource: { buffer: fireBuf, size: 48 } }] });
+  const fireData = new Float32Array((PLANE_STRIDE * MAX_FIRES) / 4);
 
   const sheetPipe = device.createRenderPipeline({
     label: "sheet",
@@ -731,6 +763,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow, peel: peel > 0.001 });
       slot++;
     };
+    let procRect: DOMRect | null = null;
     for (const p of menuOpen ? [] : images.plates) {
       const r = p.img.getBoundingClientRect();
       const visible = r.bottom > -80 && r.top < cssH + 80 && r.width > 0;
@@ -738,6 +771,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       p.hover += ((over ? 1 : 0) - p.hover) * (reduced ? 1 : 0.12);
       if (settings.dom.boxes && visible) boxes.push(r.left, r.top, r.width, r.height, 0.894, 0, 0.486, 0.95);
       if (!visible || !p.bind) continue;
+      if (settings.filter.source > 0 && p.img.closest('[data-gl-stage="filtre"]')) {
+        // Une source animée remplace la photo du chapitre 06.
+        procRect = r;
+        continue;
+      }
       if (p.fluid && p.texture && !reduced) {
         // Chapitre 08.2 : la plaque est dessinée depuis le colorant advecté.
         fluidPlate = { plate: p, rect: r };
@@ -766,6 +804,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.fill(0);
     traceData.fill(0);
     let traceOn = false;
+    let fires = 0;
     let si = 0;
     for (const s of stageEls) {
       const r = s.getBoundingClientRect();
@@ -780,6 +819,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         traceData.set([pvx / r.width, pvy / r.height, r.width / r.height, 0.09], o + 4);
         traceData.set(rates, o + 8);
         traceOn = traceOn || rates[0] > 0;
+        if ((kind === 4 || kind === 8) && fires < MAX_FIRES) {
+          const o2 = (fires * PLANE_STRIDE) / 4;
+          fireData.set([r.left, r.top, r.width, r.height], o2);
+          fireData.set([kind === 4 ? 0 : 1, settings.matter.intensity, WRAP_PAD, inside ? 1 : 0], o2 + 4);
+          fireData.set([pointer.x, pointer.y, inside ? 1 : 0, 0], o2 + 8);
+          fires++;
+        }
       }
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left - 6, r.top - 6, r.width + 12, r.height + 12, 0.07, 0.07, 0.07, 0.7);
       if (s.dataset.glStage === "glyph" && settings.glyph.atlas && r.bottom > 0 && r.top < cssH) {
@@ -869,7 +915,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
     postData.set(casseData, CASSE_AT);
-    postData.set([settings.matter.intensity, WRAP_PAD * dpr, 0, 0], MATTER_AT);
+    postData.set([settings.matter.intensity, WRAP_PAD * dpr, menuOpen ? menuGL.screen : 0, 0], MATTER_AT);
+    const sr = menuGL.screenRect;
+    postData.set([sr[0] * dpr, sr[1] * dpr, sr[2] * dpr, sr[3] * dpr], SCREEN_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -1017,6 +1065,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       scenePass.setPipeline(planePipe);
       scenePass.draw(4);
     }
+    if (procRect) {
+      device.queue.writeBuffer(procBuf, 0, new Float32Array([procRect.left, procRect.top, procRect.width, procRect.height, settings.filter.source, 0, 0, 0]));
+      scenePass.setPipeline(procPipe);
+      scenePass.setBindGroup(1, procBind);
+      scenePass.draw(4);
+    }
     if (layersOn && layersBind) {
       scenePass.setPipeline(layersPipe);
       scenePass.setBindGroup(1, layersBind);
@@ -1039,6 +1093,15 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       scenePass.setPipeline(glyphPipe);
       scenePass.setBindGroup(1, glyphBind);
       scenePass.draw(4, text.glyphCount);
+    }
+    if (fires && settings.matter.intensity > 0) {
+      // Par-dessus le texte : la feuille brûle avec ce qu'elle porte.
+      device.queue.writeBuffer(fireBuf, 0, fireData, 0, (fires * PLANE_STRIDE) / 4);
+      scenePass.setPipeline(firePipe);
+      for (let i = 0; i < fires; i++) {
+        scenePass.setBindGroup(1, fireBind, [i * PLANE_STRIDE]);
+        scenePass.draw(4);
+      }
     }
     scenePass.end();
 
@@ -1207,6 +1270,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       traceA.destroy();
       traceB.destroy();
       traceBuf.destroy();
+      fireBuf.destroy();
+      procBuf.destroy();
       bodyBuf.destroy();
       dropBuf.destroy();
       scene?.destroy();

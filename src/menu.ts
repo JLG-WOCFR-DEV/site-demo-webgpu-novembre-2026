@@ -12,7 +12,7 @@ import { motion, pointer, settings } from "./state.ts";
  * Sans WebGPU, le CSS rend la même géométrie avec les mêmes matrices.
  */
 
-export const MENU_STYLES = ["leporello", "index", "ramette", "planche", "nuancier", "bande", "rotative", "galerie"] as const;
+export const MENU_STYLES = ["leporello", "index", "ramette", "planche", "nuancier", "bande", "rotative", "galerie", "salle"] as const;
 export type MenuStyle = (typeof MENU_STYLES)[number];
 
 export type MenuQuad = {
@@ -37,6 +37,10 @@ export const menuGL = {
   /** Index : la photo s'imprime avec la transition choisie (px css écran). */
   print: null as null | { x0: number; top: number; bottom: number; depth: number },
   step: null as null | ((t: number) => void),
+  /** Écran posé sur le sommaire : 0 aucun, 1 CRT, 2 projecteur. */
+  screen: 0,
+  /** Rectangle de la scène du sommaire (px css écran). */
+  screenRect: [0, 0, 0, 0] as [number, number, number, number],
 };
 
 type Item = {
@@ -66,6 +70,12 @@ const PHOTO: Record<string, string> = {
 };
 
 const PERSPECTIVE = 1500;
+/**
+ * Distance de l'œil. La salle veut une focale plus courte : on se tient au
+ * centre du cercle, et la taille apparente d'une feuille n'y dépend que de
+ * l'angle qu'elle occupe.
+ */
+const perspective = (W: number) => (style === "salle" ? Math.max(520, W * 0.62) : PERSPECTIVE);
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const smooth = (a: number, b: number, v: number) => {
   const t = clamp((v - a) / (b - a), 0, 1);
@@ -110,7 +120,7 @@ let drag: { x: number; y: number; pos: number; moved: boolean } | null = null;
 
 const N = () => items.length;
 /** Styles qui tournent en boucle : leur compteur est continu, l'index en est le modulo. */
-const cyclic = () => style === "ramette" || style === "bande" || style === "rotative";
+const cyclic = () => style === "ramette" || style === "bande" || style === "rotative" || style === "salle";
 /** Styles qu'on feuillette en tirant (les autres se survolent). */
 const draggable = () => style !== "index" && style !== "planche";
 let vel = 0;
@@ -133,6 +143,12 @@ export function setupMenu() {
   root.querySelector("[data-menu-close]")?.addEventListener("click", () => closeMenu());
   root.querySelector("[data-menu-prev]")?.addEventListener("click", () => shift(-1, false));
   root.querySelector("[data-menu-next]")?.addEventListener("click", () => shift(1, false));
+  for (const r of root.querySelectorAll<HTMLInputElement>("input[name='menu-screen']")) {
+    r.checked = Number(r.value) === menuGL.screen;
+    r.addEventListener("change", () => {
+      if (r.checked) menuGL.screen = Number(r.value);
+    });
+  }
   for (const r of root.querySelectorAll<HTMLInputElement>("input[name='menu-style']")) {
     r.checked = r.value === style;
     r.addEventListener("change", () => {
@@ -304,7 +320,10 @@ function shift(d: number, focus: boolean) {
 
 function settle(focus: boolean) {
   if (motion.reduced) pos = active;
-  if (focus) items[wrap(active)]!.link.focus({ preventScroll: true });
+  // Le focus suit la feuille active, même quand on change de feuille à la
+  // molette, au glisser ou aux flèches de l'écran.
+  const onSheet = (document.activeElement as HTMLElement | null)?.classList.contains("sheet");
+  if (focus || onSheet) items[wrap(active)]!.link.focus({ preventScroll: true });
   announce();
 }
 
@@ -374,6 +393,7 @@ function dragSpan() {
   if (style === "bande") return bandeSize(W, stage.clientHeight).step;
   if (style === "nuancier") return 70;
   if (style === "rotative" || style === "galerie") return 120;
+  if (style === "salle") return 160;
   return W * 0.4;
 }
 function onMove(e: PointerEvent) {
@@ -396,7 +416,7 @@ function onUp() {
     const fling = motion.reduced ? 0 : clamp(vel * 0.28, -4, 4);
     const target = Math.round(pos + fling);
     active = cyclic() ? target : clamp(target, 0, N() - 1);
-    announce();
+    settle(false);
   }
   // Laisse passer le clic qui suit un glissé sans l'interpréter.
   setTimeout(() => (drag = null), 0);
@@ -464,6 +484,7 @@ function step(t: number) {
   const W = stage.clientWidth;
   const H = stage.clientHeight;
   const sr = stage.getBoundingClientRect();
+  menuGL.screenRect = [sr.left, sr.top, W, H];
   const placed = layout(style, W, H, dt, k);
 
   // Ouverture : la feuille choisie remplit la scène avant d'ouvrir le chapitre.
@@ -484,10 +505,11 @@ function step(t: number) {
   }
 
   // DOM : même matrice, transform-origin 0 0, perspective sur la scène.
-  stage.style.perspective = `${PERSPECTIVE}px`;
+  const eye = perspective(W);
+  stage.style.perspective = `${eye}px`;
   stage.style.perspectiveOrigin = `${W / 2}px ${H / 2}px`;
   const persp = new DOMMatrix();
-  persp.m34 = -1 / PERSPECTIVE;
+  persp.m34 = -1 / eye;
   const P = mul(T(sr.left + W / 2, sr.top + H / 2), persp, T(-W / 2, -H / 2));
   placed.sort((a, b) => a.z - b.z);
   const gl = gpuOn();
@@ -611,7 +633,11 @@ function layout(s: MenuStyle, W: number, H: number, dt: number, k: (r: number) =
     const c1 = centre(kf + 1);
     const ax = c0[0] + (c1[0] - c0[0]) * f;
     const az = c0[1] + (c1[1] - c0[1]) * f;
-    const G = T(W / 2 - ax, (H - ph) / 2 - 10, -az - (1 - a) * 300);
+    // Rien ne doit venir en avant de la feuille ouverte : les plis qui
+    // avanceraient vers l'écran grossiraient. On recule toute la chaîne.
+    let zmax = -Infinity;
+    for (let i = 0; i <= n; i++) zmax = Math.max(zmax, hinge[i]![1] - az);
+    const G = T(W / 2 - ax, (H - ph) / 2 - 10, -az - Math.max(0, zmax) * 0.85 - (1 - a) * 300);
     for (let i = 0; i < n; i++) {
       const r = (phi[i]! * Math.PI) / 180;
       const m = mul(G, T(hinge[i]![0], 0, hinge[i]![1]), rotY(phi[i]!));
@@ -622,7 +648,9 @@ function layout(s: MenuStyle, W: number, H: number, dt: number, k: (r: number) =
       const prev = i > 0 ? Math.abs(phi[i]! - phi[i - 1]!) / (2 * TH) : 0;
       const next = i < n - 1 ? Math.abs(phi[i]! - phi[i + 1]!) / (2 * TH) : 0;
       const z = m.transformPoint(new DOMPoint(pw / 2, ph / 2, 0)).z;
-      out.push({ it: items[i]!, m, w: pw, h: ph, alpha: clamp(a * 1.4, 0, 1), shade, look: [1, prev, next, 0], z, label: 1 });
+      // La légende s'efface quand le panneau se plie : de biais, elle se chevaucherait.
+      const label = 1 - smooth(22, 50, Math.abs(phi[i]!));
+      out.push({ it: items[i]!, m, w: pw, h: ph, alpha: clamp(a * 1.4, 0, 1), shade, look: [1, prev, next, 0], z, label });
     }
     return out;
   }
@@ -745,6 +773,32 @@ function layout(s: MenuStyle, W: number, H: number, dt: number, k: (r: number) =
       const m = mul(T(x + w / 2, H / 2, z), rotY(-side * smooth(0, 1.2, Math.abs(d)) * 14), T(-w / 2, -h / 2));
       const alpha = (1 - smooth(1.5, 4.5, d)) * (d < 0 ? 1 - smooth(0.25, 0.85, -d) : 1) * clamp(a * 1.4, 0, 1);
       out.push({ it: items[i]!, m, w, h, alpha, shade: 1 - 0.04 * clamp(d, 0, 4), look: [1, 0, 0, 0], z, label: clamp(1 - Math.abs(d) * 1.5, 0, 1) });
+    }
+    return out;
+  }
+
+  if (s === "salle") {
+    // Salle : on se tient au centre d'une pièce ronde ; les feuilles sont
+    // accrochées au mur tout autour et tournent autour de nous. L'œil de la
+    // perspective CSS est le centre du cercle.
+    const eye = perspective(W);
+    const step = 360 / n;
+    const sinHalf = Math.sin(((step / 2) * Math.PI) / 180);
+    const k2 = 1.1 / (2 * sinHalf);
+    const R = Math.min(eye * 0.92, 900);
+    const w = R / k2;
+    const h = Math.min(w / 1.05, (H * 0.7 * R) / eye);
+    const zc = eye - 1;
+    for (let i = 0; i < n; i++) {
+      let d = (((i - pos) % n) + n) % n;
+      if (d > n / 2) d -= n;
+      const th = d * step * (0.35 + 0.65 * a);
+      const m = mul(T(W / 2, H / 2, zc), rotY(-th), T(-w / 2, -h / 2, -R));
+      const back = Math.abs(th) > 84;
+      // Lumière zénithale au centre de la pièce : les murs de côté sont plus sombres.
+      const shade = clamp(1.02 - Math.abs(th) / 220, 0.55, 1.02);
+      const z = -Math.abs(th);
+      out.push({ it: items[i]!, m, w, h, alpha: back ? 0 : clamp(a * 1.5, 0, 1) * (1 - smooth(70, 84, Math.abs(th))), shade, look: [1, 0, 0, 0], z, label: 1 - smooth(25, 60, Math.abs(th)) });
     }
     return out;
   }

@@ -83,6 +83,13 @@
           <label><input type="radio" name="menu-style" value="bande" /> Bande</label>
           <label><input type="radio" name="menu-style" value="rotative" /> Rotative</label>
           <label><input type="radio" name="menu-style" value="galerie" /> Galerie</label>
+          <label><input type="radio" name="menu-style" value="salle" /> Salle</label>
+        </fieldset>
+        <fieldset class="choices menu-screens">
+          <legend class="menu-screens-legend">Écran</legend>
+          <label><input type="radio" name="menu-screen" value="0" checked /> Aucun</label>
+          <label><input type="radio" name="menu-screen" value="1" /> CRT</label>
+          <label><input type="radio" name="menu-screen" value="2" /> Projecteur</label>
         </fieldset>
         <button type="button" class="pause-btn" data-menu-close>Fermer</button>
       </div>
@@ -208,9 +215,10 @@
             <div class="prose" data-gl-text>
               <p>
                 Un plan peut aussi quitter le plan de la page. Le sommaire, ouvert depuis la barre, pose ses feuilles en
-                3D. Huit présentations, au choix dans le sommaire : sans relief, un index typographique, une planche contact, un
+                3D. Neuf présentations, au choix dans le sommaire : sans relief, un index typographique, une planche contact, un
                 nuancier en éventail et une bande sans fin ; en volume, un dépliant en accordéon, une ramette dont la
-                première feuille s'envole, une rotative et une galerie en profondeur. Chaque feuille reçoit une matrice
+                première feuille s'envole, une rotative, une galerie en profondeur et une salle ronde dont on occupe
+                le centre. Un écran CRT ou un projecteur de cinéma peut se poser par-dessus. Chaque feuille reçoit une matrice
                 4 × 4 calculée en JavaScript.
               </p>
               <p>
@@ -486,6 +494,11 @@
               choisi parmi seize rangés du plus clair au plus noir : c'est l'art ASCII, version typographe.
             </p>
             <p>
+              La photo peut céder la place à une source animée, calculée par un shader : dégradé maillé, encre
+              marbrée, ondes, métaballes. Les filtres la relisent de la même façon, image par image ; la casse de plomb
+              devient alors une animation en caractères.
+            </p>
+            <p>
               Les cinq premiers reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
               chaîne que la trame : après le bloom et le repérage, dans la passe composite. La photographie n'est
               envoyée qu'une fois au GPU ; seul le chemin de lecture change.
@@ -498,6 +511,14 @@
           </div>
           <form class="controls" aria-labelledby="c-filtre" data-controls="filter">
             <p id="c-filtre" class="controls-title">Le filtre</p>
+            <fieldset class="choices">
+              <legend class="choices-legend">Source</legend>
+              <label><input type="radio" name="source" value="0" checked /> Photo</label>
+              <label><input type="radio" name="source" value="1" /> Dégradé maillé</label>
+              <label><input type="radio" name="source" value="2" /> Encre marbrée</label>
+              <label><input type="radio" name="source" value="3" /> Ondes</label>
+              <label><input type="radio" name="source" value="4" /> Métaballes</label>
+            </fieldset>
             <fieldset class="choices">
               <legend class="sr-only">Filtre appliqué à la photo</legend>
               <label><input type="radio" name="kind" value="0" /> Trame noire</label>

@@ -979,6 +979,288 @@ fn trace(@builtin(global_invocation_id) id: vec3u) {
 }
 `;
 
+/* ───────────────────────── Feu (matières, en HDR) ───────────────────────── */
+
+// Les flammes de la leçon 06.1 sont dessinées dans la scène en virgule
+// flottante, avant le bloom : leur cœur dépasse 1, le bloom en tire un halo,
+// et la passe composite n'ajoute plus que la chaleur et la fumée.
+// Mélange prémultiplié : rgb = lumière émise (+ suie), a = ce qui assombrit le
+// papier dessous. Le feu roussit la feuille, ce qui lui donne son contraste.
+export const FIRE = /* wgsl */ `
+${FRAME_STRUCT}
+
+struct Fire {
+  rect: vec4f, // x, y, l, h (css)
+  p: vec4f,    // type (0 flammes, 1 enveloppe), intensité, marge (css), survol
+  ptr: vec4f,  // pointeur x, y (css), dedans, 0
+};
+
+@group(0) @binding(0) var<uniform> frame: Frame;
+@group(1) @binding(0) var<uniform> fire: Fire;
+
+struct VsOut {
+  @builtin(position) clip: vec4f,
+  @location(0) px: vec2f,
+};
+
+@vertex
+fn vs_fire(@builtin(vertex_index) vi: u32) -> VsOut {
+  let p = fire.rect.xy + corner(vi) * fire.rect.zw;
+  var out: VsOut;
+  out.clip = to_clip(p, frame);
+  out.px = p;
+  return out;
+}
+
+fn fh(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+fn fnoise(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let s = f * f * (3.0 - 2.0 * f);
+  return mix(mix(fh(i), fh(i + vec2f(1.0, 0.0)), s.x), mix(fh(i + vec2f(0.0, 1.0)), fh(i + vec2f(1.0, 1.0)), s.x), s.y);
+}
+fn ffbm(p: vec2f) -> f32 {
+  var v = 0.0;
+  var a = 0.5;
+  var q = p;
+  for (var i = 0; i < 5; i++) {
+    v += a * fnoise(q);
+    q = q * 2.03 + vec2f(1.7, 9.2);
+    a *= 0.5;
+  }
+  return v;
+}
+
+// Corps noir simplifié, en HDR : rouge sombre, orange, jaune, blanc chaud.
+fn blackbody(t: f32) -> vec3f {
+  let k = clamp(t, 0.0, 1.0) * 4.0;
+  let c0 = vec3f(0.0);
+  let c1 = vec3f(0.55, 0.05, 0.0);
+  let c2 = vec3f(1.9, 0.45, 0.04);
+  let c3 = vec3f(3.2, 1.75, 0.35);
+  let c4 = vec3f(4.4, 3.8, 2.7);
+  if (k < 1.0) { return mix(c0, c1, k); }
+  if (k < 2.0) { return mix(c1, c2, k - 1.0); }
+  if (k < 3.0) { return mix(c2, c3, k - 2.0); }
+  return mix(c3, c4, k - 3.0);
+}
+
+// Braises : une par cellule tirée au sort, qui monte en vacillant.
+fn embers(p: vec2f, t: f32, cell: f32) -> f32 {
+  var s = 0.0;
+  for (var k = 0; k < 2; k++) {
+    let fk = f32(k);
+    let c = cell * (1.0 + fk * 0.7);
+    let q = vec2f(p.x + sin(p.y / 23.0 + fk) * 6.0, p.y + t * (55.0 + 45.0 * fk)) / c;
+    let id = floor(q);
+    let h = fh(id + fk * 17.0);
+    let pos = vec2f(fh(id + 3.1), fh(id + 7.7)) * 0.8 + 0.1;
+    let d = length(fract(q) - pos) * c;
+    let flick = step(0.8, h) * (0.55 + 0.45 * sin(t * 18.0 + h * 50.0));
+    s += flick * exp(-d * d / 1.6);
+  }
+  return s;
+}
+
+fn sd_rbox(p: vec2f, b: vec2f, r: f32) -> f32 {
+  let q = abs(p) - b + vec2f(r);
+  return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - r;
+}
+
+const SOOT: vec3f = vec3f(0.16, 0.07, 0.02);
+
+@fragment
+fn fs_fire(in: VsOut) -> @location(0) vec4f {
+  let t = frame.viewport.w;
+  let amt = fire.p.y;
+  let r = fire.rect;
+  let px = in.px;
+  var f: f32;
+  var up: f32;
+  var molten = 0.0;
+  var reachUp = 0.0;
+  if (fire.p.x < 0.5) {
+    // Flammes : des langues qui montent du pied de la plaque.
+    let local = px - r.xy;
+    let h = 1.0 - local.y / r.w;
+    let lean = select(0.0, (fire.ptr.x - (r.x + r.z * 0.5)) / r.z, fire.ptr.z > 0.5);
+    let q = vec2f(local.x / 80.0 - lean * h * 1.4, local.y / 150.0 + t * 1.15);
+    let warp = vec2f(ffbm(q * 1.4 + vec2f(0.0, t * 0.35)), ffbm(q * 1.4 + vec2f(5.2, t * 0.45))) - 0.5;
+    let n = ffbm(q * vec2f(1.0, 0.7) + warp * 1.3);
+    let H = (0.3 + 0.42 * ffbm(vec2f(local.x / 130.0, t * 0.18))) * amt;
+    f = (H - h) / max(H, 0.05) + (n - 0.5) * 1.5;
+    up = h;
+    reachUp = H;
+  } else {
+    // Enveloppe : une bordure de feu autour de l'élément, plus haute au-dessus.
+    let pad = fire.p.z;
+    let inner = vec4f(r.xy + vec2f(pad), r.zw - vec2f(pad * 2.0));
+    let c = inner.xy + inner.zw * 0.5;
+    let d = sd_rbox(px - c, inner.zw * 0.5, 4.0);
+    if (d < 0.0) { return vec4f(0.0); }
+    up = clamp((c.y - px.y) / (inner.w * 0.5 + pad), -1.0, 1.0);
+    let q = vec2f(px.x / 24.0, px.y / 40.0 + t * 1.9);
+    let warp = vec2f(ffbm(q * 1.3 + vec2f(0.0, t * 0.4)), ffbm(q * 1.3 + vec2f(4.1, t * 0.5))) - 0.5;
+    let n = ffbm(q + warp * 1.2);
+    let reach = mix(9.0, 38.0, up * 0.5 + 0.5) * (0.55 + n * 1.0) * (1.0 + 0.45 * fire.p.w) * amt;
+    f = 1.0 - d / max(reach, 0.5) + (n - 0.5) * 0.6;
+    molten = (1.0 - smoothstep(0.0, 2.2, d)) * (0.75 + 0.25 * sin(t * 9.0 + n * 12.0)) * min(amt, 1.0);
+    reachUp = 1.0;
+  }
+  let body = smoothstep(0.0, 0.3, f);
+  var light = blackbody(f * 0.8) * body * min(amt, 1.3);
+  light += vec3f(4.0, 2.3, 0.7) * molten;
+  // Braises au-dessus du feu.
+  let ember = embers(px, t, 20.0) * smoothstep(-0.2, 0.4, up) * (1.0 - smoothstep(0.5, 1.0, up)) * min(amt, 1.0);
+  light += vec3f(3.0, 1.1, 0.25) * ember;
+  // Suie : la feuille roussit autour et sous les flammes.
+  let soot = smoothstep(-0.5, 0.15, f) * 0.6 * min(amt, 1.0);
+  let a = clamp(soot + body * 0.3, 0.0, 0.92);
+  return vec4f(light + SOOT * soot, a);
+}
+`;
+
+/* ───────────────────────── Sources animées (chapitre 06) ───────────────────────── */
+
+// Des shaders animés à la place de la photo, pour essayer les filtres sur une
+// image qui bouge : dégradé maillé, encre marbrée, ondes, métaballes.
+export const PROC = /* wgsl */ `
+${FRAME_STRUCT}
+
+struct Proc {
+  rect: vec4f, // x, y, l, h (css)
+  p: vec4f,    // source (1…4), 0, 0, 0
+};
+
+@group(0) @binding(0) var<uniform> frame: Frame;
+@group(1) @binding(0) var<uniform> proc: Proc;
+
+struct VsOut {
+  @builtin(position) clip: vec4f,
+  @location(0) uv: vec2f,
+};
+
+@vertex
+fn vs_proc(@builtin(vertex_index) vi: u32) -> VsOut {
+  let c = corner(vi);
+  var out: VsOut;
+  out.clip = to_clip(proc.rect.xy + c * proc.rect.zw, frame);
+  out.uv = c;
+  return out;
+}
+
+fn ph(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+fn pnoise(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let s = f * f * (3.0 - 2.0 * f);
+  return mix(mix(ph(i), ph(i + vec2f(1.0, 0.0)), s.x), mix(ph(i + vec2f(0.0, 1.0)), ph(i + vec2f(1.0, 1.0)), s.x), s.y);
+}
+fn pfbm(p: vec2f) -> f32 {
+  var v = 0.0;
+  var a = 0.5;
+  var q = p;
+  for (var i = 0; i < 5; i++) {
+    v += a * pnoise(q);
+    q = q * 2.02 + vec2f(1.3, 7.1);
+    a *= 0.5;
+  }
+  return v;
+}
+
+// Dégradé maillé : cinq taches de couleur qui dérivent, mêlées à travers un
+// champ déformé.
+fn mesh(uv: vec2f, t: f32, aspect: f32) -> vec3f {
+  var cols = array<vec3f, 5>(
+    vec3f(0.96, 0.42, 0.22),
+    vec3f(0.18, 0.36, 0.78),
+    vec3f(0.98, 0.82, 0.46),
+    vec3f(0.62, 0.18, 0.42),
+    vec3f(0.12, 0.62, 0.58),
+  );
+  var p = (uv - 0.5) * vec2f(aspect, 1.0);
+  p += (vec2f(pfbm(p * 1.6 + t * 0.07), pfbm(p * 1.6 + 4.0 - t * 0.06)) - 0.5) * 0.5;
+  var acc = vec3f(0.0);
+  var wsum = 0.0;
+  for (var i = 0; i < 5; i++) {
+    let fi = f32(i);
+    let c = vec2f(sin(t * 0.21 + fi * 1.7) * 0.42 * aspect, cos(t * 0.17 + fi * 2.3) * 0.38);
+    let d = length(p - c);
+    let w = 1.0 / pow(d + 0.06, 2.6);
+    acc += cols[i] * w;
+    wsum += w;
+  }
+  return acc / wsum;
+}
+
+// Encre marbrée : bruit replié sur lui-même (domain warping), trois encres
+// sur papier.
+fn marble(uv: vec2f, t: f32, aspect: f32) -> vec3f {
+  let p = uv * vec2f(aspect, 1.0) * 2.4;
+  let q = vec2f(pfbm(p + vec2f(0.0, t * 0.05)), pfbm(p + vec2f(5.2, 1.3) - t * 0.04));
+  let r = vec2f(pfbm(p + 3.5 * q + vec2f(1.7, 9.2) + t * 0.06), pfbm(p + 3.5 * q + vec2f(8.3, 2.8)));
+  let f = pfbm(p + 3.5 * r);
+  var col = vec3f(0.94, 0.93, 0.9);
+  col = mix(col, vec3f(0.07, 0.25, 0.55), smoothstep(0.35, 0.75, f));
+  col = mix(col, vec3f(0.85, 0.2, 0.14), smoothstep(0.55, 0.9, length(q)) * 0.8);
+  col = mix(col, vec3f(0.06, 0.06, 0.07), smoothstep(0.62, 0.78, r.x) * 0.9);
+  return col;
+}
+
+// Ondes : deux sources qui interfèrent, en courbes de niveau.
+fn waves(uv: vec2f, t: f32, aspect: f32) -> vec3f {
+  let p = (uv - 0.5) * vec2f(aspect, 1.0);
+  let a = vec2f(sin(t * 0.3) * 0.3, cos(t * 0.23) * 0.2);
+  let b = vec2f(-sin(t * 0.27) * 0.32, -cos(t * 0.31) * 0.22);
+  let h = sin(length(p - a) * 48.0 - t * 2.4) + sin(length(p - b) * 52.0 - t * 2.1);
+  let v = h * 0.25 + 0.5;
+  let lines = 1.0 - smoothstep(0.0, 0.12, abs(fract(v * 6.0) - 0.5) * 2.0 - 0.75);
+  let tone = mix(vec3f(0.95, 0.94, 0.9), vec3f(0.1, 0.1, 0.12), smoothstep(0.2, 0.85, v));
+  return mix(tone, vec3f(0.78, 0.2, 0.1), lines * 0.35);
+}
+
+// Métaballes : des gouttes de mercure qui se rejoignent, éclairées.
+fn metaballs(uv: vec2f, t: f32, aspect: f32) -> vec3f {
+  let p = (uv - 0.5) * vec2f(aspect, 1.0);
+  var f = 0.0;
+  var g = vec2f(0.0);
+  for (var i = 0; i < 6; i++) {
+    let fi = f32(i);
+    let c = vec2f(sin(t * (0.3 + fi * 0.07) + fi * 2.1) * 0.36 * aspect, cos(t * (0.25 + fi * 0.05) + fi * 1.3) * 0.32);
+    let r = 0.08 + 0.03 * sin(fi * 3.0);
+    let d = p - c;
+    let k = r * r / max(dot(d, d), 1e-4);
+    f += k;
+    g += -2.0 * k * d / max(dot(d, d), 1e-4);
+  }
+  let inside = smoothstep(0.95, 1.05, f);
+  let n = normalize(vec3f(-g * 0.03, 1.0));
+  let l = normalize(vec3f(-0.5, -0.6, 0.65));
+  let diff = max(dot(n, l), 0.0);
+  let spec = pow(max(dot(reflect(-l, n), vec3f(0.0, 0.0, 1.0)), 0.0), 40.0);
+  let metal = vec3f(0.16, 0.17, 0.19) + vec3f(0.62) * diff + vec3f(1.0) * spec;
+  let bg = mix(vec3f(0.93, 0.92, 0.88), vec3f(0.8, 0.79, 0.75), uv.y);
+  return mix(bg, metal, inside);
+}
+
+@fragment
+fn fs_proc(in: VsOut) -> @location(0) vec4f {
+  let t = frame.viewport.w;
+  let aspect = proc.rect.z / max(proc.rect.w, 1.0);
+  let k = proc.p.x;
+  var col: vec3f;
+  if (k < 1.5) { col = mesh(in.uv, t, aspect); }
+  else if (k < 2.5) { col = marble(in.uv, t, aspect); }
+  else if (k < 3.5) { col = waves(in.uv, t, aspect); }
+  else { col = metaballs(in.uv, t, aspect); }
+  return vec4f(col, 1.0);
+}
+`;
+
 /* ───────────────────────── Sommaire en feuilles ───────────────────────── */
 
 // Une feuille du sommaire : un rectangle plat, posé en 3D par une matrice que
@@ -1022,7 +1304,7 @@ const PAPER_CARD: vec3f = vec3f(0.962, 0.958, 0.938);
 const FILM: vec3f = vec3f(0.075, 0.07, 0.065);
 
 @fragment
-fn fs_sheet(in: VsOut) -> @location(0) vec4f {
+fn fs_sheet(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4f {
   let p = in.local;
   let sz = sheet.size.xy;
   // Antialiasing analytique des bords, en pixels écran.
@@ -1064,8 +1346,14 @@ fn fs_sheet(in: VsOut) -> @location(0) vec4f {
     let rim = 1.0 - smoothstep(0.6, 1.6, edge);
     base = mix(base, vec3f(0.72, 0.71, 0.67), rim * 0.6);
   }
-  var col = mix(base, photo, inPhoto);
-  a = mix(a, 1.0, inPhoto) * cover;
+  // Le dos d'une feuille retournée : du papier nu, ni photo ni légende.
+  // La matrice CSS retourne l'axe y : une feuille vue de face arrive ici
+  // comme une face arrière pour le GPU.
+  let back = select(0.0, 1.0, front) * step(0.5, sheet.look.x);
+  let showPhoto = inPhoto * (1.0 - back);
+  var col = mix(base, photo, showPhoto);
+  col = mix(col, PAPER_CARD * 0.94, back);
+  a = mix(a, 1.0, showPhoto) * cover;
 
   // Plis : le creux s'assombrit vers la charnière.
   let u = p.x / sz.x;
@@ -1100,7 +1388,8 @@ struct Post {
   a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
   casse: vec4f,    // nombre de caractères, largeur et hauteur de l'atlas, corps (px d'atlas)
   ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
-  matter: vec4f,   // intensité des matières, marge de l'enveloppe de feu (px), 0, 0
+  matter: vec4f,   // intensité des matières, marge de l'enveloppe de feu (px), écran du sommaire (0, 1 CRT, 2 projecteur), 0
+  screen: vec4f,   // rectangle de la scène du sommaire (px)
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -1525,59 +1814,23 @@ fn stage_blur(p: vec2f, st: vec4f, r: f32) -> vec3f {
   return acc / 9.0;
 }
 
-// Braise, orange, jaune, blanc chaud.
-fn fire_ramp(f: f32) -> vec3f {
-  let c1 = vec3f(0.42, 0.04, 0.01);
-  let c2 = vec3f(0.96, 0.3, 0.03);
-  let c3 = vec3f(1.0, 0.74, 0.2);
-  let c4 = vec3f(1.0, 0.96, 0.84);
-  if (f < 0.33) { return mix(c1, c2, f / 0.33); }
-  if (f < 0.66) { return mix(c2, c3, (f - 0.33) / 0.33); }
-  return mix(c3, c4, clamp((f - 0.66) / 0.34, 0.0, 1.0));
-}
-
-// Étincelles : une par cellule tirée au sort, qui monte en vacillant.
-fn sparks(p: vec2f, t: f32, cell: f32) -> f32 {
-  var s = 0.0;
-  for (var k = 0; k < 2; k++) {
-    let fk = f32(k);
-    let c = cell * (1.0 + fk * 0.6);
-    let q = vec2f(p.x, p.y + t * (70.0 + 50.0 * fk) * u.res.z) / c;
-    let id = floor(q);
-    let h = tr_hash(id + fk * 17.0);
-    let pos = vec2f(tr_hash(id + 3.1), tr_hash(id + 7.7)) * 0.8 + 0.1 + vec2f(sin(t * 3.0 + h * 20.0) * 0.08, 0.0);
-    let d = length(fract(q) - pos) * c;
-    let flick = step(0.74, h) * (0.6 + 0.4 * sin(t * 20.0 + h * 50.0));
-    s += flick * exp(-d * d / (2.4 * u.res.z * u.res.z));
-  }
-  return s;
-}
-
 fn sd_rbox(p: vec2f, b: vec2f, r: f32) -> f32 {
   let q = abs(p) - b + vec2f(r);
   return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - r;
 }
 
-// Flammes : le feu monte du pied de la plaque, l'air ondule, la fumée voile
-// le haut, des étincelles s'échappent. Les flammes penchent vers le pointeur.
+// Flammes : le feu lui-même est dessiné dans la scène, en HDR (voir FIRE).
+// Ici, l'air chaud ondule au-dessus et la fumée voile le haut de la plaque.
 fn m_flames(px: vec2f, st: vec4f, amt: f32) -> vec3f {
   let t = u.res.w;
   let dpr = u.res.z;
   let h = 1.0 - (px.y - st.y) / st.w;
   let s = px / (dpr * 46.0);
-  let heat = (1.0 - smoothstep(0.0, 0.8, h)) * amt;
-  let off = vec2f(fbm(s * 1.3 + vec2f(0.0, t * 1.8)) - 0.47, fbm(s * 1.3 + vec2f(5.2, t * 2.1)) - 0.47) * 18.0 * dpr * heat;
+  let heat = (1.0 - smoothstep(0.05, 0.85, h)) * amt;
+  let off = vec2f(fbm(s * 1.3 + vec2f(0.0, t * 1.8)) - 0.47, fbm(s * 1.3 + vec2f(5.2, t * 2.1)) - 0.47) * 12.0 * dpr * heat;
   var col = stage_src(px + off, st);
-  let smoke = smoothstep(0.35, 0.75, fbm(s * 0.6 + vec2f(t * 0.05, t * 0.35))) * smoothstep(0.25, 0.7, h) * (1.0 - smoothstep(0.85, 1.0, h));
-  col = mix(col, col * vec3f(0.6, 0.58, 0.56), smoke * 0.45 * amt);
-  let lean = select(0.0, (u.pointer.x - (st.x + st.z * 0.5)) / st.z, u.pointer.z > 0.5);
-  let fq = vec2f(px.x / (dpr * 38.0) - lean * h * 2.5, px.y / (dpr * 70.0) + t * 1.6);
-  let n = fbm(fq + fbm(fq * 1.7 + t * 0.3) * 0.8);
-  let f = clamp(n * 1.9 - h * 2.3 / max(amt, 0.2) + 0.15, 0.0, 1.0);
-  let flame = smoothstep(0.08, 0.7, f) * min(amt * 1.4, 1.0);
-  col = col * (1.0 - flame * 0.55) + fire_ramp(f) * flame;
-  let sp = sparks(px, t, 26.0 * dpr) * smoothstep(0.05, 0.4, h) * (1.0 - smoothstep(0.7, 1.0, h)) * amt;
-  return col + vec3f(1.0, 0.62, 0.2) * sp;
+  let smoke = smoothstep(0.4, 0.78, fbm(s * 0.55 + vec2f(t * 0.05, t * 0.32))) * smoothstep(0.3, 0.75, h) * (1.0 - smoothstep(0.88, 1.0, h));
+  return mix(col, col * vec3f(0.62, 0.6, 0.58), smoke * 0.35 * min(amt, 1.0));
 }
 
 // Brume : un voile épais qui floute et dévie ce qu'il couvre ; le pointeur
@@ -1686,30 +1939,18 @@ fn m_drops(px: vec2f, st: vec4f, amt: f32) -> vec3f {
   return mix(fogged, drop, mask);
 }
 
-// Enveloppe de feu : une bordure de flammes autour de l'élément, plus haute
-// au-dessus, un liseré en fusion, l'air qui ondule autour. Plus vive au survol.
+// Enveloppe de feu : la bordure est dessinée dans la scène (voir FIRE) ; ici,
+// seulement l'air qui ondule autour.
 fn m_wrap(px: vec2f, st: vec4f, amt: f32) -> vec3f {
   let t = u.res.w;
   let dpr = u.res.z;
   let pad = u.matter.y;
   let inner = vec4f(st.xy + vec2f(pad), st.zw - vec2f(pad * 2.0));
-  let c = inner.xy + inner.zw * 0.5;
-  let d = sd_rbox(px - c, inner.zw * 0.5, 4.0 * dpr) / dpr;
+  let d = sd_rbox(px - (inner.xy + inner.zw * 0.5), inner.zw * 0.5, 4.0 * dpr) / dpr;
   if (d < 0.0) { return stage_src(px, st); }
-  let hover = select(0.0, 1.0, u.pointer.z > 0.5 && all(u.pointer.xy > st.xy) && all(u.pointer.xy < st.xy + st.zw));
   let s = vec2f(px.x / (dpr * 22.0), px.y / (dpr * 30.0) + t * 2.2);
-  let n = fbm(s + fbm(s * 1.8 - vec2f(0.0, t * 0.4)) * 0.9);
-  let up = clamp((c.y - px.y) / (inner.w * 0.5 + pad), -1.0, 1.0);
-  let reach = mix(10.0, 40.0, up * 0.5 + 0.5) * (0.55 + n * 1.1) * (1.0 + 0.4 * hover) * amt;
-  let f = clamp(1.0 - d / max(reach, 0.1), 0.0, 1.0);
-  let flame = smoothstep(0.0, 0.9, f * (0.6 + n * 0.8));
-  let off = (vec2f(fbm(s * 1.7), fbm(s * 1.7 + 4.0)) - 0.47) * 10.0 * dpr * (1.0 - smoothstep(0.0, 70.0, d)) * amt;
-  var col = stage_src(px + off, st);
-  col = col * (1.0 - flame * 0.6) + fire_ramp(f * 0.9 + n * 0.15) * flame;
-  let molten = (1.0 - smoothstep(0.0, 3.5, d)) * (0.75 + 0.25 * sin(t * 9.0 + n * 12.0));
-  col = mix(col, vec3f(1.0, 0.82, 0.42), molten * 0.85 * min(amt, 1.0));
-  let sp = sparks(px, t, 18.0 * dpr) * step(0.0, up) * (1.0 - smoothstep(20.0, 80.0, d)) * amt * (1.0 + hover);
-  return col + vec3f(1.0, 0.6, 0.2) * sp;
+  let off = (vec2f(fbm(s * 1.7), fbm(s * 1.7 + 4.0)) - 0.47) * 8.0 * dpr * (1.0 - smoothstep(0.0, 60.0, d)) * amt;
+  return stage_src(px + off, st);
 }
 
 // Givre : une vitre gelée, des cristaux qui dévient et blanchissent l'image.
@@ -1739,6 +1980,72 @@ fn matter(kind: f32, px: vec2f, st: vec4f) -> vec3f {
   if (kind < 7.5) { return m_drops(px, st, amt); }
   if (kind < 8.5) { return m_wrap(px, st, amt); }
   return m_frost(px, st, amt);
+}
+
+/* ───── Écrans du sommaire ───── */
+
+fn in_screen(px: vec2f) -> bool {
+  let r = u.screen;
+  return u.matter.z > 0.5 && r.z > 0.0 && all(px >= r.xy) && all(px < r.xy + r.zw);
+}
+
+// CRT : l'image est bombée ; hors de la dalle, le cadre noir (z = 1).
+fn screen_warp(px: vec2f) -> vec3f {
+  if (!in_screen(px) || u.matter.z > 1.5) {
+    if (in_screen(px)) {
+      // Projecteur : la pellicule flotte dans le couloir (gate weave).
+      let t = u.res.w;
+      let f = floor(t * 24.0);
+      return vec3f(sin(t * 1.7) * 1.2 * u.res.z, (tr_hash(vec2f(f, 1.0)) - 0.5) * 2.0 * u.res.z + sin(t * 0.9) * 2.0 * u.res.z, 0.0);
+    }
+    return vec3f(0.0);
+  }
+  let r = u.screen;
+  let q = (px - r.xy) / r.zw * 2.0 - 1.0;
+  let k = vec2f(0.035, 0.05);
+  let w = q * (1.0 + k * (q.yx * q.yx)) * 1.02;
+  if (any(abs(w) > vec2f(1.0))) { return vec3f(0.0, 0.0, 1.0); }
+  let np = r.xy + (w * 0.5 + 0.5) * r.zw;
+  return vec3f(np - px, 0.0);
+}
+
+fn screen_finish(c: vec3f, px: vec2f) -> vec3f {
+  if (!in_screen(px)) { return c; }
+  let r = u.screen;
+  let t = u.res.w;
+  let dpr = u.res.z;
+  let q = (px - r.xy) / r.zw * 2.0 - 1.0;
+  var col = c;
+  if (u.matter.z < 1.5) {
+    // CRT : lignes de balayage, masque d'ouverture RVB, lueur et vignettage.
+    let line = 0.5 + 0.5 * cos((px.y / dpr) * 3.14159 * 1.0);
+    col *= 0.78 + 0.22 * line;
+    let triad = i32(floor(px.x / max(1.0, dpr))) % 3;
+    var mask = vec3f(0.86);
+    if (triad == 0) { mask.r = 1.08; } else if (triad == 1) { mask.g = 1.08; } else { mask.b = 1.08; }
+    col *= mask;
+    col = col * 1.12 + vec3f(0.012, 0.016, 0.014);
+    let flick = 1.0 + 0.012 * sin(t * 60.0);
+    col *= flick * (1.0 - 0.38 * pow(length(q * vec2f(0.82, 0.9)), 3.0));
+    // Barre de rafraîchissement qui descend lentement.
+    let bar = fract(t * 0.12 - (px.y - r.y) / r.w);
+    col *= 1.0 + 0.035 * smoothstep(0.9, 1.0, bar);
+  } else {
+    // Projecteur : sépia, scintillement, poussières, rayures, vignette ronde.
+    let f = floor(t * 24.0);
+    let l = dot(col, vec3f(0.299, 0.587, 0.114));
+    let sepia = vec3f(l * 1.07, l * 0.93, l * 0.74) + vec3f(0.03, 0.02, 0.0);
+    col = mix(col, sepia, 0.78);
+    col *= 0.93 + 0.07 * tr_hash(vec2f(f, 7.0));
+    let local = (px - r.xy) / dpr;
+    let dust = step(0.9965, tr_hash(floor(local / 3.0) + vec2f(f * 1.7, f)));
+    col = mix(col, vec3f(0.12, 0.1, 0.08), dust * 0.8);
+    let sx = tr_hash(vec2f(f, 3.0)) * r.z / dpr;
+    let scratch = (1.0 - smoothstep(0.0, 1.2, abs(local.x - sx))) * step(0.6, tr_hash(vec2f(f, 5.0)));
+    col = mix(col, vec3f(0.96, 0.94, 0.88), scratch * 0.5);
+    col *= 1.0 - 0.55 * pow(length(q * vec2f(0.9, 1.05)), 2.4);
+  }
+  return col;
 }
 
 fn image_filter(px: vec2f, st: vec4f) -> vec3f {
@@ -1788,6 +2095,11 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     }
   }
 
+  // Sommaire : l'écran CRT bombe l'image, on relit donc la scène ailleurs.
+  let scr = screen_warp(px);
+  if (scr.z > 0.5) { return vec4f(0.025, 0.025, 0.028, 1.0); }
+  lens += scr.xy;
+
   var col = source(px, lens);
 
   if (kind > 2.5 && kind < 3.5) {
@@ -1834,6 +2146,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   col = mix(col, u.paper.rgb, u.a11y.y);
   col = simulate_vision(clamp(col, vec3f(0.0), vec3f(1.0)), u.a11y.x);
 
+  col = screen_finish(col, px);
   return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
 }
 
