@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Kerguéhennec, 1910</title>
+    <meta name="description" content="Une idée d'interface 3D en WebGPU pour le domaine de Kerguéhennec, dans le style de 1910 : théâtre de papier, autochrome, fermeture à l'iris." />
+    <meta name="theme-color" content="#16110d" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap"
+    />
+  </head>
+  <body class="k">
+    <a class="k-skip" href="#tableaux">Aller au menu des tableaux</a>
+
+    <header class="k-head">
+      <p class="k-kicker">Domaine de Kerguéhennec · Bignan · Morbihan</p>
+      <h1 class="k-title">Kerguéhennec<span class="k-year">1910</span></h1>
+      <p class="k-sub">Promenade en cinq tableaux, pour théâtre de papier &amp; projecteur</p>
+    </header>
+
+    <section class="k-stage" aria-label="Le décor du tableau choisi">
+      <canvas id="k-gl" aria-hidden="true"></canvas>
+      <div class="k-fallback" aria-hidden="true">
+        <p data-fallback-alt></p>
+      </div>
+    </section>
+
+    <div class="k-controls">
+      <nav id="tableaux" class="k-nav" aria-label="Tableaux">
+        <ol>
+          <li><button type="button" data-scene="0" aria-pressed="true"><span class="k-num">I</span><span class="k-name">Le Château</span></button></li>
+          <li><button type="button" data-scene="1" aria-pressed="false"><span class="k-num">II</span><span class="k-name">Le Parc</span></button></li>
+          <li><button type="button" data-scene="2" aria-pressed="false"><span class="k-num">III</span><span class="k-name">Le Miroir d'eau</span></button></li>
+          <li><button type="button" data-scene="3" aria-pressed="false"><span class="k-num">IV</span><span class="k-name">Les Dépendances</span></button></li>
+          <li><button type="button" data-scene="4" aria-pressed="false"><span class="k-num">V</span><span class="k-name">Visiter</span></button></li>
+        </ol>
+      </nav>
+
+      <aside class="k-card" aria-live="polite">
+        <p class="k-card-num" data-card-num>Tableau I</p>
+        <h2 class="k-card-name" data-card-name>Le Château</h2>
+        <p class="k-card-text" data-card-text></p>
+        <p class="k-sr" data-card-alt></p>
+      </aside>
+
+      <div class="k-tools">
+        <button type="button" data-flicker aria-pressed="true">Scintillement</button>
+        <button type="button" data-engraving aria-pressed="true">Gravure</button>
+        <a href="#parti-pris">Le parti pris ↓</a>
+        <p class="k-status" data-k-status role="status"></p>
+      </div>
+    </div>
+
+    <main id="parti-pris" class="k-essay">
+      <p class="k-orn" aria-hidden="true">❦</p>
+      <h2>Le parti pris</h2>
+      <p class="k-lede">
+        Une interface 3D pour un château, dans le goût de 1910. Le point de départ : ce que l'on regardait cette
+        année-là. Pas d'image du château dans cette maquette : tout est dessiné par le GPU, en fonctions de distance.
+        Pour le vrai projet, ces décors se remplaceraient par des photographies découpées en plans.
+      </p>
+
+      <section>
+        <h3>Ce que l'on regarde en 1910</h3>
+        <ul>
+          <li><strong>L'autochrome Lumière</strong>, commercialisé en 1907 : la première photographie en couleurs, vue à travers des grains de fécule teints en orange, vert et violet. D'où le grain coloré de l'image.</li>
+          <li><strong>Le théâtre de papier</strong> de l'imagerie populaire : des décors découpés, plantés en profondeur dans une scène miniature. D'où la 3D en châssis plats.</li>
+          <li><strong>Le stéréoscope</strong>, dans tous les salons : deux vues, un relief. D'où la caméra qui se déplace d'un souffle avec le pointeur.</li>
+          <li><strong>Le cinéma muet</strong> : cartons d'intertitres, fermeture à l'iris, scintillement du projecteur.</li>
+          <li><strong>La gravure en taille-douce</strong> des cartes et des livres : hachures et contre-hachures pour les valeurs.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Le style graphique</h3>
+        <ul>
+          <li><strong>Palette</strong> : celle des autochromes, verts éteints, ocres, bleus pâles, pierre chaude ; un rouge sang-de-bœuf et un or pour le cadre de scène ; le noir des cartons.</li>
+          <li><strong>Typographie</strong> : une didone pour les titres (Bodoni Moda), un garamond pour le texte (Cormorant Garamond), des chiffres romains pour les tableaux, des petites capitales.</li>
+          <li><strong>Ornements</strong> : doubles filets dorés, fleurons, cartouches. Peu, et toujours au service d'un repère.</li>
+          <li><strong>Matières</strong> : carton découpé, papier jauni, vernis de plaque, poussières.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Le menu de cinq tableaux, et ses animations</h3>
+        <p>Cinq entrées, c'est le nombre d'actes d'une pièce. Chacune est un tableau du théâtre, et chaque animation dit un mot de 1910.</p>
+        <ol>
+          <li><strong>Le rideau</strong> se lève à l'arrivée, une seule fois.</li>
+          <li><strong>L'iris</strong> se ferme sur le tableau en cours, puis se rouvre sur le suivant : le changement de lieu prend une seconde et demie, le temps qu'il faut pour ne pas brusquer.</li>
+          <li><strong>Les châssis</strong> sortent par les coulisses, alternativement à gauche et à droite, et les nouveaux entrent par l'autre côté, du fond vers l'avant. On voit la profondeur se construire.</li>
+          <li><strong>La parallaxe du stéréoscope</strong> : la caméra suit le pointeur de quelques degrés, les plans glissent les uns sur les autres.</li>
+          <li><strong>Le carton d'intertitre</strong> change avec le tableau : un texte court, vérifié, comme un sous-titre de film muet.</li>
+          <li><strong>Le miroir d'eau</strong> vit sans qu'on y touche : le reflet du château tremble avec les rides.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h3>D'autres pistes pour quatre ou cinq entrées</h3>
+        <ul>
+          <li><strong>Le stéréoscope</strong> : chaque entrée est une carte double qu'on glisse dans la visionneuse ; les deux vues se fondent en relief. Très fort en 3D, un peu lent pour un menu.</li>
+          <li><strong>La lanterne magique</strong> : des plaques de verre peintes qui passent devant un rond de lumière, avec un fondu enchaîné. Simple et chaleureux.</li>
+          <li><strong>Les cartes postales</strong> : cinq cartes en éventail ; on en choisit une, elle vient devant et se retourne, le verso porte le texte, le timbre et le cachet de Bignan.</li>
+          <li><strong>Le plan gravé du domaine</strong> : les entrées sont des cartouches posés sur la carte ; la caméra plonge vers le lieu choisi, puis la gravure prend couleur.</li>
+          <li><strong>Le praxinoscope</strong> : un tambour à miroirs qui tourne autour du spectateur, proche de la présentation « Salle » du sommaire de PLI.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>La technique</h3>
+        <p>
+          Deux passes WebGPU. La première dessine six châssis plats (ciel, lointain, sujet, plan moyen, premier plan,
+          cadre de scène) dans une scène en perspective, en virgule flottante. Chaque châssis calcule son contenu par
+          fonctions de distance : le château a onze travées, un fronton, des toits en croupe ; le miroir d'eau rappelle la
+          fonction du château, retournée et ridée. La seconde passe relit l'image comme une plaque : hachures selon la
+          valeur, grains autochromes, vignette, scintillement, iris. Les deux passes tiennent dans un seul fichier de
+          shaders.
+        </p>
+      </section>
+
+      <section>
+        <h3>L'accessibilité</h3>
+        <ul>
+          <li>Le menu est fait de vrais boutons ; les flèches passent d'un tableau à l'autre ; le bouton du tableau en cours est marqué comme enfoncé.</li>
+          <li>Le carton d'intertitre est annoncé poliment par les lecteurs d'écran, avec une description de l'image.</li>
+          <li>Mouvement réduit : pas de rideau, pas d'iris, pas de parallaxe, pas de poussières ; le tableau change d'un coup.</li>
+          <li>Le scintillement et la gravure se coupent d'un bouton ; sans WebGPU, les tableaux restent décrits en texte.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="k-foot">
+      <p>
+        Sources historiques :
+        <a href="https://www.techno-science.net/fr/definitions/chateau-de-kerguehennec">Château de Kerguéhennec (techno-science.net)</a>,
+        <a href="https://monumentum.fr/monument-historique/pa00091041/bignan-chateau-de-kerguehennec-et-ses-dependances">Monumentum, PA00091041</a>.
+        Décors dessinés par le GPU, sans photographie.
+      </p>
+      <p><a href="./index.html">← Retour à PLI, la presse WebGPU</a></p>
+    </footer>
+
+    <script type="module" src="./src/k1910/main.ts"></script>
+  </body>
+</html>
