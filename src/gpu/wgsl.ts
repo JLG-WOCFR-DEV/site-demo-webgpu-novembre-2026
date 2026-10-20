@@ -1033,14 +1033,17 @@ fn ffbm(p: vec2f) -> f32 {
   return v;
 }
 
-// Corps noir simplifié, en HDR : rouge sombre, orange, jaune, blanc chaud.
+// Corps noir simplifié : rouge sombre, rouge, orange, ambre, jaune. Le
+// composite n'a pas de courbe de compression : au-delà de 1, la couleur est
+// écrêtée vers le blanc. On reste donc juste au-dessus de 1, assez pour que
+// le bloom en tire un halo, sans brûler l'image en blanc.
 fn blackbody(t: f32) -> vec3f {
   let k = clamp(t, 0.0, 1.0) * 4.0;
-  let c0 = vec3f(0.0);
-  let c1 = vec3f(0.55, 0.05, 0.0);
-  let c2 = vec3f(1.9, 0.45, 0.04);
-  let c3 = vec3f(3.2, 1.75, 0.35);
-  let c4 = vec3f(4.4, 3.8, 2.7);
+  let c0 = vec3f(0.22, 0.02, 0.0);
+  let c1 = vec3f(0.8, 0.1, 0.02);
+  let c2 = vec3f(1.2, 0.36, 0.04);
+  let c3 = vec3f(1.35, 0.66, 0.14);
+  let c4 = vec3f(1.45, 0.95, 0.32);
   if (k < 1.0) { return mix(c0, c1, k); }
   if (k < 2.0) { return mix(c1, c2, k - 1.0); }
   if (k < 3.0) { return mix(c2, c3, k - 2.0); }
@@ -1090,7 +1093,9 @@ fn fs_fire(in: VsOut) -> @location(0) vec4f {
     let warp = vec2f(ffbm(q * 1.4 + vec2f(0.0, t * 0.35)), ffbm(q * 1.4 + vec2f(5.2, t * 0.45))) - 0.5;
     let n = ffbm(q * vec2f(1.0, 0.7) + warp * 1.3);
     let H = (0.3 + 0.42 * ffbm(vec2f(local.x / 130.0, t * 0.18))) * amt;
-    f = (H - h) / max(H, 0.05) + (n - 0.5) * 1.5;
+    // Des langues plutôt qu'un aplat : la hauteur varie d'une colonne à l'autre.
+    let tongues = 0.55 + 0.45 * ffbm(vec2f(local.x / 46.0, t * 0.9));
+    f = (H * tongues - h) / max(H, 0.05) + (n - 0.5) * 1.5;
     up = h;
     reachUp = H;
   } else {
@@ -1110,14 +1115,16 @@ fn fs_fire(in: VsOut) -> @location(0) vec4f {
     reachUp = 1.0;
   }
   let body = smoothstep(0.0, 0.3, f);
-  var light = blackbody(f * 0.8) * body * min(amt, 1.3);
-  light += vec3f(4.0, 2.3, 0.7) * molten;
+  // La température monte vers le cœur ; le jaune reste au plus chaud.
+  var light = blackbody(f * 0.72) * body * min(amt, 1.2);
+  light += vec3f(1.5, 0.85, 0.3) * molten;
   // Braises au-dessus du feu.
   let ember = embers(px, t, 20.0) * smoothstep(-0.2, 0.4, up) * (1.0 - smoothstep(0.5, 1.0, up)) * min(amt, 1.0);
-  light += vec3f(3.0, 1.1, 0.25) * ember;
-  // Suie : la feuille roussit autour et sous les flammes.
+  light += vec3f(1.6, 0.6, 0.12) * ember;
+  // Suie : la feuille roussit autour et sous les flammes ; sous le corps du
+  // feu, le papier s'efface presque, pour que l'orange ne soit pas délavé.
   let soot = smoothstep(-0.5, 0.15, f) * 0.6 * min(amt, 1.0);
-  let a = clamp(soot + body * 0.3, 0.0, 0.92);
+  let a = clamp(soot + body * 0.65, 0.0, 0.95);
   return vec4f(light + SOOT * soot, a);
 }
 `;
