@@ -4,5 +4,11 @@ import { defineConfig } from "vite";
 // statique, y compris un artifact claude.ai.
 export default defineConfig({
   base: "./",
-  build: { target: "es2022", assetsInlineLimit: 0, modulePreload: { polyfill: false } },
+  build: {
+    target: "es2022",
+    assetsInlineLimit: 0,
+    modulePreload: { polyfill: false },
+    // Deux pages : la démo PLI et l'idée Kerguéhennec, 1910.
+    rollupOptions: { input: { main: "index.html", kerguehennec: "kerguehennec.html" } },
+  },
 });
