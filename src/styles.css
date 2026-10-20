@@ -165,9 +165,9 @@ main,
   height: var(--bar-h);
   padding-left: var(--gutter);
   padding-right: var(--gutter-r);
-  background: color-mix(in srgb, var(--paper) 86%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* Opaque : le GPU peint le texte sous la barre ; un fond translucide le
+     laissait transparaître quand un titre passait dessous. */
+  background: var(--paper);
   border-bottom: 1px solid var(--rule);
 }
 
