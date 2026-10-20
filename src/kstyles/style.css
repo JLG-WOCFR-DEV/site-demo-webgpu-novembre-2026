@@ -1,0 +1,78 @@
+/* Huit regards : la scène et son tableau de bord reprennent la page 1910. */
+
+.k-tabs {
+  width: min(100% - 32px, 1280px);
+  margin: 0 auto 18px;
+}
+.k-tabs-title {
+  margin: 0 0 8px;
+  font: 500 13px/1 var(--k-text);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--k-soft);
+  text-align: center;
+}
+.k-tabs-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.k-tabs-list button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(194, 157, 85, 0.55);
+  border-radius: 999px;
+  background: none;
+  color: var(--k-paper);
+  font: 500 17px/1 var(--k-text);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.k-tabs-list button:hover {
+  background: rgba(194, 157, 85, 0.1);
+}
+.k-tabs-list button[aria-pressed="true"] {
+  background: var(--k-paper);
+  color: var(--k-ink);
+  border-color: var(--k-paper);
+}
+.k-about {
+  margin: 12px auto 0;
+  max-width: 64ch;
+  text-align: center;
+  font-style: italic;
+  color: #e3d8bf;
+}
+.k-menu-title {
+  margin: 0 0 8px;
+  font: italic 500 20px/1 var(--k-didone);
+  color: var(--k-gold);
+}
+
+.k-compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 17px;
+}
+.k-compare th,
+.k-compare td {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(194, 157, 85, 0.25);
+  text-align: left;
+  vertical-align: top;
+}
+.k-compare thead th {
+  font: 600 13px/1.2 var(--k-text);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--k-soft);
+}
+.k-compare tbody th {
+  font: italic 500 18px/1.2 var(--k-didone);
+  color: var(--k-gold);
+  white-space: nowrap;
+}
+.k-scroll {
+  overflow-x: auto;
+}
