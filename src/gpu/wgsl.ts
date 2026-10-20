@@ -123,9 +123,17 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
     let l = dot(col, vec3f(0.299, 0.587, 0.114));
     col = mix(vec3f(0.80, 0.82, 0.84), vec3f(0.16, 0.22, 0.30), l);
   } else if (plane.flags.y > 0.5) {
-    // Atlas de champs de distance : on l'imprime encre sur papier.
+    // Atlas de champs de distance : le champ lui-même, en dégradé avec ses
+    // courbes de niveau, et le contour tracé en rouge.
     let v = textureSample(tex, samp, uv).r;
-    col = mix(vec3f(0.937, 0.933, 0.910), vec3f(0.07), v);
+    col = mix(vec3f(0.937, 0.933, 0.910), vec3f(0.36, 0.52, 0.66), clamp(v * 1.6, 0.0, 1.0));
+    let lv = fract(v * 8.0);
+    let iso = 1.0 - smoothstep(0.0, max(fwidth(v * 8.0) * 1.2, 1e-3), min(lv, 1.0 - lv));
+    col = mix(col, col * 0.72, iso * step(0.02, v));
+    // TinySDF (cutoff 0,25) place le contour exact à 0,75 : dedans, l'encre.
+    col = mix(col, vec3f(0.08), smoothstep(0.75, 0.75 + max(fwidth(v), 1e-3), v) * 0.85);
+    let edge = 1.0 - smoothstep(0.0, max(fwidth(v) * 1.5, 1e-3), abs(v - 0.75));
+    col = mix(col, vec3f(0.85, 0.12, 0.1), edge);
   } else {
     // Expansion des hautes lumières : un JPEG plafonne à 1.0, le papier est
     // à 0,94. On rend aux reflets la marge que la compression leur a prise.
@@ -1109,7 +1117,9 @@ fn fs_fire(in: VsOut) -> @location(0) vec4f {
     let q = vec2f(px.x / 24.0, px.y / 40.0 + t * 1.9);
     let warp = vec2f(ffbm(q * 1.3 + vec2f(0.0, t * 0.4)), ffbm(q * 1.3 + vec2f(4.1, t * 0.5))) - 0.5;
     let n = ffbm(q + warp * 1.2);
-    let reach = mix(9.0, 38.0, up * 0.5 + 0.5) * (0.55 + n * 1.0) * (1.0 + 0.45 * fire.p.w) * amt;
+    // La flamme ne doit jamais sortir de la plaque dessinée : avec la suie
+    // (jusqu'à 1,5 fois la portée), elle reste sous la marge.
+    let reach = min(mix(9.0, 38.0, up * 0.5 + 0.5) * (0.55 + n * 1.0) * (1.0 + 0.45 * fire.p.w) * amt, pad * 0.6);
     f = 1.0 - d / max(reach, 0.5) + (n - 0.5) * 0.6;
     molten = (1.0 - smoothstep(0.0, 2.2, d)) * (0.75 + 0.25 * sin(t * 9.0 + n * 12.0)) * min(amt, 1.0);
     reachUp = 1.0;
@@ -1124,8 +1134,11 @@ fn fs_fire(in: VsOut) -> @location(0) vec4f {
   // Suie : la feuille roussit autour et sous les flammes ; sous le corps du
   // feu, le papier s'efface presque, pour que l'orange ne soit pas délavé.
   let soot = smoothstep(-0.5, 0.15, f) * 0.6 * min(amt, 1.0);
-  let a = clamp(soot + body * 0.65, 0.0, 0.95);
-  return vec4f(light + SOOT * soot, a);
+  // Filet de sécurité : tout s'éteint en douceur au bord du quad.
+  let border = min(min(px.x - r.x, r.x + r.z - px.x), min(px.y - r.y, r.y + r.w - px.y));
+  let keep = smoothstep(0.0, 18.0, border);
+  let a = clamp(soot + body * 0.65, 0.0, 0.95) * keep;
+  return vec4f((light + SOOT * soot) * keep, a);
 }
 `;
 

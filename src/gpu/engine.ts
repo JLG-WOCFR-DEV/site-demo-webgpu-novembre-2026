@@ -2,7 +2,7 @@ import { menuGL } from "../menu.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
-import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
+import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
@@ -49,7 +49,7 @@ const TRACE_RATES: [number, number, number, number][] = [
   [2.2, 0.25, 0, 1], // givre : fond en restant dessus, regèle en quatre secondes
 ];
 /** Marge autour de l'élément enveloppé de flammes (px css). */
-export const WRAP_PAD = 56;
+export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
 const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1;
@@ -324,7 +324,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
   // Chapitre 06 : sources animées, à la place de la photo.
   const procLayout = device.createBindGroupLayout({
-    entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } }],
+    entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform", hasDynamicOffset: true } }],
   });
   const procPipe = device.createRenderPipeline({
     label: "proc",
@@ -333,8 +333,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     fragment: { module: procMod, entryPoint: "fs_proc", targets: [{ format: SCENE_FORMAT }] },
     primitive: strip,
   });
-  const procBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-  const procBind = device.createBindGroup({ layout: procLayout, entries: [{ binding: 0, resource: { buffer: procBuf } }] });
+  // Une source par photo concernée : toutes les plaques, pas seulement la première.
+  const MAX_PROCS = 8;
+  const procBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_PROCS, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const procBind = device.createBindGroup({ layout: procLayout, entries: [{ binding: 0, resource: { buffer: procBuf, size: 32 } }] });
+  const procData = new Float32Array((PLANE_STRIDE * MAX_PROCS) / 4);
   const MAX_FIRES = 4;
   const fireBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_FIRES, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const fireBind = device.createBindGroup({ layout: fireLayout, entries: [{ binding: 0, resource: { buffer: fireBuf, size: 48 } }] });
@@ -763,7 +766,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow, peel: peel > 0.001 });
       slot++;
     };
-    let procRect: DOMRect | null = null;
+    let procs = 0;
     for (const p of menuOpen ? [] : images.plates) {
       const r = p.img.getBoundingClientRect();
       const visible = r.bottom > -80 && r.top < cssH + 80 && r.width > 0;
@@ -773,7 +776,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       if (!visible || !p.bind) continue;
       if (settings.filter.source > 0 && p.img.closest('[data-gl-stage="filtre"], [data-gl-source]')) {
         // Une source animée remplace la photo du chapitre 06.
-        procRect = r;
+        if (procs < MAX_PROCS) procData.set([r.left, r.top, r.width, r.height, settings.filter.source, 0, 0, 0], (procs++ * PLANE_STRIDE) / 4);
         continue;
       }
       if (p.fluid && p.texture && !reduced) {
@@ -830,11 +833,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left - 6, r.top - 6, r.width + 12, r.height + 12, 0.07, 0.07, 0.07, 0.7);
       if (s.dataset.glStage === "glyph" && settings.glyph.atlas && r.bottom > 0 && r.top < cssH) {
         // Seule la bande occupée de l'atlas, à l'échelle de la plaque.
-        const used = Math.max(0.05, text.atlasUsed);
+        // Une fenêtre agrandie sur le coin occupé (0,6 texel par pixel CSS) :
+        // réduit en entier, l'atlas de 2048 texels ne montrait que des miettes.
+        const used = Math.max(0.02, text.atlasUsed);
         const aw = r.width - 24;
-        const ah = Math.min(r.height - 24, aw * used);
+        const zoom = 0.6 / ATLAS_SIZE;
+        const ah = Math.min(r.height - 24, (used * ATLAS_SIZE) / 0.6);
         const a = new DOMRect(r.left + 12, r.top + 12, aw, ah);
-        pushPlane(a, [0, 0, 1, (ah / aw)], [2, 0, 0, 1], [0, 1, 0, 0], atlasBind, false);
+        pushPlane(a, [0, 0, Math.min(1, aw * zoom), Math.min(used, ah * zoom)], [2, 0, 0, 1], [0, 1, 0, 0], atlasBind, false);
       }
       if (si < MAX_STAGES && kind > 0 && r.bottom > 0 && r.top < cssH) {
         postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 28 + si * 4);
@@ -1065,11 +1071,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       scenePass.setPipeline(planePipe);
       scenePass.draw(4);
     }
-    if (procRect) {
-      device.queue.writeBuffer(procBuf, 0, new Float32Array([procRect.left, procRect.top, procRect.width, procRect.height, settings.filter.source, 0, 0, 0]));
+    if (procs) {
+      device.queue.writeBuffer(procBuf, 0, procData, 0, (procs * PLANE_STRIDE) / 4);
       scenePass.setPipeline(procPipe);
-      scenePass.setBindGroup(1, procBind);
-      scenePass.draw(4);
+      for (let i = 0; i < procs; i++) {
+        scenePass.setBindGroup(1, procBind, [i * PLANE_STRIDE]);
+        scenePass.draw(4);
+      }
     }
     if (layersOn && layersBind) {
       scenePass.setPipeline(layersPipe);

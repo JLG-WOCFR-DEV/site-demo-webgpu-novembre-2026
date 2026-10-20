@@ -90,7 +90,7 @@ more = "\n".join(
             <h3 id="sp-page-t{i + 1}" class="sp-page-title">{title}</h3>
             <p class="sp-page-body">{text}</p>
           </div>
-          <figure class="plate sp-page-plate"><img data-gl-img src="./plates/{img}.jpg" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/{img}.jpg" alt="" /></figure>
         </section>"""
     for i, (img, title, text) in enumerate(PAGES)
 )

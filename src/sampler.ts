@@ -306,6 +306,7 @@ function replay() {
 }
 
 const stageEl = document.querySelector<HTMLElement>("[data-sp-stage]")!;
+const SPREAD = new Set(["filtre", "trame"]);
 const info = {
   cat: document.querySelector<HTMLElement>("[data-sp-catname]")!,
   title: document.querySelector<HTMLElement>("[data-sp-title]")!,
@@ -328,6 +329,14 @@ function select(id: string, fromHash = false) {
   // Spécimen : plaque, photo et blocs annexes de l'échantillon.
   if (s.stage) stageEl.dataset.glStage = s.stage;
   else delete stageEl.dataset.glStage;
+  // Les planches du dessous reçoivent le même filtre ou la même trame : un
+  // effet d'image se juge sur plusieurs images, pas sur la seule première.
+  // Les matières restent au spécimen : leur mémoire du pointeur est une
+  // texture par matière, qu'une seconde plaque partagerait.
+  for (const f of document.querySelectorAll<HTMLElement>(".sp-page-plate")) {
+    if (s.stage && SPREAD.has(s.stage)) f.dataset.glStage = s.stage;
+    else delete f.dataset.glStage;
+  }
   const photo = s.photo ?? "fig";
   for (const f of document.querySelectorAll<HTMLElement>("[data-sp-photo]")) f.hidden = f.dataset.spPhoto !== photo;
   const blocks = new Set(s.blocks ?? []);

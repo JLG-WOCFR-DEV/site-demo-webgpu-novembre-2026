@@ -1663,11 +1663,17 @@ html.gl-on .menu[data-style="planche"] .sheet {
 .matter-wrap {
   justify-self: center;
   width: max-content;
-  padding: 56px;
-  margin: -6px 0 -30px;
+  /* Marge où le feu a la place de monter (WRAP_PAD), rendue en partie à la mise en page. */
+  padding: 112px;
+  margin: -70px -112px -86px;
 }
 .matter-wrap .btn {
   display: block;
+}
+/* La marge du feu déborde de la plaque : invisible dans le DOM, elle ne doit
+   pas élargir la page sur un écran étroit. Le GPU lit le rectangle entier. */
+.stage--wrap {
+  overflow-x: clip;
 }
 @media (max-width: 640px) {
   .matter-title {
