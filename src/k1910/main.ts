@@ -1,5 +1,8 @@
 import "./style.css";
 import { DECOR, EPREUVE } from "./shaders.ts";
+import { mountPagesNav } from "../pages-nav.ts";
+
+mountPagesNav();
 
 /**
  * Kerguéhennec, 1910. Le menu (cinq boutons du DOM) choisit un tableau ;

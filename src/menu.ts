@@ -214,6 +214,10 @@ export function openMenu(from?: HTMLElement) {
     return;
   }
   opener = from ?? (document.activeElement as HTMLElement | null);
+  // Le sommaire de la barre a pu changer depuis le chargement (le sampler le
+  // remplit après coup) : on relit ses entrées à chaque ouverture.
+  if (document.querySelectorAll(".toc a[href^='#ch-']").length !== items.length) build();
+  if (!items.length) return;
   // On ouvre sur le chapitre en cours de lecture.
   const current = items.findIndex((it) => {
     const r = document.getElementById(it.id)?.getBoundingClientRect();

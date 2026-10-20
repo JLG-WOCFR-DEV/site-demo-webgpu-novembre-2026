@@ -771,7 +771,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       p.hover += ((over ? 1 : 0) - p.hover) * (reduced ? 1 : 0.12);
       if (settings.dom.boxes && visible) boxes.push(r.left, r.top, r.width, r.height, 0.894, 0, 0.486, 0.95);
       if (!visible || !p.bind) continue;
-      if (settings.filter.source > 0 && p.img.closest('[data-gl-stage="filtre"]')) {
+      if (settings.filter.source > 0 && p.img.closest('[data-gl-stage="filtre"], [data-gl-source]')) {
         // Une source animée remplace la photo du chapitre 06.
         procRect = r;
         continue;

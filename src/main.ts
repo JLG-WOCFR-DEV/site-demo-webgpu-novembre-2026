@@ -3,6 +3,7 @@ import { createEngine, type Engine } from "./gpu/engine.ts";
 import { setupHtmlInCanvas } from "./html-in-canvas.ts";
 import { bindLayers } from "./layers-ui.ts";
 import { setupMenu } from "./menu.ts";
+import { mountPagesNav } from "./pages-nav.ts";
 import { motion, pointer, settings, TRANSITIONS } from "./state.ts";
 import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayout, showMotion, showTimings, trackChapters, trackFocus } from "./ui.ts";
 
@@ -100,6 +101,7 @@ for (const b of document.querySelectorAll("[data-action='replay']")) {
 document.querySelector("#tr-pop a")?.addEventListener("click", () => document.getElementById("tr-pop")?.hidePopover?.());
 bindLayers();
 setupMenu();
+mountPagesNav();
 // La carte de la leçon 10.1 est un vrai bouton, qu'elle soit dessinée par le GPU ou non.
 document.querySelector("[data-hic-button]")?.addEventListener("click", (e) => {
   const b = e.currentTarget as HTMLButtonElement;
@@ -140,6 +142,8 @@ const relayout = () => {
   pending = requestAnimationFrame(() => engine?.relayout());
 };
 new ResizeObserver(relayout).observe(document.body);
+// Une page qui change son contenu (le sampler) demande une nouvelle mesure.
+addEventListener("pli:relayout", relayout);
 document.fonts.addEventListener("loadingdone", relayout);
 
 document.querySelector("[data-action='toggle-gpu']")?.addEventListener("click", () => {

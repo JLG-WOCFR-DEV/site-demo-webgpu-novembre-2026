@@ -1,6 +1,9 @@
 import "../k1910/style.css";
 import "./style.css";
 import { LIGHT, SCENE, STYLE } from "./shaders.ts";
+import { mountPagesNav } from "../pages-nav.ts";
+
+mountPagesNav();
 
 /**
  * Kerguéhennec, huit regards. La même scène 3D, rendue de huit façons ; chaque

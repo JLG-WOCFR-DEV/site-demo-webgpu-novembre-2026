@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PLI · Sampler</title>
+    <meta
+      name="description"
+      content="Le sampler de PLI : chaque effet WebGPU isolé, par catégories, sur un spécimen fixe."
+    />
+    <meta name="theme-color" content="#f2efe6" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2efe6'/%3E%3Ccircle cx='12' cy='14' r='7' fill='%2300a3d7' opacity='.85'/%3E%3Ccircle cx='20' cy='14' r='7' fill='%23e5007d' opacity='.85'/%3E%3Ccircle cx='16' cy='20' r='7' fill='%23f6d500' opacity='.85'/%3E%3C/svg%3E" />
+    <script type="module" src="/src/sampler.ts"></script>
+  </head>
+  <body class="sp">
+    <a class="skip" href="#sp-side">Aller aux échantillons</a>
+
+    <canvas id="gl" aria-hidden="true"></canvas>
+
+    <header class="bar" role="banner">
+      <button type="button" class="mark" data-pages-trigger aria-label="PLI : choisir une page">PLI <span class="mark-caret" aria-hidden="true">▾</span></button>
+      <nav aria-label="Catégories">
+        <ol class="toc"></ol>
+      </nav>
+      <div class="status" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status-text">Démarrage</span>
+      </div>
+      <button type="button" class="pause-btn" data-action="menu" aria-haspopup="dialog" aria-expanded="false">Sommaire</button>
+      <button type="button" class="pause-btn" popovertarget="tr-pop" aria-controls="tr-pop">Transitions</button>
+      <button type="button" class="pause-btn" data-action="pause" aria-pressed="false">Pause</button>
+      <div id="tr-pop" class="tr-pop" popover>
+          <form class="controls controls--pop" aria-labelledby="p-transitions-title" data-controls="transition">
+            <p id="p-transitions-title" class="controls-title">Transitions au défilement</p>
+            <fieldset class="choices">
+              <legend class="sr-only">Style de transition</legend>
+              <label><input type="radio" name="style" value="0" checked /> Impression</label>
+              <label><input type="radio" name="style" value="1" /> Trame</label>
+              <label><input type="radio" name="style" value="2" /> Quadrichromie</label>
+              <label><input type="radio" name="style" value="3" /> Buvard</label>
+              <label><input type="radio" name="style" value="4" /> Massicot</label>
+              <label><input type="radio" name="style" value="5" /> Fondu</label>
+              <label><input type="radio" name="style" value="6" /> Rouleau</label>
+              <label><input type="radio" name="style" value="7" /> Composition</label>
+              <label><input type="radio" name="style" value="8" /> Ligne à ligne</label>
+              <label><input type="radio" name="style" value="9" /> Révélateur</label>
+              <label><input type="radio" name="style" value="10" /> Pli</label>
+              <label><input type="radio" name="style" value="11" /> Aucune</label>
+            </fieldset>
+            <label class="range"><span>Vitesse</span><input type="range" name="speed" min="1" max="14" step="0.5" value="4.5" /><output>0,15 s</output></label>
+            <label class="range"><span>Ligne d'impression</span><input type="range" name="line" min="0.5" max="1" step="0.01" value="0.86" /><output>86 %</output></label>
+            <label class="range"><span>Largeur du front</span><input type="range" name="width" min="0.04" max="0.6" step="0.01" value="0.22" /><output>22 %</output></label>
+            <button type="button" class="btn" data-action="replay">Rejouer l'impression</button>
+          </form>
+        <p class="tr-pop-note">Expliqué en <a href="#ch-transitions">04.1</a>. Échap pour fermer.</p>
+      </div>
+    </header>
+
+    <div class="menu" data-menu hidden role="dialog" aria-modal="true" aria-labelledby="menu-title" data-style="leporello">
+      <div class="menu-head">
+        <h2 id="menu-title" class="menu-title">Sommaire</h2>
+        <fieldset class="choices menu-styles">
+          <legend class="sr-only">Présentation du sommaire</legend>
+          <label><input type="radio" name="menu-style" value="leporello" checked /> Leporello</label>
+          <label><input type="radio" name="menu-style" value="index" /> Index</label>
+          <label><input type="radio" name="menu-style" value="ramette" /> Ramette</label>
+          <label><input type="radio" name="menu-style" value="planche" /> Planche contact</label>
+          <label><input type="radio" name="menu-style" value="nuancier" /> Nuancier</label>
+          <label><input type="radio" name="menu-style" value="bande" /> Bande</label>
+          <label><input type="radio" name="menu-style" value="rotative" /> Rotative</label>
+          <label><input type="radio" name="menu-style" value="galerie" /> Galerie</label>
+          <label><input type="radio" name="menu-style" value="salle" /> Salle</label>
+        </fieldset>
+        <fieldset class="choices menu-screens">
+          <legend class="menu-screens-legend">Écran</legend>
+          <label><input type="radio" name="menu-screen" value="0" checked /> Aucun</label>
+          <label><input type="radio" name="menu-screen" value="1" /> CRT</label>
+          <label><input type="radio" name="menu-screen" value="2" /> Projecteur</label>
+        </fieldset>
+        <button type="button" class="pause-btn" data-menu-close>Fermer</button>
+      </div>
+      <div class="menu-stage" data-menu-stage>
+        <img class="menu-preview" data-menu-preview alt="" />
+        <svg class="menu-circle" data-menu-circle viewBox="-100 -70 200 140" aria-hidden="true" focusable="false">
+          <path pathLength="1" d="M -86 -6 C -84 -50 64 -66 88 -14 C 104 30 22 62 -36 56 C -84 50 -100 10 -74 -28 C -62 -44 -42 -52 -18 -56" />
+        </svg>
+      </div>
+      <div class="menu-foot">
+        <button type="button" class="pause-btn" data-menu-prev aria-label="Feuille précédente">←</button>
+        <span class="menu-counter" data-menu-counter aria-hidden="true">01 / 10</span>
+        <button type="button" class="pause-btn" data-menu-next aria-label="Feuille suivante">→</button>
+        <p class="menu-hint">Flèches pour feuilleter · Entrée pour ouvrir · Échap pour fermer</p>
+        <p class="sr-only" aria-live="polite" data-menu-live></p>
+      </div>
+    </div>
+
+    <main id="top" class="sampler">
+      <aside id="sp-side" class="sp-side" aria-label="Échantillons">
+        <p class="sp-kicker">PLI · Sampler</p>
+        <h1 class="sp-h1">Un effet à la fois</h1>
+        <p class="sp-lede">Chaque échantillon remet la page à zéro, puis n'active que lui, sur le même spécimen.</p>
+        <label class="toggle sp-context"><input type="checkbox" data-sp-context /> Dans le contexte : rallumer la chaîne complète</label>
+        <div class="sp-cats" data-sp-cats></div>
+      </aside>
+
+      <div class="sp-main">
+        <section id="ch-specimen" class="chapter sp-spec" aria-labelledby="sp-title">
+          <div class="sp-stage stage" data-sp-stage data-gl-source>
+            <div class="sp-card" data-gl-text>
+              <p class="sp-card-kicker">Spécimen</p>
+              <p class="sp-card-title">Encre &amp; lumière</p>
+              <p class="sp-card-body">
+                Le texte vit dans le DOM, le GPU le repeint. Une photo, un titre, trois lignes : toujours les mêmes, pour
+                que seul l'effet change d'un échantillon à l'autre.
+              </p>
+            </div>
+            <figure class="plate sp-plate" data-sp-photo="fig">
+              <img data-gl-img data-gl-quad src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux sur une pierre calcaire." />
+            </figure>
+            <figure class="plate sp-plate" data-sp-photo="glass" hidden>
+              <img data-gl-img src="./plates/glass.jpg" width="1728" height="1152" alt="Un cylindre de verre couché qui accroche la lumière." />
+            </figure>
+            <!-- Toujours masquée : sa texture sert à la pile de calques. -->
+            <figure class="plate sp-plate" data-sp-photo="flower" hidden>
+              <img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="" />
+            </figure>
+            <figure class="plate sp-plate" data-sp-photo="fluid" hidden>
+              <img data-gl-img data-gl-fluid src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau." />
+            </figure>
+          </div>
+          <div class="sp-block" data-sp-block="layers" hidden>
+            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous.">
+              <!-- Repli sans WebGPU : la même pile en CSS (mix-blend-mode). -->
+              <div class="css-layers" aria-hidden="true">
+                <img class="css-layer" data-css-layer="glass" src="./plates/glass.jpg" alt="" />
+                <img class="css-layer" data-css-layer="flower" src="./plates/flower.jpg" alt="" />
+                <div class="css-layer" data-css-layer="spot"></div>
+              </div>
+            </div>
+          </div>
+          <div class="sp-block" data-sp-block="ink" hidden>
+            <div class="stage stage--ink" data-gl-stage="ink" role="img" aria-label="Trois encres, cyan, magenta et noire, qui s'étirent et tournent sur le papier."></div>
+          </div>
+          <div class="sp-block" data-sp-block="type" hidden>
+            <div class="stage stage--type" data-gl-stage="glyph">
+            <p class="specimen" data-gl-text data-gl-fx="specimen">Encre &amp; plomb</p>
+          </div>
+          </div>
+          <div class="sp-block sp-hero" data-sp-block="hero" hidden>
+            <h1 id="sp-hero" class="display" data-gl-text data-gl-fx="hero">
+          <span class="line">Le DOM</span>
+          <span class="line">compose.</span>
+          <span class="line line--ink">Le GPU</span>
+          <span class="line line--ink">imprime.</span>
+        </h1>
+          </div>
+          <div class="sp-block sp-wrapblock" data-sp-block="wrap" hidden>
+            <div class="matter-wrap" data-gl-stage="enveloppe">
+                  <button type="button" class="btn" data-matter-button>Tirer l'épreuve</button>
+                </div>
+          </div>
+        </section>
+
+        <div class="sp-info" aria-live="polite">
+          <p class="sp-catname" data-sp-catname></p>
+          <h2 id="sp-title" class="sp-title" data-sp-title></h2>
+          <p class="sp-text" data-sp-text></p>
+          <p class="sp-intro" data-sp-intro></p>
+          <button type="button" class="btn" data-sp-action hidden></button>
+        </div>
+
+        <div class="sp-forms">
+          <div class="sp-form" data-sp-form="transition" hidden>
+            <form class="controls" aria-labelledby="c-transitions-title" data-controls="transition">
+            <p id="c-transitions-title" class="controls-title">Transition</p>
+            <fieldset class="choices">
+              <legend class="sr-only">Style de transition</legend>
+              <label><input type="radio" name="style" value="0" checked /> Impression</label>
+              <label><input type="radio" name="style" value="1" /> Trame</label>
+              <label><input type="radio" name="style" value="2" /> Quadrichromie</label>
+              <label><input type="radio" name="style" value="3" /> Buvard</label>
+              <label><input type="radio" name="style" value="4" /> Massicot</label>
+              <label><input type="radio" name="style" value="5" /> Fondu</label>
+              <label><input type="radio" name="style" value="6" /> Rouleau</label>
+              <label><input type="radio" name="style" value="7" /> Composition</label>
+              <label><input type="radio" name="style" value="8" /> Ligne à ligne</label>
+              <label><input type="radio" name="style" value="9" /> Révélateur</label>
+              <label><input type="radio" name="style" value="10" /> Pli</label>
+              <label><input type="radio" name="style" value="11" /> Aucune</label>
+            </fieldset>
+            <label class="range"><span>Vitesse</span><input type="range" name="speed" min="1" max="14" step="0.5" value="4.5" /><output>0,15 s</output></label>
+            <label class="range"><span>Ligne d'impression</span><input type="range" name="line" min="0.5" max="1" step="0.01" value="0.86" /><output>86 %</output></label>
+            <label class="range"><span>Largeur du front</span><input type="range" name="width" min="0.04" max="0.6" step="0.01" value="0.22" /><output>22 %</output></label>
+            <button type="button" class="btn" data-action="replay">Rejouer l'impression</button>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="filter" hidden>
+            <form class="controls" aria-labelledby="c-filtre" data-controls="filter">
+            <p id="c-filtre" class="controls-title">Le filtre</p>
+            <fieldset class="choices">
+              <legend class="choices-legend">Source</legend>
+              <label><input type="radio" name="source" value="0" checked /> Photo</label>
+              <label><input type="radio" name="source" value="1" /> Dégradé maillé</label>
+              <label><input type="radio" name="source" value="2" /> Encre marbrée</label>
+              <label><input type="radio" name="source" value="3" /> Ondes</label>
+              <label><input type="radio" name="source" value="4" /> Métaballes</label>
+            </fieldset>
+            <fieldset class="choices">
+              <legend class="sr-only">Filtre appliqué à la photo</legend>
+              <label><input type="radio" name="kind" value="0" /> Trame noire</label>
+              <label><input type="radio" name="kind" value="1" /> Tramage riso</label>
+              <label><input type="radio" name="kind" value="2" /> Verre cannelé</label>
+              <label><input type="radio" name="kind" value="3" /> Lentille</label>
+              <label><input type="radio" name="kind" value="4" /> Papier froissé</label>
+              <label><input type="radio" name="kind" value="5" /> Casse de plomb</label>
+            </fieldset>
+            <label class="range"><span>Taille</span><input type="range" name="size" min="2" max="16" step="0.5" value="6" /><output>6,0 px</output></label>
+            <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="matter" hidden>
+            <form class="controls" aria-labelledby="c-matter" data-controls="matter">
+              <p id="c-matter" class="controls-title">Les matières</p>
+              <label class="range"><span>Intensité</span><input type="range" name="intensity" min="0" max="1.5" step="0.01" value="1" /><output>1,00</output></label>
+            </form>
+          </div>
+          <div class="sp-form" data-sp-form="quad" hidden>
+            <form class="controls" aria-labelledby="c-quad" data-controls="quad">
+            <p id="c-quad" class="controls-title">Le plan</p>
+            <label class="range"><span>Coins</span><input type="range" name="radius" min="0" max="64" step="1" value="6" /><output>6 px</output></label>
+            <label class="range"><span>Ombre</span><input type="range" name="shadow" min="0" max="1" step="0.01" value="0.45" /><output>0,45</output></label>
+            <label class="range"><span>Élévation</span><input type="range" name="lift" min="0" max="1" step="0.01" value="0.3" /><output>0,30</output></label>
+            <label class="range"><span>Décoller l'épreuve</span><input type="range" name="peel" min="0" max="1" step="0.01" value="0" /><output>0,00</output></label>
+            <label class="toggle"><input type="checkbox" name="wire" /> Afficher les deux triangles</label>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="layers" hidden>
+            <form class="controls" aria-labelledby="c-calques" data-layers>
+              <p id="c-calques" class="controls-title">La pile, du dessus vers le dessous</p>
+              <div class="layer-stack" data-layer-stack>
+              <fieldset class="layer" data-layer="spot">
+                <legend>Aplat rouge</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3" selected>Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.7" /><output>0,7</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Aplat rouge">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Aplat rouge">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="flower">
+                <legend>Renoncule</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1" selected>Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.9" /><output>0,9</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Renoncule">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Renoncule">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="glass">
+                <legend>Verre</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0" selected>Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="1" /><output>1</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Verre">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Verre">▼</button>
+                </div>
+              </fieldset>
+              </div>
+              <fieldset class="choices">
+                <legend class="choices-legend">Masque du calque du dessus</legend>
+                <label><input type="radio" name="mask" value="0" /> Aucun</label>
+                <label><input type="radio" name="mask" value="1" checked /> Cercle sous le pointeur</label>
+                <label><input type="radio" name="mask" value="2" /> Dégradé</label>
+              </fieldset>
+            </form>
+          </div>
+          <div class="sp-form" data-sp-form="chain" hidden>
+            <form class="controls controls--chain" aria-labelledby="c-chain" data-controls="chain">
+            <p id="c-chain" class="controls-title">Ordre réel des passes</p>
+            <ol class="chain" data-chain-list></ol>
+            <label class="toggle"><input type="checkbox" name="split" /> Couper l'écran : brut à gauche, composite à droite</label>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="trame" hidden>
+            <form class="controls" aria-labelledby="c-trame" data-controls="trame">
+            <p id="c-trame" class="controls-title">La trame</p>
+            <label class="range"><span>Linéature</span><input type="range" name="cell" min="3" max="24" step="0.5" value="7" /><output>7 px</output></label>
+            <label class="range"><span>Engraissement</span><input type="range" name="gain" min="-0.3" max="0.5" step="0.01" value="0.08" /><output>0,08</output></label>
+            <label class="range"><span>Repérage</span><input type="range" name="misreg" min="0" max="1" step="0.01" value="0.15" /><output>0,15</output></label>
+            <label class="range"><span>Mélange</span><input type="range" name="mix" min="0" max="1" step="0.01" value="1" /><output>1,00</output></label>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="light" hidden>
+            <form class="controls" aria-labelledby="c-light" data-controls="light">
+            <p id="c-light" class="controls-title">Le bloom</p>
+            <label class="range"><span>Intensité</span><input type="range" name="bloom" min="0" max="2" step="0.01" value="0.6" /><output>0,60</output></label>
+            <label class="range"><span>Seuil au-dessus du papier</span><input type="range" name="threshold" min="0" max="0.2" step="0.005" value="0.03" /><output>+0,030</output></label>
+            <label class="toggle"><input type="checkbox" name="naive" /> Seuil naïf à 0,62 (le défaut à éviter)</label>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="glyph" hidden>
+            <form class="controls" aria-labelledby="c-glyph" data-controls="glyph">
+            <p id="c-glyph" class="controls-title">Les glyphes</p>
+            <label class="range"><span>Onde</span><input type="range" name="wave" min="0" max="1" step="0.01" value="0.35" /><output>0,35</output></label>
+            <label class="range"><span>Encre</span><input type="range" name="ink" min="-1" max="1" step="0.01" value="0" /><output>0,00</output></label>
+            <label class="range"><span>Dispersion</span><input type="range" name="scatter" min="0" max="1" step="0.01" value="0" /><output>0,00</output></label>
+            <label class="toggle"><input type="checkbox" name="atlas" /> Montrer l'atlas</label>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="ink" hidden>
+            <form class="controls" aria-labelledby="c-ink" data-controls="ink">
+            <p id="c-ink" class="controls-title">L'encre</p>
+            <label class="range"><span>Courant</span><input type="range" name="flow" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+            <label class="range"><span>Remous du pointeur</span><input type="range" name="stir" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+          </form>
+          </div>
+          <div class="sp-form" data-sp-form="fluid" hidden>
+            <form class="controls" aria-labelledby="c-fluid" data-controls="fluid">
+              <p id="c-fluid" class="controls-title">Le fluide</p>
+              <label class="range"><span>Force du pointeur</span><input type="range" name="force" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Séchage</span><input type="range" name="dry" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
+            </form>
+          </div>
+          <div class="sp-form" data-sp-form="a11y" hidden>
+            <form class="controls" aria-labelledby="c-sp-a11y" data-controls="a11y">
+              <p id="c-sp-a11y" class="controls-title">Accessibilité</p>
+              <fieldset class="choices">
+                <legend class="sr-only">Vision simulée</legend>
+                <label><input type="radio" name="vision" value="0" /> Ordinaire</label>
+                <label><input type="radio" name="vision" value="1" /> Protanopie</label>
+                <label><input type="radio" name="vision" value="2" /> Deutéranopie</label>
+                <label><input type="radio" name="vision" value="3" /> Tritanopie</label>
+                <label><input type="radio" name="vision" value="4" /> Achromatopsie</label>
+              </fieldset>
+              <label class="range"><span>Encre délavée</span><input type="range" name="fade" min="0" max="0.9" step="0.01" value="0" /><output>0,00</output></label>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
