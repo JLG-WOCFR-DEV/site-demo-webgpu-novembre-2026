@@ -93,7 +93,8 @@ const CATS: Category[] = [
       id: `transition-${i}`,
       label,
       text: TRANSITION_TEXT[i]!,
-      forms: ["transition"],
+      // La chaîne aussi : on combine l'impression avec le repérage au défilement, le grain ou le bloom.
+      forms: ["transition", "chain"],
       patch: () => {
         settings.chain.print = true;
         settings.transition.style = i;
@@ -162,7 +163,7 @@ const CATS: Category[] = [
     samples: [
       { id: "chaine-bloom", label: "Bloom", text: "Seules les vraies hautes lumières débordent : le reflet sur le verre.", photo: "glass", forms: ["light"], patch: () => (settings.chain.bloom = true) },
       { id: "chaine-grain", label: "Grain et fibre", text: "Un bruit entrelacé, animé, et la fibre du papier.", patch: () => (settings.chain.grain = true) },
-      { id: "chaine-rvb", label: "Repérage au défilement", text: "Faites défiler la page : les plaques glissent comme une feuille qui file sous les rouleaux.", patch: () => (settings.chain.rgb = true) },
+      { id: "chaine-rvb", label: "Repérage au défilement", text: "L'aberration chromatique du défilement : faites défiler vite, les plaques rouge, verte et bleue glissent comme une feuille qui file sous les rouleaux.", forms: ["chain"], patch: () => (settings.chain.rgb = true) },
       { id: "chaine-trame", label: "Trame CMJN", text: "Quatre grilles de points tournées, une par encre, superposées par soustraction.", stage: "trame", forms: ["trame"], patch: () => (settings.chain.trame = true) },
       {
         id: "chaine-split",

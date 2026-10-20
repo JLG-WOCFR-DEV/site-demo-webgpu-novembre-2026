@@ -1696,7 +1696,7 @@ html.gl-on .menu[data-style="planche"] .sheet {
 
 .sampler {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(320px, 400px);
   gap: var(--col-gap);
   padding: 24px var(--gutter-r) 80px var(--gutter);
   align-items: start;
@@ -1899,11 +1899,22 @@ html.gl-on .menu[data-style="planche"] .sheet {
     order: 1;
     scroll-margin-top: calc(var(--bar-h) + 8px);
   }
-  .sp-info {
+  .sp-inspector {
     order: 2;
+    grid-column: auto;
+    grid-row: auto;
   }
-  .sp-forms {
+  .sp-page,
+  .sp-scroll-hint {
     order: 3;
+  }
+  .chapter.sp-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding-block: 36px;
+  }
+  .sp-page--rev .sp-page-text {
+    order: 0;
   }
   .sp-side {
     order: 4;
@@ -1930,5 +1941,89 @@ html.gl-on .menu[data-style="planche"] .sheet {
   }
   .sp-hero .display {
     font-size: 40px;
+  }
+}
+
+/* Inspecteur : la fiche et les réglages, à droite, toujours sous la main. */
+.sp-inspector {
+  position: sticky;
+  top: calc(var(--bar-h) + 16px);
+  max-height: calc(100dvh - var(--bar-h) - 32px);
+  overflow: auto;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding-left: 6px;
+}
+.sp-inspector .sp-forms {
+  max-width: none;
+}
+.sp-inspector .range {
+  grid-template-columns: minmax(6.5em, 0.9fr) minmax(0, 1.6fr) 4em;
+}
+.sp-scroll-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+/* Planches à faire défiler. */
+.chapter.sp-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 32px;
+  align-items: center;
+  padding-block: 56px;
+}
+.sp-page--rev .sp-page-text {
+  order: 2;
+}
+.sp-page-text p,
+.sp-page-text h3 {
+  margin: 0;
+}
+.sp-page-num {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.sp-page-title {
+  margin-top: 10px !important;
+  font: 800 clamp(34px, 3.6vw, 56px) / 1 var(--f-display);
+  font-stretch: 112%;
+}
+.sp-page-body {
+  margin-top: 14px !important;
+  max-width: 38ch;
+  font-size: 18px;
+  line-height: 1.5;
+}
+.sp-page-plate {
+  margin: 0;
+  aspect-ratio: 3 / 2;
+}
+.sp-page-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@media (max-width: 1099px) and (min-width: 861px) {
+  /* Écran moyen : les échantillons passent au-dessus ; le spécimen et
+     l'inspecteur restent côte à côte. */
+  .sampler {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    grid-template-areas: "side side" "main insp";
+  }
+  .sp-side {
+    grid-area: side;
+    position: static;
+    max-height: none;
+  }
+  .sp-main {
+    grid-area: main;
+  }
+  .sp-inspector {
+    grid-area: insp;
   }
 }

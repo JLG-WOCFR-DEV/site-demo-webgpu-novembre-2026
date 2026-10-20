@@ -73,6 +73,28 @@ forms = {
               <label class="range"><span>Encre délavée</span><input type="range" name="fade" min="0" max="0.9" step="0.01" value="0" /><output>0,00</output></label>
             </form>""",
 }
+# Des planches à faire défiler sous le spécimen : chacune est un chapitre,
+# donc s'imprime à son tour ; elles montrent aussi les effets de défilement.
+PAGES = [
+    ("vanilla", "La trame", "Quatre encres, quatre angles : chaque teinte devient une grille de points, et la taille du point porte la densité."),
+    ("steel", "Le métal", "Le reflet sur l'acier est la seule vraie haute lumière de la page : c'est lui que le bloom doit attraper, pas le papier."),
+    ("bowl", "L'eau", "Une surface calme, un grès clair : la planche idéale pour juger un fondu, une coupe nette ou un pli."),
+    ("flower", "Le blanc", "Une renoncule blanche sur un gris doux : les blancs révèlent les dérives de couleur et le grain trop fort."),
+    ("glass", "Le verre", "Des arêtes vives et des transparences : le repérage au défilement s'y voit tout de suite."),
+    ("fig", "La figue", "Des rouges profonds et une pierre texturée, pour finir : de quoi juger les transitions sur une image dense."),
+]
+more = "\n".join(
+    f"""        <section class="chapter sp-page{' sp-page--rev' if i % 2 else ''}" id="sp-page-{i + 1}" aria-labelledby="sp-page-t{i + 1}">
+          <div class="sp-page-text" data-gl-text>
+            <p class="sp-page-num">Planche {i + 1:02d}</p>
+            <h3 id="sp-page-t{i + 1}" class="sp-page-title">{title}</h3>
+            <p class="sp-page-body">{text}</p>
+          </div>
+          <figure class="plate sp-page-plate"><img data-gl-img src="./plates/{img}.jpg" alt="" /></figure>
+        </section>"""
+    for i, (img, title, text) in enumerate(PAGES)
+)
+
 bank = "\n".join(f'          <div class="sp-form" data-sp-form="{k}" hidden>\n            {v}\n          </div>' for k, v in forms.items())
 
 page = f"""{head}</head>
@@ -136,6 +158,11 @@ page = f"""{head}</head>
           </div>
         </section>
 
+        <p class="sp-scroll-hint">Faites défiler : chaque planche s'imprime à son tour, et les effets de défilement se voient en mouvement.</p>
+{more}
+      </div>
+
+      <aside class="sp-inspector" aria-label="Inspecteur">
         <div class="sp-info" aria-live="polite">
           <p class="sp-catname" data-sp-catname></p>
           <h2 id="sp-title" class="sp-title" data-sp-title></h2>
@@ -143,11 +170,10 @@ page = f"""{head}</head>
           <p class="sp-intro" data-sp-intro></p>
           <button type="button" class="btn" data-sp-action hidden></button>
         </div>
-
         <div class="sp-forms">
 {bank}
         </div>
-      </div>
+      </aside>
     </main>
   </body>
 </html>
