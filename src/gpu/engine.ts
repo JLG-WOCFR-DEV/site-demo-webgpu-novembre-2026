@@ -3,7 +3,7 @@ import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SHEET, SIM } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, PLANE, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -23,13 +23,40 @@ const MAX_SHEETS = 24;
 const SHEET_BYTES = 144;
 const BLOOM_LEVELS = 5;
 const MAX_BOXES = 512;
-const STAGE_KIND: Record<string, number> = { hero: 1, trame: 2, filtre: 3 };
+const STAGE_KIND: Record<string, number> = {
+  hero: 1,
+  trame: 2,
+  filtre: 3,
+  // Leçon 06.1 : matières sur le HTML vivant. Couche de traces = type − 4.
+  flammes: 4,
+  nuages: 5,
+  toile: 6,
+  gouttes: 7,
+  enveloppe: 8,
+  givre: 9,
+};
+/**
+ * Mémoire du pointeur par matière : gain et oubli de la présence (b), gain et
+ * oubli du vent ou de la peinture (rg), en 1/s. Les flammes et l'enveloppe
+ * n'en ont pas besoin.
+ */
+const TRACE_RATES: [number, number, number, number][] = [
+  [0, 1, 0, 1],
+  [7, 0.55, 1.2, 0.8], // brume : s'écarte vite, revient en deux secondes
+  [9, 0.12, 0.9, 0.03], // toile : la peinture reste, sèche lentement
+  [10, 0.1, 0, 1], // gouttes : la buée revient lentement
+  [0, 1, 0, 1],
+  [2.2, 0.25, 0, 1], // givre : fond en restant dessus, regèle en quatre secondes
+];
+/** Marge autour de l'élément enveloppé de flammes (px css). */
+export const WRAP_PAD = 56;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
+const MATTER_AT = CASSE_AT + 4 + 16 * 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -136,6 +163,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
       { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float", viewDimension: "2d-array" } },
     ],
   });
 
@@ -148,8 +176,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const simMod = device.createShaderModule({ label: "sim", code: SIM });
   const layersMod = device.createShaderModule({ label: "layers", code: LAYERS });
   const sheetMod = device.createShaderModule({ label: "sheet", code: SHEET });
+  const traceMod = device.createShaderModule({ label: "trace", code: TRACE });
   const inkMod = device.createShaderModule({ label: "ink", code: INK });
-  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod, sheetMod]) {
+  for (const m of [planeMod, glyphMod, boxMod, bloomMod, postMod, simMod, inkMod, layersMod, sheetMod, traceMod]) {
     const info = await m.getCompilationInfo();
     const errors = info.messages.filter((x) => x.type === "error");
     if (errors.length) throw new Error(`WGSL ${m.label}: ${errors.map((e) => `${e.lineNum}:${e.message}`).join(" | ")}`);
@@ -251,6 +280,34 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       },
     ],
   });
+  // Matières : traces du pointeur, une couche par matière.
+  const traceLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      { binding: 1, visibility: GPUShaderStage.COMPUTE, texture: { sampleType: "unfilterable-float", viewDimension: "2d-array" } },
+      { binding: 2, visibility: GPUShaderStage.COMPUTE, storageTexture: { access: "write-only", format: "rgba16float", viewDimension: "2d-array" } },
+    ],
+  });
+  const tracePipe = device.createComputePipeline({
+    label: "trace",
+    layout: device.createPipelineLayout({ bindGroupLayouts: [traceLayout] }),
+    compute: { module: traceMod, entryPoint: "trace" },
+  });
+  const traceTex = (label: string, usage: number) =>
+    device.createTexture({ label, size: [TRACE_SIZE, TRACE_SIZE, TRACE_LAYERS], format: "rgba16float", usage });
+  const traceA = traceTex("trace-a", GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST);
+  const traceB = traceTex("trace-b", GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC);
+  const traceBuf = device.createBuffer({ size: 16 + TRACE_LAYERS * 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const traceData = new Float32Array(4 + TRACE_LAYERS * 12);
+  const traceBind = device.createBindGroup({
+    layout: traceLayout,
+    entries: [
+      { binding: 0, resource: { buffer: traceBuf } },
+      { binding: 1, resource: traceA.createView({ dimension: "2d-array" }) },
+      { binding: 2, resource: traceB.createView({ dimension: "2d-array" }) },
+    ],
+  });
+
   const sheetPipe = device.createRenderPipeline({
     label: "sheet",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, sheetLayout, texLayout] }),
@@ -525,6 +582,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         { binding: 2, resource: scene.createView() },
         { binding: 3, resource: bloomTex.createView({ baseMipLevel: 0, mipLevelCount: 1 }) },
         { binding: 4, resource: msdfTex.createView() },
+        { binding: 5, resource: traceA.createView({ dimension: "2d-array" }) },
       ],
     });
   };
@@ -706,10 +764,23 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     /* Plaques de démonstration */
     const stageEls = menuOpen ? [] : stages();
     postData.fill(0);
+    traceData.fill(0);
+    let traceOn = false;
     let si = 0;
     for (const s of stageEls) {
       const r = s.getBoundingClientRect();
       const kind = STAGE_KIND[s.dataset.glStage ?? ""] ?? 0;
+      if (kind >= 4 && r.width > 0 && r.bottom > 0 && r.top < cssH) {
+        // Matière visible : sa couche de traces avance d'un pas.
+        const layer = kind - 4;
+        const rates = TRACE_RATES[layer]!;
+        const inside = pointer.inside && pointer.x >= r.left && pointer.x <= r.right && pointer.y >= r.top && pointer.y <= r.bottom;
+        const o = 4 + layer * 12;
+        traceData.set([1, inside ? 1 : 0, (pointer.x - r.left) / r.width, (pointer.y - r.top) / r.height], o);
+        traceData.set([pvx / r.width, pvy / r.height, r.width / r.height, 0.09], o + 4);
+        traceData.set(rates, o + 8);
+        traceOn = traceOn || rates[0] > 0;
+      }
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left - 6, r.top - 6, r.width + 12, r.height + 12, 0.07, 0.07, 0.07, 0.7);
       if (s.dataset.glStage === "glyph" && settings.glyph.atlas && r.bottom > 0 && r.top < cssH) {
         // Seule la bande occupée de l'atlas, à l'échelle de la plaque.
@@ -798,6 +869,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
     postData.set(casseData, CASSE_AT);
+    postData.set([settings.matter.intensity, WRAP_PAD * dpr, 0, 0], MATTER_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -908,6 +980,16 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         }
       }
       cp.end();
+    }
+    if (traceOn) {
+      traceData[0] = dt;
+      device.queue.writeBuffer(traceBuf, 0, traceData);
+      const tp = enc.beginComputePass({ label: "traces" });
+      tp.setPipeline(tracePipe);
+      tp.setBindGroup(0, traceBind);
+      tp.dispatchWorkgroups(TRACE_SIZE / 8, TRACE_SIZE / 8, TRACE_LAYERS);
+      tp.end();
+      enc.copyTextureToTexture({ texture: traceB }, { texture: traceA }, [TRACE_SIZE, TRACE_SIZE, TRACE_LAYERS]);
     }
     const scenePass = enc.beginRenderPass({
       label: "scene",
@@ -1122,6 +1204,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       contrastBuf?.destroy();
       fluid.destroy();
       sheetBuf.destroy();
+      traceA.destroy();
+      traceB.destroy();
+      traceBuf.destroy();
       bodyBuf.destroy();
       dropBuf.destroy();
       scene?.destroy();

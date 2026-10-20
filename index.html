@@ -511,6 +511,98 @@
             <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
           </form>
         </div>
+
+        <section id="ch-matieres" class="lesson" aria-labelledby="t-matieres">
+          <h3 id="t-matieres" class="lesson-title" data-gl-text><span class="lesson-num">06.1</span> Six matières sur le HTML vivant</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Les filtres relisent une photo. Les mêmes outils peuvent recouvrir du HTML vivant : du texte, une image, un
+                bouton. Voici six matières, réécrites en WGSL d'après les composants Blaze, Clouds, Canvas, Droplets,
+                Flame Wrap et Frost de canvasui : flammes, brume, toile, gouttes, enveloppe de feu, givre. Elles se
+                calculent dans la passe composite, seulement dans leur plaque, et relisent l'image déjà peinte : le texte
+                qu'elles déforment est celui que le GPU vient de dessiner, et il reste dans le DOM, sélectionnable.
+              </p>
+              <p>
+                Quatre d'entre elles se souviennent du pointeur. Une passe de calcul tient une texture de traces par
+                matière : là où le pointeur passe, la brume s'écarte, la peinture fraîche s'étale, la buée s'essuie, le
+                givre fond. Chaque trace s'efface à son rythme : la brume revient en deux secondes, le givre regèle en
+                quatre, la peinture sèche lentement.
+              </p>
+              <p>
+                Une matière qui recouvre du texte en abaisse le contraste ; la mesure de la leçon 10.2 le montrerait. Elles
+                restent donc au décor. Le bouton enveloppé de flammes est peint par le DOM : il reste net, lisible et
+                cliquable au milieu du feu. Avec le mouvement réduit ou la pause, flammes, brume et gouttes s'arrêtent ;
+                le pointeur agit toujours.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-matter" data-controls="matter">
+              <p id="c-matter" class="controls-title">Les matières</p>
+              <label class="range"><span>Intensité</span><input type="range" name="intensity" min="0" max="1.5" step="0.01" value="1" /><output>1,00</output></label>
+            </form>
+          </div>
+          <div class="matters">
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="flammes">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Flammes</p>
+                  <p class="matter-title">L'épreuve brûle</p>
+                  <p class="matter-text">Le feu monte du pied de la plaque, l'air ondule au-dessus et la fumée voile le haut. Les flammes penchent vers le pointeur.</p>
+                </div>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="nuages">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Brume</p>
+                  <p class="matter-title">Soufflez dessus</p>
+                  <p class="matter-text">Un voile épais floute et dévie ce qu'il couvre. Le pointeur l'écarte en passant ; la brume revient en deux secondes.</p>
+                </div>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="toile">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Toile</p>
+                  <p class="matter-title">Peinture fraîche</p>
+                  <p class="matter-text">La page est peinte sur une toile de lin. Tirez la peinture avec le pointeur : elle garde des crêtes brillantes, puis sèche.</p>
+                </div>
+                <figure class="plate matter-plate"><img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="" /></figure>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="gouttes">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Gouttes</p>
+                  <p class="matter-title">Pluie sur la vitre</p>
+                  <p class="matter-text">Les gouttes posées retournent l'image comme des lentilles, d'autres coulent en laissant une trace claire. Le pointeur essuie la buée.</p>
+                </div>
+                <figure class="plate matter-plate"><img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="" /></figure>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter stage--wrap">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Enveloppe de feu</p>
+                  <p class="matter-title">Un bouton en flammes</p>
+                  <p class="matter-text">Une bordure de feu autour d'un vrai bouton, plus haute au-dessus, avec un liseré en fusion. Plus vive au survol.</p>
+                </div>
+                <div class="matter-wrap" data-gl-stage="enveloppe">
+                  <button type="button" class="btn" data-matter-button>Tirer l'épreuve</button>
+                </div>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="givre">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Givre</p>
+                  <p class="matter-title">Vitre gelée</p>
+                  <p class="matter-text">Des cristaux blanchissent et dévient l'image. Gardez le pointeur dessus : la glace fond, avec un bord d'eau, puis regèle.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 07 LUMIÈRE ───────────── -->
@@ -898,7 +990,7 @@
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
-          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle et l'encre fraîche s'inspirent des composants Peel et Liquid de canvasui.dev, la pile de calques du modèle de composition de la bibliothèque shaders (MIT). Fluides stables d'après Jos Stam (1999) ; simulation de vision d'après Machado, Oliveira et Fernandes (2009).
+          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle, l'encre fraîche et les six matières de la leçon 06.1 s'inspirent des composants Peel, Liquid, Blaze, Clouds, Canvas, Droplets, Flame Wrap et Frost de canvasui.dev, réécrits sans reprendre leur code, la pile de calques du modèle de composition de la bibliothèque shaders (MIT). Fluides stables d'après Jos Stam (1999) ; simulation de vision d'après Machado, Oliveira et Fernandes (2009).
           Archivo par Omnibus-Type, IBM Plex Mono par IBM, toutes deux sous licence SIL OFL, servies depuis ce site.
         </p>
         <p>

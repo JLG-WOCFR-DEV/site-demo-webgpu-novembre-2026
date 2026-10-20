@@ -19,6 +19,8 @@ export type Settings = {
    * ligne d'impression (part de l'écran). width : largeur du front (part de l'écran).
    */
   transition: { style: number; speed: number; line: number; width: number };
+  /** Leçon 06.1 : intensité des matières sur le HTML vivant. */
+  matter: { intensity: number };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
@@ -39,6 +41,7 @@ export const settings: Settings = {
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },
   transition: { style: 0, speed: 4.5, line: 0.86, width: 0.22 },
+  matter: { intensity: 1 },
   layers: {
     order: ["glass", "flower", "spot"],
     mode: { glass: 0, flower: 1, spot: 3 },

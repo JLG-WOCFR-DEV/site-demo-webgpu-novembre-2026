@@ -937,6 +937,48 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 }
 `;
 
+/* ───────────────────────── Traces du pointeur (matières) ───────────────────────── */
+
+// Une couche par matière, en 192 × 192 étirés sur sa plaque :
+//   rg : vent ou peinture poussés par le pointeur (uv), b : présence (brume
+//   écartée, peinture fraîche, buée essuyée, givre fondu).
+// Chaque couche s'efface à son propre rythme. Lecture dans A, écriture dans
+// B, puis copie B → A : le composite lit toujours A.
+export const TRACE_SIZE = 192;
+export const TRACE_LAYERS = 6;
+export const TRACE = /* wgsl */ `
+struct TraceU {
+  a: vec4f,                       // dt, 0, 0, 0
+  layer: array<vec4f, ${6 * 3}>,  // par couche : [actif, dedans, pointeur u, v], [vitesse u, v, aspect, rayon], [gain b, oubli b, gain rg, oubli rg]
+};
+@group(0) @binding(0) var<uniform> u: TraceU;
+@group(0) @binding(1) var src: texture_2d_array<f32>;
+@group(0) @binding(2) var dst: texture_storage_2d_array<rgba16float, write>;
+
+@compute @workgroup_size(8, 8, 1)
+fn trace(@builtin(global_invocation_id) id: vec3u) {
+  let size = textureDimensions(dst);
+  if (any(id.xy >= size)) { return; }
+  let l = i32(id.z);
+  var v = textureLoad(src, id.xy, l, 0);
+  let p0 = u.layer[l * 3];
+  let p1 = u.layer[l * 3 + 1];
+  let p2 = u.layer[l * 3 + 2];
+  if (p0.x > 0.5) {
+    let dt = u.a.x;
+    v = vec4f(v.xy * exp(-dt * p2.w), v.z * exp(-dt * p2.y), 1.0);
+    if (p0.y > 0.5) {
+      let uv = (vec2f(id.xy) + 0.5) / vec2f(size);
+      let d = (uv - p0.zw) * vec2f(p1.z, 1.0);
+      let g = exp(-dot(d, d) / (p1.w * p1.w));
+      v.z = min(1.0, v.z + g * dt * p2.x);
+      v = vec4f(clamp(v.xy + p1.xy * g * dt * p2.z, vec2f(-1.0), vec2f(1.0)), v.z, 1.0);
+    }
+  }
+  textureStore(dst, id.xy, l, v);
+}
+`;
+
 /* ───────────────────────── Sommaire en feuilles ───────────────────────── */
 
 // Une feuille du sommaire : un rectangle plat, posé en 3D par une matrice que
@@ -1058,6 +1100,7 @@ struct Post {
   a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
   casse: vec4f,    // nombre de caractères, largeur et hauteur de l'atlas, corps (px d'atlas)
   ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
+  matter: vec4f,   // intensité des matières, marge de l'enveloppe de feu (px), 0, 0
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -1065,6 +1108,7 @@ struct Post {
 @group(0) @binding(2) var scene: texture_2d<f32>;
 @group(0) @binding(3) var bloom: texture_2d<f32>;
 @group(0) @binding(4) var msdf: texture_2d<f32>;
+@group(0) @binding(5) var trace: texture_2d_array<f32>;
 
 const LENS_R: f32 = 130.0;
 
@@ -1445,6 +1489,258 @@ fn f_casse(px: vec2f, st: vec4f, size: f32, amt: f32) -> vec3f {
   return mix(u.paper.rgb, ink, a);
 }
 
+/* ───── Matières sur le HTML vivant (leçon 06.1) ─────
+   D'après les composants Blaze, Clouds, Canvas, Droplets, Flame Wrap et Frost
+   de canvasui.dev, réécrits ici en WGSL. Toutes lisent l'image déjà peinte
+   (texte GPU, photos) et ne travaillent que dans leur plaque. */
+
+fn fbm(p: vec2f) -> f32 {
+  var v = 0.0;
+  var a = 0.5;
+  var q = p;
+  for (var i = 0; i < 4; i++) {
+    v += a * vnoise(q);
+    q = q * 2.02 + vec2f(3.1, 1.7);
+    a *= 0.5;
+  }
+  return v;
+}
+
+fn trace_at(px: vec2f, st: vec4f, layer: i32) -> vec4f {
+  let q = clamp((px - st.xy) / st.zw, vec2f(0.0), vec2f(1.0));
+  return textureSampleLevel(trace, samp, q, layer, 0.0);
+}
+
+fn stage_src(p: vec2f, st: vec4f) -> vec3f {
+  return source(in_stage(p, st), vec2f(0.0));
+}
+
+// Flou sur un disque de huit prises, plus le centre.
+fn stage_blur(p: vec2f, st: vec4f, r: f32) -> vec3f {
+  var acc = stage_src(p, st);
+  for (var i = 0; i < 8; i++) {
+    let a = f32(i) * 0.7854 + 0.3;
+    acc += stage_src(p + vec2f(cos(a), sin(a)) * r, st);
+  }
+  return acc / 9.0;
+}
+
+// Braise, orange, jaune, blanc chaud.
+fn fire_ramp(f: f32) -> vec3f {
+  let c1 = vec3f(0.42, 0.04, 0.01);
+  let c2 = vec3f(0.96, 0.3, 0.03);
+  let c3 = vec3f(1.0, 0.74, 0.2);
+  let c4 = vec3f(1.0, 0.96, 0.84);
+  if (f < 0.33) { return mix(c1, c2, f / 0.33); }
+  if (f < 0.66) { return mix(c2, c3, (f - 0.33) / 0.33); }
+  return mix(c3, c4, clamp((f - 0.66) / 0.34, 0.0, 1.0));
+}
+
+// Étincelles : une par cellule tirée au sort, qui monte en vacillant.
+fn sparks(p: vec2f, t: f32, cell: f32) -> f32 {
+  var s = 0.0;
+  for (var k = 0; k < 2; k++) {
+    let fk = f32(k);
+    let c = cell * (1.0 + fk * 0.6);
+    let q = vec2f(p.x, p.y + t * (70.0 + 50.0 * fk) * u.res.z) / c;
+    let id = floor(q);
+    let h = tr_hash(id + fk * 17.0);
+    let pos = vec2f(tr_hash(id + 3.1), tr_hash(id + 7.7)) * 0.8 + 0.1 + vec2f(sin(t * 3.0 + h * 20.0) * 0.08, 0.0);
+    let d = length(fract(q) - pos) * c;
+    let flick = step(0.74, h) * (0.6 + 0.4 * sin(t * 20.0 + h * 50.0));
+    s += flick * exp(-d * d / (2.4 * u.res.z * u.res.z));
+  }
+  return s;
+}
+
+fn sd_rbox(p: vec2f, b: vec2f, r: f32) -> f32 {
+  let q = abs(p) - b + vec2f(r);
+  return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - r;
+}
+
+// Flammes : le feu monte du pied de la plaque, l'air ondule, la fumée voile
+// le haut, des étincelles s'échappent. Les flammes penchent vers le pointeur.
+fn m_flames(px: vec2f, st: vec4f, amt: f32) -> vec3f {
+  let t = u.res.w;
+  let dpr = u.res.z;
+  let h = 1.0 - (px.y - st.y) / st.w;
+  let s = px / (dpr * 46.0);
+  let heat = (1.0 - smoothstep(0.0, 0.8, h)) * amt;
+  let off = vec2f(fbm(s * 1.3 + vec2f(0.0, t * 1.8)) - 0.47, fbm(s * 1.3 + vec2f(5.2, t * 2.1)) - 0.47) * 18.0 * dpr * heat;
+  var col = stage_src(px + off, st);
+  let smoke = smoothstep(0.35, 0.75, fbm(s * 0.6 + vec2f(t * 0.05, t * 0.35))) * smoothstep(0.25, 0.7, h) * (1.0 - smoothstep(0.85, 1.0, h));
+  col = mix(col, col * vec3f(0.6, 0.58, 0.56), smoke * 0.45 * amt);
+  let lean = select(0.0, (u.pointer.x - (st.x + st.z * 0.5)) / st.z, u.pointer.z > 0.5);
+  let fq = vec2f(px.x / (dpr * 38.0) - lean * h * 2.5, px.y / (dpr * 70.0) + t * 1.6);
+  let n = fbm(fq + fbm(fq * 1.7 + t * 0.3) * 0.8);
+  let f = clamp(n * 1.9 - h * 2.3 / max(amt, 0.2) + 0.15, 0.0, 1.0);
+  let flame = smoothstep(0.08, 0.7, f) * min(amt * 1.4, 1.0);
+  col = col * (1.0 - flame * 0.55) + fire_ramp(f) * flame;
+  let sp = sparks(px, t, 26.0 * dpr) * smoothstep(0.05, 0.4, h) * (1.0 - smoothstep(0.7, 1.0, h)) * amt;
+  return col + vec3f(1.0, 0.62, 0.2) * sp;
+}
+
+// Brume : un voile épais qui floute et dévie ce qu'il couvre ; le pointeur
+// souffle dedans, l'écarte et le pousse, puis la brume revient.
+fn m_clouds(px: vec2f, st: vec4f, amt: f32) -> vec3f {
+  let t = u.res.w;
+  let dpr = u.res.z;
+  let tr = trace_at(px, st, 1);
+  let s = px / (dpr * 120.0) - tr.xy * 2.0 + vec2f(t * 0.03, t * 0.01);
+  let d0 = fbm(s) * 0.65 + fbm(s * 2.7 + vec2f(-t * 0.05, 0.0)) * 0.35;
+  let dens = smoothstep(0.3, 0.7, d0 + 0.08 * amt) * (1.0 - smoothstep(0.05, 0.7, tr.z)) * min(amt, 1.2);
+  let e = 0.05;
+  let gx = fbm(s + vec2f(e, 0.0)) - fbm(s - vec2f(e, 0.0));
+  let gy = fbm(s + vec2f(0.0, e)) - fbm(s - vec2f(0.0, e));
+  let off = vec2f(gx, gy) / e * 5.0 * dpr * dens;
+  let blurred = stage_blur(px + off, st, 7.0 * dpr * dens);
+  return mix(blurred, vec3f(0.968, 0.966, 0.958), clamp(dens * 0.75, 0.0, 0.92));
+}
+
+// Toile : le HTML peint sur une toile de lin tissée. Le pointeur traîne la
+// peinture fraîche, qui garde des crêtes brillantes avant de sécher.
+fn m_canvas(px: vec2f, st: vec4f, amt: f32) -> vec3f {
+  let dpr = u.res.z;
+  let tr = trace_at(px, st, 2);
+  let drag = -tr.xy * st.zw * 0.25;
+  let jitter = (vec2f(vnoise(px / (dpr * 3.0)), vnoise(px / (dpr * 3.0) + 9.1)) - 0.5) * 2.5 * dpr * amt;
+  var col = stage_src(px + drag + jitter, st);
+  let paperish = 1.0 - smoothstep(0.03, 0.12, distance(col, u.paper.rgb));
+  col = mix(col, vec3f(0.85, 0.81, 0.72), paperish * min(amt, 1.0));
+  // Tissage : un fil sur deux passe dessus, en damier.
+  let g = px / (5.0 * dpr);
+  let cell = floor(g);
+  let f = fract(g);
+  let over = (i32(cell.x) + i32(cell.y)) % 2 == 0;
+  let thread = select(sin(f.x * 3.14159), sin(f.y * 3.14159), over);
+  let slope = select(cos(f.x * 3.14159) * 0.6, cos(f.y * 3.14159) * 0.8, over);
+  col *= mix(1.0, 0.88 + 0.14 * thread - 0.06 * slope, min(amt, 1.0));
+  // Crêtes : relief tiré de la trace, éclairé de biais, avec un reflet humide.
+  let b0 = tr.z;
+  let bx = trace_at(px + vec2f(3.0 * dpr, 0.0), st, 2).z;
+  let by = trace_at(px + vec2f(0.0, 3.0 * dpr), st, 2).z;
+  let n = normalize(vec3f((b0 - bx) * 8.0, (b0 - by) * 8.0, 0.25));
+  let l = normalize(vec3f(-0.5, -0.6, 0.62));
+  let ridge = min(b0 * 3.0, 1.0);
+  let spec = pow(max(dot(reflect(-l, n), vec3f(0.0, 0.0, 1.0)), 0.0), 24.0);
+  col *= mix(1.0, 0.8 + 0.4 * dot(n, l), ridge);
+  return col + vec3f(spec * 0.35 * ridge);
+}
+
+// Une couche de gouttes posées : une goutte au plus par cellule.
+fn drop_cell(p: vec2f, cell: f32, seed: f32, density: f32) -> vec3f {
+  let q = p / cell;
+  let id = floor(q);
+  if (tr_hash(id + seed) > density) { return vec3f(0.0); }
+  let c = vec2f(tr_hash(id + seed + 1.3), tr_hash(id + seed + 4.7)) * 0.6 + 0.2;
+  let r = 0.1 + tr_hash(id + seed + 8.1) * 0.22;
+  let d = (fract(q) - c) * vec2f(1.0, 0.9);
+  let len = length(d) / r;
+  if (len > 1.0) { return vec3f(0.0); }
+  return vec3f(d / r, 1.0 - smoothstep(0.8, 1.0, len));
+}
+
+// Gouttes : de la buée, des gouttes posées qui retournent l'image comme des
+// lentilles, et des gouttes qui coulent en laissant une trace claire. Le
+// pointeur essuie la vitre.
+fn m_drops(px: vec2f, st: vec4f, amt: f32) -> vec3f {
+  let t = u.res.w;
+  let dpr = u.res.z;
+  let local = px - st.xy;
+  let wipe = smoothstep(0.1, 0.7, trace_at(px, st, 3).z);
+  // Gouttes qui coulent, une par colonne.
+  let colW = 64.0 * dpr;
+  let ci = floor(local.x / colW);
+  let hs = tr_hash(vec2f(ci, 3.3));
+  let yh = fract(t * (0.06 + hs * 0.1) + hs) * (st.w + 80.0 * dpr) - 40.0 * dpr;
+  let x0 = (ci + 0.5 + (tr_hash(vec2f(ci, 9.1)) - 0.5) * 0.5) * colW;
+  let xh = x0 + sin(yh / (dpr * 40.0) + hs * 6.0) * 6.0 * dpr;
+  let xt = x0 + sin(local.y / (dpr * 40.0) + hs * 6.0) * 6.0 * dpr;
+  let trail = (1.0 - smoothstep(3.0 * dpr, 7.0 * dpr, abs(local.x - xt))) * step(local.y, yh) * smoothstep(yh - st.w * 0.7, yh, local.y);
+  var lens = vec2f(0.0);
+  var mask = 0.0;
+  let head = (local - vec2f(xh, yh)) / (9.0 * dpr) * vec2f(1.0, 0.8);
+  if (length(head) < 1.0) {
+    lens = head;
+    mask = 1.0 - smoothstep(0.8, 1.0, length(head));
+  }
+  let a = drop_cell(local, 30.0 * dpr, 1.0, 0.5 * (1.0 - trail));
+  let b = drop_cell(local + vec2f(11.0, 5.0) * dpr, 12.0 * dpr, 5.0, 0.55);
+  let c = drop_cell(local, 6.0 * dpr, 11.0, 0.7 * trail);
+  for (var i = 0; i < 3; i++) {
+    let d = select(select(c, b, i == 1), a, i == 0);
+    if (d.z > mask) {
+      mask = d.z;
+      lens = d.xy;
+    }
+  }
+  mask *= (1.0 - wipe) * min(amt, 1.0);
+  let fog = 0.5 * min(amt, 1.0) * (1.0 - trail) * (1.0 - wipe);
+  let behind = mix(stage_src(px, st), stage_blur(px, st, 4.0 * dpr), min(fog * 2.0, 1.0));
+  let fogged = mix(behind, vec3f(0.95, 0.955, 0.96), fog * 0.6);
+  // La goutte est une lentille : elle montre ce qui est derrière, retourné.
+  var drop = stage_src(px - lens * 14.0 * dpr, st);
+  let hl = smoothstep(0.55, 0.95, dot(normalize(lens + vec2f(1e-4)), vec2f(-0.6, -0.8))) * smoothstep(0.3, 0.8, length(lens));
+  drop = drop * (0.8 + 0.2 * (1.0 - length(lens))) + vec3f(0.6) * hl;
+  drop *= 1.0 - 0.35 * smoothstep(0.75, 1.0, length(lens)) * step(0.0, lens.y);
+  return mix(fogged, drop, mask);
+}
+
+// Enveloppe de feu : une bordure de flammes autour de l'élément, plus haute
+// au-dessus, un liseré en fusion, l'air qui ondule autour. Plus vive au survol.
+fn m_wrap(px: vec2f, st: vec4f, amt: f32) -> vec3f {
+  let t = u.res.w;
+  let dpr = u.res.z;
+  let pad = u.matter.y;
+  let inner = vec4f(st.xy + vec2f(pad), st.zw - vec2f(pad * 2.0));
+  let c = inner.xy + inner.zw * 0.5;
+  let d = sd_rbox(px - c, inner.zw * 0.5, 4.0 * dpr) / dpr;
+  if (d < 0.0) { return stage_src(px, st); }
+  let hover = select(0.0, 1.0, u.pointer.z > 0.5 && all(u.pointer.xy > st.xy) && all(u.pointer.xy < st.xy + st.zw));
+  let s = vec2f(px.x / (dpr * 22.0), px.y / (dpr * 30.0) + t * 2.2);
+  let n = fbm(s + fbm(s * 1.8 - vec2f(0.0, t * 0.4)) * 0.9);
+  let up = clamp((c.y - px.y) / (inner.w * 0.5 + pad), -1.0, 1.0);
+  let reach = mix(10.0, 40.0, up * 0.5 + 0.5) * (0.55 + n * 1.1) * (1.0 + 0.4 * hover) * amt;
+  let f = clamp(1.0 - d / max(reach, 0.1), 0.0, 1.0);
+  let flame = smoothstep(0.0, 0.9, f * (0.6 + n * 0.8));
+  let off = (vec2f(fbm(s * 1.7), fbm(s * 1.7 + 4.0)) - 0.47) * 10.0 * dpr * (1.0 - smoothstep(0.0, 70.0, d)) * amt;
+  var col = stage_src(px + off, st);
+  col = col * (1.0 - flame * 0.6) + fire_ramp(f * 0.9 + n * 0.15) * flame;
+  let molten = (1.0 - smoothstep(0.0, 3.5, d)) * (0.75 + 0.25 * sin(t * 9.0 + n * 12.0));
+  col = mix(col, vec3f(1.0, 0.82, 0.42), molten * 0.85 * min(amt, 1.0));
+  let sp = sparks(px, t, 18.0 * dpr) * step(0.0, up) * (1.0 - smoothstep(20.0, 80.0, d)) * amt * (1.0 + hover);
+  return col + vec3f(1.0, 0.6, 0.2) * sp;
+}
+
+// Givre : une vitre gelée, des cristaux qui dévient et blanchissent l'image.
+// Sous le pointeur elle fond, avec un bord d'eau ; puis elle regèle.
+fn m_frost(px: vec2f, st: vec4f, amt: f32) -> vec3f {
+  let dpr = u.res.z;
+  let tr = trace_at(px, st, 5);
+  let s = px / (dpr * 40.0);
+  let crystal = pow(crumple(s), 3.0) * 0.6 + pow(crumple(s * 3.1 + vec2f(7.3, 1.1)), 4.0) * 0.5;
+  let frost = smoothstep(0.35, 0.65, 1.0 - tr.z * 1.25 + (vnoise(px / (dpr * 14.0)) - 0.5) * 0.35) * min(amt, 1.2);
+  let e = 0.05;
+  let gx = crumple(s + vec2f(e, 0.0)) - crumple(s - vec2f(e, 0.0));
+  let gy = crumple(s + vec2f(0.0, e)) - crumple(s - vec2f(0.0, e));
+  let off = vec2f(gx, gy) / e * 3.0 * dpr * frost;
+  var col = stage_blur(px + off, st, 5.0 * dpr * frost);
+  col = mix(col, vec3f(0.92, 0.95, 0.99), clamp(frost * (0.42 + crystal * 0.45), 0.0, 0.95));
+  col += vec3f(0.08) * crystal * frost;
+  let edge = clamp(frost * (1.0 - frost) * 4.0, 0.0, 1.0);
+  return mix(col, col * 0.84, edge * 0.5 * step(0.02, tr.z));
+}
+
+fn matter(kind: f32, px: vec2f, st: vec4f) -> vec3f {
+  let amt = u.matter.x;
+  if (kind < 4.5) { return m_flames(px, st, amt); }
+  if (kind < 5.5) { return m_clouds(px, st, amt); }
+  if (kind < 6.5) { return m_canvas(px, st, amt); }
+  if (kind < 7.5) { return m_drops(px, st, amt); }
+  if (kind < 8.5) { return m_wrap(px, st, amt); }
+  return m_frost(px, st, amt);
+}
+
 fn image_filter(px: vec2f, st: vec4f) -> vec3f {
   let id = u.filt.x;
   let size = u.filt.y;
@@ -1496,6 +1792,8 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 
   if (kind > 2.5 && kind < 3.5) {
     col = image_filter(px, stage);
+  } else if (kind > 3.5) {
+    col = matter(kind, px, stage);
   }
 
   if (u.chain.z > 0.5) {
