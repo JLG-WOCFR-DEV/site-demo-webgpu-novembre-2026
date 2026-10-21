@@ -1,3 +1,5 @@
+import { MATERIALS_WGSL } from "./materials.wgsl.ts";
+
 /**
  * Tous les shaders de PLI. Une seule convention : le moteur travaille en
  * pixels CSS relatifs au viewport ; la conversion en pixels physiques
@@ -46,6 +48,9 @@ struct Plane {
   uv: vec4f,      // u0, v0, u1, v1 (recadrage object-fit: cover)
   params: vec4f,  // radius, shadow, lift, alpha
   flags: vec4f,   // wire, mono, hover, hdr
+  material: vec4f,    // mode (0 désactivé), intensité, échelle, temps du labo
+  interaction: vec4f, // pointeur local u/v, âge de l'onde, mouvement réduit
+  origin: vec4f,      // origine de l'onde u/v, comparaison, réservé
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -58,6 +63,8 @@ struct VsOut {
   @location(0) px: vec2f,
   @location(1) local: vec2f,
 };
+
+${MATERIALS_WGSL}
 
 fn lifted_rect() -> vec4f {
   // L'élévation remonte le plan et l'agrandit d'un souffle.
@@ -117,6 +124,14 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
   let uv = mix(plane.uv.xy, plane.uv.zw, in.local);
   var col = textureSample(tex, samp, uv).rgb;
 
+  // À zéro, on conserve exactement le prélèvement d'origine. Une comparaison
+  // conserve également la photo intacte à gauche, avec le même recadrage.
+  if (plane.material.x > 0.5 && plane.material.y > 0.0) {
+    if (plane.origin.z < 0.5 || in.local.x >= 0.5) {
+      col = material_color(in.local, r.zw);
+    }
+  }
+
   if (plane.flags.y > 0.5) {
     // Atlas de champs de distance : on l'imprime encre sur papier.
     let v = textureSample(tex, samp, uv).r;
@@ -127,6 +142,12 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
     let lum = max(col.r, max(col.g, col.b));
     let k = smoothstep(0.93, 1.0, lum);
     col = col * (1.0 + k * k * plane.flags.w);
+  }
+
+  if (plane.material.x > 0.5 && plane.origin.z > 0.5) {
+    let dividerDistance = abs((in.local.x - 0.5) * r.z);
+    let divider = 1.0 - smoothstep(0.35, 0.95, dividerDistance);
+    col = mix(col, vec3f(0.965, 0.949, 0.910), divider * 0.94);
   }
 
   if (plane.flags.x > 0.5) {
@@ -533,6 +554,13 @@ fn fs(in: VsOut) -> @location(0) vec4f {
       kind = kind_of(i);
       stage = s;
     }
+  }
+
+  // La planche du laboratoire isole la matière calculée dans PLANE. Ne pas
+  // lui ajouter grain animé/bloom/repérage : la pause doit réellement figer
+  // l'image et la comparaison ne doit montrer que cette matière.
+  if (kind > 2.5 && kind < 3.5) {
+    return vec4f(clamp(textureSampleLevel(scene, samp, in.uv, 0.0).rgb, vec3f(0.0), vec3f(1.0)), 1.0);
   }
 
   // Étape 1 : distorsion de lentille sous le pointeur, dans l'ouverture.

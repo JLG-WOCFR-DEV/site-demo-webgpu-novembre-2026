@@ -1,0 +1,347 @@
+{
+  "qa_run_at_utc": "2026-10-19T18:51:06.807536+00:00",
+  "run_provenance": "Fresh native render after workspace restoration; all images and measurements generated from current restored sources.",
+  "scope": "Native offscreen rendering of actual PLANE WGSL; no browser, no DOM or end-to-end claims.",
+  "adapter": {
+    "vendor": "",
+    "architecture": "",
+    "device": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "description": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2",
+    "stackgroup_min_size": 4,
+    "stackgroup_max_size": 128,
+    "vendor_id": 65541,
+    "device_id": 0,
+    "adapter_type": "CPU",
+    "backend_type": "OpenGL"
+  },
+  "wgpu_python_version": "0.32.0",
+  "shader_sha256": "87b532d68927e2dbdb5311f1a18d66aef292163bc56339ac7238c53a2f213912",
+  "shader_exports_sha256": "4c5252459e499561e6c0acfba71f1c166a697664b94e55a7539bb4ee0d9dde45",
+  "source_jpeg_sha256": "4254cbbb0273c67e8cc84abc7376d0434f839c9bd49dc180bade71cb7609be1a",
+  "source_dimensions": [
+    1408,
+    1408
+  ],
+  "output_dimensions": [
+    640,
+    534
+  ],
+  "mip_levels": 11,
+  "mip_generation": "CPU Pillow BOX resampling; app GPU mip implementation not exercised.",
+  "target_format": "rgba8unorm; sRGB-encoded values preserved as in the source shader.",
+  "uv_cover_crop": [
+    0,
+    0.08281250000000001,
+    1,
+    0.9171875
+  ],
+  "defaults": {
+    "strength": 0.8,
+    "scale": 0.5,
+    "time": 1.45,
+    "pointer": [
+      0.5,
+      0.5
+    ]
+  },
+  "checks": {
+    "ripple": {
+      "versus_original": {
+        "mean_abs_rgb_255": 11.92207660957661,
+        "max_abs_rgb_255": 144,
+        "changed_pixels_gt_2_percent": 69.36627561627562
+      },
+      "intensity_zero_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "comparison_left_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "outside_quad_equals_background": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "basic_checks_passed": true,
+      "time_variation": {
+        "mean_abs_rgb_255": 11.820722164472164,
+        "max_abs_rgb_255": 142,
+        "changed_pixels_gt_2_percent": 69.10856598356598
+      },
+      "time_variation_passed": true,
+      "still_age_invariance": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      }
+    },
+    "frost": {
+      "versus_original": {
+        "mean_abs_rgb_255": 26.266110203610204,
+        "max_abs_rgb_255": 137,
+        "changed_pixels_gt_2_percent": 91.32078507078506
+      },
+      "intensity_zero_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "comparison_left_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "outside_quad_equals_background": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "basic_checks_passed": true,
+      "no_time_animation": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "no_time_animation_passed": true,
+      "pointer_variation": {
+        "mean_abs_rgb_255": 6.321007821007821,
+        "max_abs_rgb_255": 107,
+        "changed_pixels_gt_2_percent": 24.763018513018515
+      },
+      "pointer_variation_passed": true
+    },
+    "cloth": {
+      "versus_original": {
+        "mean_abs_rgb_255": 13.699673918423919,
+        "max_abs_rgb_255": 182,
+        "changed_pixels_gt_2_percent": 87.70882833382834
+      },
+      "intensity_zero_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "comparison_left_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "outside_quad_equals_background": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "basic_checks_passed": true,
+      "time_variation": {
+        "mean_abs_rgb_255": 14.587934775434775,
+        "max_abs_rgb_255": 207,
+        "changed_pixels_gt_2_percent": 76.26039501039502
+      },
+      "time_variation_passed": true
+    },
+    "dither": {
+      "versus_original": {
+        "mean_abs_rgb_255": 60.600227287727286,
+        "max_abs_rgb_255": 191,
+        "changed_pixels_gt_2_percent": 99.96720621720621
+      },
+      "intensity_zero_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "comparison_left_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "outside_quad_equals_background": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "basic_checks_passed": true,
+      "no_time_animation": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "no_time_animation_passed": true
+    },
+    "glass": {
+      "versus_original": {
+        "mean_abs_rgb_255": 5.884223509223509,
+        "max_abs_rgb_255": 177,
+        "changed_pixels_gt_2_percent": 18.73948123948124
+      },
+      "intensity_zero_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "comparison_left_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "outside_quad_equals_background": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "basic_checks_passed": true,
+      "no_time_animation": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "no_time_animation_passed": true,
+      "pointer_variation": {
+        "mean_abs_rgb_255": 7.899756212256213,
+        "max_abs_rgb_255": 177,
+        "changed_pixels_gt_2_percent": 32.462751212751215
+      },
+      "pointer_variation_passed": true
+    },
+    "ascii": {
+      "versus_original": {
+        "mean_abs_rgb_255": 72.62888575388575,
+        "max_abs_rgb_255": 175,
+        "changed_pixels_gt_2_percent": 99.99474061974063
+      },
+      "intensity_zero_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "comparison_left_equals_original": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "outside_quad_equals_background": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "basic_checks_passed": true,
+      "no_time_animation": {
+        "mean_abs_rgb_255": 0.0,
+        "max_abs_rgb_255": 0,
+        "changed_pixels_gt_2_percent": 0.0
+      },
+      "no_time_animation_passed": true
+    }
+  },
+  "limitations": [
+    "llvmpipe is a software adapter; these are not physical GPU performance measurements.",
+    "Does not validate browser integration, pointer event routing, pause control, HTML fallback or full COMPOSITE chain.",
+    "Native OpenGL backend of wgpu executes WGSL translated by naga; Chrome Dawn backend not exercised.",
+    "The still flag freezes ripple age in WGSL. Cloth time is expected to be frozen by the host controller; that host behavior is not validated by these native renders."
+  ],
+  "pairwise_effects": {
+    "ripple__frost": {
+      "mean_abs_rgb_255": 27.178625053625055,
+      "max_abs_rgb_255": 147,
+      "changed_pixels_gt_2_percent": 91.2740693990694
+    },
+    "ripple__cloth": {
+      "mean_abs_rgb_255": 20.003820785070786,
+      "max_abs_rgb_255": 179,
+      "changed_pixels_gt_2_percent": 95.06670131670131
+    },
+    "ripple__dither": {
+      "mean_abs_rgb_255": 61.957293832293836,
+      "max_abs_rgb_255": 200,
+      "changed_pixels_gt_2_percent": 99.98019998019998
+    },
+    "ripple__glass": {
+      "mean_abs_rgb_255": 17.535656535656535,
+      "max_abs_rgb_255": 177,
+      "changed_pixels_gt_2_percent": 86.6742772992773
+    },
+    "ripple__ascii": {
+      "mean_abs_rgb_255": 73.00439106689106,
+      "max_abs_rgb_255": 196,
+      "changed_pixels_gt_2_percent": 99.99288436788437
+    },
+    "frost__cloth": {
+      "mean_abs_rgb_255": 29.07330029205029,
+      "max_abs_rgb_255": 179,
+      "changed_pixels_gt_2_percent": 99.80107167607167
+    },
+    "frost__dither": {
+      "mean_abs_rgb_255": 66.18676368676368,
+      "max_abs_rgb_255": 190,
+      "changed_pixels_gt_2_percent": 99.95761558261557
+    },
+    "frost__glass": {
+      "mean_abs_rgb_255": 30.129110566610567,
+      "max_abs_rgb_255": 175,
+      "changed_pixels_gt_2_percent": 99.6943371943372
+    },
+    "frost__ascii": {
+      "mean_abs_rgb_255": 92.87696762696763,
+      "max_abs_rgb_255": 180,
+      "changed_pixels_gt_2_percent": 99.99164686664686
+    },
+    "cloth__dither": {
+      "mean_abs_rgb_255": 61.2655852968353,
+      "max_abs_rgb_255": 206,
+      "changed_pixels_gt_2_percent": 99.93286555786555
+    },
+    "cloth__glass": {
+      "mean_abs_rgb_255": 13.587941994191993,
+      "max_abs_rgb_255": 175,
+      "changed_pixels_gt_2_percent": 87.85268785268785
+    },
+    "cloth__ascii": {
+      "mean_abs_rgb_255": 73.98030413655414,
+      "max_abs_rgb_255": 206,
+      "changed_pixels_gt_2_percent": 99.99659687159688
+    },
+    "dither__glass": {
+      "mean_abs_rgb_255": 61.51495726495727,
+      "max_abs_rgb_255": 205,
+      "changed_pixels_gt_2_percent": 99.96720621720621
+    },
+    "dither__ascii": {
+      "mean_abs_rgb_255": 80.70653483153482,
+      "max_abs_rgb_255": 184,
+      "changed_pixels_gt_2_percent": 87.18227155727156
+    },
+    "glass__ascii": {
+      "mean_abs_rgb_255": 72.30807593307593,
+      "max_abs_rgb_255": 203,
+      "changed_pixels_gt_2_percent": 99.99443124443125
+    }
+  },
+  "all_numeric_checks_passed": true,
+  "visual_review": {
+    "inspected_files": [
+      "./matieres-apercu.jpg"
+    ],
+    "assessment": "Freshly generated contact sheet and native ASCII image inspected after the restored-source run. All six modes visibly distinct; no blank or visibly corrupted result.",
+    "ripple": "Concentric refractive rings clearly visible; original remains recognizable.",
+    "frost": "Grained blur outside a circular clear region; moving the pointer moves the clear region.",
+    "cloth": "Bounded deformation and directional shading visible; keeps the image readable.",
+    "dither": "High-contrast square ordered pattern visible, with the original still mixed in at intensity 0.8.",
+    "glass": "Localized lens magnification/refraction with edge highlight and chromatic fringe visible.",
+    "ascii": "Individual glyphs clearly visible at native 640x534. Figure recognizable. Bright background forms dense glyphs; dark fruit has sparse, dimmer colored glyphs. Not too faint at intensity 0.8 and scale 0.5.",
+    "comparison": "Original on left, effect on right; divider visibly aligned at center.",
+    "additional_inspection": "The freshly rendered individual ASCII image at native 640x534 was also inspected. This intermediate PNG is not included in the repository; the contact sheet includes its reduced preview."
+  },
+  "artifacts": {
+    "path_base": "Relative to this JSON file in docs/",
+    "preview": "./matieres-apercu.jpg",
+    "preview_encoding": "JPEG consultation copy; numeric checks use the original renders before lossy preview compression.",
+    "method": "./validation-matieres.md",
+    "source_image": "../public/plates/fig.jpg",
+    "shader_module": "../src/gpu/wgsl.ts",
+    "materials_fragment": "../src/gpu/materials.wgsl.ts"
+  }
+}

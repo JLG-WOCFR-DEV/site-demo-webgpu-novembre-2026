@@ -137,6 +137,9 @@ html.gl-on [data-gl-text] .code-inline {
 html.gl-on img[data-gl-img] {
   opacity: 0;
 }
+html.gl-on img[data-gl-img]:not([data-gl-ready]) {
+  opacity: 1;
+}
 html.gl-on .plate,
 html.gl-on .stage--type {
   background: transparent;
@@ -697,6 +700,195 @@ input[type="range"]::-moz-range-thumb {
   background: var(--spot);
 }
 
+/* ───────── Laboratoire de matières ───────── */
+
+.lab-body {
+  row-gap: 28px;
+}
+.lab-intro {
+  grid-column: 1 / 6;
+  grid-row: 1;
+}
+.lab-figure {
+  grid-column: 6 / -1;
+  grid-row: 1 / span 3;
+  position: sticky;
+  top: calc(var(--bar-h) + 32px);
+  min-width: 0;
+  margin: 0;
+}
+.lab-surface {
+  display: block;
+  width: 100%;
+  aspect-ratio: 6 / 5;
+  max-height: calc(100svh - var(--bar-h) - 200px);
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  background: var(--paper-deep);
+  border: 0;
+  border-radius: 6px;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+.lab-surface img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+html.gl-on .lab-surface {
+  background: transparent;
+}
+.lab-surface:focus-visible {
+  outline-offset: 6px;
+}
+.lab-caption {
+  padding-top: 16px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.lab-caption-label,
+.lab-detail-label {
+  font: 500 11px/1.4 var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lab-caption p {
+  max-width: 48em;
+  margin: 8px 0 0;
+}
+.ch-body.lab-body .lab-controls {
+  grid-column: 1 / 6;
+  grid-row: 2;
+  padding: 18px;
+  gap: 16px;
+}
+.lab-modes {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.lab-modes legend {
+  padding: 0 0 12px;
+}
+.lab-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.lab-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.25;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.lab-choice input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+.lab-choice:has(input:checked) {
+  background: var(--paper-deep);
+  border-color: var(--ink);
+}
+.lab-choice:has(input:focus-visible) {
+  outline: 2px solid var(--spot);
+  outline-offset: 2px;
+}
+.lab-choice:has(input:disabled) {
+  cursor: default;
+}
+.lab-controls .range {
+  grid-template-columns: 5.5em minmax(0, 1fr) 3.3em;
+  gap: 8px;
+}
+.lab-controls [hidden] {
+  display: none;
+}
+.lab-toggles {
+  display: grid;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.lab-toggles .toggle {
+  min-height: 40px;
+}
+.lab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lab-actions .btn {
+  padding: 12px 14px;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+.lab-actions .lab-reset {
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+}
+.lab-actions .lab-reset:hover {
+  border-color: var(--ink);
+}
+.lab-readout {
+  font-size: 12px;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+.lab-details {
+  grid-column: 1 / 6;
+  grid-row: 3;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.lab-detail-label {
+  margin: 0 0 12px;
+  color: var(--spot);
+}
+.lab-details h3 {
+  margin: 0 0 14px;
+  font: 800 clamp(28px, 2.8vw, 42px)/1 var(--f-display);
+  letter-spacing: -0.025em;
+}
+.lab-details > p:not(.lab-detail-label) {
+  margin: 0 0 16px;
+}
+.lab-explanation {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 16px;
+}
+.lab-explanation dt {
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.lab-explanation dd {
+  margin: 0;
+}
+.lab-source,
+.lab-method {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.lab-method {
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
 /* ───────── Colophon ───────── */
 
 .colophon {
@@ -766,6 +958,22 @@ input[type="range"]::-moz-range-thumb {
   .toc a {
     font-size: 10px;
   }
+  .lab-intro,
+  .lab-figure,
+  .lab-details,
+  .ch-body.lab-body .lab-controls {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .lab-figure {
+    position: static;
+  }
+  .lab-surface {
+    max-height: none;
+  }
+  .lab-choices {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -777,5 +985,11 @@ input[type="range"]::-moz-range-thumb {
   }
   .display .line--ink {
     padding-left: 0;
+  }
+  .lab-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ch-body.lab-body .lab-controls {
+    padding: 14px;
   }
 }

@@ -1,6 +1,7 @@
 import "./styles.css";
 import { createEngine, type Engine } from "./gpu/engine.ts";
 import { motion, pointer, settings } from "./state.ts";
+import { bindLabControls } from "./lab-ui.ts";
 import { bindControls, setStatus, showLayout, showMotion, showTimings, trackChapters } from "./ui.ts";
 
 /**
@@ -13,6 +14,7 @@ const canvas = document.getElementById("gl") as HTMLCanvasElement;
 let engine: Engine | null = null;
 let retried = false;
 let userOff = false;
+const labUi = bindLabControls();
 
 function fallback(reason: string) {
   root.classList.remove("gl-on");
@@ -60,17 +62,20 @@ async function start() {
 }
 
 bindControls(() => {
+  labUi.sync();
   if (!engine) return;
   const hide = settings.dom.hideGpu;
   root.classList.toggle("gl-on", !hide);
   engine.pause(hide);
 });
+labUi.sync();
 trackChapters();
 showMotion();
 
 matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => {
   motion.reduced = e.matches;
   showMotion();
+  labUi.sync();
 });
 
 addEventListener("pointermove", (e) => {
