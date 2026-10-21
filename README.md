@@ -13,6 +13,14 @@ npm test           # tests Node, sans GPU
 npm run build      # dist/, chemins relatifs, hébergeable tel quel
 ```
 
+## Sampler
+
+`sampler.html` réunit **75 échantillons dans 12 catégories**, dont les 12 nouvelles études de la catégorie **Effets explorés**. Les identifiants des 63 échantillons existants sont conservés. On peut chercher un effet, passer au suivant et partager son lien, par exemple `sampler.html#explore-kaleidoscope`.
+
+Les nouvelles études démarrent en pause et proposent un mélange avec l’original, une comparaison réglable, deux dosages et un centre au clavier pour les effets qui en ont besoin. Une carte HTML interactive utilise le même module de shaders si les API expérimentales HTML-in-Canvas sont disponibles ; sinon elle reste du HTML ordinaire.
+
+Voir [les effets, leurs références et la validation](docs/sampler.md). Le HTML du sampler se régénère avec `python3 tools/build-sampler.py`.
+
 ## Carte du code
 
 | Fichier | Rôle |
@@ -26,6 +34,10 @@ npm run build      # dist/, chemins relatifs, hébergeable tel quel
 | `src/gpu/images.ts` | `createImageBitmap` → `copyExternalImageToTexture` → mipmaps GPU |
 | `src/menu.ts` | Sommaire en feuilles (8 présentations) : une matrice par feuille, posée sur le lien du DOM en `matrix3d` et envoyée au GPU |
 | `src/gpu/atlas.ts` | Rangement d'atlas et maths de placement, purs et testés |
+| `src/sampler-catalog.ts` | Métadonnées et références des 12 nouvelles études |
+| `src/gpu/sampler-effects.wgsl.ts` | Traitements originaux partagés par les photos et HTML-in-Canvas |
+| `src/sampler-clock.ts`, `src/sampler-runtime.ts` | Horloge locale, pause, visibilité et mouvement réduit |
+| `src/html-in-canvas.ts` | Carte DOM expérimentale, capture, rendu partagé et retour au HTML |
 | `tools/tour.mjs` | Visite de recette : une capture par chapitre (WebGPU via SwiftShader, ou `--nogpu`) |
 
 ## Ancienne démo

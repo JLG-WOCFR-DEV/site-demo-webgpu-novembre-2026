@@ -22,6 +22,8 @@ export type Settings = {
   transition: { style: number; speed: number; line: number; width: number };
   /** Leçon 06.1 : intensité des matières sur le HTML vivant. */
   matter: { intensity: number };
+  /** Sampler : traitement isolé, mélange explicite, comparaison et centre local. */
+  explore: { active: boolean; mode: number; amount: number; scale: number; speed: number; paused: boolean; compare: boolean; split: number; x: number; y: number };
   /** Grain et fibre : 1 = le dosage réel, à peine visible ; au-delà, une loupe pour le sampler. */
   grain: { amp: number };
   /** Papier froissé de page : profondeur des plis, vitesse à laquelle il se défroisse (1/s). */
@@ -55,6 +57,7 @@ export const settings: Settings = {
   fluid: { force: 1, dry: 0.5 },
   transition: { style: 0, speed: 4.5, line: 0.86, width: 0.22 },
   matter: { intensity: 1 },
+  explore: { active: false, mode: 0, amount: 0.85, scale: 0.48, speed: 1, paused: true, compare: false, split: 0.5, x: 0.5, y: 0.5 },
   layers: {
     order: ["glass", "flower", "spot"],
     mode: { glass: 0, flower: 1, spot: 3 },
