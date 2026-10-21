@@ -5,11 +5,11 @@
  */
 
 export const PAGES = [
-  { href: "./index.html", name: "PLI", text: "La presse WebGPU : le guide et la démo" },
-  { href: "./sampler.html", name: "Sampler", text: "Un effet à la fois, par catégories" },
-  { href: "./kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
-  { href: "./kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },
-  { href: "./legacy/index.html", name: "PLI v0", text: "La toute première version, générée par Grok" },
+  { href: "index.html", name: "PLI", text: "La presse WebGPU : le guide et la démo" },
+  { href: "sampler.html", name: "Sampler", text: "Un effet à la fois, par catégories" },
+  { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
+  { href: "kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },
+  { href: "legacy/index.html", name: "PLI v0", text: "La toute première version, générée par Grok" },
 ];
 
 const CSS = `
@@ -55,7 +55,11 @@ const CSS = `
 }
 `;
 
-export function mountPagesNav() {
+/**
+ * base : le chemin de la racine du site depuis la page (« ./ » pour les pages
+ * de la racine, « ../ » pour PLI v0, servie depuis legacy/).
+ */
+export function mountPagesNav(base = "./") {
   const style = document.createElement("style");
   style.textContent = CSS;
   document.head.append(style);
@@ -73,13 +77,13 @@ export function mountPagesNav() {
   pop.className = "pages-pop";
   pop.setAttribute("popover", "");
   pop.setAttribute("aria-label", "Pages");
-  const here = location.pathname.split("/").pop() || "index.html";
+  const here = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0]!.split("?")[0];
   const ul = document.createElement("ul");
   for (const p of PAGES) {
     const li = document.createElement("li");
     const a = document.createElement("a");
-    a.href = p.href;
-    if (p.href === `./${here}`) a.setAttribute("aria-current", "page");
+    a.href = base + p.href;
+    if (a.href === here) a.setAttribute("aria-current", "page");
     a.innerHTML = '<span class="pages-name"></span><span class="pages-text"></span>';
     a.querySelector(".pages-name")!.textContent = p.name;
     a.querySelector(".pages-text")!.textContent = p.text;
