@@ -1,4 +1,5 @@
 import { menuGL } from "../menu.ts";
+import { getExploreTime } from "../sampler-runtime.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
@@ -36,6 +37,7 @@ const STAGE_KIND: Record<string, number> = {
   givre: 9,
   // Matières déclarées dans le HTML (data-gl-material) : n'importe quel élément.
   lentille: 10,
+  explore: 11,
 };
 /** Nom de la plaque : data-gl-stage (démonstrations), sinon data-gl-material. */
 const stageName = (s: HTMLElement) => s.dataset.glStage ?? s.dataset.glMaterial ?? "";
@@ -56,7 +58,7 @@ const TRACE_RATES: [number, number, number, number][] = [
 export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
@@ -65,6 +67,7 @@ const SCREEN_AT = MATTER_AT + 4;
 const CREASE_AT = SCREEN_AT + 4;
 const LENSM_AT = CREASE_AT + 4;
 const TEAR_AT = LENSM_AT + 4;
+const EXPLORE_AT = TEAR_AT + 4 + MAX_TEARS * 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -900,6 +903,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([PAPER[0], PAPER[1], PAPER[2], slip], 20);
     const F = settings.filter;
     postData.set([F.kind, F.size, F.amount, 0], 24);
+    const E = settings.explore;
+    postData.set([E.mode, E.active ? E.amount : 0, E.scale, getExploreTime(now)], EXPLORE_AT);
+    postData.set([E.compare ? 1 : 0, E.split, E.x, E.y], EXPLORE_AT + 4);
 
     /* Transition : impression des chapitres */
     const P = settings.transition;

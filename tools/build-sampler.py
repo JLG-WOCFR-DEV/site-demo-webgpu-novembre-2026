@@ -49,6 +49,36 @@ hero = block(r'<h1 id="hero-title"', "h1").replace('id="hero-title"', 'id="sp-he
 wrap = block(r'<div class="matter-wrap"', "div")
 
 forms = {
+    "explore": """<form class="controls sp-explore-controls" aria-labelledby="c-sp-explore" data-explore-controls>
+              <p id="c-sp-explore" class="controls-title">Composer l'effet</p>
+              <div class="sp-explore-transport" role="group" aria-label="Lecture de l'effet">
+                <button type="button" class="btn" data-explore-play aria-pressed="false" aria-describedby="sp-explore-motion">Lire l'effet</button>
+                <button type="button" class="btn" data-explore-replay>Rejouer</button>
+              </div>
+              <p id="sp-explore-motion" class="readout sp-explore-motion" data-explore-motion role="status" aria-live="polite" aria-atomic="true">Chaque effet commence sur une image fixe.</p>
+              <label class="range"><span>Mélange</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.85" /><output>85 %</output></label>
+              <p class="sp-control-note">0 % conserve la photographie ; 100 % applique le traitement complet.</p>
+              <label class="range"><span>Échelle</span><input type="range" name="scale" min="0" max="1" step="0.01" value="0.5" /><output>50 %</output></label>
+              <label class="range" data-explore-speed><span>Vitesse</span><input type="range" name="speed" min="0.25" max="2" step="0.05" value="1" /><output>× 1</output></label>
+              <div class="sp-explore-presets" role="group" aria-label="Dosage du mélange">
+                <span>Dosage</span>
+                <button type="button" class="btn-mini" data-explore-preset="soft">Doux · 35 %</button>
+                <button type="button" class="btn-mini" data-explore-preset="strong">Marqué · 100 %</button>
+              </div>
+              <label class="toggle sp-explore-compare"><input type="checkbox" name="compare" /> Comparer avant / après</label>
+              <div data-explore-split hidden>
+                <label class="range"><span>Part sans effet</span><input type="range" name="split" min="0" max="1" step="0.01" value="0.5" /><output>50 %</output></label>
+                <p class="sp-control-note">À gauche : sans l'effet. À droite : avec l'effet. La séparation reste fixe lorsque le pointeur bouge.</p>
+              </div>
+              <details class="sp-explore-position" data-explore-position>
+                <summary>Position du centre</summary>
+                <label class="range"><span>Horizontal</span><input type="range" name="x" min="0" max="1" step="0.01" value="0.5" /><output>50 %</output></label>
+                <label class="range"><span>Vertical</span><input type="range" name="y" min="0" max="1" step="0.01" value="0.5" /><output>50 %</output></label>
+                <p class="sp-control-note">Ces réglages et les flèches sur la planche permettent de choisir une pose, même en pause.</p>
+                <button type="button" class="btn-mini" data-explore-center>Recentrer</button>
+              </details>
+              <button type="button" class="btn sp-explore-reset" data-explore-reset>Réinitialiser cet effet</button>
+            </form>""",
     "transition": form("transition", 1),
     "filter": form("filter"),
     "matter": form("matter"),
@@ -132,13 +162,17 @@ page = f"""{head}</head>
       <aside id="sp-side" class="sp-side" aria-label="Échantillons">
         <p class="sp-kicker">PLI · Sampler</p>
         <h1 class="sp-h1">Un effet à la fois</h1>
-        <p class="sp-lede">Chaque échantillon remet la page à zéro, puis n'active que lui, sur le même spécimen.</p>
+        <p class="sp-lede">Un catalogue à essayer : choisissez une étude, ajustez ses réglages et comparez sur les mêmes images.</p>
+        <label class="sp-search" for="sp-search">Trouver un effet<input id="sp-search" type="search" data-sp-search placeholder="Gravure, verre, texte…" autocomplete="off" /></label>
+        <p class="sp-search-count" data-sp-search-count role="status" aria-live="polite"></p>
         <label class="toggle sp-context"><input type="checkbox" data-sp-context /> Dans le contexte : rallumer la chaîne complète</label>
+        <p class="sp-control-note" data-sp-context-help hidden>Les nouvelles études isolent la photographie : la comparaison porte sur le seul effet choisi.</p>
         <div class="sp-cats" data-sp-cats></div>
       </aside>
 
       <div class="sp-main">
         <section id="ch-specimen" class="chapter sp-spec" aria-labelledby="sp-title">
+          <a class="sp-catalog-link" href="#sp-side" data-sp-catalog-link>Choisir un effet dans le catalogue <span aria-hidden="true">↗</span></a>
           <div class="sp-stage stage" data-sp-stage data-gl-source>
             <div class="sp-card" data-gl-text>
               <p class="sp-card-kicker">Spécimen</p>
@@ -150,6 +184,8 @@ page = f"""{head}</head>
             </div>
             <figure class="plate sp-plate" data-sp-photo="fig">
               <img data-gl-img data-gl-quad src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux sur une pierre calcaire." />
+              <span class="sp-explore-divider" data-explore-divider aria-hidden="true" hidden></span>
+              <span class="sp-explore-point" aria-hidden="true"></span>
             </figure>
             <figure class="plate sp-plate" data-sp-photo="glass" hidden>
               <img data-gl-img src="./plates/glass.jpg" width="1728" height="1152" alt="Un cylindre de verre couché qui accroche la lumière." />
@@ -162,6 +198,8 @@ page = f"""{head}</head>
               <img data-gl-img data-gl-fluid src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau." />
             </figure>
           </div>
+          <div class="sp-explore-comparison" data-explore-comparison hidden><span>Sans l'effet</span><span>Avec l'effet</span></div>
+          <p id="sp-explore-help" class="sp-explore-help" data-explore-help hidden>Au clavier : placez le focus sur la planche, puis utilisez les flèches pour déplacer le centre ; Maj affine le déplacement. Début / Home recentre. Le pointeur suit la photo pendant la lecture ; la pause conserve la pose.</p>
           <div class="sp-block" data-sp-block="layers" hidden>
             {layers_stage}
           </div>
@@ -179,6 +217,25 @@ page = f"""{head}</head>
           </div>
         </section>
 
+        <section class="sp-block sp-hic-block" data-sp-block="hic" aria-labelledby="sp-hic-title" hidden>
+          <p class="sp-kicker">Une autre source</p>
+          <h2 id="sp-hic-title" class="sp-hic-title">Du HTML dans une texture</h2>
+          <p class="sp-hic-intro">Une carte entière peut être dessinée par le navigateur, puis traitée par le GPU. Cette expérience dépend des API HTML-in-Canvas disponibles.</p>
+          <p class="sp-control-note" data-explore-html-scope></p>
+          <div class="sp-hic" data-hic>
+            <div class="hic-card sp-hic-card" data-hic-card drawable>
+              <img class="sp-hic-photo" src="./plates/fig.jpg" width="1408" height="1408" alt="" />
+              <div class="sp-hic-copy">
+                <p class="hic-kicker">Épreuve 01</p>
+                <p class="hic-title">Une carte à manipuler</p>
+                <p class="hic-text">Du texte, une image et un vrai bouton. Le contenu reste dans le document.</p>
+                <button type="button" class="btn" data-hic-button>Tamponner</button>
+              </div>
+            </div>
+            <p class="readout" data-readout="hic" role="status" aria-live="polite">La disponibilité de la capture HTML est vérifiée au démarrage. La carte reste utilisable dans tous les cas.</p>
+          </div>
+        </section>
+
         <p class="sp-scroll-hint">Faites défiler : chaque planche s'imprime à son tour, et les effets de défilement se voient en mouvement.</p>
 {more}
       </div>
@@ -191,8 +248,22 @@ page = f"""{head}</head>
           <p class="sp-intro" data-sp-intro></p>
           <button type="button" class="btn" data-sp-action hidden></button>
         </div>
+        <nav class="sp-explore-navigation" data-explore-navigation aria-label="Parcourir les effets explorés" hidden>
+          <button type="button" class="btn-mini" data-explore-previous>← Précédent</button>
+          <span data-explore-count></span>
+          <button type="button" class="btn-mini" data-explore-next>Suivant →</button>
+        </nav>
         <div class="sp-forms">
 {bank}
+        </div>
+        <div class="sp-explore-details" data-explore-details hidden>
+          <h3>Comment l'image est traitée</h3>
+          <p data-explore-technique></p>
+          <h3>À essayer</h3>
+          <p id="sp-explore-interaction" data-explore-interaction></p>
+          <p class="sp-explore-reference">Référence : <a data-explore-reference href="https://shaders.com/" target="_blank" rel="noreferrer">Ouvrir la référence</a></p>
+          <p class="sp-control-note">Études écrites pour PLI en WebGPU natif, sans intégrer les bibliothèques citées. Les photographies sont traitées dans leur rectangle ; le texte et les commandes de cette page restent lisibles.</p>
+          <p class="sp-control-note">Le coût varie avec la résolution et les lectures de texture. <a href="./index.html#ch-cost">Comprendre le budget d'une frame</a>.</p>
         </div>
       </aside>
     </main>

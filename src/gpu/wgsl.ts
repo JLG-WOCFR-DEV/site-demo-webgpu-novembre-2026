@@ -1,3 +1,5 @@
+import { SAMPLER_EFFECTS } from "./sampler-effects.wgsl.ts";
+
 /**
  * Tous les shaders de PLI. Une seule convention : le moteur travaille en
  * pixels CSS relatifs au viewport ; la conversion en pixels physiques
@@ -1426,6 +1428,8 @@ struct Post {
   lensm: vec4f,    // matière lentille : pointeur amorti x, y (px), force au survol, force réglée
   tear: vec4f,     // bords déchirés : nombre, amplitude, réaction, 0
   tears: array<vec4f, ${MAX_TEARS}>, // y, gauche, droite (px), 0
+  explore: vec4f,  // effet, mélange, échelle, horloge locale figée en pause
+  exploreCtl: vec4f, // comparaison, séparation locale, centre x et y
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -1434,6 +1438,17 @@ struct Post {
 @group(0) @binding(3) var bloom: texture_2d<f32>;
 @group(0) @binding(4) var msdf: texture_2d<f32>;
 @group(0) @binding(5) var trace: texture_2d_array<f32>;
+
+// Le sampler lit uniquement le rectangle de sa photo. Même les lectures
+// décalées (Sobel, verre, flou) restent à l'intérieur de ses bords visibles.
+fn fx_sample(uv: vec2f, region: vec4f) -> vec3f {
+  let halfTexel = vec2f(0.5) / u.res.xy;
+  let lo = max(region.xy + halfTexel, halfTexel);
+  let hi = max(lo, min(region.xy + region.zw - halfTexel, vec2f(1.0) - halfTexel));
+  return textureSampleLevel(scene, samp, clamp(region.xy + uv * region.zw, lo, hi), 0.0).rgb;
+}
+
+${SAMPLER_EFFECTS}
 
 const LENS_R: f32 = 130.0;
 
@@ -2175,6 +2190,21 @@ fn fs(in: VsOut) -> @location(0) vec4f {
       tr_layer = i32(floor(raw / 16.0));
       stage = s;
     }
+  }
+
+  // Effets explorés : comparaison du seul traitement, sans la chaîne de
+  // postproduction. Mélange nul et côté original contournent tout l'effet.
+  if (kind > 10.5 && kind < 11.5) {
+    let uv = (px - stage.xy) / stage.zw;
+    let raw = textureSampleLevel(scene, samp, in.uv, 0.0).rgb;
+    if (u.explore.y <= 0.0 || (u.exploreCtl.x > 0.5 && uv.x < u.exploreCtl.y)) {
+      return vec4f(raw, 1.0);
+    }
+    let params = FxParams(stage / vec4f(u.res.xy, u.res.xy), stage.zw / u.res.z,
+      clamp(u.exploreCtl.zw, vec2f(0.0), vec2f(1.0)), u.explore.w,
+      clamp(u.explore.z, 0.0, 1.0), u32(clamp(u.explore.x, 0.0, 11.0)));
+    let treated = sampler_effect(uv, params);
+    return vec4f(mix(raw, clamp(treated, vec3f(0.0), vec3f(1.0)), clamp(u.explore.y, 0.0, 1.0)), 1.0);
   }
 
   // Étape 1 : distorsion de lentille sous le pointeur, dans l'ouverture.

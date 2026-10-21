@@ -1,6 +1,8 @@
 import "./main.ts";
 import { openMenu } from "./menu.ts";
-import { settings } from "./state.ts";
+import { EXPLORE_EFFECTS } from "./sampler-catalog.ts";
+import { resetExploreClock } from "./sampler-runtime.ts";
+import { motion, settings } from "./state.ts";
 
 /**
  * Le sampler : un effet à la fois. Chaque échantillon remet la page à zéro
@@ -10,6 +12,7 @@ import { settings } from "./state.ts";
  */
 
 type Photo = "fig" | "glass" | "fluid" | "none";
+type ExploreEffect = (typeof EXPLORE_EFFECTS)[number];
 type Sample = {
   id: string;
   label: string;
@@ -22,6 +25,7 @@ type Sample = {
   material?: { sel: string; name: string };
   patch?: () => void;
   action?: { label: string; run: () => void };
+  explore?: ExploreEffect;
 };
 type Category = { id: string; name: string; intro: string; samples: Sample[] };
 
@@ -87,6 +91,22 @@ const openSommaire = (style: string, screen = "0") => {
 };
 
 const CATS: Category[] = [
+  {
+    id: "explores",
+    name: "Effets explorés",
+    intro: "Douze études WebGPU sur les mêmes photographies. Choisissez un effet, dosez-le, puis comparez. Chaque étude commence sur une image fixe ; les effets animés se lancent à votre demande.",
+    samples: EXPLORE_EFFECTS.map((effect) => ({
+      id: `explore-${effect.id}`,
+      label: effect.name,
+      text: effect.description,
+      stage: "explore",
+      photo: "fig",
+      forms: ["explore"],
+      blocks: ["hic"],
+      explore: effect,
+      patch: () => resetExplorePreset(effect),
+    })),
+  },
   {
     id: "transitions",
     name: "Transitions",
@@ -280,6 +300,7 @@ for (const cat of CATS) {
   const d = document.createElement("details");
   d.id = `ch-cat-${cat.id}`;
   d.className = "sp-cat";
+  if (cat.id === "explores") d.classList.add("sp-cat--explore");
   const sum = document.createElement("summary");
   sum.innerHTML = `<h2 class="sp-cat-name"></h2><span class="sp-count"></span>`;
   sum.querySelector("h2")!.textContent = cat.name;
@@ -291,6 +312,7 @@ for (const cat of CATS) {
     const b = document.createElement("button");
     b.type = "button";
     b.dataset.sample = s.id;
+    b.dataset.search = searchable(`${cat.name} ${s.label} ${s.text}`);
     b.textContent = s.label;
     b.setAttribute("aria-pressed", "false");
     b.addEventListener("click", () => select(s.id));
@@ -304,7 +326,10 @@ for (const cat of CATS) {
     const a = document.createElement("a");
     a.href = `#ch-cat-${cat.id}`;
     a.textContent = cat.name;
-    a.addEventListener("click", () => (d.open = true));
+    a.addEventListener("click", () => {
+      clearSearch();
+      d.open = true;
+    });
     li.append(a);
     toc.append(li);
   }
@@ -313,6 +338,7 @@ for (const cat of CATS) {
 /* ───── Isolation ───── */
 
 const context = document.querySelector<HTMLInputElement>("[data-sp-context]")!;
+const contextHelp = document.querySelector<HTMLElement>("[data-sp-context-help]")!;
 
 function neutral() {
   Object.assign(settings.chain, { distort: false, rgb: false, trame: false, bloom: false, grain: false, print: false, split: false });
@@ -323,6 +349,7 @@ function neutral() {
   settings.dom.boxes = false;
   settings.grain.amp = 1;
   settings.crease.on = false;
+  settings.explore.active = false;
   for (const el of document.querySelectorAll<HTMLElement>("[data-gl-material]")) delete el.dataset.glMaterial;
 }
 
@@ -369,22 +396,29 @@ function select(id: string, fromHash = false) {
   if (cat.id === "plans") settings.quad.hoverPeel = true;
   if (s.material) for (const el of document.querySelectorAll<HTMLElement>(s.material.sel)) el.dataset.glMaterial = s.material.name;
   s.patch?.();
-  if (context.checked) Object.assign(settings.chain, { rgb: true, bloom: true, grain: true, print: true });
+  context.disabled = Boolean(s.explore);
+  contextHelp.hidden = !s.explore;
+  if (context.checked && !s.explore) Object.assign(settings.chain, { rgb: true, bloom: true, grain: true, print: true });
   refreshForms();
 
   // Spécimen : plaque, photo et blocs annexes de l'échantillon.
-  if (s.stage) stageEl.dataset.glStage = s.stage;
+  if (s.stage && !s.explore) stageEl.dataset.glStage = s.stage;
   else delete stageEl.dataset.glStage;
   // Les planches du dessous reçoivent le même filtre, la même trame ou la
   // même matière : un effet se juge sur plusieurs images, pas sur la seule
   // première. Chaque plaque de matière a sa propre mémoire du pointeur.
   // Le pli au survol n'appartient qu'aux échantillons « Plans et images ».
   for (const f of document.querySelectorAll<HTMLElement>(".sp-page-plate")) {
-    if (s.stage && SPREAD.has(s.stage)) f.dataset.glStage = s.stage;
+    if (s.stage && !s.explore && SPREAD.has(s.stage)) f.dataset.glStage = s.stage;
     else delete f.dataset.glStage;
   }
   const photo = s.photo ?? "fig";
   for (const f of document.querySelectorAll<HTMLElement>("[data-sp-photo]")) f.hidden = f.dataset.spPhoto !== photo;
+  if (s.explore) {
+    for (const img of document.querySelectorAll<HTMLElement>(`.sp-page-plate img[data-gl-img], [data-sp-photo='${photo}'] img[data-gl-img]`)) {
+      img.dataset.glMaterial = "explore";
+    }
+  }
   const blocks = new Set(s.blocks ?? []);
   stageEl.hidden = blocks.has("layers") || blocks.has("ink") || blocks.has("type") || blocks.has("hero") || blocks.has("wrap");
   for (const b of document.querySelectorAll<HTMLElement>("[data-sp-block]")) b.hidden = !blocks.has(b.dataset.spBlock!);
@@ -396,6 +430,7 @@ function select(id: string, fromHash = false) {
   info.intro.textContent = cat.intro;
   info.action.hidden = !s.action;
   if (s.action) info.action.textContent = s.action.label;
+  showExploreDetails(s.explore);
 
   for (const b of side.querySelectorAll<HTMLButtonElement>("[data-sample]")) b.setAttribute("aria-pressed", String(b.dataset.sample === id));
   const det = document.getElementById(`ch-cat-${cat.id}`) as HTMLDetailsElement | null;
@@ -405,18 +440,276 @@ function select(id: string, fromHash = false) {
     for (const d of side.querySelectorAll<HTMLDetailsElement>("details")) if (d !== det) d.open = false;
   }
   if (!fromHash) {
-    history.replaceState(null, "", `#${id}`);
+    if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
     // Sur téléphone, la liste est sous le spécimen : on y remonte.
     if (matchMedia("(max-width: 860px)").matches) {
       document.getElementById("ch-specimen")?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+      if (s.explore) stageEl.focus({ preventScroll: true });
     }
   }
   dispatchEvent(new Event("pli:relayout"));
+  notifyExplore();
   if (cat.id === "transitions") requestAnimationFrame(() => replay());
 }
 
+/* ───── Les études : commandes locales, sans toucher aux formulaires historiques ───── */
+
+const exploreForm = document.querySelector<HTMLFormElement>("[data-explore-controls]")!;
+const exploreUi = {
+  details: document.querySelector<HTMLElement>("[data-explore-details]")!,
+  technique: document.querySelector<HTMLElement>("[data-explore-technique]")!,
+  interaction: document.querySelector<HTMLElement>("[data-explore-interaction]")!,
+  reference: document.querySelector<HTMLAnchorElement>("[data-explore-reference]")!,
+  htmlScope: document.querySelector<HTMLElement>("[data-explore-html-scope]")!,
+  help: document.querySelector<HTMLElement>("[data-explore-help]")!,
+  motion: document.querySelector<HTMLElement>("[data-explore-motion]")!,
+  play: document.querySelector<HTMLButtonElement>("[data-explore-play]")!,
+  replay: document.querySelector<HTMLButtonElement>("[data-explore-replay]")!,
+  speed: document.querySelector<HTMLElement>("[data-explore-speed]")!,
+  position: document.querySelector<HTMLElement>("[data-explore-position]")!,
+  split: document.querySelector<HTMLElement>("[data-explore-split]")!,
+  comparison: document.querySelector<HTMLElement>("[data-explore-comparison]")!,
+  divider: document.querySelector<HTMLElement>("[data-explore-divider]")!,
+  navigation: document.querySelector<HTMLElement>("[data-explore-navigation]")!,
+  previous: document.querySelector<HTMLButtonElement>("[data-explore-previous]")!,
+  next: document.querySelector<HTMLButtonElement>("[data-explore-next]")!,
+  count: document.querySelector<HTMLElement>("[data-explore-count]")!,
+};
+const numericExploreKeys = ["amount", "scale", "speed", "split", "x", "y"] as const;
+type ExploreNumber = (typeof numericExploreKeys)[number];
+const clamp = (v: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
+const percent = (v: number) => `${Math.round(v * 100)} %`;
+
+function resetExplorePreset(effect: ExploreEffect) {
+  Object.assign(settings.explore, {
+    active: true, mode: effect.mode, amount: 0.85, scale: effect.scale,
+    speed: 1, paused: true, compare: false, split: 0.5, x: 0.5, y: 0.5,
+  });
+  settings.quad.lift = 0;
+  settings.quad.radius = 0;
+  resetExploreClock();
+}
+
+function currentExplore() {
+  return byId.get(current)?.s.explore;
+}
+
+function showExploreDetails(effect?: ExploreEffect) {
+  exploreUi.details.hidden = !effect;
+  exploreUi.help.hidden = !effect?.hasCenter;
+  exploreUi.navigation.hidden = !effect;
+  stageEl.classList.toggle("sp-explore-stage", Boolean(effect));
+  stageEl.classList.toggle("sp-explore-centered", Boolean(effect?.hasCenter));
+  document.body.classList.toggle("sp-exploring", Boolean(effect));
+  if (!effect) {
+    stageEl.removeAttribute("tabindex");
+    stageEl.removeAttribute("role");
+    stageEl.removeAttribute("aria-label");
+    stageEl.removeAttribute("aria-describedby");
+    return;
+  }
+  stageEl.tabIndex = effect.hasCenter ? 0 : -1;
+  stageEl.setAttribute("role", "group");
+  stageEl.setAttribute("aria-label", `Photographie${effect.hasCenter ? " interactive" : ""} : ${effect.name}`);
+  stageEl.setAttribute("aria-describedby", `${effect.hasCenter ? "sp-explore-help " : ""}sp-explore-interaction`);
+  exploreUi.technique.textContent = effect.technique;
+  exploreUi.interaction.textContent = effect.interaction;
+  exploreUi.reference.textContent = effect.reference.label;
+  exploreUi.reference.href = effect.reference.url;
+  exploreUi.htmlScope.textContent = effect.htmlSafe
+    ? "Cet effet peut aussi colorer ou tramer la carte HTML ci-dessous, si le navigateur expose la capture HTML-in-Canvas. Les contrôles conservent leur position."
+    : "Cet effet déplace les pixels : il reste réservé aux photographies. La carte HTML conserve son rendu d'origine pour que ses contrôles restent à leur place.";
+  const index = EXPLORE_EFFECTS.indexOf(effect);
+  exploreUi.count.textContent = `${index + 1} / ${EXPLORE_EFFECTS.length}`;
+  exploreUi.previous.disabled = index <= 0;
+  exploreUi.next.disabled = index >= EXPLORE_EFFECTS.length - 1;
+  const previous = EXPLORE_EFFECTS[index - 1];
+  const next = EXPLORE_EFFECTS[index + 1];
+  exploreUi.previous.setAttribute("aria-label", previous ? `Effet précédent : ${previous.name}` : "Premier effet de la collection");
+  exploreUi.next.setAttribute("aria-label", next ? `Effet suivant : ${next.name}` : "Dernier effet de la collection");
+}
+
+function syncExploreControls() {
+  const effect = currentExplore();
+  const value = settings.explore;
+  const ready = document.documentElement.classList.contains("gl-on");
+  for (const input of exploreForm.querySelectorAll<HTMLInputElement>("input[name]")) {
+    input.disabled = !ready;
+    if (input.name === "compare") input.checked = value.compare;
+    else if (numericExploreKeys.includes(input.name as ExploreNumber)) {
+      const name = input.name as ExploreNumber;
+      input.value = String(value[name]);
+      const formatted = name === "speed"
+        ? `× ${value.speed.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}`
+        : percent(value[name]);
+      const output = input.parentElement?.querySelector("output");
+      if (output) output.textContent = formatted;
+      input.setAttribute("aria-valuetext", name === "split" ? `${formatted} de l'image sans l'effet` : formatted);
+      if (name === "speed") input.disabled = !ready || !effect?.animated || motion.reduced;
+      if (name === "split") input.disabled = !ready || !value.compare;
+      if (name === "x" || name === "y") input.disabled = !ready || !effect?.hasCenter;
+    }
+  }
+  for (const button of exploreForm.querySelectorAll<HTMLButtonElement>("button")) button.disabled = !ready;
+  const running = Boolean(effect?.animated && ready && !value.paused && !motion.reduced);
+  exploreUi.play.textContent = running ? "Mettre en pause" : "Lire l'effet";
+  exploreUi.play.setAttribute("aria-pressed", String(running));
+  exploreUi.play.disabled = !ready || !effect?.animated || motion.reduced;
+  exploreUi.replay.disabled = !ready || !effect?.animated;
+  exploreUi.speed.hidden = !effect?.animated;
+  exploreUi.position.hidden = !effect?.hasCenter;
+  exploreUi.split.hidden = !effect || !value.compare;
+  exploreUi.comparison.hidden = !effect || !value.compare;
+  exploreUi.divider.hidden = !effect || !value.compare || !ready;
+  stageEl.style.setProperty("--explore-split", `${value.split * 100}%`);
+  stageEl.style.setProperty("--explore-x", `${value.x * 100}%`);
+  stageEl.style.setProperty("--explore-y", `${value.y * 100}%`);
+  const fixedControls = effect?.hasCenter ? "Les réglages et le centre au clavier restent disponibles." : "Les réglages restent disponibles.";
+  const message = !ready
+    ? "HTML seul : les photos et la carte restent lisibles. Activez WebGPU pour essayer les réglages."
+    : motion.system
+      ? `Votre système demande moins de mouvement : aperçu fixe. ${fixedControls}`
+      : motion.paused
+        ? "La pause générale de la page est active. Reprenez-la pour pouvoir lancer cet effet."
+        : !effect?.animated
+          ? `Effet fixe : la lecture et la vitesse ne sont pas nécessaires. ${fixedControls}`
+          : value.paused
+            ? `Image en pause. Lancez la lecture pour animer l'effet. ${fixedControls}`
+            : `Lecture en cours. ${effect.hasCenter ? "Déplacez le pointeur sur la photo ; mettez" : "Mettez"} en pause pour conserver cet instant.`;
+  if (exploreUi.motion.textContent !== message) exploreUi.motion.textContent = message;
+}
+
+function notifyExplore() {
+  window.dispatchEvent(new Event("pli:explore-change"));
+}
+
+exploreForm.addEventListener("submit", (event) => event.preventDefault());
+for (const input of exploreForm.querySelectorAll<HTMLInputElement>("input[name]")) {
+  input.addEventListener("input", () => {
+    if (!currentExplore()) return;
+    if (input.name === "compare") settings.explore.compare = input.checked;
+    else if (numericExploreKeys.includes(input.name as ExploreNumber) && Number.isFinite(input.valueAsNumber)) {
+      const name = input.name as ExploreNumber;
+      settings.explore[name] = name === "speed" ? clamp(input.valueAsNumber, 0.25, 2) : clamp(input.valueAsNumber);
+    }
+    notifyExplore();
+  });
+}
+exploreUi.play.addEventListener("click", () => {
+  if (!currentExplore()?.animated || motion.reduced) return;
+  settings.explore.paused = !settings.explore.paused;
+  notifyExplore();
+});
+exploreUi.replay.addEventListener("click", () => {
+  resetExploreClock();
+  notifyExplore();
+});
+document.querySelector("[data-explore-reset]")!.addEventListener("click", () => {
+  const effect = currentExplore();
+  if (!effect) return;
+  resetExplorePreset(effect);
+  notifyExplore();
+});
+document.querySelector("[data-explore-center]")!.addEventListener("click", () => {
+  settings.explore.x = settings.explore.y = 0.5;
+  notifyExplore();
+});
+for (const button of document.querySelectorAll<HTMLButtonElement>("[data-explore-preset]")) {
+  button.addEventListener("click", () => {
+    settings.explore.amount = button.dataset.explorePreset === "soft" ? 0.35 : 1;
+    notifyExplore();
+  });
+}
+
+stageEl.addEventListener("pointermove", (event) => {
+  if (!currentExplore()?.hasCenter || settings.explore.paused || motion.reduced) return;
+  const photo = stageEl.querySelector<HTMLImageElement>("[data-sp-photo]:not([hidden]) img[data-gl-img]");
+  if (!photo) return;
+  const rect = photo.getBoundingClientRect();
+  if (!rect.width || !rect.height || event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
+  settings.explore.x = clamp((event.clientX - rect.left) / rect.width);
+  settings.explore.y = clamp((event.clientY - rect.top) / rect.height);
+  notifyExplore();
+});
+stageEl.addEventListener("keydown", (event) => {
+  if (!currentExplore()?.hasCenter || event.target !== stageEl || event.altKey || event.ctrlKey || event.metaKey || !document.documentElement.classList.contains("gl-on")) return;
+  const step = event.shiftKey ? 0.01 : 0.05;
+  if (event.key === "Home") settings.explore.x = settings.explore.y = 0.5;
+  else if (event.key === "ArrowLeft") settings.explore.x = clamp(settings.explore.x - step);
+  else if (event.key === "ArrowRight") settings.explore.x = clamp(settings.explore.x + step);
+  else if (event.key === "ArrowUp") settings.explore.y = clamp(settings.explore.y - step);
+  else if (event.key === "ArrowDown") settings.explore.y = clamp(settings.explore.y + step);
+  else return;
+  event.preventDefault();
+  notifyExplore();
+});
+
+function adjacentExplore(offset: number) {
+  const effect = currentExplore();
+  if (!effect) return;
+  const next = EXPLORE_EFFECTS[EXPLORE_EFFECTS.indexOf(effect) + offset];
+  if (!next) return;
+  clearSearch();
+  select(`explore-${next.id}`);
+}
+exploreUi.previous.addEventListener("click", () => adjacentExplore(-1));
+exploreUi.next.addEventListener("click", () => adjacentExplore(1));
+
+/* ───── Recherche et liens directs : les identifiants historiques sont conservés ───── */
+
+const search = document.querySelector<HTMLInputElement>("[data-sp-search]")!;
+const searchCount = document.querySelector<HTMLElement>("[data-sp-search-count]")!;
+function searchable(text: string) {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr");
+}
+function filterCatalog() {
+  const query = searchable(search.value.trim());
+  let total = 0;
+  for (const category of side.querySelectorAll<HTMLDetailsElement>(".sp-cat")) {
+    let shown = 0;
+    for (const button of category.querySelectorAll<HTMLButtonElement>("[data-sample]")) {
+      const matches = !query || button.dataset.search?.includes(query);
+      button.parentElement!.hidden = !matches;
+      if (matches) shown++;
+    }
+    category.hidden = shown === 0;
+    if (query && shown) category.open = true;
+    const count = category.querySelector<HTMLElement>(".sp-count");
+    if (count) count.textContent = String(shown);
+    total += shown;
+  }
+  searchCount.textContent = query
+    ? `${total} résultat${total === 1 ? "" : "s"} pour « ${search.value.trim()} ».`
+    : `${byId.size} échantillons, dont ${EXPLORE_EFFECTS.length} nouvelles études.`;
+}
+function clearSearch() {
+  if (!search.value) return;
+  search.value = "";
+  filterCatalog();
+}
+search.addEventListener("input", filterCatalog);
+document.querySelector("[data-sp-catalog-link]")?.addEventListener("click", () => {
+  requestAnimationFrame(() => search.focus({ preventScroll: true }));
+});
+function followHash() {
+  const id = location.hash.slice(1) || "explore-gravure";
+  if (byId.has(id) && id !== current) {
+    clearSearch();
+    select(id, true);
+  }
+}
+addEventListener("hashchange", followHash);
+addEventListener("popstate", followHash);
+
 info.action.addEventListener("click", () => byId.get(current)?.s.action?.run());
 context.addEventListener("change", () => select(current, true));
+addEventListener("pli:explore-change", syncExploreControls);
+addEventListener("pli:motion-change", syncExploreControls);
+for (const button of document.querySelectorAll("[data-action='pause']")) button.addEventListener("click", notifyExplore);
+matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", notifyExplore);
+new MutationObserver(syncExploreControls).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
 const start = location.hash.slice(1);
-select(byId.has(start) ? start : "transition-0", true);
+select(byId.has(start) ? start : "explore-gravure", true);
+if (!start) history.replaceState(null, "", "#explore-gravure");
+filterCatalog();
