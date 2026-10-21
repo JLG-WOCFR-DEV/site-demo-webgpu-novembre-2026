@@ -955,10 +955,14 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 export const TRACE_SIZE = 192;
 // Une couche de mémoire par plaque de matière visible, pas par matière :
 // deux plaques de brume n'essuient pas la même buée.
-export const TRACE_LAYERS = 8;
+export const TRACE_LAYERS = 9;
+/** La dernière couche couvre l'écran entier : la mémoire du papier froissé. */
+export const SCREEN_LAYER = TRACE_LAYERS - 1;
+/** Bords déchirés : jusqu'à huit à l'écran. */
+export const MAX_TEARS = 8;
 export const TRACE = /* wgsl */ `
 struct TraceU {
-  a: vec4f,                       // dt, 0, 0, 0
+  a: vec4f,                       // dt, décalage de la couche d'écran (texels), couche d'écran, 0
   layer: array<vec4f, ${TRACE_LAYERS * 3}>,  // par couche : [actif (2 = remise à zéro), dedans, pointeur u, v], [vitesse u, v, aspect, rayon], [gain b, oubli b, gain rg, oubli rg]
 };
 @group(0) @binding(0) var<uniform> u: TraceU;
@@ -971,6 +975,11 @@ fn trace(@builtin(global_invocation_id) id: vec3u) {
   if (any(id.xy >= size)) { return; }
   let l = i32(id.z);
   var v = textureLoad(src, id.xy, l, 0);
+  // La couche d'écran suit le papier : au défilement, la mémoire remonte avec lui.
+  if (l == i32(u.a.z) && abs(u.a.y) > 0.5) {
+    let sy = i32(id.y) + i32(u.a.y);
+    if (sy < 0 || sy >= i32(size.y)) { v = vec4f(0.0, 0.0, 0.0, 1.0); } else { v = textureLoad(src, vec2u(id.x, u32(sy)), l, 0); }
+  }
   let p0 = u.layer[l * 3];
   let p1 = u.layer[l * 3 + 1];
   let p2 = u.layer[l * 3 + 2];
@@ -1413,6 +1422,10 @@ struct Post {
   ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
   matter: vec4f,   // intensité des matières, marge de l'enveloppe de feu (px), écran du sommaire (0, 1 CRT, 2 projecteur), 0
   screen: vec4f,   // rectangle de la scène du sommaire (px)
+  crease: vec4f,   // froissé de page : actif, profondeur, 0, défilement de la page (px)
+  lensm: vec4f,    // matière lentille : pointeur amorti x, y (px), force au survol, force réglée
+  tear: vec4f,     // bords déchirés : nombre, amplitude, réaction, 0
+  tears: array<vec4f, ${MAX_TEARS}>, // y, gauche, droite (px), 0
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -1423,6 +1436,59 @@ struct Post {
 @group(0) @binding(5) var trace: texture_2d_array<f32>;
 
 const LENS_R: f32 = 130.0;
+
+// Matière « lentille » : une loupe discrète, centrée sur le pointeur amorti,
+// qui ne déborde pas de son élément. Discrète, elle passe pour du verre.
+fn lens_material(px: vec2f, st: vec4f) -> vec2f {
+  let r = min(st.z, st.w) * 0.42;
+  let d = px - u.lensm.xy;
+  let t = length(d) / r;
+  if (t >= 1.0 || u.lensm.z < 0.001) { return vec2f(0.0); }
+  let k = (1.0 - t * t);
+  return -d * k * k * 0.3 * u.lensm.z * u.lensm.w;
+}
+
+// Papier froissé de page : un relief de plis vifs, fixé au papier (il défile
+// avec lui). Seule l'octave fine compte : les rampes lentes donnaient des
+// taches claires et sombres, l'écueil que décrit l'article de Codrops.
+fn crease_h(q: vec2f) -> f32 {
+  return crumple(q * 2.0 + vec2f(3.1, 7.7)) - 0.6 * vnoise(q * 0.5);
+}
+fn crease_grad(px: vec2f) -> vec2f {
+  let s = 110.0 * u.res.z;
+  let q = (px + vec2f(0.0, u.crease.w * u.res.z)) / s;
+  let e = 0.35 / s * u.res.z;
+  return vec2f(crease_h(q + vec2f(e, 0.0)) - crease_h(q - vec2f(e, 0.0)), crease_h(q + vec2f(0.0, e)) - crease_h(q - vec2f(0.0, e))) / (2.0 * e * s);
+}
+
+// Bord déchiré : la feuille du dessus s'arrête sur une ligne irrégulière,
+// avec un liseré de fibres plus claires et une ombre sur la feuille du dessous.
+fn tear_edge(px: vec2f, col: vec3f) -> vec3f {
+  let dpr = u.res.z;
+  let t = u.res.w;
+  var c = col;
+  for (var i = 0; i < ${MAX_TEARS}; i++) {
+    if (f32(i) >= u.tear.x) { break; }
+    let e = u.tears[i];
+    if (px.x < e.y || px.x > e.z || abs(px.y - e.x) > 90.0 * dpr) { continue; }
+    let fi = f32(i);
+    // Ondulation lente ; le défilement l'ouvre, le pointeur la tord.
+    let slow = (fbm(vec2f(px.x / (60.0 * dpr), t * 0.12 + fi * 3.1)) - 0.5) * 26.0 * dpr;
+    let open = 1.0 + abs(u.paper.w) * 5.0 * u.tear.z;
+    let pd = (px.x - u.pointer.x) / (170.0 * dpr);
+    let pull = select(0.0, clamp(u.pointer.y - e.x, -70.0 * dpr, 70.0 * dpr) * 0.45 * exp(-pd * pd) * u.tear.z, u.pointer.z > 0.5);
+    let jag = (vnoise(vec2f(px.x / (2.6 * dpr), fi * 7.0)) - 0.5) * 4.0 * dpr + (vnoise(vec2f(px.x / (9.0 * dpr), fi)) - 0.5) * 6.0 * dpr;
+    let y = e.x + (slow * open + jag) * u.tear.y + pull;
+    let f = px.y - y;
+    // Liseré : la tranche du papier déchiré, plus claire, en fibres.
+    let rim = (2.5 + 5.0 * vnoise(vec2f(px.x / (5.0 * dpr), fi * 3.0))) * dpr * u.tear.y;
+    let fib = vnoise(vec2f(px.x / (1.3 * dpr), px.y / (4.0 * dpr)));
+    if (f < 0.0 && f > -rim) { c = mix(c, vec3f(0.985, 0.978, 0.962), 0.75 + 0.25 * fib); }
+    // Ombre portée sur la feuille du dessous.
+    if (f >= 0.0) { c *= 1.0 - 0.26 * exp(-f / (6.0 * dpr)) * min(u.tear.y, 1.5); }
+  }
+  return c;
+}
 
 fn kind_of(i: i32) -> f32 {
   let v = u.kinds[i / 4];
@@ -2129,11 +2195,31 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   if (scr.z > 0.5) { return vec4f(0.025, 0.025, 0.028, 1.0); }
   lens += scr.xy;
 
+  // Matière lentille, sur n'importe quel élément qui la porte.
+  if (kind > 9.5 && kind < 10.5) {
+    lens += lens_material(px, stage);
+  }
+
+  // Papier froissé : là où le pointeur est passé, la page entière se plie,
+  // texte et images compris ; puis elle se défroisse.
+  var creaseG = vec2f(0.0);
+  var creaseM = 0.0;
+  if (u.crease.x > 0.5) {
+    creaseM = textureSampleLevel(trace, samp, px / u.res.xy, ${SCREEN_LAYER}, 0.0).z * u.crease.y;
+    if (creaseM > 0.002) {
+      creaseG = crease_grad(px);
+      var off = creaseG * creaseM * 55.0 * u.res.z;
+      let ol = length(off);
+      if (ol > 11.0 * u.res.z) { off *= 11.0 * u.res.z / ol; }
+      lens += off;
+    }
+  }
+
   var col = source(px, lens);
 
   if (kind > 2.5 && kind < 3.5) {
     col = image_filter(px, stage);
-  } else if (kind > 3.5) {
+  } else if (kind > 3.5 && kind < 9.5) {
     col = matter(kind, px, stage);
   }
 
@@ -2158,6 +2244,17 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     col = mix(u.paper.rgb, wetCol, pr.xyz);
   }
   col *= print_shade;
+
+  if (creaseM > 0.002) {
+    // Éclairage rasant venu du haut à gauche sur le relief des plis.
+    let n = normalize(vec3f(-creaseG * creaseM * 2.4, 1.0));
+    let L = normalize(vec3f(-0.55, -0.65, 0.55));
+    let shade = clamp(dot(n, L) / L.z, 0.62, 1.22);
+    col *= shade;
+  }
+  if (u.tear.x > 0.5) {
+    col = tear_edge(px, col);
+  }
 
   if (u.chain2.x > 0.5) {
     let amp = u.chain2.x;

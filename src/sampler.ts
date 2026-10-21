@@ -18,6 +18,8 @@ type Sample = {
   photo?: Photo;
   blocks?: string[];
   forms?: string[];
+  /** Matière posée par attribut (data-gl-material) sur les éléments visés. */
+  material?: { sel: string; name: string };
   patch?: () => void;
   action?: { label: string; run: () => void };
 };
@@ -186,6 +188,34 @@ const CATS: Category[] = [
     ],
   },
   {
+    id: "papier",
+    name: "Papier",
+    intro: "Trois idées tirées de Paper Shaders sur Codrops : les shaders ne restent pas dans un fond, ils touchent les éléments de la page, posés par un simple attribut HTML.",
+    samples: [
+      {
+        id: "papier-froisse",
+        label: "Page froissée",
+        text: "Passez le pointeur vite sur la page : elle se plie autour de lui, texte et images compris, puis se défroisse lentement. Les plis tiennent au papier : ils défilent avec lui.",
+        forms: ["crease"],
+        patch: () => (settings.crease.on = true),
+      },
+      {
+        id: "papier-dechirure",
+        label: "Bords déchirés",
+        text: "Chaque planche commence par une déchirure qui ondule. Elle s'ouvre quand on défile vite et se tord vers le pointeur. Faites défiler.",
+        forms: ["tear"],
+        material: { sel: ".sp-page", name: "dechirure" },
+      },
+      {
+        id: "papier-lentille",
+        label: "Loupe au survol",
+        text: "Une loupe discrète sur chaque photo : son centre suit le pointeur avec retard et elle ne s'allume qu'au survol. Discrète, elle passe pour du verre ; forte, pour un filtre.",
+        forms: ["lens"],
+        material: { sel: "[data-sp-stage] .sp-plate, .sp-page-plate", name: "lentille" },
+      },
+    ],
+  },
+  {
     id: "texte",
     name: "Texte",
     intro: "Le texte est lu sur le DOM et redessiné par le GPU, glyphe par glyphe.",
@@ -292,6 +322,8 @@ function neutral() {
   settings.filter.source = 0;
   settings.dom.boxes = false;
   settings.grain.amp = 1;
+  settings.crease.on = false;
+  for (const el of document.querySelectorAll<HTMLElement>("[data-gl-material]")) delete el.dataset.glMaterial;
 }
 
 /** Recopie les réglages dans les formulaires (les sorties numériques comprises). */
@@ -335,6 +367,7 @@ function select(id: string, fromHash = false) {
   current = id;
   neutral();
   if (cat.id === "plans") settings.quad.hoverPeel = true;
+  if (s.material) for (const el of document.querySelectorAll<HTMLElement>(s.material.sel)) el.dataset.glMaterial = s.material.name;
   s.patch?.();
   if (context.checked) Object.assign(settings.chain, { rgb: true, bloom: true, grain: true, print: true });
   refreshForms();

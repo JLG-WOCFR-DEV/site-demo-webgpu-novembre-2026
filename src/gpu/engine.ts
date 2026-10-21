@@ -3,7 +3,7 @@ import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE } from "./wgsl.ts";
+import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -34,7 +34,11 @@ const STAGE_KIND: Record<string, number> = {
   gouttes: 7,
   enveloppe: 8,
   givre: 9,
+  // Matières déclarées dans le HTML (data-gl-material) : n'importe quel élément.
+  lentille: 10,
 };
+/** Nom de la plaque : data-gl-stage (démonstrations), sinon data-gl-material. */
+const stageName = (s: HTMLElement) => s.dataset.glStage ?? s.dataset.glMaterial ?? "";
 /**
  * Mémoire du pointeur par matière : gain et oubli de la présence (b), gain et
  * oubli du vent ou de la peinture (rg), en 1/s. Les flammes et l'enveloppe
@@ -52,12 +56,15 @@ const TRACE_RATES: [number, number, number, number][] = [
 export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
 const MATTER_AT = CASSE_AT + 4 + 16 * 4;
 const SCREEN_AT = MATTER_AT + 4;
+const CREASE_AT = SCREEN_AT + 4;
+const LENSM_AT = CREASE_AT + 4;
+const TEAR_AT = LENSM_AT + 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -680,7 +687,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let pvx = 0;
   let pvy = 0;
 
-  const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage]")];
+  const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage], [data-gl-material]")].filter((s) => stageName(s) !== "dechirure");
+  // Pointeur amorti de la matière lentille, et sa force au survol.
+  const lensP = { x: 0, y: 0, k: 0 };
+  // Couche d'écran du froissé : décalage de défilement en reste (texels), et remise à zéro.
+  let creaseCarry = 0;
+  let creaseWas = false;
 
   const frame = () => {
     if (destroyed) return;
@@ -815,17 +827,18 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     // sa couche tant qu'elle reste à l'écran ; une couche reprise est remise à zéro.
     const visibleMatters = stageEls.filter((s) => {
       const r = s.getBoundingClientRect();
-      return (STAGE_KIND[s.dataset.glStage ?? ""] ?? 0) >= 4 && r.width > 0 && r.bottom > 0 && r.top < cssH;
+      const kd = STAGE_KIND[stageName(s)] ?? 0;
+      return kd >= 4 && kd <= 9 && r.width > 0 && r.bottom > 0 && r.top < cssH;
     });
-    for (const [el] of traceLayers) if (!visibleMatters.includes(el) || traceKind.get(el) !== el.dataset.glStage) traceLayers.delete(el);
+    for (const [el] of traceLayers) if (!visibleMatters.includes(el) || traceKind.get(el) !== stageName(el)) traceLayers.delete(el);
     const fresh = new Set<number>();
     for (const el of visibleMatters) {
       if (traceLayers.has(el)) continue;
       const taken = new Set(traceLayers.values());
-      for (let l = 0; l < TRACE_LAYERS; l++) {
+      for (let l = 0; l < SCREEN_LAYER; l++) {
         if (!taken.has(l)) {
           traceLayers.set(el, l);
-          traceKind.set(el, el.dataset.glStage);
+          traceKind.set(el, stageName(el));
           fresh.add(l);
           break;
         }
@@ -833,8 +846,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     for (const s of stageEls) {
       const r = s.getBoundingClientRect();
-      const kind = STAGE_KIND[s.dataset.glStage ?? ""] ?? 0;
-      if (kind >= 4 && r.width > 0 && r.bottom > 0 && r.top < cssH) {
+      const kind = STAGE_KIND[stageName(s)] ?? 0;
+      if (kind >= 4 && kind <= 9 && r.width > 0 && r.bottom > 0 && r.top < cssH) {
         // Matière visible : sa couche de traces avance d'un pas.
         const layer = traceLayers.get(s) ?? -1;
         const rates = TRACE_RATES[kind - 4]!;
@@ -869,7 +882,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       if (si < MAX_STAGES && kind > 0 && r.bottom > 0 && r.top < cssH) {
         postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 28 + si * 4);
         // Pour une matière, le type porte aussi sa couche de traces : type + 16 × couche.
-        postData[28 + MAX_STAGES * 4 + si] = kind >= 4 ? kind + 16 * Math.max(0, traceLayers.get(s) ?? 0) : kind;
+        postData[28 + MAX_STAGES * 4 + si] = kind >= 4 && kind <= 9 ? kind + 16 * Math.max(0, traceLayers.get(s) ?? 0) : kind;
         si++;
       }
     }
@@ -949,6 +962,56 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([settings.matter.intensity, WRAP_PAD * dpr, menuOpen ? menuGL.screen : 0, 0], MATTER_AT);
     const sr = menuGL.screenRect;
     postData.set([sr[0] * dpr, sr[1] * dpr, sr[2] * dpr, sr[3] * dpr], SCREEN_AT);
+
+    // Matière lentille : le centre suit le pointeur avec du retard ; elle se
+    // renforce sur l'élément survolé et s'éteint ailleurs.
+    let overLens = false;
+    if (!menuOpen && pointer.inside) {
+      for (const el of stageEls) {
+        if (stageName(el) !== "lentille") continue;
+        const r = el.getBoundingClientRect();
+        if (pointer.x >= r.left && pointer.x <= r.right && pointer.y >= r.top && pointer.y <= r.bottom) overLens = true;
+      }
+    }
+    const lk = reduced ? 1 : 1 - Math.exp(-dt * settings.lens.follow);
+    lensP.x += (pointer.x - lensP.x) * lk;
+    lensP.y += (pointer.y - lensP.y) * lk;
+    lensP.k += ((overLens && !reduced ? 1 : 0) - lensP.k) * (reduced ? 1 : 1 - Math.exp(-dt * 6));
+    postData.set([lensP.x * dpr, lensP.y * dpr, lensP.k, settings.lens.force], LENSM_AT);
+
+    // Papier froissé : couche d'écran des traces, qui suit le défilement.
+    const C = settings.crease;
+    const creaseOn = C.on && !menuOpen && !reduced;
+    postData.set([creaseOn ? 1 : 0, C.depth, 0, scrollY], CREASE_AT);
+    traceData[1] = 0;
+    traceData[2] = SCREEN_LAYER;
+    if (creaseOn) {
+      creaseCarry += (dy / cssH) * TRACE_SIZE;
+      const shift = Math.round(creaseCarry);
+      creaseCarry -= shift;
+      traceData[1] = shift;
+      const o = 4 + SCREEN_LAYER * 12;
+      const speed = Math.hypot(pvx, pvy);
+      // Le pli vient du geste : un pointeur immobile ne froisse pas.
+      const gain = 8 * Math.min(1.5, speed / 600);
+      traceData.set([creaseWas ? 1 : 2, pointer.inside ? 1 : 0, pointer.x / cssW, pointer.y / cssH], o);
+      traceData.set([0, 0, cssW / cssH, 0.075], o + 4);
+      traceData.set([gain, C.heal, 0, 1], o + 8);
+      traceOn = true;
+    }
+    creaseWas = creaseOn;
+
+    // Bords déchirés : le haut de chaque élément data-gl-material="dechirure".
+    let nt = 0;
+    if (!menuOpen) {
+      for (const el of document.querySelectorAll<HTMLElement>('[data-gl-material="dechirure"]')) {
+        const r = el.getBoundingClientRect();
+        if (r.top < -60 || r.top > cssH + 60 || r.width <= 0 || nt >= MAX_TEARS) continue;
+        postData.set([r.top * dpr, r.left * dpr, r.right * dpr, 0], TEAR_AT + 4 + nt * 4);
+        nt++;
+      }
+    }
+    postData.set([nt, settings.tear.amp, settings.tear.react, 0], TEAR_AT);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);

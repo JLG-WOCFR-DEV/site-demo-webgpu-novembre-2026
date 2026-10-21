@@ -65,6 +65,22 @@ forms = {
               <label class="range"><span>Grossir le grain</span><input type="range" name="amp" min="1" max="12" step="1" value="1" /><output>× 1</output></label>
               <p class="readout">× 1 est le dosage réel. Le trait du pointeur sépare la page sans grain (à gauche) et avec (à droite).</p>
             </form>""",
+    "crease": """<form class="controls" aria-labelledby="c-sp-crease" data-controls="crease">
+              <p id="c-sp-crease" class="controls-title">Papier froissé</p>
+              <label class="toggle"><input type="checkbox" name="on" /> Froisser la page sous le pointeur</label>
+              <label class="range"><span>Profondeur</span><input type="range" name="depth" min="0.2" max="2.5" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Se défroisse</span><input type="range" name="heal" min="0.05" max="2" step="0.05" value="0.35" /><output>0,35</output></label>
+            </form>""",
+    "tear": """<form class="controls" aria-labelledby="c-sp-tear" data-controls="tear">
+              <p id="c-sp-tear" class="controls-title">Bords déchirés</p>
+              <label class="range"><span>Amplitude</span><input type="range" name="amp" min="0.2" max="2.5" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Réaction</span><input type="range" name="react" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+            </form>""",
+    "lens": """<form class="controls" aria-labelledby="c-sp-lens" data-controls="lens">
+              <p id="c-sp-lens" class="controls-title">Loupe</p>
+              <label class="range"><span>Force</span><input type="range" name="force" min="0.2" max="3" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Suit le pointeur</span><input type="range" name="follow" min="1" max="30" step="0.5" value="7" /><output>7,00</output></label>
+            </form>""",
     "a11y": """<form class="controls" aria-labelledby="c-sp-a11y" data-controls="a11y">
               <p id="c-sp-a11y" class="controls-title">Accessibilité</p>
               <fieldset class="choices">
