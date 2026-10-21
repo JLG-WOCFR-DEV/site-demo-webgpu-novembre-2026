@@ -4,9 +4,9 @@ Les six effets ont été rendus avec le shader `PLANE` réel, hors navigateur. L
 
 Exécution documentée : **19 octobre 2026, 18:51 UTC**. Les aperçus et mesures ci-dessous ont été nouvellement calculés depuis les sources restaurées du projet.
 
-![Original, six effets et exemples d'interaction](./matieres-apercu.png)
+![Original, six effets et exemples d'interaction](./matieres-apercu.jpg)
 
-Le [rapport JSON](./validation-matieres.json) conserve les paramètres, les empreintes des sources, les mesures détaillées et les limites. La [planche d'aperçu](./matieres-apercu.png) présente l'original, les six matières, une comparaison et le déplacement du givre.
+Le [rapport JSON](./validation-matieres.json) conserve les paramètres, les empreintes des sources, les mesures détaillées et les limites. La [planche d'aperçu](./matieres-apercu.jpg) présente l'original, les six matières, une comparaison et le déplacement du givre. Cet aperçu est compressé en JPEG pour la consultation ; les mesures portent sur les rendus avant cette compression.
 
 ## Méthode
 

@@ -323,7 +323,7 @@
   "all_numeric_checks_passed": true,
   "visual_review": {
     "inspected_files": [
-      "./matieres-apercu.png"
+      "./matieres-apercu.jpg"
     ],
     "assessment": "Freshly generated contact sheet and native ASCII image inspected after the restored-source run. All six modes visibly distinct; no blank or visibly corrupted result.",
     "ripple": "Concentric refractive rings clearly visible; original remains recognizable.",
@@ -337,7 +337,8 @@
   },
   "artifacts": {
     "path_base": "Relative to this JSON file in docs/",
-    "preview": "./matieres-apercu.png",
+    "preview": "./matieres-apercu.jpg",
+    "preview_encoding": "JPEG consultation copy; numeric checks use the original renders before lossy preview compression.",
     "method": "./validation-matieres.md",
     "source_image": "../public/plates/fig.jpg",
     "shader_module": "../src/gpu/wgsl.ts",
