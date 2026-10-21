@@ -8,6 +8,7 @@ const UNITS: Record<string, (v: number) => string> = {
   radius: (v) => `${Math.round(v)} px`,
   cell: (v) => `${fmt(v, 1)} px`,
   size: (v) => `${fmt(v, 1)} px`,
+  amp: (v) => `× ${fmt(v, 0)}`,
   threshold: (v) => `+${fmt(v, 3)}`,
   // Amorti exponentiel : la demi-vie parle plus qu'un taux.
   speed: (v) => `${fmt(Math.LN2 / v, 2)} s`,

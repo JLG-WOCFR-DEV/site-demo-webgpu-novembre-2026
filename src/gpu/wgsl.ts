@@ -953,11 +953,13 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 // Chaque couche s'efface à son propre rythme. Lecture dans A, écriture dans
 // B, puis copie B → A : le composite lit toujours A.
 export const TRACE_SIZE = 192;
-export const TRACE_LAYERS = 6;
+// Une couche de mémoire par plaque de matière visible, pas par matière :
+// deux plaques de brume n'essuient pas la même buée.
+export const TRACE_LAYERS = 8;
 export const TRACE = /* wgsl */ `
 struct TraceU {
   a: vec4f,                       // dt, 0, 0, 0
-  layer: array<vec4f, ${6 * 3}>,  // par couche : [actif, dedans, pointeur u, v], [vitesse u, v, aspect, rayon], [gain b, oubli b, gain rg, oubli rg]
+  layer: array<vec4f, ${TRACE_LAYERS * 3}>,  // par couche : [actif (2 = remise à zéro), dedans, pointeur u, v], [vitesse u, v, aspect, rayon], [gain b, oubli b, gain rg, oubli rg]
 };
 @group(0) @binding(0) var<uniform> u: TraceU;
 @group(0) @binding(1) var src: texture_2d_array<f32>;
@@ -972,6 +974,7 @@ fn trace(@builtin(global_invocation_id) id: vec3u) {
   let p0 = u.layer[l * 3];
   let p1 = u.layer[l * 3 + 1];
   let p2 = u.layer[l * 3 + 2];
+  if (p0.x > 1.5) { v = vec4f(0.0, 0.0, 0.0, 1.0); }
   if (p0.x > 0.5) {
     let dt = u.a.x;
     v = vec4f(v.xy * exp(-dt * p2.w), v.z * exp(-dt * p2.y), 1.0);
@@ -1397,7 +1400,7 @@ struct Post {
   res: vec4f,      // pw, ph, dpr, time
   pointer: vec4f,  // x, y (px), inside, reduced
   chain: vec4f,    // distorsion, rvb, trame, bloom (0/1)
-  chain2: vec4f,   // grain, split, splitX (px), intensité bloom
+  chain2: vec4f,   // grain (0 coupé, 1 réel, plus = loupe), split, splitX (px), intensité bloom
   trame: vec4f,    // cellule (px css), engraissement, repérage, mélange
   paper: vec4f,    // rgb du papier, glissement (vitesse de défilement −1…1)
   filt: vec4f,     // filtre (0…4), taille (css), intensité, 0
@@ -1815,9 +1818,12 @@ fn fbm(p: vec2f) -> f32 {
   return v;
 }
 
-fn trace_at(px: vec2f, st: vec4f, layer: i32) -> vec4f {
+// Couche de traces de la plaque en cours, choisie par le moteur (voir fs).
+var<private> tr_layer: i32 = 0;
+
+fn trace_at(px: vec2f, st: vec4f, _kind_layer: i32) -> vec4f {
   let q = clamp((px - st.xy) / st.zw, vec2f(0.0), vec2f(1.0));
-  return textureSampleLevel(trace, samp, q, layer, 0.0);
+  return textureSampleLevel(trace, samp, q, tr_layer, 0.0);
 }
 
 fn stage_src(p: vec2f, st: vec4f) -> vec3f {
@@ -2097,7 +2103,10 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   for (var i = 0; i < ${MAX_STAGES}; i++) {
     let s = u.stages[i];
     if (s.z > 0.0 && px.x >= s.x && px.y >= s.y && px.x < s.x + s.z && px.y < s.y + s.w) {
-      kind = kind_of(i);
+      // Type + 16 × couche de traces.
+      let raw = kind_of(i);
+      kind = raw - floor(raw / 16.0) * 16.0;
+      tr_layer = i32(floor(raw / 16.0));
       stage = s;
     }
   }
@@ -2151,14 +2160,15 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   col *= print_shade;
 
   if (u.chain2.x > 0.5) {
+    let amp = u.chain2.x;
     // Fibre : bruit lent, seulement là où il y a du papier.
     let paperish = 1.0 - smoothstep(0.02, 0.08, distance(col, u.paper.rgb));
     let fiber = vnoise(px / (2.0 * u.res.z) + vec2f(0.0, vnoise(px / (60.0 * u.res.z)) * 6.0));
-    col *= 1.0 - paperish * (fiber - 0.5) * 0.016;
+    col *= 1.0 - paperish * (fiber - 0.5) * 0.016 * amp;
     // Grain : bruit entrelacé, animé sauf en mouvement réduit.
     let tt = select(floor(u.res.w * 24.0), 0.0, u.pointer.w > 0.5);
     let n = ign(px + vec2f(tt * 5.588238, tt * 3.31));
-    col += (n - 0.5) * 0.028;
+    col += (n - 0.5) * 0.028 * amp;
   }
 
   // Cours d'accessibilité : encre délavée (pour faire échouer la mesure de

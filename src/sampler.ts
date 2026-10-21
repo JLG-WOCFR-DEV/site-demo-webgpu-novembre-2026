@@ -162,15 +162,26 @@ const CATS: Category[] = [
     intro: "Les passes après la scène, une par une. « Dans le contexte » les rallume toutes.",
     samples: [
       { id: "chaine-bloom", label: "Bloom", text: "Seules les vraies hautes lumières débordent : le reflet sur le verre.", photo: "glass", forms: ["light"], patch: () => (settings.chain.bloom = true) },
-      { id: "chaine-grain", label: "Grain et fibre", text: "Un bruit entrelacé, animé, et la fibre du papier.", patch: () => (settings.chain.grain = true) },
+      {
+        id: "chaine-grain",
+        label: "Grain et fibre",
+        text: "Un bruit animé d'un pas de pixel, et une fibre lente sur le papier. Au dosage réel, on ne le voit pas : il casse les dégradés en marches du rendu 8 bits et ôte au papier son aspect d'aplat numérique. La loupe le grossit ; à gauche du pointeur, la page sans lui.",
+        forms: ["grain", "chain"],
+        patch: () => {
+          Object.assign(settings.chain, { grain: true, split: true });
+          settings.grain.amp = 6;
+          settings.filter.source = 1;
+        },
+      },
       { id: "chaine-rvb", label: "Repérage au défilement", text: "L'aberration chromatique du défilement : faites défiler vite, les plaques rouge, verte et bleue glissent comme une feuille qui file sous les rouleaux.", forms: ["chain"], patch: () => (settings.chain.rgb = true) },
       { id: "chaine-trame", label: "Trame CMJN", text: "Quatre grilles de points tournées, une par encre, superposées par soustraction.", stage: "trame", forms: ["trame"], patch: () => (settings.chain.trame = true) },
       {
         id: "chaine-split",
         label: "Brut et composite",
-        text: "À gauche du pointeur, la cible brute ; à droite, l'image après toute la chaîne.",
-        forms: ["chain"],
-        patch: () => Object.assign(settings.chain, { rgb: true, bloom: true, grain: true, split: true }),
+        text: "Ce que la scène a dessiné, à gauche du pointeur, et ce qui sort de la chaîne, à droite. Bougez le pointeur sur la photo : la trame, le bloom, le grain et la vision n'existent qu'à droite. C'est l'outil pour savoir quelle passe fait quoi.",
+        stage: "trame",
+        forms: ["chain", "trame"],
+        patch: () => Object.assign(settings.chain, { rgb: true, bloom: true, grain: true, trame: true, split: true }),
       },
     ],
   },
@@ -276,10 +287,11 @@ const context = document.querySelector<HTMLInputElement>("[data-sp-context]")!;
 function neutral() {
   Object.assign(settings.chain, { distort: false, rgb: false, trame: false, bloom: false, grain: false, print: false, split: false });
   Object.assign(settings.glyph, { wave: 0, ink: 0, scatter: 0, atlas: false });
-  Object.assign(settings.quad, { radius: 6, shadow: 0.45, lift: 0.3, wire: false, peel: 0 });
+  Object.assign(settings.quad, { radius: 6, shadow: 0.45, lift: 0.3, wire: false, peel: 0, hoverPeel: false });
   Object.assign(settings.a11y, { fade: 0, vision: 0 });
   settings.filter.source = 0;
   settings.dom.boxes = false;
+  settings.grain.amp = 1;
 }
 
 /** Recopie les réglages dans les formulaires (les sorties numériques comprises). */
@@ -306,7 +318,7 @@ function replay() {
 }
 
 const stageEl = document.querySelector<HTMLElement>("[data-sp-stage]")!;
-const SPREAD = new Set(["filtre", "trame"]);
+const SPREAD = new Set(["filtre", "trame", "flammes", "nuages", "toile", "gouttes", "givre"]);
 const info = {
   cat: document.querySelector<HTMLElement>("[data-sp-catname]")!,
   title: document.querySelector<HTMLElement>("[data-sp-title]")!,
@@ -322,6 +334,7 @@ function select(id: string, fromHash = false) {
   const { cat, s } = found;
   current = id;
   neutral();
+  if (cat.id === "plans") settings.quad.hoverPeel = true;
   s.patch?.();
   if (context.checked) Object.assign(settings.chain, { rgb: true, bloom: true, grain: true, print: true });
   refreshForms();
@@ -329,10 +342,10 @@ function select(id: string, fromHash = false) {
   // Spécimen : plaque, photo et blocs annexes de l'échantillon.
   if (s.stage) stageEl.dataset.glStage = s.stage;
   else delete stageEl.dataset.glStage;
-  // Les planches du dessous reçoivent le même filtre ou la même trame : un
-  // effet d'image se juge sur plusieurs images, pas sur la seule première.
-  // Les matières restent au spécimen : leur mémoire du pointeur est une
-  // texture par matière, qu'une seconde plaque partagerait.
+  // Les planches du dessous reçoivent le même filtre, la même trame ou la
+  // même matière : un effet se juge sur plusieurs images, pas sur la seule
+  // première. Chaque plaque de matière a sa propre mémoire du pointeur.
+  // Le pli au survol n'appartient qu'aux échantillons « Plans et images ».
   for (const f of document.querySelectorAll<HTMLElement>(".sp-page-plate")) {
     if (s.stage && SPREAD.has(s.stage)) f.dataset.glStage = s.stage;
     else delete f.dataset.glStage;

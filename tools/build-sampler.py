@@ -60,6 +60,11 @@ forms = {
     "glyph": form("glyph"),
     "ink": form("ink"),
     "fluid": form("fluid"),
+    "grain": """<form class="controls" aria-labelledby="c-sp-grain" data-controls="grain">
+              <p id="c-sp-grain" class="controls-title">Loupe</p>
+              <label class="range"><span>Grossir le grain</span><input type="range" name="amp" min="1" max="12" step="1" value="1" /><output>× 1</output></label>
+              <p class="readout">× 1 est le dosage réel. Le trait du pointeur sépare la page sans grain (à gauche) et avec (à droite).</p>
+            </form>""",
     "a11y": """<form class="controls" aria-labelledby="c-sp-a11y" data-controls="a11y">
               <p id="c-sp-a11y" class="controls-title">Accessibilité</p>
               <fieldset class="choices">

@@ -338,7 +338,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const procBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_PROCS, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const procBind = device.createBindGroup({ layout: procLayout, entries: [{ binding: 0, resource: { buffer: procBuf, size: 32 } }] });
   const procData = new Float32Array((PLANE_STRIDE * MAX_PROCS) / 4);
-  const MAX_FIRES = 4;
+  const MAX_FIRES = 8;
+  const traceLayers = new Map<HTMLElement, number>();
+  const traceKind = new Map<HTMLElement, string | undefined>();
   const fireBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_FIRES, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const fireBind = device.createBindGroup({ layout: fireLayout, entries: [{ binding: 0, resource: { buffer: fireBuf, size: 48 } }] });
   const fireData = new Float32Array((PLANE_STRIDE * MAX_FIRES) / 4);
@@ -791,7 +793,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const lift = p.quad ? q.lift : 0.15;
       const uv = coverUV(r.width, r.height, p.width, p.height);
       // Chapitre 02 : l'épreuve se décolle au réglage, et d'un souffle au survol.
-      const wantPeel = p.quad ? Math.max(q.peel, reduced ? 0 : p.hover * 0.22) : 0;
+      const wantPeel = p.quad ? Math.max(q.peel, reduced || !q.hoverPeel ? 0 : p.hover * 0.22) : 0;
       p.peel += (wantPeel - p.peel) * (reduced ? 1 : 1 - Math.exp(-dt * 7));
       if (p.peel > 0.001) {
         // Dessous : la plaque offset, en négatif ; dessus : l'épreuve maillée.
@@ -809,19 +811,41 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     let traceOn = false;
     let fires = 0;
     let si = 0;
+    // Couches de traces : une par plaque de matière visible. Une plaque garde
+    // sa couche tant qu'elle reste à l'écran ; une couche reprise est remise à zéro.
+    const visibleMatters = stageEls.filter((s) => {
+      const r = s.getBoundingClientRect();
+      return (STAGE_KIND[s.dataset.glStage ?? ""] ?? 0) >= 4 && r.width > 0 && r.bottom > 0 && r.top < cssH;
+    });
+    for (const [el] of traceLayers) if (!visibleMatters.includes(el) || traceKind.get(el) !== el.dataset.glStage) traceLayers.delete(el);
+    const fresh = new Set<number>();
+    for (const el of visibleMatters) {
+      if (traceLayers.has(el)) continue;
+      const taken = new Set(traceLayers.values());
+      for (let l = 0; l < TRACE_LAYERS; l++) {
+        if (!taken.has(l)) {
+          traceLayers.set(el, l);
+          traceKind.set(el, el.dataset.glStage);
+          fresh.add(l);
+          break;
+        }
+      }
+    }
     for (const s of stageEls) {
       const r = s.getBoundingClientRect();
       const kind = STAGE_KIND[s.dataset.glStage ?? ""] ?? 0;
       if (kind >= 4 && r.width > 0 && r.bottom > 0 && r.top < cssH) {
         // Matière visible : sa couche de traces avance d'un pas.
-        const layer = kind - 4;
-        const rates = TRACE_RATES[layer]!;
+        const layer = traceLayers.get(s) ?? -1;
+        const rates = TRACE_RATES[kind - 4]!;
         const inside = pointer.inside && pointer.x >= r.left && pointer.x <= r.right && pointer.y >= r.top && pointer.y <= r.bottom;
-        const o = 4 + layer * 12;
-        traceData.set([1, inside ? 1 : 0, (pointer.x - r.left) / r.width, (pointer.y - r.top) / r.height], o);
-        traceData.set([pvx / r.width, pvy / r.height, r.width / r.height, 0.09], o + 4);
-        traceData.set(rates, o + 8);
-        traceOn = traceOn || rates[0] > 0;
+        const o = 4 + Math.max(0, layer) * 12;
+        if (layer >= 0) traceData.set([fresh.has(layer) ? 2 : 1, inside ? 1 : 0, (pointer.x - r.left) / r.width, (pointer.y - r.top) / r.height], o);
+        if (layer >= 0) {
+          traceData.set([pvx / r.width, pvy / r.height, r.width / r.height, 0.09], o + 4);
+          traceData.set(rates, o + 8);
+          traceOn = traceOn || rates[0] > 0;
+        }
         if ((kind === 4 || kind === 8) && fires < MAX_FIRES) {
           const o2 = (fires * PLANE_STRIDE) / 4;
           fireData.set([r.left, r.top, r.width, r.height], o2);
@@ -844,7 +868,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       }
       if (si < MAX_STAGES && kind > 0 && r.bottom > 0 && r.top < cssH) {
         postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 28 + si * 4);
-        postData[28 + MAX_STAGES * 4 + si] = kind;
+        // Pour une matière, le type porte aussi sa couche de traces : type + 16 × couche.
+        postData[28 + MAX_STAGES * 4 + si] = kind >= 4 ? kind + 16 * Math.max(0, traceLayers.get(s) ?? 0) : kind;
         si++;
       }
     }
@@ -857,7 +882,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([w, h, dpr, reduced ? 0 : time], 0);
     postData.set([pointer.x * dpr, pointer.y * dpr, pointer.inside && !reduced ? 1 : 0, reduced ? 1 : 0], 4);
     postData.set([c.distort ? 1 : 0, c.rgb ? 1 : 0, c.trame ? 1 : 0, c.bloom ? 1 : 0], 8);
-    postData.set([c.grain ? 1 : 0, c.split ? 1 : 0, splitX, L.bloom], 12);
+    postData.set([c.grain ? settings.grain.amp : 0, c.split ? 1 : 0, splitX, L.bloom], 12);
     postData.set([T.cell, T.gain, T.misreg, T.mix], 16);
     postData.set([PAPER[0], PAPER[1], PAPER[2], slip], 20);
     const F = settings.filter;

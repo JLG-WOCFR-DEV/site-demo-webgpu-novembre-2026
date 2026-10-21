@@ -651,7 +651,14 @@ function layout(s: MenuStyle, W: number, H: number, dt: number, k: (r: number) =
       const shade = clamp(0.62 + 0.38 * (nz * 0.92 - nx * 0.4) / 0.92, 0.5, 1.04);
       const prev = i > 0 ? Math.abs(phi[i]! - phi[i - 1]!) / (2 * TH) : 0;
       const next = i < n - 1 ? Math.abs(phi[i]! - phi[i + 1]!) / (2 * TH) : 0;
-      const z = m.transformPoint(new DOMPoint(pw / 2, ph / 2, 0)).z;
+      // Ordre de peinture : la distance à l'œil, pas la seule profondeur. Pliés
+      // en montagne et en vallée, deux panneaux voisins ont le même z au
+      // centre ; à égalité, le moindre écart de calcul les permutait d'une
+      // image à l'autre et les feuilles de droite vibraient. Plus loin de l'œil
+      // (vers les bords), on peint d'abord.
+      const c = m.transformPoint(new DOMPoint(pw / 2, ph / 2, 0));
+      const eye = perspective(W);
+      const z = -Math.hypot(c.x - W / 2, c.y - H / 2, c.z - eye);
       // La légende s'efface quand le panneau se plie : de biais, elle se chevaucherait.
       const label = 1 - smooth(22, 50, Math.abs(phi[i]!));
       out.push({ it: items[i]!, m, w: pw, h: ph, alpha: clamp(a * 1.4, 0, 1), shade, look: [1, prev, next, 0], z, label });
