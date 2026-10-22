@@ -419,29 +419,6 @@
             </form>
           </div>
         </div>
-        <!-- Toujours visibles, quel que soit l'échantillon : les outils de débogage. -->
-        <div class="sp-debug">
-          <form class="controls" aria-labelledby="c-sp-debug" data-controls="debug">
-            <p id="c-sp-debug" class="controls-title">Débogage</p>
-            <label class="toggle"><input type="checkbox" name="wire" /> Fil de fer : ce que reçoit le GPU</label>
-            <fieldset class="sp-grid">
-              <legend class="choices-legend">Grille</legend>
-              <label class="toggle"><input type="checkbox" name="col" /> Colonnes</label>
-              <label class="toggle"><input type="checkbox" name="row" /> Rangées</label>
-              <label class="toggle"><input type="checkbox" name="ctr" /> Centre</label>
-            </fieldset>
-          </form>
-          <div class="controls sp-rec" data-sp-rec>
-            <p class="controls-title">Capture vidéo</p>
-            <div class="sp-rec-row">
-              <label class="sp-rec-field"><span>Durée</span><select name="seconds"><option value="3">3 s</option><option value="6" selected>6 s</option><option value="10">10 s</option></select></label>
-              <label class="sp-rec-field"><span>Images/s</span><select name="fps"><option value="30">30</option><option value="60" selected>60</option></select></label>
-              <button type="button" class="btn" data-sp-rec-go>Enregistrer</button>
-            </div>
-            <p class="readout" data-sp-rec-status aria-live="polite">À pas fixe : la vidéo est fluide même si l'écran ne l'est pas. Seul le rendu du GPU est filmé.</p>
-            <a class="btn" data-sp-rec-link hidden>Télécharger la vidéo</a>
-          </div>
-        </div>
       </aside>
     </main>
   </body>

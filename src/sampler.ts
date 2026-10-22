@@ -1,6 +1,6 @@
 import "./main.ts";
 import { openMenu } from "./menu.ts";
-import { currentEngine } from "./main.ts";
+import { setDebugCaps } from "./debug-panel.ts";
 import { settings } from "./state.ts";
 
 /**
@@ -418,49 +418,9 @@ function select(id: string, fromHash = false) {
 
 info.action.addEventListener("click", () => byId.get(current)?.s.action?.run());
 
-/* ───── Capture vidéo ───── */
+// Débogage : la capture porte le nom de l'échantillon, et rejoue l'impression des transitions.
+setDebugCaps({ fileName: () => `webgpu-demo-ubs-${current}` });
 
-const rec = document.querySelector<HTMLElement>("[data-sp-rec]");
-if (rec) {
-  const go = rec.querySelector<HTMLButtonElement>("[data-sp-rec-go]")!;
-  const status = rec.querySelector<HTMLElement>("[data-sp-rec-status]")!;
-  const link = rec.querySelector<HTMLAnchorElement>("[data-sp-rec-link]")!;
-  let url = "";
-  go.addEventListener("click", () => {
-    const engine = currentEngine();
-    if (!engine) {
-      status.textContent = "Pas de rendu WebGPU sur cette page : rien à filmer.";
-      return;
-    }
-    if (engine.recording) {
-      engine.stopRecording();
-      return;
-    }
-    const seconds = Number(rec.querySelector<HTMLSelectElement>("select[name='seconds']")!.value);
-    const fps = Number(rec.querySelector<HTMLSelectElement>("select[name='fps']")!.value);
-    link.hidden = true;
-    if (url) URL.revokeObjectURL(url);
-    go.textContent = "Arrêter";
-    if (byId.get(current)?.cat.id === "transitions") replay();
-    engine.record({
-      fps,
-      seconds,
-      onProgress: (n, total) => (status.textContent = `Image ${n} / ${total}`),
-      onDone: (video, error) => {
-        go.textContent = "Enregistrer";
-        if (!video) {
-          status.textContent = `Capture impossible : ${error ?? "erreur inconnue"}.`;
-          return;
-        }
-        url = URL.createObjectURL(video);
-        link.href = url;
-        link.download = `pli-${current}.webm`;
-        link.hidden = false;
-        status.textContent = `${(video.size / 1e6).toFixed(1)} Mo, ${seconds} s à ${fps} images/s.`;
-      },
-    });
-  });
-}
 context.addEventListener("change", () => select(current, true));
 
 const start = location.hash.slice(1);

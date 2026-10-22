@@ -4,6 +4,8 @@
  * « Pages » en haut à gauche. API popover : Échap et clic extérieur ferment.
  */
 
+import { openDebugPanel } from "./debug-panel.ts";
+
 export const PAGES = [
   { href: "index.html", name: "WebGPU-demo-UBS", text: "La presse WebGPU : le guide et la démo" },
   { href: "sampler.html", name: "Sampler", text: "Un effet à la fois, par catégories" },
@@ -37,6 +39,12 @@ const CSS = `
 .pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }
 .pages-pop a[aria-current="page"] { box-shadow: inset 3px 0 0 #c8321c; }
 .pages-pop .pages-name { font-weight: 700; font-size: 16px; }
+.pages-pop .pages-debug {
+  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;
+  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }
 .pages-pop .pages-text { font-size: 13px; opacity: 0.75; }
 .pages-pill {
   position: fixed;
@@ -91,6 +99,16 @@ export function mountPagesNav(base = "./") {
     ul.append(li);
   }
   pop.append(ul);
+  // Débogage : la même fenêtre que l'icône de la barre, utile sur téléphone où l'icône n'a pas la place.
+  const dbg = document.createElement("button");
+  dbg.type = "button";
+  dbg.className = "pages-debug";
+  dbg.innerHTML = '<span class="pages-name">Débogage</span><span class="pages-text">Fil de fer, grille, capture vidéo</span>';
+  dbg.addEventListener("click", () => {
+    pop.hidePopover();
+    openDebugPanel(trigger!);
+  });
+  pop.append(dbg);
   document.body.append(pop);
   trigger.setAttribute("popovertarget", "pages-pop");
   trigger.setAttribute("aria-haspopup", "true");

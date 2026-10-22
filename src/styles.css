@@ -159,7 +159,7 @@ main,
   top: env(safe-area-inset-top, 0px);
   z-index: 10;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto auto;
   align-items: center;
   gap: var(--col-gap);
   height: var(--bar-h);
@@ -214,6 +214,10 @@ body::before {
   .mark {
     font-size: 12px;
     white-space: normal;
+  }
+  /* L'icône de débogage n'a pas la place : on l'ouvre depuis le menu des pages. */
+  .bar .dbg-btn {
+    display: none;
   }
   .mark-name {
     display: block;

@@ -1,9 +1,12 @@
 import "../k1910/style.css";
 import "./style.css";
 import { LIGHT, SCENE, STYLE } from "./shaders.ts";
+import { mountDebugPanel, setDebugCaps } from "../debug-panel.ts";
+import { clockNow, recordable } from "../gpu/recorder.ts";
 import { mountPagesNav } from "../pages-nav.ts";
 
 mountPagesNav();
+mountDebugPanel();
 
 /**
  * Kerguéhennec, huit regards. La même scène 3D, rendue de huit façons ; chaque
@@ -271,7 +274,7 @@ function chooseEntry(i: number) {
   if (s.motion && !reducedQuery.matches) {
     // Le livre se replie (ou les points se dispersent) avant que la caméra parte.
     state.phase = 0;
-    state.phaseStart = performance.now();
+    state.phaseStart = clockNow();
     state.pendingCam = goal.cam;
     goal.cam = state.goal.cam;
   }
@@ -294,7 +297,10 @@ async function start() {
   const device = await adapter.requestDevice();
   const ctx = canvas.getContext("webgpu")!;
   const format = navigator.gpu.getPreferredCanvasFormat();
-  ctx.configure({ device, format, alphaMode: "opaque" });
+  ctx.configure({ device, format, alphaMode: "opaque", usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
+  // Débogage : capture vidéo à pas fixe, comme sur la démo principale.
+  const rec = recordable(device, canvas, format);
+  setDebugCaps(rec.caps);
 
   const mods = [SCENE, LIGHT, STYLE].map((code) => device.createShaderModule({ code }));
   for (const m of mods) {
@@ -365,7 +371,7 @@ async function start() {
   };
 
   document.documentElement.classList.add("k-gpu");
-  const t0 = performance.now();
+  const t0 = clockNow();
   let last = t0;
   let slowFrames = 0;
   let fastFrames = 0;
@@ -374,7 +380,7 @@ async function start() {
   const frame = () => {
     requestAnimationFrame(frame);
     if (document.hidden) return;
-    const now = performance.now();
+    const now = clockNow();
     const dtMs = now - last;
     const dt = Math.min(0.1, dtMs / 1000);
     last = now;
@@ -468,7 +474,9 @@ async function start() {
     cpass.setBindGroup(1, sBind!);
     cpass.draw(3);
     cpass.end();
+    rec.copy(enc, ctx.getCurrentTexture());
     device.queue.submit([enc.finish()]);
+    rec.after();
   };
   requestAnimationFrame(frame);
 }

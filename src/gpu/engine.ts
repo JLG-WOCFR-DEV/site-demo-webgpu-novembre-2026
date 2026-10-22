@@ -2,7 +2,7 @@ import { menuGL } from "../menu.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
-import { Recorder, type RecordOptions } from "./recorder.ts";
+import { Recorder, clockNow, type RecordOptions } from "./recorder.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 
@@ -723,7 +723,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       needLayout = false;
       relayout(dpr);
     }
-    const now = recorder ? recorder.now : performance.now();
+    const now = clockNow();
     const time = (now - t0) / 1000;
     const reduced = motion.reduced;
     // Sommaire ouvert : la page est masquée (inert), le GPU ne peint que les feuilles.

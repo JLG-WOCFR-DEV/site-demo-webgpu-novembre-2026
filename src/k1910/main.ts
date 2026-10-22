@@ -1,8 +1,11 @@
 import "./style.css";
 import { DECOR, EPREUVE } from "./shaders.ts";
+import { mountDebugPanel, setDebugCaps } from "../debug-panel.ts";
+import { clockNow, recordable } from "../gpu/recorder.ts";
 import { mountPagesNav } from "../pages-nav.ts";
 
 mountPagesNav();
+mountDebugPanel();
 
 /**
  * Kerguéhennec, 1910. Le menu (cinq boutons du DOM) choisit un tableau ;
@@ -102,7 +105,7 @@ function choose(i: number) {
     state.from = state.scene;
     state.to = i;
     state.tr = 0;
-    state.trStart = performance.now();
+    state.trStart = clockNow();
   }
   showCard(i);
 }
@@ -180,7 +183,10 @@ async function start() {
   const device = await adapter.requestDevice();
   const ctx = canvas.getContext("webgpu")!;
   const format = navigator.gpu.getPreferredCanvasFormat();
-  ctx.configure({ device, format, alphaMode: "opaque" });
+  ctx.configure({ device, format, alphaMode: "opaque", usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
+  // Débogage : capture vidéo à pas fixe, comme sur la démo principale.
+  const rec = recordable(device, canvas, format);
+  setDebugCaps(rec.caps);
 
   const decorMod = device.createShaderModule({ code: DECOR });
   const postMod = device.createShaderModule({ code: EPREUVE });
@@ -245,7 +251,7 @@ async function start() {
 
   gpuReady = true;
   document.documentElement.classList.add("k-gpu");
-  const t0 = performance.now();
+  const t0 = clockNow();
   let last = t0;
 
   const frame = () => {
@@ -253,7 +259,7 @@ async function start() {
     if (document.hidden) return;
     // Même horloge que celle du clic (performance.now) : l'horodatage passé
     // par requestAnimationFrame peut la devancer.
-    const now = performance.now();
+    const now = clockNow();
     const dpr = resize();
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -343,7 +349,9 @@ async function start() {
     post.setBindGroup(0, postBind!);
     post.draw(3);
     post.end();
+    rec.copy(enc, ctx.getCurrentTexture());
     device.queue.submit([enc.finish()]);
+    rec.after();
   };
   requestAnimationFrame(frame);
 }

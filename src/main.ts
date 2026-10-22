@@ -3,6 +3,7 @@ import { createEngine, type Engine } from "./gpu/engine.ts";
 import { setupHtmlInCanvas } from "./html-in-canvas.ts";
 import { bindLayers } from "./layers-ui.ts";
 import { setupMenu } from "./menu.ts";
+import { mountDebugPanel, setDebugCaps } from "./debug-panel.ts";
 import { mountPagesNav } from "./pages-nav.ts";
 import { motion, pointer, settings, TRANSITIONS } from "./state.ts";
 import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayout, showMotion, showTimings, trackChapters, trackFocus } from "./ui.ts";
@@ -66,6 +67,16 @@ async function start() {
     engine.pause(settings.dom.hideGpu);
     if (!settings.dom.hideGpu) root.classList.add("gl-on");
     setStatus(`WebGPU natif${engine.canTime ? " · horodaté" : ""}`);
+    const eng = engine;
+    setDebugCaps({
+      wire: (on) => (settings.debug.wire = on),
+      grid: (g) => {
+        Object.assign(settings.debug, g);
+        return true;
+      },
+      record: (o) => eng.record(o),
+      stopRecord: () => eng.stopRecording(),
+    });
     setupHtmlInCanvas(engine.device);
     const btn = document.querySelector<HTMLButtonElement>("[data-action='toggle-gpu']");
     if (btn) btn.textContent = "Couper WebGPU";
@@ -104,6 +115,11 @@ document.querySelector("#tr-pop a")?.addEventListener("click", () => document.ge
 bindLayers();
 setupMenu();
 mountPagesNav();
+// Débogage : l'icône prend place dans la barre, avant le bouton Sommaire.
+{
+  const bar = document.querySelector<HTMLElement>(".bar");
+  mountDebugPanel(bar ? { parent: bar, before: bar.querySelector(".pause-btn") } : undefined);
+}
 // La carte de la leçon 10.1 est un vrai bouton, qu'elle soit dessinée par le GPU ou non.
 document.querySelector("[data-hic-button]")?.addEventListener("click", (e) => {
   const b = e.currentTarget as HTMLButtonElement;

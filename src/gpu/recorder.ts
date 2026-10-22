@@ -9,6 +9,17 @@ export type RecordOptions = {
 
 type Slot = { buf: GPUBuffer; busy: boolean };
 
+/** Enregistrement en cours, s'il y en a un : son horloge virtuelle remplace performance.now(). */
+let active: Recorder | null = null;
+/**
+ * L'horloge des animations. Pendant une capture, elle avance d'un pas fixe par
+ * image rendue ; sinon, c'est performance.now(). Toute animation qui veut
+ * apparaître juste dans une vidéo doit lire l'heure ici.
+ */
+export function clockNow() {
+  return active ? active.now : performance.now();
+}
+
 /**
  * Enregistreur à pas fixe. À chaque image, le moteur copie la texture du
  * canvas dans un tampon (copyTextureToBuffer), puis le recorder la lit et
@@ -44,6 +55,7 @@ export class Recorder {
     private o: RecordOptions,
   ) {
     this.now = start;
+    active = this;
     this.total = Math.max(1, Math.round(o.fps * o.seconds));
     this.step = 1000 / o.fps;
     // VP9 exige des dimensions paires ; les lignes copiées sont alignées sur 256 octets.
@@ -114,11 +126,16 @@ export class Recorder {
         this.fail(String(e));
       }
     });
-    if (this.queued >= this.total) this.done = true;
+    if (this.queued >= this.total) this.release();
+  }
+
+  private release() {
+    this.done = true;
+    if (active === this) active = null;
   }
 
   stop() {
-    this.done = true;
+    this.release();
     this.total = this.queued;
     this.chain = this.chain.then(() => this.finish());
   }
@@ -132,7 +149,7 @@ export class Recorder {
 
   private fail(msg: string) {
     console.warn("[pli] capture :", msg);
-    this.done = true;
+    this.release();
     this.report(null, msg);
   }
 
@@ -148,4 +165,31 @@ export class Recorder {
       this.fail(String(e));
     }
   }
+}
+
+/**
+ * Capture pour une page qui a sa propre boucle WebGPU (pages Kerguéhennec) :
+ * copy() juste avant submit, after() juste après. Le canvas doit être
+ * configuré avec GPUTextureUsage.COPY_SRC.
+ */
+export function recordable(device: GPUDevice, canvas: HTMLCanvasElement, format: GPUTextureFormat) {
+  let rec: Recorder | null = null;
+  return {
+    copy(enc: GPUCommandEncoder, tex: GPUTexture) {
+      rec?.copy(enc, tex);
+    },
+    after() {
+      if (!rec) return;
+      rec.afterSubmit();
+      if (rec.done) rec = null;
+    },
+    caps: {
+      record: (o: RecordOptions) => {
+        if (rec) return false;
+        rec = new Recorder(device, canvas, format, performance.now(), o);
+        return true;
+      },
+      stopRecord: () => rec?.stop(),
+    },
+  };
 }

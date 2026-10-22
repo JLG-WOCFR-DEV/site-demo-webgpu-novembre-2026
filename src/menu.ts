@@ -1,3 +1,4 @@
+import { clockNow } from "./gpu/recorder.ts";
 import { motion, pointer, settings } from "./state.ts";
 
 /**
@@ -160,7 +161,7 @@ export function setupMenu() {
   stage.addEventListener("pointerdown", onDown);
   addEventListener("pointermove", onMove);
   addEventListener("pointerup", onUp);
-  addEventListener("resize", () => menuGL.open && step(performance.now()));
+  addEventListener("resize", () => menuGL.open && step(clockNow()));
   menuGL.step = step;
 }
 
@@ -238,7 +239,7 @@ export function openMenu(from?: HTMLElement) {
   }
   for (const b of document.querySelectorAll("[data-action='menu']")) b.setAttribute("aria-expanded", "true");
   menuGL.open = true;
-  lastT = performance.now();
+  lastT = clockNow();
   step(lastT);
   items[active]!.link.focus({ preventScroll: true });
   announce();
@@ -296,7 +297,7 @@ function setStyle(s: MenuStyle) {
     it.lift = 0;
     it.hx = 0;
   }
-  step(performance.now());
+  step(clockNow());
 }
 
 /**
