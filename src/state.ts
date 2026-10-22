@@ -30,6 +30,8 @@ export type Settings = {
   lens: { force: number; follow: number };
   /** Bords déchirés : amplitude, et réaction au défilement et au pointeur. */
   tear: { amp: number; react: number };
+  /** Débogage : fil de fer, grille (colonnes, rangées, centre). */
+  debug: { wire: boolean; col: boolean; row: boolean; ctr: boolean };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
@@ -50,6 +52,7 @@ export const settings: Settings = {
   crease: { on: false, depth: 1, heal: 0.35 },
   lens: { force: 1, follow: 7 },
   tear: { amp: 1, react: 1 },
+  debug: { wire: false, col: false, row: false, ctr: false },
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },

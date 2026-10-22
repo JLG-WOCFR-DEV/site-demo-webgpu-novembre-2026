@@ -5,11 +5,11 @@
  */
 
 export const PAGES = [
-  { href: "index.html", name: "PLI", text: "La presse WebGPU : le guide et la démo" },
+  { href: "index.html", name: "WebGPU-demo-UBS", text: "La presse WebGPU : le guide et la démo" },
   { href: "sampler.html", name: "Sampler", text: "Un effet à la fois, par catégories" },
   { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
   { href: "kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },
-  { href: "legacy/index.html", name: "PLI v0", text: "La toute première version, générée par Grok" },
+  { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
 ];
 
 const CSS = `

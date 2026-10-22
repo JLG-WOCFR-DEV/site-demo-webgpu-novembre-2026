@@ -199,10 +199,27 @@ body::before {
 }
 
 .mark {
-  font: 900 20px/1 var(--f-display);
-  font-stretch: 125%;
-  letter-spacing: -0.02em;
+  /* Nom long (WebGPU-demo-UBS) : corps réduit, chasse normale, sur une ligne. */
+  font: 900 16px/1 var(--f-display);
+  font-stretch: 100%;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   text-decoration: none;
+}
+@media (max-width: 640px) {
+  /* Sur téléphone, le nom passe sur deux lignes plutôt que de pousser les boutons. */
+  .bar {
+    column-gap: 8px;
+  }
+  .mark {
+    font-size: 12px;
+    white-space: normal;
+  }
+  .mark-name {
+    display: block;
+    line-height: 1.05;
+    text-align: left;
+  }
 }
 /* Le logo ouvre le menu des pages. */
 button.mark {
@@ -2032,4 +2049,45 @@ html.gl-on .menu[data-style="planche"] .sheet {
   .sp-inspector {
     grid-area: insp;
   }
+}
+
+/* Sampler : outils de débogage, sous les réglages de l'échantillon. */
+.sp-debug {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--rule);
+}
+.sp-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.sp-grid legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.sp-rec-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.sp-rec-field {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.sp-rec-field select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper);
+  color: inherit;
+  font: inherit;
 }

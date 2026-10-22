@@ -18,5 +18,8 @@
     "playwright": "1.62",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "webm-muxer": "^5.1.4"
   }
 }

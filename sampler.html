@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>PLI · Sampler</title>
+    <title>WebGPU-demo-UBS · Sampler</title>
     <meta
       name="description"
-      content="Le sampler de PLI : chaque effet WebGPU isolé, par catégories, sur un spécimen fixe."
+      content="WebGPU-demo-UBS, une presse WebGPU : démo et guide d'un site rendu en WebGPU natif. Le HTML compose la page, le GPU la repeint, glyphe par glyphe."
     />
     <meta name="theme-color" content="#f2efe6" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2efe6'/%3E%3Ccircle cx='12' cy='14' r='7' fill='%2300a3d7' opacity='.85'/%3E%3Ccircle cx='20' cy='14' r='7' fill='%23e5007d' opacity='.85'/%3E%3Ccircle cx='16' cy='20' r='7' fill='%23f6d500' opacity='.85'/%3E%3C/svg%3E" />
@@ -18,7 +18,7 @@
     <canvas id="gl" aria-hidden="true"></canvas>
 
     <header class="bar" role="banner">
-      <button type="button" class="mark" data-pages-trigger aria-label="PLI : choisir une page">PLI <span class="mark-caret" aria-hidden="true">▾</span></button>
+      <button type="button" class="mark" data-pages-trigger aria-label="WebGPU-demo-UBS : choisir une page"><span class="mark-name">WebGPU-demo-<wbr />UBS</span> <span class="mark-caret" aria-hidden="true">▾</span></button>
       <nav aria-label="Catégories">
         <ol class="toc"></ol>
       </nav>
@@ -96,7 +96,7 @@
 
     <main id="top" class="sampler">
       <aside id="sp-side" class="sp-side" aria-label="Échantillons">
-        <p class="sp-kicker">PLI · Sampler</p>
+        <p class="sp-kicker">WebGPU-demo-UBS · Sampler</p>
         <h1 class="sp-h1">Un effet à la fois</h1>
         <p class="sp-lede">Chaque échantillon remet la page à zéro, puis n'active que lui, sur le même spécimen.</p>
         <label class="toggle sp-context"><input type="checkbox" data-sp-context /> Dans le contexte : rallumer la chaîne complète</label>
@@ -115,25 +115,25 @@
               </p>
             </div>
             <figure class="plate sp-plate" data-sp-photo="fig">
-              <img data-gl-img data-gl-quad src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux sur une pierre calcaire." />
+              <img data-gl-img data-gl-quad src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." />
             </figure>
             <figure class="plate sp-plate" data-sp-photo="glass" hidden>
-              <img data-gl-img src="./plates/glass.jpg" width="1728" height="1152" alt="Un cylindre de verre couché qui accroche la lumière." />
+              <img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate depuis la côte : l'écume des vagues au pied d'une falaise verte." />
             </figure>
             <!-- Toujours masquée : sa texture sert à la pile de calques. -->
             <figure class="plate sp-plate" data-sp-photo="flower" hidden>
-              <img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="" />
+              <img data-gl-img src="./plates/dunes.jpg" width="1728" height="1150" alt="" />
             </figure>
             <figure class="plate sp-plate" data-sp-photo="fluid" hidden>
-              <img data-gl-img data-gl-fluid src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau." />
+              <img data-gl-img data-gl-fluid src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées, ciel strié de traînées d'avion." />
             </figure>
           </div>
           <div class="sp-block" data-sp-block="layers" hidden>
-            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous.">
+            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : le Golden Gate, des dunes claires et un aplat rouge, fusionnés selon les réglages ci-dessous.">
               <!-- Repli sans WebGPU : la même pile en CSS (mix-blend-mode). -->
               <div class="css-layers" aria-hidden="true">
-                <img class="css-layer" data-css-layer="glass" src="./plates/glass.jpg" alt="" />
-                <img class="css-layer" data-css-layer="flower" src="./plates/flower.jpg" alt="" />
+                <img class="css-layer" data-css-layer="glass" src="./plates/pont.jpg" alt="" />
+                <img class="css-layer" data-css-layer="flower" src="./plates/dunes.jpg" alt="" />
                 <div class="css-layer" data-css-layer="spot"></div>
               </div>
             </div>
@@ -165,50 +165,50 @@
         <section class="chapter sp-page" id="sp-page-1" aria-labelledby="sp-page-t1">
           <div class="sp-page-text" data-gl-text>
             <p class="sp-page-num">Planche 01</p>
-            <h3 id="sp-page-t1" class="sp-page-title">La trame</h3>
-            <p class="sp-page-body">Quatre encres, quatre angles : chaque teinte devient une grille de points, et la taille du point porte la densité.</p>
+            <h3 id="sp-page-t1" class="sp-page-title">Les verts</h3>
+            <p class="sp-page-body">Une herbe drue dans une lumière rasante : quatre encres, quatre angles, et les verts mettent la trame à l'épreuve.</p>
           </div>
-          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/vanilla.jpg" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/cerf.jpg" width="1728" height="1150" alt="" /></figure>
         </section>
         <section class="chapter sp-page sp-page--rev" id="sp-page-2" aria-labelledby="sp-page-t2">
           <div class="sp-page-text" data-gl-text>
             <p class="sp-page-num">Planche 02</p>
-            <h3 id="sp-page-t2" class="sp-page-title">Le métal</h3>
-            <p class="sp-page-body">Le reflet sur l'acier est la seule vraie haute lumière de la page : c'est lui que le bloom doit attraper, pas le papier.</p>
+            <h3 id="sp-page-t2" class="sp-page-title">L'écume</h3>
+            <p class="sp-page-body">L'écume des vagues est la seule vraie haute lumière de la page : c'est elle que le bloom doit attraper, pas le papier.</p>
           </div>
-          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/steel.jpg" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/pont.jpg" width="1728" height="1150" alt="" /></figure>
         </section>
         <section class="chapter sp-page" id="sp-page-3" aria-labelledby="sp-page-t3">
           <div class="sp-page-text" data-gl-text>
             <p class="sp-page-num">Planche 03</p>
             <h3 id="sp-page-t3" class="sp-page-title">L'eau</h3>
-            <p class="sp-page-body">Une surface calme, un grès clair : la planche idéale pour juger un fondu, une coupe nette ou un pli.</p>
+            <p class="sp-page-body">Une surface calme, un ciel strié : la planche idéale pour juger un fondu, une coupe nette ou un pli.</p>
           </div>
-          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/bowl.jpg" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/lac.jpg" width="1728" height="1150" alt="" /></figure>
         </section>
         <section class="chapter sp-page sp-page--rev" id="sp-page-4" aria-labelledby="sp-page-t4">
           <div class="sp-page-text" data-gl-text>
             <p class="sp-page-num">Planche 04</p>
-            <h3 id="sp-page-t4" class="sp-page-title">Le blanc</h3>
-            <p class="sp-page-body">Une renoncule blanche sur un gris doux : les blancs révèlent les dérives de couleur et le grain trop fort.</p>
+            <h3 id="sp-page-t4" class="sp-page-title">Le clair</h3>
+            <p class="sp-page-body">Du sable presque blanc sous un ciel uni : les grands aplats clairs révèlent les dérives de couleur et le grain trop fort.</p>
           </div>
-          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/flower.jpg" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/dunes.jpg" width="1728" height="1150" alt="" /></figure>
         </section>
         <section class="chapter sp-page" id="sp-page-5" aria-labelledby="sp-page-t5">
           <div class="sp-page-text" data-gl-text>
             <p class="sp-page-num">Planche 05</p>
-            <h3 id="sp-page-t5" class="sp-page-title">Le verre</h3>
-            <p class="sp-page-body">Des arêtes vives et des transparences : le repérage au défilement s'y voit tout de suite.</p>
+            <h3 id="sp-page-t5" class="sp-page-title">La brume</h3>
+            <p class="sp-page-body">Des plans qui s'éloignent dans la brume : les contrastes faibles montrent vite un filtre trop appuyé.</p>
           </div>
-          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/glass.jpg" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/yosemite.jpg" width="1728" height="1150" alt="" /></figure>
         </section>
         <section class="chapter sp-page sp-page--rev" id="sp-page-6" aria-labelledby="sp-page-t6">
           <div class="sp-page-text" data-gl-text>
             <p class="sp-page-num">Planche 06</p>
-            <h3 id="sp-page-t6" class="sp-page-title">La figue</h3>
-            <p class="sp-page-body">Des rouges profonds et une pierre texturée, pour finir : de quoi juger les transitions sur une image dense.</p>
+            <h3 id="sp-page-t6" class="sp-page-title">Les rouges</h3>
+            <p class="sp-page-body">Des azalées rouges et des feuillages denses, pour finir : de quoi juger les transitions sur une image chargée.</p>
           </div>
-          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/fig.jpg" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/jardin.jpg" width="1728" height="1150" alt="" /></figure>
         </section>
       </div>
 
@@ -300,23 +300,23 @@
                 </div>
               </fieldset>
               <fieldset class="layer" data-layer="flower">
-                <legend>Renoncule</legend>
+                <legend>Dunes</legend>
                 <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1" selected>Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
                 <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.9" /><output>0,9</output></label>
                 <div class="layer-actions">
                   <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
-                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Renoncule">▲</button>
-                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Renoncule">▼</button>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Dunes">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Dunes">▼</button>
                 </div>
               </fieldset>
               <fieldset class="layer" data-layer="glass">
-                <legend>Verre</legend>
+                <legend>Pont</legend>
                 <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0" selected>Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
                 <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="1" /><output>1</output></label>
                 <div class="layer-actions">
                   <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
-                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Verre">▲</button>
-                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Verre">▼</button>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Pont">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Pont">▼</button>
                 </div>
               </fieldset>
               </div>
@@ -417,6 +417,29 @@
               </fieldset>
               <label class="range"><span>Encre délavée</span><input type="range" name="fade" min="0" max="0.9" step="0.01" value="0" /><output>0,00</output></label>
             </form>
+          </div>
+        </div>
+        <!-- Toujours visibles, quel que soit l'échantillon : les outils de débogage. -->
+        <div class="sp-debug">
+          <form class="controls" aria-labelledby="c-sp-debug" data-controls="debug">
+            <p id="c-sp-debug" class="controls-title">Débogage</p>
+            <label class="toggle"><input type="checkbox" name="wire" /> Fil de fer : ce que reçoit le GPU</label>
+            <fieldset class="sp-grid">
+              <legend class="choices-legend">Grille</legend>
+              <label class="toggle"><input type="checkbox" name="col" /> Colonnes</label>
+              <label class="toggle"><input type="checkbox" name="row" /> Rangées</label>
+              <label class="toggle"><input type="checkbox" name="ctr" /> Centre</label>
+            </fieldset>
+          </form>
+          <div class="controls sp-rec" data-sp-rec>
+            <p class="controls-title">Capture vidéo</p>
+            <div class="sp-rec-row">
+              <label class="sp-rec-field"><span>Durée</span><select name="seconds"><option value="3">3 s</option><option value="6" selected>6 s</option><option value="10">10 s</option></select></label>
+              <label class="sp-rec-field"><span>Images/s</span><select name="fps"><option value="30">30</option><option value="60" selected>60</option></select></label>
+              <button type="button" class="btn" data-sp-rec-go>Enregistrer</button>
+            </div>
+            <p class="readout" data-sp-rec-status aria-live="polite">À pas fixe : la vidéo est fluide même si l'écran ne l'est pas. Seul le rendu du GPU est filmé.</p>
+            <a class="btn" data-sp-rec-link hidden>Télécharger la vidéo</a>
           </div>
         </div>
       </aside>

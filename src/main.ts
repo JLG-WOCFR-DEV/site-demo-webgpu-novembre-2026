@@ -15,6 +15,8 @@ import { applyA11y, bindControls, setStatus, showContrast, showForced, showLayou
 const root = document.documentElement;
 const canvas = document.getElementById("gl") as HTMLCanvasElement;
 let engine: Engine | null = null;
+/** Le moteur en cours, pour le sampler (capture vidéo). */
+export const currentEngine = () => engine;
 let retried = false;
 let userOff = false;
 

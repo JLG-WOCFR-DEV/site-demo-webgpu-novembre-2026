@@ -2,6 +2,7 @@ import { menuGL } from "../menu.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
+import { Recorder, type RecordOptions } from "./recorder.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 
@@ -56,7 +57,7 @@ const TRACE_RATES: [number, number, number, number][] = [
 export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
@@ -65,6 +66,7 @@ const SCREEN_AT = MATTER_AT + 4;
 const CREASE_AT = SCREEN_AT + 4;
 const LENSM_AT = CREASE_AT + 4;
 const TEAR_AT = LENSM_AT + 4;
+const GRID_AT = TEAR_AT + 4 + MAX_TEARS * 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -693,6 +695,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   // Couche d'écran du froissé : décalage de défilement en reste (texels), et remise à zéro.
   let creaseCarry = 0;
   let creaseWas = false;
+  // Mode capture : une horloge virtuelle avance d'un pas fixe par image, et
+  // chaque image rendue devient une image de la vidéo, quelle que soit la
+  // vitesse réelle de la machine.
+  let recorder: Recorder | null = null;
+  let gridCache: { gl: number; gr: number; gap: number; w: number } | null = null;
 
   const frame = () => {
     if (destroyed) return;
@@ -716,7 +723,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       needLayout = false;
       relayout(dpr);
     }
-    const now = performance.now();
+    const now = recorder ? recorder.now : performance.now();
     const time = (now - t0) / 1000;
     const reduced = motion.reduced;
     // Sommaire ouvert : la page est masquée (inert), le GPU ne peint que les feuilles.
@@ -746,7 +753,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     frameData.set([cssW, cssH, dpr, reduced ? 0 : time]);
     frameData.set([pointer.x, pointer.y, pointer.inside ? 1 : 0, reduced ? 1 : 0], 4);
     frameData.set([settings.glyph.wave, settings.glyph.ink, settings.glyph.scatter, settings.dom.boxes ? 1 : 0], 8);
-    frameData.set([2048, 1.6, PAPER[0], 0], 12);
+    frameData.set([2048, 1.6, PAPER[0], settings.debug.wire ? 1 : 0], 12);
     device.queue.writeBuffer(frameBuf, 0, frameData);
 
     /* Éléments de texte : seule la boîte de l'élément est relue. */
@@ -1012,6 +1019,26 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       }
     }
     postData.set([nt, settings.tear.amp, settings.tear.react, 0], TEAR_AT);
+
+    // Débogage : grille de mise en page (12 colonnes entre les marges, rangées de 8 px).
+    const D = settings.debug;
+    const gm = (D.col ? 1 : 0) | (D.row ? 2 : 0) | (D.ctr ? 4 : 0);
+    if (gm) {
+      const cs = getComputedStyle(document.documentElement);
+      const px = (v: string, fb: number) => {
+        const probe = document.createElement("div");
+        probe.style.width = v;
+        document.body.append(probe);
+        const r = probe.getBoundingClientRect().width;
+        probe.remove();
+        return r || fb;
+      };
+      gridCache ??= { gl: px(cs.getPropertyValue("--gutter") || "16px", 16), gr: px(cs.getPropertyValue("--gutter-r") || "16px", 16), gap: px(cs.getPropertyValue("--col-gap") || "24px", 24), w: cssW };
+      if (gridCache.w !== cssW) gridCache = null;
+    }
+    const gc = gridCache;
+    postData.set(gm && gc ? [gm, gc.gl * dpr, (cssW - gc.gr) * dpr, gc.gap * dpr] : [0, 0, 0, 0], GRID_AT);
+    postData.set([12, 8 * dpr, scrollY * dpr, 0], GRID_AT + 4);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -1028,8 +1055,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     let layersOn = false;
     const layersEl = document.querySelector<HTMLElement>('[data-gl-stage="calques"]');
     const lr = layersEl?.getBoundingClientRect();
-    const plateA = images.plates.find((p) => p.img.src.includes("glass") && p.texture);
-    const plateB = images.plates.find((p) => p.img.src.includes("flower") && p.texture);
+    const plateA = images.plates.find((p) => p.img.src.includes("/plates/pont.") && p.texture);
+    const plateB = images.plates.find((p) => p.img.src.includes("/plates/dunes.") && p.texture);
     if (!menuOpen && lr && lr.width > 0 && lr.bottom > 0 && lr.top < cssH && plateA?.texture && plateB?.texture) {
       const key = `${plateA.texture.label}|${plateB.texture.label}`;
       if (!layersBind || key !== layersKey) {
@@ -1282,7 +1309,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         }
       }
     }
+    recorder?.copy(enc, outTex);
     device.queue.submit([enc.finish()]);
+    if (recorder) {
+      recorder.afterSubmit();
+      if (recorder.done) recorder = null;
+    }
     if (probeRead && contrastBuf) {
       const buf = contrastBuf;
       const pr = probeRead;
@@ -1346,6 +1378,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     },
     pause: (v: boolean) => {
       paused = v;
+    },
+    /**
+     * Capture vidéo du canvas à pas fixe (WebCodecs, VP9 en WebM). Pendant la
+     * capture, l'horloge du moteur est virtuelle : la vidéo est fluide même si
+     * la machine ne l'est pas. Les commandes DOM n'apparaissent pas : seul ce
+     * que le GPU peint est enregistré.
+     */
+    record: (o: RecordOptions) => {
+      if (recorder) return false;
+      recorder = new Recorder(device, canvas, format, performance.now(), o);
+      return true;
+    },
+    stopRecording: () => recorder?.stop(),
+    get recording() {
+      return recorder !== null;
     },
     /** Remet chaque chapitre au papier vierge : les transitions se rejouent. */
     replayPrint: () => {

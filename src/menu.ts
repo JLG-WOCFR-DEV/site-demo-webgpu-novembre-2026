@@ -57,16 +57,16 @@ type Item = {
 
 /** Photo de chaque chapitre (la première planche du chapitre, sinon un choix fixe). */
 const PHOTO: Record<string, string> = {
-  "ch-dom": "steel",
-  "ch-quad": "bowl",
-  "ch-glyph": "flower",
-  "ch-chain": "glass",
-  "ch-trame": "vanilla",
-  "ch-filtre": "fig",
-  "ch-light": "glass",
-  "ch-ink": "bowl",
-  "ch-cost": "steel",
-  "ch-a11y": "flower",
+  "ch-dom": "alcatraz",
+  "ch-quad": "lac",
+  "ch-glyph": "dunes",
+  "ch-chain": "pont",
+  "ch-trame": "cerf",
+  "ch-filtre": "jardin",
+  "ch-light": "yosemite",
+  "ch-ink": "lac",
+  "ch-cost": "alcatraz",
+  "ch-a11y": "dunes",
 };
 
 const PERSPECTIVE = 1500;
@@ -172,7 +172,7 @@ function build() {
     const section = document.getElementById(id);
     const num = String(i + 1).padStart(2, "0");
     const title = section?.querySelector("h2")?.textContent?.trim() ?? a.textContent!.trim();
-    const src = `./plates/${PHOTO[id] ?? "fig"}.jpg`;
+    const src = `./plates/${PHOTO[id] ?? "jardin"}.jpg`;
     const link = document.createElement("a");
     link.className = "sheet";
     link.href = `#${id}`;

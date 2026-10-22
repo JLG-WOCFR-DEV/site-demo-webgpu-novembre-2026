@@ -13,8 +13,19 @@ struct Frame {
   viewport: vec4f, // cssW, cssH, dpr, time
   pointer: vec4f,  // x, y (css), inside, reduced
   glyph: vec4f,    // wave, ink, scatter, glyphBoxes
-  misc: vec4f,     // atlasSize, hdr, paperLum, 0
+  misc: vec4f,     // atlasSize, hdr, paperLum, fil de fer (0/1)
 };
+
+// Débogage, fil de fer : chaque plan n'est plus que ses arêtes et la diagonale
+// de ses deux triangles, à l'encre. Ce qui part vraiment vers le GPU.
+const WIRE_INK: vec3f = vec3f(0.09, 0.09, 0.1);
+fn wire_on(f: Frame) -> bool { return f.misc.w > 0.5; }
+fn quad_wire(local: vec2f, size: vec2f) -> f32 {
+  let pxw = 1.0 / max(size, vec2f(1.0));
+  let e = min(min(local.x, 1.0 - local.x) / pxw.x, min(local.y, 1.0 - local.y) / pxw.y);
+  let diag = abs(local.x + local.y - 1.0) / length(pxw) * 0.7071;
+  return max(1.0 - smoothstep(0.5, 1.4, e), (1.0 - smoothstep(0.4, 1.2, diag)) * 0.45);
+}
 
 fn to_clip(p: vec2f, f: Frame) -> vec4f {
   let ndc = vec2f(p.x / f.viewport.x * 2.0 - 1.0, 1.0 - p.y / f.viewport.y * 2.0);
@@ -86,6 +97,7 @@ fn vs_shadow(@builtin(vertex_index) vi: u32) -> VsOut {
 
 @fragment
 fn fs_shadow(in: VsOut) -> @location(0) vec4f {
+  if (wire_on(frame)) { return vec4f(0.0); }
   let r = lifted_rect();
   let off = vec2f(0.0, 4.0 + 18.0 * plane.params.z);
   let half = r.zw * 0.5;
@@ -117,6 +129,10 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
   let fill = 1.0 - smoothstep(-aa, aa, d);
   let uv = mix(plane.uv.xy, plane.uv.zw, in.local);
   var col = textureSample(tex, samp, uv).rgb;
+  if (wire_on(frame)) {
+    let l = quad_wire(in.local, r.zw) * plane.params.w;
+    return vec4f(WIRE_INK * l, l);
+  }
 
   if (plane.flags.y > 1.5) {
     // Plaque offset sous l'épreuve : l'image en négatif, sur aluminium.
@@ -250,10 +266,21 @@ fn peel_front(in: PeelOut) -> vec3f {
 }
 
 // Partie restée à plat : l'image, et l'ombre portée du rabat juste après le pli.
+fn peel_wire(in: PeelOut) -> f32 {
+  let g = in.local * vec2f(f32(PX), f32(PY));
+  let fw = max(fwidth(g), vec2f(1e-4));
+  let f = abs(fract(g - 0.5) - 0.5) / fw;
+  let c = fract(g);
+  let diag = abs(c.x + c.y - 1.0) / max(fw.x + fw.y, 1e-4);
+  return max(1.0 - smoothstep(0.4, 1.2, min(f.x, f.y)), (1.0 - smoothstep(0.4, 1.2, diag)) * 0.35);
+}
+
 @fragment
 fn fs_peel_flat(in: PeelOut) -> @location(0) vec4f {
   let col = peel_front(in);
+  let wl = peel_wire(in);
   if (in.s < 0.0) { discard; }
+  if (wire_on(frame)) { return vec4f(WIRE_INK * wl, wl) * plane.params.w; }
   let shade = 1.0 - 0.35 * exp(-in.s * 1.6) * step(0.0, in.s) * step(0.001, plane.peel.x);
   let a = plane.params.w;
   return vec4f(col * shade * a, a);
@@ -264,7 +291,9 @@ fn fs_peel_flat(in: PeelOut) -> @location(0) vec4f {
 @fragment
 fn fs_peel_curl(in: PeelOut) -> @location(0) vec4f {
   let col = peel_front(in);
+  let wl = peel_wire(in);
   if (in.s >= 0.0) { discard; }
+  if (wire_on(frame)) { return vec4f(vec3f(0.85, 0.12, 0.1) * wl, wl) * plane.params.w; }
   let back = in.theta > 1.5708;
   let light = 0.62 + 0.38 * abs(cos(in.theta));
   let paperBack = vec3f(0.93, 0.92, 0.89) * (0.78 + 0.22 * clamp(in.z * 0.5, 0.0, 1.0));
@@ -480,6 +509,12 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   let w = max(fwidth(d) * 0.75, 0.002);
   var a = smoothstep(edge - w, edge + w, d) * in.color.a;
   var col = in.color.rgb;
+  if (wire_on(frame)) {
+    let pxw = 1.0 / max(in.size, vec2f(1.0));
+    let e = min(min(in.local.x, 1.0 - in.local.x) / pxw.x, min(in.local.y, 1.0 - in.local.y) / pxw.y);
+    let l = (1.0 - smoothstep(0.4, 1.2, e)) * in.color.a;
+    return vec4f(WIRE_INK * l, l);
+  }
 
   if (frame.glyph.w > 0.5) {
     // Boîtes des quads : chaque lettre est un rectangle de l'atlas.
@@ -1281,6 +1316,10 @@ fn metaballs(uv: vec2f, t: f32, aspect: f32) -> vec3f {
 
 @fragment
 fn fs_proc(in: VsOut) -> @location(0) vec4f {
+  if (wire_on(frame)) {
+    let l = quad_wire(in.uv, proc.rect.zw);
+    return vec4f(WIRE_INK * l, l);
+  }
   let t = frame.viewport.w;
   let aspect = proc.rect.z / max(proc.rect.w, 1.0);
   let k = proc.p.x;
@@ -1343,6 +1382,17 @@ fn fs_sheet(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4f
   let fw = max(fwidth(p), vec2f(1e-4));
   let edge = min(min(p.x, sz.x - p.x) / fw.x, min(p.y, sz.y - p.y) / fw.y);
   let cover = clamp(edge + 0.5, 0.0, 1.0);
+  if (wire_on(frame)) {
+    let q = p / sz;
+    let diag = abs(q.x + q.y - 1.0) / max(length(fw / sz), 1e-5) * 0.7071;
+    let ph = sheet.photo;
+    let pe = min(min(abs(p.x - ph.x), abs(p.x - ph.x - ph.z)) / fw.x * step(ph.y, p.y) * step(p.y, ph.y + ph.w) + 1e3 * (1.0 - step(ph.y, p.y) * step(p.y, ph.y + ph.w)),
+                 min(abs(p.y - ph.y), abs(p.y - ph.y - ph.w)) / fw.y * step(ph.x, p.x) * step(p.x, ph.x + ph.z) + 1e3 * (1.0 - step(ph.x, p.x) * step(p.x, ph.x + ph.z)));
+    let l = max(max(1.0 - smoothstep(0.5, 1.4, edge), (1.0 - smoothstep(0.4, 1.2, diag)) * 0.4), (1.0 - smoothstep(0.4, 1.2, pe)) * 0.7) * sheet.size.z;
+    // front_facing est inversé ici (la matrice CSS retourne y) : vrai = verso, en rouge.
+    let ink = select(WIRE_INK, vec3f(0.85, 0.12, 0.1), front);
+    return vec4f(ink * l, l);
+  }
 
   let ph = sheet.photo;
   let t = (p - ph.xy) / max(ph.zw, vec2f(1.0));
@@ -1426,6 +1476,8 @@ struct Post {
   lensm: vec4f,    // matière lentille : pointeur amorti x, y (px), force au survol, force réglée
   tear: vec4f,     // bords déchirés : nombre, amplitude, réaction, 0
   tears: array<vec4f, ${MAX_TEARS}>, // y, gauche, droite (px), 0
+  grid: vec4f,     // masque (1 colonnes, 2 rangées, 4 centre), x gauche, x droite, gouttière (px)
+  grid2: vec4f,    // nombre de colonnes, pas des rangées (px), défilement (px), 0
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -1486,6 +1538,39 @@ fn tear_edge(px: vec2f, col: vec3f) -> vec3f {
     if (f < 0.0 && f > -rim) { c = mix(c, vec3f(0.985, 0.978, 0.962), 0.75 + 0.25 * fib); }
     // Ombre portée sur la feuille du dessous.
     if (f >= 0.0) { c *= 1.0 - 0.26 * exp(-f / (6.0 * dpr)) * min(u.tear.y, 1.5); }
+  }
+  return c;
+}
+
+// Débogage : la grille de mise en page, par-dessus l'image finale.
+fn grid_overlay(px: vec2f, col: vec3f) -> vec3f {
+  let m = i32(u.grid.x);
+  var c = col;
+  let one = u.res.z;
+  if ((m & 1) != 0) {
+    // Colonnes : bandes rouges translucides, bords plus nets.
+    let n = u.grid2.x;
+    let w = (u.grid.z - u.grid.y - u.grid.w * (n - 1.0)) / n;
+    let x = px.x - u.grid.y;
+    let k = floor(x / (w + u.grid.w));
+    let inCol = x >= 0.0 && px.x <= u.grid.z && (x - k * (w + u.grid.w)) <= w;
+    if (inCol) {
+      c = mix(c, vec3f(0.92, 0.2, 0.2), 0.08);
+      let fx = x - k * (w + u.grid.w);
+      if (fx < one || fx > w - one) { c = mix(c, vec3f(0.92, 0.2, 0.2), 0.45); }
+    }
+  }
+  if ((m & 2) != 0) {
+    // Rangées : le rythme vertical, attaché à la page.
+    let y = px.y + u.grid2.z;
+    let r = y - floor(y / u.grid2.y) * u.grid2.y;
+    if (r < one) { c = mix(c, vec3f(0.1, 0.45, 0.9), 0.3); }
+  }
+  if ((m & 4) != 0) {
+    // Centre : les deux axes de l'écran.
+    let ctr = u.res.xy * 0.5;
+    if (abs(px.x - ctr.x) < one || abs(px.y - ctr.y) < one) { c = mix(c, vec3f(0.0, 0.62, 0.55), 0.8); }
+    if (length(px - ctr) < 6.0 * one && length(px - ctr) > 4.5 * one) { c = mix(c, vec3f(0.0, 0.62, 0.55), 0.9); }
   }
   return c;
 }
@@ -2274,6 +2359,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   col = simulate_vision(clamp(col, vec3f(0.0), vec3f(1.0)), u.a11y.x);
 
   col = screen_finish(col, px);
+  if (u.grid.x > 0.5) { col = grid_overlay(px, col); }
   return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
 }
 
