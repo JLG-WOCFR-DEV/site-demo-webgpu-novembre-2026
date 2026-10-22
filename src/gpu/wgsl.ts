@@ -13,8 +13,19 @@ struct Frame {
   viewport: vec4f, // cssW, cssH, dpr, time
   pointer: vec4f,  // x, y (css), inside, reduced
   glyph: vec4f,    // wave, ink, scatter, glyphBoxes
-  misc: vec4f,     // atlasSize, hdr, paperLum, 0
+  misc: vec4f,     // atlasSize, hdr, paperLum, fil de fer (0/1)
 };
+
+// Débogage, fil de fer : chaque plan n'est plus que ses arêtes et la diagonale
+// de ses deux triangles, à l'encre. Ce qui part vraiment vers le GPU.
+const WIRE_INK: vec3f = vec3f(0.09, 0.09, 0.1);
+fn wire_on(f: Frame) -> bool { return f.misc.w > 0.5; }
+fn quad_wire(local: vec2f, size: vec2f) -> f32 {
+  let pxw = 1.0 / max(size, vec2f(1.0));
+  let e = min(min(local.x, 1.0 - local.x) / pxw.x, min(local.y, 1.0 - local.y) / pxw.y);
+  let diag = abs(local.x + local.y - 1.0) / length(pxw) * 0.7071;
+  return max(1.0 - smoothstep(0.5, 1.4, e), (1.0 - smoothstep(0.4, 1.2, diag)) * 0.45);
+}
 
 fn to_clip(p: vec2f, f: Frame) -> vec4f {
   let ndc = vec2f(p.x / f.viewport.x * 2.0 - 1.0, 1.0 - p.y / f.viewport.y * 2.0);
@@ -86,6 +97,7 @@ fn vs_shadow(@builtin(vertex_index) vi: u32) -> VsOut {
 
 @fragment
 fn fs_shadow(in: VsOut) -> @location(0) vec4f {
+  if (wire_on(frame)) { return vec4f(0.0); }
   let r = lifted_rect();
   let off = vec2f(0.0, 4.0 + 18.0 * plane.params.z);
   let half = r.zw * 0.5;
@@ -117,15 +129,27 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
   let fill = 1.0 - smoothstep(-aa, aa, d);
   let uv = mix(plane.uv.xy, plane.uv.zw, in.local);
   var col = textureSample(tex, samp, uv).rgb;
+  if (wire_on(frame)) {
+    let l = quad_wire(in.local, r.zw) * plane.params.w;
+    return vec4f(WIRE_INK * l, l);
+  }
 
   if (plane.flags.y > 1.5) {
     // Plaque offset sous l'épreuve : l'image en négatif, sur aluminium.
     let l = dot(col, vec3f(0.299, 0.587, 0.114));
     col = mix(vec3f(0.80, 0.82, 0.84), vec3f(0.16, 0.22, 0.30), l);
   } else if (plane.flags.y > 0.5) {
-    // Atlas de champs de distance : on l'imprime encre sur papier.
+    // Atlas de champs de distance : le champ lui-même, en dégradé avec ses
+    // courbes de niveau, et le contour tracé en rouge.
     let v = textureSample(tex, samp, uv).r;
-    col = mix(vec3f(0.937, 0.933, 0.910), vec3f(0.07), v);
+    col = mix(vec3f(0.937, 0.933, 0.910), vec3f(0.36, 0.52, 0.66), clamp(v * 1.6, 0.0, 1.0));
+    let lv = fract(v * 8.0);
+    let iso = 1.0 - smoothstep(0.0, max(fwidth(v * 8.0) * 1.2, 1e-3), min(lv, 1.0 - lv));
+    col = mix(col, col * 0.72, iso * step(0.02, v));
+    // TinySDF (cutoff 0,25) place le contour exact à 0,75 : dedans, l'encre.
+    col = mix(col, vec3f(0.08), smoothstep(0.75, 0.75 + max(fwidth(v), 1e-3), v) * 0.85);
+    let edge = 1.0 - smoothstep(0.0, max(fwidth(v) * 1.5, 1e-3), abs(v - 0.75));
+    col = mix(col, vec3f(0.85, 0.12, 0.1), edge);
   } else {
     // Expansion des hautes lumières : un JPEG plafonne à 1.0, le papier est
     // à 0,94. On rend aux reflets la marge que la compression leur a prise.
@@ -242,10 +266,21 @@ fn peel_front(in: PeelOut) -> vec3f {
 }
 
 // Partie restée à plat : l'image, et l'ombre portée du rabat juste après le pli.
+fn peel_wire(in: PeelOut) -> f32 {
+  let g = in.local * vec2f(f32(PX), f32(PY));
+  let fw = max(fwidth(g), vec2f(1e-4));
+  let f = abs(fract(g - 0.5) - 0.5) / fw;
+  let c = fract(g);
+  let diag = abs(c.x + c.y - 1.0) / max(fw.x + fw.y, 1e-4);
+  return max(1.0 - smoothstep(0.4, 1.2, min(f.x, f.y)), (1.0 - smoothstep(0.4, 1.2, diag)) * 0.35);
+}
+
 @fragment
 fn fs_peel_flat(in: PeelOut) -> @location(0) vec4f {
   let col = peel_front(in);
+  let wl = peel_wire(in);
   if (in.s < 0.0) { discard; }
+  if (wire_on(frame)) { return vec4f(WIRE_INK * wl, wl) * plane.params.w; }
   let shade = 1.0 - 0.35 * exp(-in.s * 1.6) * step(0.0, in.s) * step(0.001, plane.peel.x);
   let a = plane.params.w;
   return vec4f(col * shade * a, a);
@@ -256,7 +291,9 @@ fn fs_peel_flat(in: PeelOut) -> @location(0) vec4f {
 @fragment
 fn fs_peel_curl(in: PeelOut) -> @location(0) vec4f {
   let col = peel_front(in);
+  let wl = peel_wire(in);
   if (in.s >= 0.0) { discard; }
+  if (wire_on(frame)) { return vec4f(vec3f(0.85, 0.12, 0.1) * wl, wl) * plane.params.w; }
   let back = in.theta > 1.5708;
   let light = 0.62 + 0.38 * abs(cos(in.theta));
   let paperBack = vec3f(0.93, 0.92, 0.89) * (0.78 + 0.22 * clamp(in.z * 0.5, 0.0, 1.0));
@@ -472,6 +509,12 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   let w = max(fwidth(d) * 0.75, 0.002);
   var a = smoothstep(edge - w, edge + w, d) * in.color.a;
   var col = in.color.rgb;
+  if (wire_on(frame)) {
+    let pxw = 1.0 / max(in.size, vec2f(1.0));
+    let e = min(min(in.local.x, 1.0 - in.local.x) / pxw.x, min(in.local.y, 1.0 - in.local.y) / pxw.y);
+    let l = (1.0 - smoothstep(0.4, 1.2, e)) * in.color.a;
+    return vec4f(WIRE_INK * l, l);
+  }
 
   if (frame.glyph.w > 0.5) {
     // Boîtes des quads : chaque lettre est un rectangle de l'atlas.
@@ -945,11 +988,17 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 // Chaque couche s'efface à son propre rythme. Lecture dans A, écriture dans
 // B, puis copie B → A : le composite lit toujours A.
 export const TRACE_SIZE = 192;
-export const TRACE_LAYERS = 6;
+// Une couche de mémoire par plaque de matière visible, pas par matière :
+// deux plaques de brume n'essuient pas la même buée.
+export const TRACE_LAYERS = 9;
+/** La dernière couche couvre l'écran entier : la mémoire du papier froissé. */
+export const SCREEN_LAYER = TRACE_LAYERS - 1;
+/** Bords déchirés : jusqu'à huit à l'écran. */
+export const MAX_TEARS = 8;
 export const TRACE = /* wgsl */ `
 struct TraceU {
-  a: vec4f,                       // dt, 0, 0, 0
-  layer: array<vec4f, ${6 * 3}>,  // par couche : [actif, dedans, pointeur u, v], [vitesse u, v, aspect, rayon], [gain b, oubli b, gain rg, oubli rg]
+  a: vec4f,                       // dt, décalage de la couche d'écran (texels), couche d'écran, 0
+  layer: array<vec4f, ${TRACE_LAYERS * 3}>,  // par couche : [actif (2 = remise à zéro), dedans, pointeur u, v], [vitesse u, v, aspect, rayon], [gain b, oubli b, gain rg, oubli rg]
 };
 @group(0) @binding(0) var<uniform> u: TraceU;
 @group(0) @binding(1) var src: texture_2d_array<f32>;
@@ -961,9 +1010,15 @@ fn trace(@builtin(global_invocation_id) id: vec3u) {
   if (any(id.xy >= size)) { return; }
   let l = i32(id.z);
   var v = textureLoad(src, id.xy, l, 0);
+  // La couche d'écran suit le papier : au défilement, la mémoire remonte avec lui.
+  if (l == i32(u.a.z) && abs(u.a.y) > 0.5) {
+    let sy = i32(id.y) + i32(u.a.y);
+    if (sy < 0 || sy >= i32(size.y)) { v = vec4f(0.0, 0.0, 0.0, 1.0); } else { v = textureLoad(src, vec2u(id.x, u32(sy)), l, 0); }
+  }
   let p0 = u.layer[l * 3];
   let p1 = u.layer[l * 3 + 1];
   let p2 = u.layer[l * 3 + 2];
+  if (p0.x > 1.5) { v = vec4f(0.0, 0.0, 0.0, 1.0); }
   if (p0.x > 0.5) {
     let dt = u.a.x;
     v = vec4f(v.xy * exp(-dt * p2.w), v.z * exp(-dt * p2.y), 1.0);
@@ -1109,7 +1164,9 @@ fn fs_fire(in: VsOut) -> @location(0) vec4f {
     let q = vec2f(px.x / 24.0, px.y / 40.0 + t * 1.9);
     let warp = vec2f(ffbm(q * 1.3 + vec2f(0.0, t * 0.4)), ffbm(q * 1.3 + vec2f(4.1, t * 0.5))) - 0.5;
     let n = ffbm(q + warp * 1.2);
-    let reach = mix(9.0, 38.0, up * 0.5 + 0.5) * (0.55 + n * 1.0) * (1.0 + 0.45 * fire.p.w) * amt;
+    // La flamme ne doit jamais sortir de la plaque dessinée : avec la suie
+    // (jusqu'à 1,5 fois la portée), elle reste sous la marge.
+    let reach = min(mix(9.0, 38.0, up * 0.5 + 0.5) * (0.55 + n * 1.0) * (1.0 + 0.45 * fire.p.w) * amt, pad * 0.6);
     f = 1.0 - d / max(reach, 0.5) + (n - 0.5) * 0.6;
     molten = (1.0 - smoothstep(0.0, 2.2, d)) * (0.75 + 0.25 * sin(t * 9.0 + n * 12.0)) * min(amt, 1.0);
     reachUp = 1.0;
@@ -1124,8 +1181,11 @@ fn fs_fire(in: VsOut) -> @location(0) vec4f {
   // Suie : la feuille roussit autour et sous les flammes ; sous le corps du
   // feu, le papier s'efface presque, pour que l'orange ne soit pas délavé.
   let soot = smoothstep(-0.5, 0.15, f) * 0.6 * min(amt, 1.0);
-  let a = clamp(soot + body * 0.65, 0.0, 0.95);
-  return vec4f(light + SOOT * soot, a);
+  // Filet de sécurité : tout s'éteint en douceur au bord du quad.
+  let border = min(min(px.x - r.x, r.x + r.z - px.x), min(px.y - r.y, r.y + r.w - px.y));
+  let keep = smoothstep(0.0, 18.0, border);
+  let a = clamp(soot + body * 0.65, 0.0, 0.95) * keep;
+  return vec4f((light + SOOT * soot) * keep, a);
 }
 `;
 
@@ -1256,6 +1316,10 @@ fn metaballs(uv: vec2f, t: f32, aspect: f32) -> vec3f {
 
 @fragment
 fn fs_proc(in: VsOut) -> @location(0) vec4f {
+  if (wire_on(frame)) {
+    let l = quad_wire(in.uv, proc.rect.zw);
+    return vec4f(WIRE_INK * l, l);
+  }
   let t = frame.viewport.w;
   let aspect = proc.rect.z / max(proc.rect.w, 1.0);
   let k = proc.p.x;
@@ -1318,6 +1382,17 @@ fn fs_sheet(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4f
   let fw = max(fwidth(p), vec2f(1e-4));
   let edge = min(min(p.x, sz.x - p.x) / fw.x, min(p.y, sz.y - p.y) / fw.y);
   let cover = clamp(edge + 0.5, 0.0, 1.0);
+  if (wire_on(frame)) {
+    let q = p / sz;
+    let diag = abs(q.x + q.y - 1.0) / max(length(fw / sz), 1e-5) * 0.7071;
+    let ph = sheet.photo;
+    let pe = min(min(abs(p.x - ph.x), abs(p.x - ph.x - ph.z)) / fw.x * step(ph.y, p.y) * step(p.y, ph.y + ph.w) + 1e3 * (1.0 - step(ph.y, p.y) * step(p.y, ph.y + ph.w)),
+                 min(abs(p.y - ph.y), abs(p.y - ph.y - ph.w)) / fw.y * step(ph.x, p.x) * step(p.x, ph.x + ph.z) + 1e3 * (1.0 - step(ph.x, p.x) * step(p.x, ph.x + ph.z)));
+    let l = max(max(1.0 - smoothstep(0.5, 1.4, edge), (1.0 - smoothstep(0.4, 1.2, diag)) * 0.4), (1.0 - smoothstep(0.4, 1.2, pe)) * 0.7) * sheet.size.z;
+    // front_facing est inversé ici (la matrice CSS retourne y) : vrai = verso, en rouge.
+    let ink = select(WIRE_INK, vec3f(0.85, 0.12, 0.1), front);
+    return vec4f(ink * l, l);
+  }
 
   let ph = sheet.photo;
   let t = (p - ph.xy) / max(ph.zw, vec2f(1.0));
@@ -1384,7 +1459,7 @@ struct Post {
   res: vec4f,      // pw, ph, dpr, time
   pointer: vec4f,  // x, y (px), inside, reduced
   chain: vec4f,    // distorsion, rvb, trame, bloom (0/1)
-  chain2: vec4f,   // grain, split, splitX (px), intensité bloom
+  chain2: vec4f,   // grain (0 coupé, 1 réel, plus = loupe), split, splitX (px), intensité bloom
   trame: vec4f,    // cellule (px css), engraissement, repérage, mélange
   paper: vec4f,    // rgb du papier, glissement (vitesse de défilement −1…1)
   filt: vec4f,     // filtre (0…4), taille (css), intensité, 0
@@ -1397,6 +1472,12 @@ struct Post {
   ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
   matter: vec4f,   // intensité des matières, marge de l'enveloppe de feu (px), écran du sommaire (0, 1 CRT, 2 projecteur), 0
   screen: vec4f,   // rectangle de la scène du sommaire (px)
+  crease: vec4f,   // froissé de page : actif, profondeur, 0, défilement de la page (px)
+  lensm: vec4f,    // matière lentille : pointeur amorti x, y (px), force au survol, force réglée
+  tear: vec4f,     // bords déchirés : nombre, amplitude, réaction, 0
+  tears: array<vec4f, ${MAX_TEARS}>, // y, gauche, droite (px), 0
+  grid: vec4f,     // masque (1 colonnes, 2 rangées, 4 centre), x gauche, x droite, gouttière (px)
+  grid2: vec4f,    // nombre de colonnes, pas des rangées (px), défilement (px), 0
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -1407,6 +1488,92 @@ struct Post {
 @group(0) @binding(5) var trace: texture_2d_array<f32>;
 
 const LENS_R: f32 = 130.0;
+
+// Matière « lentille » : une loupe discrète, centrée sur le pointeur amorti,
+// qui ne déborde pas de son élément. Discrète, elle passe pour du verre.
+fn lens_material(px: vec2f, st: vec4f) -> vec2f {
+  let r = min(st.z, st.w) * 0.42;
+  let d = px - u.lensm.xy;
+  let t = length(d) / r;
+  if (t >= 1.0 || u.lensm.z < 0.001) { return vec2f(0.0); }
+  let k = (1.0 - t * t);
+  return -d * k * k * 0.3 * u.lensm.z * u.lensm.w;
+}
+
+// Papier froissé de page : un relief de plis vifs, fixé au papier (il défile
+// avec lui). Seule l'octave fine compte : les rampes lentes donnaient des
+// taches claires et sombres, l'écueil que décrit l'article de Codrops.
+fn crease_h(q: vec2f) -> f32 {
+  return crumple(q * 2.0 + vec2f(3.1, 7.7)) - 0.6 * vnoise(q * 0.5);
+}
+fn crease_grad(px: vec2f) -> vec2f {
+  let s = 110.0 * u.res.z;
+  let q = (px + vec2f(0.0, u.crease.w * u.res.z)) / s;
+  let e = 0.35 / s * u.res.z;
+  return vec2f(crease_h(q + vec2f(e, 0.0)) - crease_h(q - vec2f(e, 0.0)), crease_h(q + vec2f(0.0, e)) - crease_h(q - vec2f(0.0, e))) / (2.0 * e * s);
+}
+
+// Bord déchiré : la feuille du dessus s'arrête sur une ligne irrégulière,
+// avec un liseré de fibres plus claires et une ombre sur la feuille du dessous.
+fn tear_edge(px: vec2f, col: vec3f) -> vec3f {
+  let dpr = u.res.z;
+  let t = u.res.w;
+  var c = col;
+  for (var i = 0; i < ${MAX_TEARS}; i++) {
+    if (f32(i) >= u.tear.x) { break; }
+    let e = u.tears[i];
+    if (px.x < e.y || px.x > e.z || abs(px.y - e.x) > 90.0 * dpr) { continue; }
+    let fi = f32(i);
+    // Ondulation lente ; le défilement l'ouvre, le pointeur la tord.
+    let slow = (fbm(vec2f(px.x / (60.0 * dpr), t * 0.12 + fi * 3.1)) - 0.5) * 26.0 * dpr;
+    let open = 1.0 + abs(u.paper.w) * 5.0 * u.tear.z;
+    let pd = (px.x - u.pointer.x) / (170.0 * dpr);
+    let pull = select(0.0, clamp(u.pointer.y - e.x, -70.0 * dpr, 70.0 * dpr) * 0.45 * exp(-pd * pd) * u.tear.z, u.pointer.z > 0.5);
+    let jag = (vnoise(vec2f(px.x / (2.6 * dpr), fi * 7.0)) - 0.5) * 4.0 * dpr + (vnoise(vec2f(px.x / (9.0 * dpr), fi)) - 0.5) * 6.0 * dpr;
+    let y = e.x + (slow * open + jag) * u.tear.y + pull;
+    let f = px.y - y;
+    // Liseré : la tranche du papier déchiré, plus claire, en fibres.
+    let rim = (2.5 + 5.0 * vnoise(vec2f(px.x / (5.0 * dpr), fi * 3.0))) * dpr * u.tear.y;
+    let fib = vnoise(vec2f(px.x / (1.3 * dpr), px.y / (4.0 * dpr)));
+    if (f < 0.0 && f > -rim) { c = mix(c, vec3f(0.985, 0.978, 0.962), 0.75 + 0.25 * fib); }
+    // Ombre portée sur la feuille du dessous.
+    if (f >= 0.0) { c *= 1.0 - 0.26 * exp(-f / (6.0 * dpr)) * min(u.tear.y, 1.5); }
+  }
+  return c;
+}
+
+// Débogage : la grille de mise en page, par-dessus l'image finale.
+fn grid_overlay(px: vec2f, col: vec3f) -> vec3f {
+  let m = i32(u.grid.x);
+  var c = col;
+  let one = u.res.z;
+  if ((m & 1) != 0) {
+    // Colonnes : bandes rouges translucides, bords plus nets.
+    let n = u.grid2.x;
+    let w = (u.grid.z - u.grid.y - u.grid.w * (n - 1.0)) / n;
+    let x = px.x - u.grid.y;
+    let k = floor(x / (w + u.grid.w));
+    let inCol = x >= 0.0 && px.x <= u.grid.z && (x - k * (w + u.grid.w)) <= w;
+    if (inCol) {
+      c = mix(c, vec3f(0.92, 0.2, 0.2), 0.08);
+      let fx = x - k * (w + u.grid.w);
+      if (fx < one || fx > w - one) { c = mix(c, vec3f(0.92, 0.2, 0.2), 0.45); }
+    }
+  }
+  if ((m & 2) != 0) {
+    // Rangées : le rythme vertical, attaché à la page.
+    let y = px.y + u.grid2.z;
+    let r = y - floor(y / u.grid2.y) * u.grid2.y;
+    if (r < one) { c = mix(c, vec3f(0.1, 0.45, 0.9), 0.3); }
+  }
+  if ((m & 4) != 0) {
+    // Centre : les deux axes de l'écran.
+    let ctr = u.res.xy * 0.5;
+    if (abs(px.x - ctr.x) < one || abs(px.y - ctr.y) < one) { c = mix(c, vec3f(0.0, 0.62, 0.55), 0.8); }
+    if (length(px - ctr) < 6.0 * one && length(px - ctr) > 4.5 * one) { c = mix(c, vec3f(0.0, 0.62, 0.55), 0.9); }
+  }
+  return c;
+}
 
 fn kind_of(i: i32) -> f32 {
   let v = u.kinds[i / 4];
@@ -1802,9 +1969,12 @@ fn fbm(p: vec2f) -> f32 {
   return v;
 }
 
-fn trace_at(px: vec2f, st: vec4f, layer: i32) -> vec4f {
+// Couche de traces de la plaque en cours, choisie par le moteur (voir fs).
+var<private> tr_layer: i32 = 0;
+
+fn trace_at(px: vec2f, st: vec4f, _kind_layer: i32) -> vec4f {
   let q = clamp((px - st.xy) / st.zw, vec2f(0.0), vec2f(1.0));
-  return textureSampleLevel(trace, samp, q, layer, 0.0);
+  return textureSampleLevel(trace, samp, q, tr_layer, 0.0);
 }
 
 fn stage_src(p: vec2f, st: vec4f) -> vec3f {
@@ -2084,7 +2254,10 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   for (var i = 0; i < ${MAX_STAGES}; i++) {
     let s = u.stages[i];
     if (s.z > 0.0 && px.x >= s.x && px.y >= s.y && px.x < s.x + s.z && px.y < s.y + s.w) {
-      kind = kind_of(i);
+      // Type + 16 × couche de traces.
+      let raw = kind_of(i);
+      kind = raw - floor(raw / 16.0) * 16.0;
+      tr_layer = i32(floor(raw / 16.0));
       stage = s;
     }
   }
@@ -2107,11 +2280,31 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   if (scr.z > 0.5) { return vec4f(0.025, 0.025, 0.028, 1.0); }
   lens += scr.xy;
 
+  // Matière lentille, sur n'importe quel élément qui la porte.
+  if (kind > 9.5 && kind < 10.5) {
+    lens += lens_material(px, stage);
+  }
+
+  // Papier froissé : là où le pointeur est passé, la page entière se plie,
+  // texte et images compris ; puis elle se défroisse.
+  var creaseG = vec2f(0.0);
+  var creaseM = 0.0;
+  if (u.crease.x > 0.5) {
+    creaseM = textureSampleLevel(trace, samp, px / u.res.xy, ${SCREEN_LAYER}, 0.0).z * u.crease.y;
+    if (creaseM > 0.002) {
+      creaseG = crease_grad(px);
+      var off = creaseG * creaseM * 55.0 * u.res.z;
+      let ol = length(off);
+      if (ol > 11.0 * u.res.z) { off *= 11.0 * u.res.z / ol; }
+      lens += off;
+    }
+  }
+
   var col = source(px, lens);
 
   if (kind > 2.5 && kind < 3.5) {
     col = image_filter(px, stage);
-  } else if (kind > 3.5) {
+  } else if (kind > 3.5 && kind < 9.5) {
     col = matter(kind, px, stage);
   }
 
@@ -2137,15 +2330,27 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   }
   col *= print_shade;
 
+  if (creaseM > 0.002) {
+    // Éclairage rasant venu du haut à gauche sur le relief des plis.
+    let n = normalize(vec3f(-creaseG * creaseM * 2.4, 1.0));
+    let L = normalize(vec3f(-0.55, -0.65, 0.55));
+    let shade = clamp(dot(n, L) / L.z, 0.62, 1.22);
+    col *= shade;
+  }
+  if (u.tear.x > 0.5) {
+    col = tear_edge(px, col);
+  }
+
   if (u.chain2.x > 0.5) {
+    let amp = u.chain2.x;
     // Fibre : bruit lent, seulement là où il y a du papier.
     let paperish = 1.0 - smoothstep(0.02, 0.08, distance(col, u.paper.rgb));
     let fiber = vnoise(px / (2.0 * u.res.z) + vec2f(0.0, vnoise(px / (60.0 * u.res.z)) * 6.0));
-    col *= 1.0 - paperish * (fiber - 0.5) * 0.016;
+    col *= 1.0 - paperish * (fiber - 0.5) * 0.016 * amp;
     // Grain : bruit entrelacé, animé sauf en mouvement réduit.
     let tt = select(floor(u.res.w * 24.0), 0.0, u.pointer.w > 0.5);
     let n = ign(px + vec2f(tt * 5.588238, tt * 3.31));
-    col += (n - 0.5) * 0.028;
+    col += (n - 0.5) * 0.028 * amp;
   }
 
   // Cours d'accessibilité : encre délavée (pour faire échouer la mesure de
@@ -2154,6 +2359,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   col = simulate_vision(clamp(col, vec3f(0.0), vec3f(1.0)), u.a11y.x);
 
   col = screen_finish(col, px);
+  if (u.grid.x > 0.5) { col = grid_overlay(px, col); }
   return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
 }
 

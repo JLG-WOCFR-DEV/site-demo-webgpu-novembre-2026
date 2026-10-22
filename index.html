@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>PLI</title>
+    <title>WebGPU-demo-UBS</title>
     <meta
       name="description"
-      content="PLI, une presse WebGPU : démo et guide d'un site rendu en WebGPU natif. Le HTML compose la page, le GPU la repeint, glyphe par glyphe."
+      content="WebGPU-demo-UBS, une presse WebGPU : démo et guide d'un site rendu en WebGPU natif. Le HTML compose la page, le GPU la repeint, glyphe par glyphe."
     />
     <meta name="theme-color" content="#f2efe6" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2efe6'/%3E%3Ccircle cx='12' cy='14' r='7' fill='%2300a3d7' opacity='.85'/%3E%3Ccircle cx='20' cy='14' r='7' fill='%23e5007d' opacity='.85'/%3E%3Ccircle cx='16' cy='20' r='7' fill='%23f6d500' opacity='.85'/%3E%3C/svg%3E" />
@@ -18,7 +18,7 @@
     <canvas id="gl" aria-hidden="true"></canvas>
 
     <header class="bar" role="banner">
-      <a class="mark" href="#top" aria-label="PLI, retour en haut">PLI</a>
+      <button type="button" class="mark" data-pages-trigger aria-label="WebGPU-demo-UBS : choisir une page"><span class="mark-name">WebGPU-demo-<wbr />UBS</span> <span class="mark-caret" aria-hidden="true">▾</span></button>
       <nav aria-label="Chapitres">
         <ol class="toc">
           <li><a href="#ch-dom">DOM</a></li>
@@ -120,13 +120,13 @@
         </h1>
         <div class="hero-plates" data-gl-stage="hero">
           <figure class="plate plate--sq">
-            <img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux posée sur une pierre calcaire, lumière de fenêtre." />
+            <img data-gl-img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." />
           </figure>
           <figure class="plate plate--sq">
-            <img data-gl-img src="./plates/steel.jpg" width="1408" height="1408" alt="Un cylindre d'acier poli debout sur une ardoise sombre." />
+            <img data-gl-img src="./plates/alcatraz.jpg" width="1728" height="1150" alt="L'île d'Alcatraz, son phare et ses bâtiments, au milieu de la baie bleue." />
           </figure>
           <figure class="plate plate--sq">
-            <img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="Une renoncule blanche sur fond gris clair." />
+            <img data-gl-img src="./plates/yosemite.jpg" width="1728" height="1150" alt="La vallée de Yosemite vue d'en haut : parois de granit, une cascade, la brume au fond." />
           </figure>
         </div>
         <p class="lede" data-gl-text>
@@ -191,7 +191,7 @@
           </div>
           <div class="stage" data-gl-stage="quad">
             <figure class="plate plate--wide">
-              <img data-gl-img data-gl-quad src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau, vu de trois quarts." />
+              <img data-gl-img data-gl-quad src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées, ciel strié de traînées d'avion." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-quad" data-controls="quad">
@@ -391,11 +391,11 @@
                 donne la même image.
               </p>
             </div>
-            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : un cylindre de verre, une renoncule blanche et un aplat rouge, fusionnés selon les réglages ci-dessous.">
+            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : le Golden Gate, des dunes claires et un aplat rouge, fusionnés selon les réglages ci-dessous.">
               <!-- Repli sans WebGPU : la même pile en CSS (mix-blend-mode). -->
               <div class="css-layers" aria-hidden="true">
-                <img class="css-layer" data-css-layer="glass" src="./plates/glass.jpg" alt="" />
-                <img class="css-layer" data-css-layer="flower" src="./plates/flower.jpg" alt="" />
+                <img class="css-layer" data-css-layer="glass" src="./plates/pont.jpg" alt="" />
+                <img class="css-layer" data-css-layer="flower" src="./plates/dunes.jpg" alt="" />
                 <div class="css-layer" data-css-layer="spot"></div>
               </div>
             </div>
@@ -413,23 +413,23 @@
                 </div>
               </fieldset>
               <fieldset class="layer" data-layer="flower">
-                <legend>Renoncule</legend>
+                <legend>Dunes</legend>
                 <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1" selected>Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
                 <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.9" /><output>0,9</output></label>
                 <div class="layer-actions">
                   <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
-                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Renoncule">▲</button>
-                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Renoncule">▼</button>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Dunes">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Dunes">▼</button>
                 </div>
               </fieldset>
               <fieldset class="layer" data-layer="glass">
-                <legend>Verre</legend>
+                <legend>Pont</legend>
                 <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0" selected>Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
                 <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="1" /><output>1</output></label>
                 <div class="layer-actions">
                   <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
-                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Verre">▲</button>
-                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Verre">▼</button>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Pont">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Pont">▼</button>
                 </div>
               </fieldset>
               </div>
@@ -465,7 +465,7 @@
           </div>
           <div class="stage" data-gl-stage="trame">
             <figure class="plate plate--wide">
-              <img data-gl-img src="./plates/vanilla.jpg" width="1728" height="1152" alt="Deux gousses de vanille sur un papier crème." />
+              <img data-gl-img src="./plates/cerf.jpg" width="1728" height="1150" alt="Un jeune cerf dans un jardin en pente, herbe verte et lumière rasante." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-trame" data-controls="trame">
@@ -506,7 +506,7 @@
           </div>
           <div class="stage" data-gl-stage="filtre">
             <figure class="plate plate--sq">
-              <img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux posée sur une pierre calcaire, lumière de fenêtre." />
+              <img data-gl-img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-filtre" data-controls="filter">
@@ -588,7 +588,7 @@
                   <p class="matter-title">Peinture fraîche</p>
                   <p class="matter-text">La page est peinte sur une toile de lin. Tirez la peinture avec le pointeur : elle garde des crêtes brillantes, puis sèche.</p>
                 </div>
-                <figure class="plate matter-plate"><img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="" /></figure>
+                <figure class="plate matter-plate"><img data-gl-img src="./plates/dunes.jpg" width="1728" height="1150" alt="" /></figure>
               </div>
             </div>
             <div class="matter">
@@ -598,7 +598,7 @@
                   <p class="matter-title">Pluie sur la vitre</p>
                   <p class="matter-text">Les gouttes posées retournent l'image comme des lentilles, d'autres coulent en laissant une trace claire. Le pointeur essuie la buée.</p>
                 </div>
-                <figure class="plate matter-plate"><img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="" /></figure>
+                <figure class="plate matter-plate"><img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="" /></figure>
               </div>
             </div>
             <div class="matter">
@@ -641,13 +641,13 @@
             </p>
             <p>
               Ici, le seuil est placé juste au-dessus du papier, avec un genou doux : seules les vraies hautes
-              lumières, le reflet sur le métal ou le verre, débordent. L'extraction et le flou se font en
+              lumières, l'écume des vagues et les reflets sur l'eau, débordent. L'extraction et le flou se font en
               demi-résolution, par descentes et remontées successives.
             </p>
           </div>
           <div class="stage stage--duo" data-gl-stage="light">
             <figure class="plate plate--wide">
-              <img data-gl-img src="./plates/glass.jpg" width="1728" height="1152" alt="Un cylindre de verre couché qui accroche la lumière." />
+              <img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate depuis la côte : l'écume des vagues au pied d'une falaise verte." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-light" data-controls="light">
@@ -706,7 +706,7 @@
             </div>
             <div class="stage" data-gl-stage="fluid">
               <figure class="plate plate--fluid">
-                <img data-gl-img data-gl-fluid src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau ; au survol, l'image s'étale comme de l'encre fraîche." />
+                <img data-gl-img data-gl-fluid src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac entre des collines dorées ; au survol, l'image s'étale comme de l'encre fraîche." />
               </figure>
             </div>
             <form class="controls" aria-labelledby="c-fluid" data-controls="fluid">
@@ -1007,7 +1007,7 @@
       <div class="colophon-grid" data-gl-text>
         <p>
           Inspiré des posts d'Aristide Benoist (janvier – octobre 2026) sur un moteur WebGPU construit autour des calques,
-          du texte en champs de distance aligné sur le HTML et d'un front rendu en WebGPU natif. PLI n'est pas son moteur :
+          du texte en champs de distance aligné sur le HTML et d'un front rendu en WebGPU natif. WebGPU-demo-UBS n'est pas son moteur :
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
@@ -1021,7 +1021,7 @@
       </div>
       <p class="colophon-legacy" data-gl-text>
         La toute première version, générée par Grok en une passe, reste consultable telle quelle :
-        <a href="./legacy/index.html">PLI v0</a>.
+        <a href="./legacy/index.html">WebGPU-demo-UBS v0</a>.
       </p>
       <p class="colophon-legacy colophon-next" data-gl-text>
         Une autre idée, sur les mêmes principes : <a href="./kerguehennec.html">Kerguéhennec, 1910</a>, un théâtre de papier en

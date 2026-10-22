@@ -1,3 +1,4 @@
+import { clockNow } from "./gpu/recorder.ts";
 import { motion, pointer, settings } from "./state.ts";
 
 /**
@@ -57,16 +58,16 @@ type Item = {
 
 /** Photo de chaque chapitre (la première planche du chapitre, sinon un choix fixe). */
 const PHOTO: Record<string, string> = {
-  "ch-dom": "steel",
-  "ch-quad": "bowl",
-  "ch-glyph": "flower",
-  "ch-chain": "glass",
-  "ch-trame": "vanilla",
-  "ch-filtre": "fig",
-  "ch-light": "glass",
-  "ch-ink": "bowl",
-  "ch-cost": "steel",
-  "ch-a11y": "flower",
+  "ch-dom": "alcatraz",
+  "ch-quad": "lac",
+  "ch-glyph": "dunes",
+  "ch-chain": "pont",
+  "ch-trame": "cerf",
+  "ch-filtre": "jardin",
+  "ch-light": "yosemite",
+  "ch-ink": "lac",
+  "ch-cost": "alcatraz",
+  "ch-a11y": "dunes",
 };
 
 const PERSPECTIVE = 1500;
@@ -160,7 +161,7 @@ export function setupMenu() {
   stage.addEventListener("pointerdown", onDown);
   addEventListener("pointermove", onMove);
   addEventListener("pointerup", onUp);
-  addEventListener("resize", () => menuGL.open && step(performance.now()));
+  addEventListener("resize", () => menuGL.open && step(clockNow()));
   menuGL.step = step;
 }
 
@@ -172,7 +173,7 @@ function build() {
     const section = document.getElementById(id);
     const num = String(i + 1).padStart(2, "0");
     const title = section?.querySelector("h2")?.textContent?.trim() ?? a.textContent!.trim();
-    const src = `./plates/${PHOTO[id] ?? "fig"}.jpg`;
+    const src = `./plates/${PHOTO[id] ?? "jardin"}.jpg`;
     const link = document.createElement("a");
     link.className = "sheet";
     link.href = `#${id}`;
@@ -214,6 +215,10 @@ export function openMenu(from?: HTMLElement) {
     return;
   }
   opener = from ?? (document.activeElement as HTMLElement | null);
+  // Le sommaire de la barre a pu changer depuis le chargement (le sampler le
+  // remplit après coup) : on relit ses entrées à chaque ouverture.
+  if (document.querySelectorAll(".toc a[href^='#ch-']").length !== items.length) build();
+  if (!items.length) return;
   // On ouvre sur le chapitre en cours de lecture.
   const current = items.findIndex((it) => {
     const r = document.getElementById(it.id)?.getBoundingClientRect();
@@ -234,7 +239,7 @@ export function openMenu(from?: HTMLElement) {
   }
   for (const b of document.querySelectorAll("[data-action='menu']")) b.setAttribute("aria-expanded", "true");
   menuGL.open = true;
-  lastT = performance.now();
+  lastT = clockNow();
   step(lastT);
   items[active]!.link.focus({ preventScroll: true });
   announce();
@@ -292,7 +297,7 @@ function setStyle(s: MenuStyle) {
     it.lift = 0;
     it.hx = 0;
   }
-  step(performance.now());
+  step(clockNow());
 }
 
 /**
@@ -647,7 +652,14 @@ function layout(s: MenuStyle, W: number, H: number, dt: number, k: (r: number) =
       const shade = clamp(0.62 + 0.38 * (nz * 0.92 - nx * 0.4) / 0.92, 0.5, 1.04);
       const prev = i > 0 ? Math.abs(phi[i]! - phi[i - 1]!) / (2 * TH) : 0;
       const next = i < n - 1 ? Math.abs(phi[i]! - phi[i + 1]!) / (2 * TH) : 0;
-      const z = m.transformPoint(new DOMPoint(pw / 2, ph / 2, 0)).z;
+      // Ordre de peinture : la distance à l'œil, pas la seule profondeur. Pliés
+      // en montagne et en vallée, deux panneaux voisins ont le même z au
+      // centre ; à égalité, le moindre écart de calcul les permutait d'une
+      // image à l'autre et les feuilles de droite vibraient. Plus loin de l'œil
+      // (vers les bords), on peint d'abord.
+      const c = m.transformPoint(new DOMPoint(pw / 2, ph / 2, 0));
+      const eye = perspective(W);
+      const z = -Math.hypot(c.x - W / 2, c.y - H / 2, c.z - eye);
       // La légende s'efface quand le panneau se plie : de biais, elle se chevaucherait.
       const label = 1 - smooth(22, 50, Math.abs(phi[i]!));
       out.push({ it: items[i]!, m, w: pw, h: ph, alpha: clamp(a * 1.4, 0, 1), shade, look: [1, prev, next, 0], z, label });

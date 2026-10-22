@@ -2,8 +2,9 @@ import { menuGL } from "../menu.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
-import { ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
-import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE } from "./wgsl.ts";
+import { Recorder, clockNow, type RecordOptions } from "./recorder.ts";
+import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
+import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -34,7 +35,11 @@ const STAGE_KIND: Record<string, number> = {
   gouttes: 7,
   enveloppe: 8,
   givre: 9,
+  // Matières déclarées dans le HTML (data-gl-material) : n'importe quel élément.
+  lentille: 10,
 };
+/** Nom de la plaque : data-gl-stage (démonstrations), sinon data-gl-material. */
+const stageName = (s: HTMLElement) => s.dataset.glStage ?? s.dataset.glMaterial ?? "";
 /**
  * Mémoire du pointeur par matière : gain et oubli de la présence (b), gain et
  * oubli du vent ou de la peinture (rg), en 1/s. Les flammes et l'enveloppe
@@ -49,15 +54,19 @@ const TRACE_RATES: [number, number, number, number][] = [
   [2.2, 0.25, 0, 1], // givre : fond en restant dessus, regèle en quatre secondes
 ];
 /** Marge autour de l'élément enveloppé de flammes (px css). */
-export const WRAP_PAD = 56;
+export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
 const MATTER_AT = CASSE_AT + 4 + 16 * 4;
 const SCREEN_AT = MATTER_AT + 4;
+const CREASE_AT = SCREEN_AT + 4;
+const LENSM_AT = CREASE_AT + 4;
+const TEAR_AT = LENSM_AT + 4;
+const GRID_AT = TEAR_AT + 4 + MAX_TEARS * 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -324,7 +333,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
   // Chapitre 06 : sources animées, à la place de la photo.
   const procLayout = device.createBindGroupLayout({
-    entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } }],
+    entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform", hasDynamicOffset: true } }],
   });
   const procPipe = device.createRenderPipeline({
     label: "proc",
@@ -333,9 +342,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     fragment: { module: procMod, entryPoint: "fs_proc", targets: [{ format: SCENE_FORMAT }] },
     primitive: strip,
   });
-  const procBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-  const procBind = device.createBindGroup({ layout: procLayout, entries: [{ binding: 0, resource: { buffer: procBuf } }] });
-  const MAX_FIRES = 4;
+  // Une source par photo concernée : toutes les plaques, pas seulement la première.
+  const MAX_PROCS = 8;
+  const procBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_PROCS, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const procBind = device.createBindGroup({ layout: procLayout, entries: [{ binding: 0, resource: { buffer: procBuf, size: 32 } }] });
+  const procData = new Float32Array((PLANE_STRIDE * MAX_PROCS) / 4);
+  const MAX_FIRES = 8;
+  const traceLayers = new Map<HTMLElement, number>();
+  const traceKind = new Map<HTMLElement, string | undefined>();
   const fireBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_FIRES, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const fireBind = device.createBindGroup({ layout: fireLayout, entries: [{ binding: 0, resource: { buffer: fireBuf, size: 48 } }] });
   const fireData = new Float32Array((PLANE_STRIDE * MAX_FIRES) / 4);
@@ -675,7 +689,17 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let pvx = 0;
   let pvy = 0;
 
-  const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage]")];
+  const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage], [data-gl-material]")].filter((s) => stageName(s) !== "dechirure");
+  // Pointeur amorti de la matière lentille, et sa force au survol.
+  const lensP = { x: 0, y: 0, k: 0 };
+  // Couche d'écran du froissé : décalage de défilement en reste (texels), et remise à zéro.
+  let creaseCarry = 0;
+  let creaseWas = false;
+  // Mode capture : une horloge virtuelle avance d'un pas fixe par image, et
+  // chaque image rendue devient une image de la vidéo, quelle que soit la
+  // vitesse réelle de la machine.
+  let recorder: Recorder | null = null;
+  let gridCache: { gl: number; gr: number; gap: number; w: number } | null = null;
 
   const frame = () => {
     if (destroyed) return;
@@ -699,7 +723,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       needLayout = false;
       relayout(dpr);
     }
-    const now = performance.now();
+    const now = clockNow();
     const time = (now - t0) / 1000;
     const reduced = motion.reduced;
     // Sommaire ouvert : la page est masquée (inert), le GPU ne peint que les feuilles.
@@ -729,7 +753,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     frameData.set([cssW, cssH, dpr, reduced ? 0 : time]);
     frameData.set([pointer.x, pointer.y, pointer.inside ? 1 : 0, reduced ? 1 : 0], 4);
     frameData.set([settings.glyph.wave, settings.glyph.ink, settings.glyph.scatter, settings.dom.boxes ? 1 : 0], 8);
-    frameData.set([2048, 1.6, PAPER[0], 0], 12);
+    frameData.set([2048, 1.6, PAPER[0], settings.debug.wire ? 1 : 0], 12);
     device.queue.writeBuffer(frameBuf, 0, frameData);
 
     /* Éléments de texte : seule la boîte de l'élément est relue. */
@@ -763,7 +787,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow, peel: peel > 0.001 });
       slot++;
     };
-    let procRect: DOMRect | null = null;
+    let procs = 0;
     for (const p of menuOpen ? [] : images.plates) {
       const r = p.img.getBoundingClientRect();
       const visible = r.bottom > -80 && r.top < cssH + 80 && r.width > 0;
@@ -771,9 +795,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       p.hover += ((over ? 1 : 0) - p.hover) * (reduced ? 1 : 0.12);
       if (settings.dom.boxes && visible) boxes.push(r.left, r.top, r.width, r.height, 0.894, 0, 0.486, 0.95);
       if (!visible || !p.bind) continue;
-      if (settings.filter.source > 0 && p.img.closest('[data-gl-stage="filtre"]')) {
+      if (settings.filter.source > 0 && p.img.closest('[data-gl-stage="filtre"], [data-gl-source]')) {
         // Une source animée remplace la photo du chapitre 06.
-        procRect = r;
+        if (procs < MAX_PROCS) procData.set([r.left, r.top, r.width, r.height, settings.filter.source, 0, 0, 0], (procs++ * PLANE_STRIDE) / 4);
         continue;
       }
       if (p.fluid && p.texture && !reduced) {
@@ -788,7 +812,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const lift = p.quad ? q.lift : 0.15;
       const uv = coverUV(r.width, r.height, p.width, p.height);
       // Chapitre 02 : l'épreuve se décolle au réglage, et d'un souffle au survol.
-      const wantPeel = p.quad ? Math.max(q.peel, reduced ? 0 : p.hover * 0.22) : 0;
+      const wantPeel = p.quad ? Math.max(q.peel, reduced || !q.hoverPeel ? 0 : p.hover * 0.22) : 0;
       p.peel += (wantPeel - p.peel) * (reduced ? 1 : 1 - Math.exp(-dt * 7));
       if (p.peel > 0.001) {
         // Dessous : la plaque offset, en négatif ; dessus : l'épreuve maillée.
@@ -806,19 +830,42 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     let traceOn = false;
     let fires = 0;
     let si = 0;
+    // Couches de traces : une par plaque de matière visible. Une plaque garde
+    // sa couche tant qu'elle reste à l'écran ; une couche reprise est remise à zéro.
+    const visibleMatters = stageEls.filter((s) => {
+      const r = s.getBoundingClientRect();
+      const kd = STAGE_KIND[stageName(s)] ?? 0;
+      return kd >= 4 && kd <= 9 && r.width > 0 && r.bottom > 0 && r.top < cssH;
+    });
+    for (const [el] of traceLayers) if (!visibleMatters.includes(el) || traceKind.get(el) !== stageName(el)) traceLayers.delete(el);
+    const fresh = new Set<number>();
+    for (const el of visibleMatters) {
+      if (traceLayers.has(el)) continue;
+      const taken = new Set(traceLayers.values());
+      for (let l = 0; l < SCREEN_LAYER; l++) {
+        if (!taken.has(l)) {
+          traceLayers.set(el, l);
+          traceKind.set(el, stageName(el));
+          fresh.add(l);
+          break;
+        }
+      }
+    }
     for (const s of stageEls) {
       const r = s.getBoundingClientRect();
-      const kind = STAGE_KIND[s.dataset.glStage ?? ""] ?? 0;
-      if (kind >= 4 && r.width > 0 && r.bottom > 0 && r.top < cssH) {
+      const kind = STAGE_KIND[stageName(s)] ?? 0;
+      if (kind >= 4 && kind <= 9 && r.width > 0 && r.bottom > 0 && r.top < cssH) {
         // Matière visible : sa couche de traces avance d'un pas.
-        const layer = kind - 4;
-        const rates = TRACE_RATES[layer]!;
+        const layer = traceLayers.get(s) ?? -1;
+        const rates = TRACE_RATES[kind - 4]!;
         const inside = pointer.inside && pointer.x >= r.left && pointer.x <= r.right && pointer.y >= r.top && pointer.y <= r.bottom;
-        const o = 4 + layer * 12;
-        traceData.set([1, inside ? 1 : 0, (pointer.x - r.left) / r.width, (pointer.y - r.top) / r.height], o);
-        traceData.set([pvx / r.width, pvy / r.height, r.width / r.height, 0.09], o + 4);
-        traceData.set(rates, o + 8);
-        traceOn = traceOn || rates[0] > 0;
+        const o = 4 + Math.max(0, layer) * 12;
+        if (layer >= 0) traceData.set([fresh.has(layer) ? 2 : 1, inside ? 1 : 0, (pointer.x - r.left) / r.width, (pointer.y - r.top) / r.height], o);
+        if (layer >= 0) {
+          traceData.set([pvx / r.width, pvy / r.height, r.width / r.height, 0.09], o + 4);
+          traceData.set(rates, o + 8);
+          traceOn = traceOn || rates[0] > 0;
+        }
         if ((kind === 4 || kind === 8) && fires < MAX_FIRES) {
           const o2 = (fires * PLANE_STRIDE) / 4;
           fireData.set([r.left, r.top, r.width, r.height], o2);
@@ -830,15 +877,19 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left - 6, r.top - 6, r.width + 12, r.height + 12, 0.07, 0.07, 0.07, 0.7);
       if (s.dataset.glStage === "glyph" && settings.glyph.atlas && r.bottom > 0 && r.top < cssH) {
         // Seule la bande occupée de l'atlas, à l'échelle de la plaque.
-        const used = Math.max(0.05, text.atlasUsed);
+        // Une fenêtre agrandie sur le coin occupé (0,6 texel par pixel CSS) :
+        // réduit en entier, l'atlas de 2048 texels ne montrait que des miettes.
+        const used = Math.max(0.02, text.atlasUsed);
         const aw = r.width - 24;
-        const ah = Math.min(r.height - 24, aw * used);
+        const zoom = 0.6 / ATLAS_SIZE;
+        const ah = Math.min(r.height - 24, (used * ATLAS_SIZE) / 0.6);
         const a = new DOMRect(r.left + 12, r.top + 12, aw, ah);
-        pushPlane(a, [0, 0, 1, (ah / aw)], [2, 0, 0, 1], [0, 1, 0, 0], atlasBind, false);
+        pushPlane(a, [0, 0, Math.min(1, aw * zoom), Math.min(used, ah * zoom)], [2, 0, 0, 1], [0, 1, 0, 0], atlasBind, false);
       }
       if (si < MAX_STAGES && kind > 0 && r.bottom > 0 && r.top < cssH) {
         postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 28 + si * 4);
-        postData[28 + MAX_STAGES * 4 + si] = kind;
+        // Pour une matière, le type porte aussi sa couche de traces : type + 16 × couche.
+        postData[28 + MAX_STAGES * 4 + si] = kind >= 4 && kind <= 9 ? kind + 16 * Math.max(0, traceLayers.get(s) ?? 0) : kind;
         si++;
       }
     }
@@ -851,7 +902,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([w, h, dpr, reduced ? 0 : time], 0);
     postData.set([pointer.x * dpr, pointer.y * dpr, pointer.inside && !reduced ? 1 : 0, reduced ? 1 : 0], 4);
     postData.set([c.distort ? 1 : 0, c.rgb ? 1 : 0, c.trame ? 1 : 0, c.bloom ? 1 : 0], 8);
-    postData.set([c.grain ? 1 : 0, c.split ? 1 : 0, splitX, L.bloom], 12);
+    postData.set([c.grain ? settings.grain.amp : 0, c.split ? 1 : 0, splitX, L.bloom], 12);
     postData.set([T.cell, T.gain, T.misreg, T.mix], 16);
     postData.set([PAPER[0], PAPER[1], PAPER[2], slip], 20);
     const F = settings.filter;
@@ -918,6 +969,76 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([settings.matter.intensity, WRAP_PAD * dpr, menuOpen ? menuGL.screen : 0, 0], MATTER_AT);
     const sr = menuGL.screenRect;
     postData.set([sr[0] * dpr, sr[1] * dpr, sr[2] * dpr, sr[3] * dpr], SCREEN_AT);
+
+    // Matière lentille : le centre suit le pointeur avec du retard ; elle se
+    // renforce sur l'élément survolé et s'éteint ailleurs.
+    let overLens = false;
+    if (!menuOpen && pointer.inside) {
+      for (const el of stageEls) {
+        if (stageName(el) !== "lentille") continue;
+        const r = el.getBoundingClientRect();
+        if (pointer.x >= r.left && pointer.x <= r.right && pointer.y >= r.top && pointer.y <= r.bottom) overLens = true;
+      }
+    }
+    const lk = reduced ? 1 : 1 - Math.exp(-dt * settings.lens.follow);
+    lensP.x += (pointer.x - lensP.x) * lk;
+    lensP.y += (pointer.y - lensP.y) * lk;
+    lensP.k += ((overLens && !reduced ? 1 : 0) - lensP.k) * (reduced ? 1 : 1 - Math.exp(-dt * 6));
+    postData.set([lensP.x * dpr, lensP.y * dpr, lensP.k, settings.lens.force], LENSM_AT);
+
+    // Papier froissé : couche d'écran des traces, qui suit le défilement.
+    const C = settings.crease;
+    const creaseOn = C.on && !menuOpen && !reduced;
+    postData.set([creaseOn ? 1 : 0, C.depth, 0, scrollY], CREASE_AT);
+    traceData[1] = 0;
+    traceData[2] = SCREEN_LAYER;
+    if (creaseOn) {
+      creaseCarry += (dy / cssH) * TRACE_SIZE;
+      const shift = Math.round(creaseCarry);
+      creaseCarry -= shift;
+      traceData[1] = shift;
+      const o = 4 + SCREEN_LAYER * 12;
+      const speed = Math.hypot(pvx, pvy);
+      // Le pli vient du geste : un pointeur immobile ne froisse pas.
+      const gain = 8 * Math.min(1.5, speed / 600);
+      traceData.set([creaseWas ? 1 : 2, pointer.inside ? 1 : 0, pointer.x / cssW, pointer.y / cssH], o);
+      traceData.set([0, 0, cssW / cssH, 0.075], o + 4);
+      traceData.set([gain, C.heal, 0, 1], o + 8);
+      traceOn = true;
+    }
+    creaseWas = creaseOn;
+
+    // Bords déchirés : le haut de chaque élément data-gl-material="dechirure".
+    let nt = 0;
+    if (!menuOpen) {
+      for (const el of document.querySelectorAll<HTMLElement>('[data-gl-material="dechirure"]')) {
+        const r = el.getBoundingClientRect();
+        if (r.top < -60 || r.top > cssH + 60 || r.width <= 0 || nt >= MAX_TEARS) continue;
+        postData.set([r.top * dpr, r.left * dpr, r.right * dpr, 0], TEAR_AT + 4 + nt * 4);
+        nt++;
+      }
+    }
+    postData.set([nt, settings.tear.amp, settings.tear.react, 0], TEAR_AT);
+
+    // Débogage : grille de mise en page (12 colonnes entre les marges, rangées de 8 px).
+    const D = settings.debug;
+    const gm = (D.col ? 1 : 0) | (D.row ? 2 : 0) | (D.ctr ? 4 : 0);
+    if (gm) {
+      const cs = getComputedStyle(document.documentElement);
+      const px = (v: string, fb: number) => {
+        const probe = document.createElement("div");
+        probe.style.width = v;
+        document.body.append(probe);
+        const r = probe.getBoundingClientRect().width;
+        probe.remove();
+        return r || fb;
+      };
+      gridCache ??= { gl: px(cs.getPropertyValue("--gutter") || "16px", 16), gr: px(cs.getPropertyValue("--gutter-r") || "16px", 16), gap: px(cs.getPropertyValue("--col-gap") || "24px", 24), w: cssW };
+      if (gridCache.w !== cssW) gridCache = null;
+    }
+    const gc = gridCache;
+    postData.set(gm && gc ? [gm, gc.gl * dpr, (cssW - gc.gr) * dpr, gc.gap * dpr] : [0, 0, 0, 0], GRID_AT);
+    postData.set([12, 8 * dpr, scrollY * dpr, 0], GRID_AT + 4);
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);
@@ -934,8 +1055,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     let layersOn = false;
     const layersEl = document.querySelector<HTMLElement>('[data-gl-stage="calques"]');
     const lr = layersEl?.getBoundingClientRect();
-    const plateA = images.plates.find((p) => p.img.src.includes("glass") && p.texture);
-    const plateB = images.plates.find((p) => p.img.src.includes("flower") && p.texture);
+    const plateA = images.plates.find((p) => p.img.src.includes("/plates/pont.") && p.texture);
+    const plateB = images.plates.find((p) => p.img.src.includes("/plates/dunes.") && p.texture);
     if (!menuOpen && lr && lr.width > 0 && lr.bottom > 0 && lr.top < cssH && plateA?.texture && plateB?.texture) {
       const key = `${plateA.texture.label}|${plateB.texture.label}`;
       if (!layersBind || key !== layersKey) {
@@ -1065,11 +1186,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       scenePass.setPipeline(planePipe);
       scenePass.draw(4);
     }
-    if (procRect) {
-      device.queue.writeBuffer(procBuf, 0, new Float32Array([procRect.left, procRect.top, procRect.width, procRect.height, settings.filter.source, 0, 0, 0]));
+    if (procs) {
+      device.queue.writeBuffer(procBuf, 0, procData, 0, (procs * PLANE_STRIDE) / 4);
       scenePass.setPipeline(procPipe);
-      scenePass.setBindGroup(1, procBind);
-      scenePass.draw(4);
+      for (let i = 0; i < procs; i++) {
+        scenePass.setBindGroup(1, procBind, [i * PLANE_STRIDE]);
+        scenePass.draw(4);
+      }
     }
     if (layersOn && layersBind) {
       scenePass.setPipeline(layersPipe);
@@ -1186,7 +1309,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         }
       }
     }
+    recorder?.copy(enc, outTex);
     device.queue.submit([enc.finish()]);
+    if (recorder) {
+      recorder.afterSubmit();
+      if (recorder.done) recorder = null;
+    }
     if (probeRead && contrastBuf) {
       const buf = contrastBuf;
       const pr = probeRead;
@@ -1250,6 +1378,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     },
     pause: (v: boolean) => {
       paused = v;
+    },
+    /**
+     * Capture vidéo du canvas à pas fixe (WebCodecs, VP9 en WebM). Pendant la
+     * capture, l'horloge du moteur est virtuelle : la vidéo est fluide même si
+     * la machine ne l'est pas. Les commandes DOM n'apparaissent pas : seul ce
+     * que le GPU peint est enregistré.
+     */
+    record: (o: RecordOptions) => {
+      if (recorder) return false;
+      recorder = new Recorder(device, canvas, format, performance.now(), o);
+      return true;
+    },
+    stopRecording: () => recorder?.stop(),
+    get recording() {
+      return recorder !== null;
     },
     /** Remet chaque chapitre au papier vierge : les transitions se rejouent. */
     replayPrint: () => {

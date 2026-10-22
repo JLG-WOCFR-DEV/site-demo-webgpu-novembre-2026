@@ -1,7 +1,7 @@
 /** État des réglages, écrit par l'interface et lu par la boucle de rendu. */
 export type Settings = {
   dom: { boxes: boolean; hideGpu: boolean };
-  quad: { radius: number; shadow: number; lift: number; wire: boolean; peel: number };
+  quad: { radius: number; shadow: number; lift: number; wire: boolean; peel: number; hoverPeel: boolean };
   glyph: { wave: number; ink: number; scatter: number; atlas: boolean };
   chain: { distort: boolean; rgb: boolean; trame: boolean; bloom: boolean; grain: boolean; print: boolean; split: boolean };
   trame: { cell: number; gain: number; misreg: number; mix: number };
@@ -22,6 +22,16 @@ export type Settings = {
   transition: { style: number; speed: number; line: number; width: number };
   /** Leçon 06.1 : intensité des matières sur le HTML vivant. */
   matter: { intensity: number };
+  /** Grain et fibre : 1 = le dosage réel, à peine visible ; au-delà, une loupe pour le sampler. */
+  grain: { amp: number };
+  /** Papier froissé de page : profondeur des plis, vitesse à laquelle il se défroisse (1/s). */
+  crease: { on: boolean; depth: number; heal: number };
+  /** Matière lentille : force, et vitesse à laquelle le centre rattrape le pointeur (1/s). */
+  lens: { force: number; follow: number };
+  /** Bords déchirés : amplitude, et réaction au défilement et au pointeur. */
+  tear: { amp: number; react: number };
+  /** Débogage : fil de fer, grille (colonnes, rangées, centre). */
+  debug: { wire: boolean; col: boolean; row: boolean; ctr: boolean };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
@@ -32,12 +42,17 @@ export type LayerId = "glass" | "flower" | "spot";
 
 export const settings: Settings = {
   dom: { boxes: false, hideGpu: false },
-  quad: { radius: 6, shadow: 0.45, lift: 0.3, wire: false, peel: 0 },
+  quad: { radius: 6, shadow: 0.45, lift: 0.3, wire: false, peel: 0, hoverPeel: true },
   glyph: { wave: 0.35, ink: 0, scatter: 0, atlas: false },
   chain: { distort: true, rgb: true, trame: true, bloom: true, grain: true, print: true, split: false },
   trame: { cell: 7, gain: 0.08, misreg: 0.15, mix: 1 },
   light: { bloom: 0.6, threshold: 0.03, naive: false },
   filter: { kind: 1, size: 6, amount: 0.5, source: 0 },
+  grain: { amp: 1 },
+  crease: { on: false, depth: 1, heal: 0.35 },
+  lens: { force: 1, follow: 7 },
+  tear: { amp: 1, react: 1 },
+  debug: { wire: false, col: false, row: false, ctr: false },
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },

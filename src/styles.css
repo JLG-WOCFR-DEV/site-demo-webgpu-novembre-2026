@@ -159,15 +159,15 @@ main,
   top: env(safe-area-inset-top, 0px);
   z-index: 10;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto auto;
   align-items: center;
   gap: var(--col-gap);
   height: var(--bar-h);
   padding-left: var(--gutter);
   padding-right: var(--gutter-r);
-  background: color-mix(in srgb, var(--paper) 86%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* Opaque : le GPU peint le texte sous la barre ; un fond translucide le
+     laissait transparaître quand un titre passait dessous. */
+  background: var(--paper);
   border-bottom: 1px solid var(--rule);
 }
 
@@ -199,10 +199,47 @@ body::before {
 }
 
 .mark {
-  font: 900 20px/1 var(--f-display);
-  font-stretch: 125%;
-  letter-spacing: -0.02em;
+  /* Nom long (WebGPU-demo-UBS) : corps réduit, chasse normale, sur une ligne. */
+  font: 900 16px/1 var(--f-display);
+  font-stretch: 100%;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   text-decoration: none;
+}
+@media (max-width: 640px) {
+  /* Sur téléphone, le nom passe sur deux lignes plutôt que de pousser les boutons. */
+  .bar {
+    column-gap: 8px;
+  }
+  .mark {
+    font-size: 12px;
+    white-space: normal;
+  }
+  /* L'icône de débogage n'a pas la place : on l'ouvre depuis le menu des pages. */
+  .bar .dbg-btn {
+    display: none;
+  }
+  .mark-name {
+    display: block;
+    line-height: 1.05;
+    text-align: left;
+  }
+}
+/* Le logo ouvre le menu des pages. */
+button.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.mark-caret {
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .toc {
@@ -820,12 +857,22 @@ input[type="range"]::-moz-range-thumb {
   font-size: 14px;
   cursor: pointer;
 }
+.choices label {
+  -webkit-tap-highlight-color: transparent;
+}
+/* Le bouton radio natif est masqué pour de bon (le clic sur la pastille le
+   coche quand même) : aucun navigateur ne doit en dessiner le point. */
 .choices input {
   position: absolute;
-  inset: 0;
-  opacity: 0;
+  width: 1px;
+  height: 1px;
   margin: 0;
-  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  appearance: none;
+  opacity: 0;
 }
 .choices label:has(input:checked) {
   background: var(--ink);
@@ -833,8 +880,9 @@ input[type="range"]::-moz-range-thumb {
   color: var(--paper);
 }
 .choices label:has(input:focus-visible) {
-  outline: 2px solid var(--spot);
-  outline-offset: 2px;
+  /* Un contour qui suit l'arrondi de la pastille, dans tous les navigateurs. */
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
 }
 
 .stage--ink {
@@ -1647,11 +1695,17 @@ html.gl-on .menu[data-style="planche"] .sheet {
 .matter-wrap {
   justify-self: center;
   width: max-content;
-  padding: 56px;
-  margin: -6px 0 -30px;
+  /* Marge où le feu a la place de monter (WRAP_PAD), rendue en partie à la mise en page. */
+  padding: 112px;
+  margin: -70px -112px -86px;
 }
 .matter-wrap .btn {
   display: block;
+}
+/* La marge du feu déborde de la plaque : invisible dans le DOM, elle ne doit
+   pas élargir la page sur un écran étroit. Le GPU lit le rectangle entier. */
+.stage--wrap {
+  overflow-x: clip;
 }
 @media (max-width: 640px) {
   .matter-title {
@@ -1674,4 +1728,381 @@ html.gl-on .menu[data-style="planche"] .sheet {
   .menu-screens {
     display: none;
   }
+}
+
+/* ───────── Sampler : un effet à la fois ───────── */
+
+.sampler {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(320px, 400px);
+  gap: var(--col-gap);
+  padding: 24px var(--gutter-r) 80px var(--gutter);
+  align-items: start;
+}
+.sp-side {
+  position: sticky;
+  top: calc(var(--bar-h) + 16px);
+  max-height: calc(100dvh - var(--bar-h) - 32px);
+  overflow: auto;
+  padding-right: 6px;
+}
+.sp-kicker,
+.sp-catname {
+  margin: 0;
+  font: 500 11px/1.2 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.sp-h1 {
+  margin: 6px 0 8px;
+  font: 800 30px/1.02 var(--f-display);
+  font-stretch: 112%;
+}
+.sp-lede {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.sp-context {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+.sp-cat {
+  border-top: 1px solid var(--rule);
+}
+.sp-cat summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+.sp-cat summary::-webkit-details-marker {
+  display: none;
+}
+.sp-cat summary::before {
+  content: "▸";
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.sp-cat[open] summary::before {
+  content: "▾";
+}
+.sp-cat-name {
+  flex: 1;
+  margin: 0;
+  font: 700 16px/1.2 var(--f-display);
+}
+.sp-count {
+  font: 500 11px/1 var(--f-mono);
+  color: var(--ink-soft);
+}
+.sp-cat ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.sp-cat button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+.sp-cat button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.sp-main {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+/* Le spécimen est un chapitre (pour l'impression), sans la grille des chapitres. */
+.chapter.sp-spec {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+.chapter.sp-spec::before,
+.chapter.sp-spec::after {
+  display: none;
+}
+.sp-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  min-height: min(62vh, 560px);
+  padding: 36px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.sp-card p {
+  margin: 0;
+}
+.sp-card-kicker {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.sp-card-title {
+  margin-top: 12px !important;
+  font: 800 clamp(36px, 4.4vw, 64px) / 0.98 var(--f-display);
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+}
+.sp-card-body {
+  margin-top: 16px !important;
+  max-width: 36ch;
+  font-size: 18px;
+  line-height: 1.45;
+}
+.sp-plate {
+  margin: 0;
+  aspect-ratio: 1;
+}
+.sp-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sp-block {
+  min-height: min(62vh, 560px);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 24px;
+}
+.sp-block[hidden] {
+  display: none;
+}
+.sp-block > .stage {
+  width: 100%;
+}
+.sp-hero .display {
+  font-size: clamp(48px, 7vw, 110px);
+}
+.sp-info {
+  max-width: 70ch;
+}
+.sp-title {
+  margin: 6px 0 8px;
+  font: 800 28px/1.05 var(--f-display);
+  font-stretch: 112%;
+}
+.sp-text {
+  margin: 0;
+  font-size: 18px;
+}
+.sp-intro {
+  margin: 8px 0 14px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.sp-forms {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+}
+@media (max-width: 860px) {
+  /* Téléphone : le spécimen d'abord, puis la fiche, les réglages, les
+     catégories. Choisir un échantillon ramène au spécimen. Pas de spécimen
+     collé : un fond opaque cacherait ce que le GPU peint dessous, un fond
+     transparent laisserait voir la liste qui défile. */
+  .sampler {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 12px;
+  }
+  .sp-main {
+    display: contents;
+  }
+  .chapter.sp-spec {
+    order: 1;
+    scroll-margin-top: calc(var(--bar-h) + 8px);
+  }
+  .sp-inspector {
+    order: 2;
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .sp-page,
+  .sp-scroll-hint {
+    order: 3;
+  }
+  .chapter.sp-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding-block: 36px;
+  }
+  .sp-page--rev .sp-page-text {
+    order: 0;
+  }
+  .sp-side {
+    order: 4;
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .sp-stage {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 12px;
+    min-height: 0;
+    padding: 14px;
+  }
+  .sp-card-title {
+    font-size: 28px;
+  }
+  .sp-card-body {
+    font-size: 13px;
+    margin-top: 8px !important;
+  }
+  .sp-block {
+    min-height: 36vh;
+    padding: 10px;
+  }
+  .sp-hero .display {
+    font-size: 40px;
+  }
+}
+
+/* Inspecteur : la fiche et les réglages, à droite, toujours sous la main. */
+.sp-inspector {
+  position: sticky;
+  top: calc(var(--bar-h) + 16px);
+  max-height: calc(100dvh - var(--bar-h) - 32px);
+  overflow: auto;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding-left: 6px;
+}
+.sp-inspector .sp-forms {
+  max-width: none;
+}
+.sp-inspector .range {
+  grid-template-columns: minmax(6.5em, 0.9fr) minmax(0, 1.6fr) 4em;
+}
+.sp-scroll-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+/* Planches à faire défiler. */
+.chapter.sp-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 32px;
+  align-items: center;
+  padding-block: 56px;
+}
+.sp-page--rev .sp-page-text {
+  order: 2;
+}
+.sp-page-text p,
+.sp-page-text h3 {
+  margin: 0;
+}
+.sp-page-num {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.sp-page-title {
+  margin-top: 10px !important;
+  font: 800 clamp(34px, 3.6vw, 56px) / 1 var(--f-display);
+  font-stretch: 112%;
+}
+.sp-page-body {
+  margin-top: 14px !important;
+  max-width: 38ch;
+  font-size: 18px;
+  line-height: 1.5;
+}
+.sp-page-plate {
+  margin: 0;
+  aspect-ratio: 3 / 2;
+}
+.sp-page-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@media (max-width: 1099px) and (min-width: 861px) {
+  /* Écran moyen : les échantillons passent au-dessus ; le spécimen et
+     l'inspecteur restent côte à côte. */
+  .sampler {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    grid-template-areas: "side side" "main insp";
+  }
+  .sp-side {
+    grid-area: side;
+    position: static;
+    max-height: none;
+  }
+  .sp-main {
+    grid-area: main;
+  }
+  .sp-inspector {
+    grid-area: insp;
+  }
+}
+
+/* Sampler : outils de débogage, sous les réglages de l'échantillon. */
+.sp-debug {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--rule);
+}
+.sp-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.sp-grid legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.sp-rec-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.sp-rec-field {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.sp-rec-field select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper);
+  color: inherit;
+  font: inherit;
 }
