@@ -3,7 +3,7 @@ import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
-import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
+import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
@@ -375,7 +375,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     addressModeV: "clamp-to-edge",
     maxAnisotropy: 8,
   });
-  const frameBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const frameBuf = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const frameBind = device.createBindGroup({ layout: frameLayout, entries: [{ binding: 0, resource: { buffer: frameBuf } }] });
   const planeBuf = device.createBuffer({
     size: PLANE_STRIDE * MAX_PLANES,
@@ -657,7 +657,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   };
 
   /* ───── Boucle ───── */
-  const frameData = new Float32Array(16);
+  const frameData = new Float32Array(20);
   const planeData = new Float32Array((PLANE_STRIDE * MAX_PLANES) / 4);
   const postData = new Float32Array(4 * POST_VEC4);
   const boxData = new Float32Array(8 * MAX_BOXES);
@@ -756,6 +756,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     frameData.set([pointer.x, pointer.y, pointer.inside ? 1 : 0, reduced ? 1 : 0], 4);
     frameData.set([settings.glyph.wave, settings.glyph.ink, settings.glyph.scatter, settings.dom.boxes ? 1 : 0], 8);
     frameData.set([2048, 1.6, PAPER[0], settings.debug.wire ? 1 : 0], 12);
+    frameData.set([slip, settings.inertia.amount, 0, 0], 16);
     device.queue.writeBuffer(frameBuf, 0, frameData);
 
     /* Éléments de texte : seule la boîte de l'élément est relue. */
@@ -768,7 +769,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const dur = e.fx === 1 ? 1500 : 900;
       const reveal = reduced ? 1 : e.revealStart < 0 ? 0 : Math.min(1, (now - e.revealStart) / dur);
       const hideSpecimen = e.fx === 2 && settings.glyph.atlas;
-      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen ? 0 : 1, 0, 0], i * 8);
+      const ms = text.morphSince.get(e.el);
+      const morph = ms === undefined || reduced ? 1 : Math.min(1, (now - ms) / MORPH_MS);
+      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen ? 0 : 1, morph, 0], i * 8);
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left, r.top, r.width, r.height, 0, 0.627, 0.863, 0.9);
     });
     if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 8);

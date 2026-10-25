@@ -81,6 +81,11 @@ forms = {
               <label class="range"><span>Force</span><input type="range" name="force" min="0.2" max="3" step="0.05" value="1" /><output>1,00</output></label>
               <label class="range"><span>Suit le pointeur</span><input type="range" name="follow" min="1" max="30" step="0.5" value="7" /><output>7,00</output></label>
             </form>""",
+    "inertia": """<form class="controls" aria-labelledby="c-sp-inertia" data-controls="inertia">
+              <p id="c-sp-inertia" class="controls-title">Inertie</p>
+              <label class="range"><span>Cisaillement</span><input type="range" name="amount" min="0" max="3" step="0.05" value="1.5" /><output>1,50</output></label>
+              <p class="readout">Faites défiler vite, puis arrêtez-vous : les plaques se couchent dans le sens de la course et se redressent.</p>
+            </form>""",
     "a11y": """<form class="controls" aria-labelledby="c-sp-a11y" data-controls="a11y">
               <p id="c-sp-a11y" class="controls-title">Accessibilité</p>
               <fieldset class="choices">
@@ -140,7 +145,7 @@ page = f"""{head}</head>
       <div class="sp-main">
         <section id="ch-specimen" class="chapter sp-spec" aria-labelledby="sp-title">
           <div class="sp-stage stage" data-sp-stage data-gl-source>
-            <div class="sp-card" data-gl-text>
+            <div class="sp-card" data-gl-text data-gl-morph>
               <p class="sp-card-kicker">Spécimen</p>
               <p class="sp-card-title">Encre &amp; lumière</p>
               <p class="sp-card-body">

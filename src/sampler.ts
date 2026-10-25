@@ -218,6 +218,26 @@ const CATS: Category[] = [
     ],
   },
   {
+    id: "aristide",
+    name: "Aristide Benoist",
+    intro: "Des gestes de ses sites : des lettres qui changent de mot sans quitter la page, des images qui volent d'une mise en page à l'autre, des plaques qui ont du poids.",
+    samples: [
+      {
+        id: "ab-morph",
+        label: "Morphing",
+        text: "Le titre et le texte changent : chaque lettre commune aux deux textes part de sa place et rejoint la nouvelle en arc ; les autres naissent ou s'effacent à l'encre. La photo vole vers sa nouvelle place (FLIP), le GPU la suit image par image.",
+        action: { label: "Changer de mise en page", run: () => morphSpecimen() },
+      },
+      {
+        id: "ab-inertie",
+        label: "Inertie au défilement",
+        text: "Les plaques se couchent dans le sens du défilement, proportionnellement à sa vitesse, puis se redressent. Faites défiler vite sur les planches.",
+        forms: ["inertia"],
+        patch: () => (settings.inertia.amount = 1.5),
+      },
+    ],
+  },
+  {
     id: "canvas-html",
     name: "HTML dans le canvas",
     intro: "Des idées tirées des démos html-in-canvas.dev, refaites avec ce moteur : le HTML reste la source, le GPU le défait et le refait.",
@@ -359,6 +379,8 @@ function neutral() {
   settings.dom.boxes = false;
   settings.grain.amp = 1;
   settings.crease.on = false;
+  settings.inertia.amount = 0;
+  if (specB) morphSpecimen(true);
   settings.dust.target = 0;
   settings.dust.value = 0;
   for (const el of document.querySelectorAll<HTMLElement>("[data-gl-material]")) delete el.dataset.glMaterial;
@@ -388,6 +410,36 @@ function replay() {
 }
 
 const stageEl = document.querySelector<HTMLElement>("[data-sp-stage]")!;
+
+/* ───── Morphing du spécimen ───── */
+
+const SPEC = {
+  a: { title: "Encre & lumière", body: "Le texte vit dans le DOM, le GPU le repeint. Une photo, un titre, trois lignes : toujours les mêmes, pour que seul l'effet change d'un échantillon à l'autre." },
+  b: { title: "Lumière & encre", body: "Le GPU repeint, le DOM compose. Un titre, une photo, trois lignes : chaque lettre retrouve sa place dans le nouveau texte." },
+};
+let specB = false;
+/** Bascule le spécimen entre ses deux mises en page ; silent : sans animation de la photo. */
+function morphSpecimen(silent = false) {
+  specB = !specB;
+  const t = SPEC[specB ? "b" : "a"];
+  const fig = [...stageEl.querySelectorAll<HTMLElement>(".sp-plate")].find((f) => !f.hidden);
+  const before = fig?.getBoundingClientRect();
+  stageEl.classList.toggle("is-b", specB);
+  stageEl.querySelector(".sp-card-title")!.textContent = t.title;
+  stageEl.querySelector(".sp-card-body")!.textContent = t.body;
+  const after = fig?.getBoundingClientRect();
+  if (fig && before && after && !silent && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const dx = before.left - after.left;
+    const dy = before.top - after.top;
+    const sx = before.width / after.width;
+    const sy = before.height / after.height;
+    fig.animate(
+      [{ transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transformOrigin: "0 0", transform: "none" }],
+      { duration: 950, easing: "cubic-bezier(0.7, 0, 0.2, 1)" },
+    );
+  }
+  dispatchEvent(new Event("pli:relayout"));
+}
 const SPREAD = new Set(["filtre", "trame", "flammes", "nuages", "toile", "gouttes", "givre"]);
 const info = {
   cat: document.querySelector<HTMLElement>("[data-sp-catname]")!,

@@ -2106,3 +2106,11 @@ html.gl-on .menu[data-style="planche"] .sheet {
   color: inherit;
   font: inherit;
 }
+
+/* Sampler, morphing : la seconde mise en page du spécimen (photo à gauche, plus grande). */
+.sp-stage.is-b {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+.sp-stage.is-b .sp-plate {
+  order: -1;
+}

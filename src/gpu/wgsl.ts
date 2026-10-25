@@ -14,6 +14,7 @@ struct Frame {
   pointer: vec4f,  // x, y (css), inside, reduced
   glyph: vec4f,    // wave, ink, scatter, glyphBoxes
   misc: vec4f,     // atlasSize, hdr, paperLum, fil de fer (0/1)
+  motion: vec4f,   // vitesse de défilement (−1…1), inertie des plaques (0…), 0, 0
 };
 
 // Débogage, fil de fer : chaque plan n'est plus que ses arêtes et la diagonale
@@ -115,7 +116,14 @@ fn vs_plane(@builtin(vertex_index) vi: u32) -> VsOut {
   var out: VsOut;
   out.px = r.xy + c * r.zw;
   out.local = c;
-  out.clip = to_clip(out.px, frame);
+  // Inertie (à la Aristide Benoist) : au défilement, la plaque se cisaille
+  // et s'étire dans le sens de la course, puis se redresse. Seule la position
+  // à l'écran bouge : les coins arrondis restent calculés sur le rectangle.
+  var p = out.px;
+  let sk = frame.motion.x * frame.motion.y;
+  p.y += (c.x - 0.5) * r.z * sk * 0.12;
+  p.y += (c.y - 0.5) * r.w * abs(sk) * 0.08;
+  out.clip = to_clip(p, frame);
   return out;
 }
 
@@ -399,6 +407,9 @@ struct Glyph {
   elem: u32,
   idx: f32,      // rang du glyphe dans l'élément
   px: f32,       // pixels CSS par pixel d'atlas
+  src: vec2f,    // morphing : d'où part la lettre (css, relatif à sa place)
+  mk: f32,       // 0 fixe, 1 voyage, 2 apparaît, 3 s'efface
+  md: f32,       // retard dans le morphing (0…1)
 };
 
 struct Elem {
@@ -407,7 +418,8 @@ struct Elem {
   fx: f32,       // 0 texte courant, 1 ouverture, 2 spécimen
   count: f32,
   alpha: f32,
-  _p: vec2f,
+  morph: f32,    // progression du morphing de l'élément (0…1)
+  _p: f32,
 };
 
 // État physique d'une lettre de l'ouverture, écrit par la passe de calcul.
@@ -480,6 +492,26 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
     local = rot((h - 0.5) * sc * 1.4) * local;
   }
 
+  if (g.mk > 0.5) {
+    // Morphing (à la manière d'Aristide Benoist) : les lettres communes aux
+    // deux textes voyagent en arc vers leur nouvelle place, les autres
+    // naissent ou s'effacent à l'encre.
+    let q = clamp((e.morph - g.md) / 0.55, 0.0, 1.0);
+    let k = q * q * (3.0 - 2.0 * q);
+    if (g.mk < 1.5) {
+      center += g.src * (1.0 - k);
+      center.y -= sin(3.14159 * k) * g.size.y * (0.18 + 0.25 * hash11(g.idx + 4.2)) * select(1.0, -1.0, g.src.x < 0.0);
+      local = rot(sin(3.14159 * k) * (hash11(g.idx * 1.3) - 0.5) * 0.5) * local;
+    } else if (g.mk < 2.5) {
+      reveal = min(reveal, k);
+      local *= 0.75 + 0.25 * k;
+      center.y += (1.0 - k) * g.size.y * 0.2;
+    } else {
+      reveal = min(reveal, 1.0 - k);
+      center.y -= k * g.size.y * 0.25;
+    }
+  }
+
   var out: VsOut;
   out.clip = to_clip(center + local, frame);
   out.uv = mix(g.uv.xy, g.uv.zw, c);
@@ -539,6 +571,9 @@ struct Glyph {
   elem: u32,
   idx: f32,
   px: f32,
+  src: vec2f,
+  mk: f32,
+  md: f32,
 };
 
 struct Body {

@@ -34,6 +34,8 @@ export type Settings = {
   debug: { wire: boolean; col: boolean; row: boolean; ctr: boolean };
   /** Désintégration (matière « poussiere ») : progression courante et cible, 0 entier, 1 en poussière. */
   dust: { value: number; target: number };
+  /** Inertie des plaques au défilement (0 coupée). */
+  inertia: { amount: number };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
@@ -56,6 +58,7 @@ export const settings: Settings = {
   tear: { amp: 1, react: 1 },
   debug: { wire: false, col: false, row: false, ctr: false },
   dust: { value: 0, target: 0 },
+  inertia: { amount: 0 },
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },

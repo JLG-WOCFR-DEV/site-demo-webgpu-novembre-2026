@@ -1,4 +1,5 @@
 import TinySDF from "@mapbox/tiny-sdf";
+import { clockNow } from "./recorder.ts";
 import { placeGlyph, ShelfPacker, stretchKeyword, tierFor, type SdfMetrics } from "./atlas.ts";
 
 /**
@@ -17,7 +18,12 @@ import { placeGlyph, ShelfPacker, stretchKeyword, tierFor, type SdfMetrics } fro
 
 export const ATLAS_SIZE = 2048;
 /** Octets par glyphe dans le storage buffer (voir struct Glyph en WGSL). */
-export const GLYPH_STRIDE = 48;
+export const GLYPH_STRIDE = 64;
+/** Durée d'un morphing de texte (ms). */
+export const MORPH_MS = 1150;
+
+/** Glyphe tel qu'émis, gardé pour le morphing de l'élément au prochain changement de texte. */
+type MorphGlyph = { ch: string; f: number[]; color: number };
 export const ELEM_STRIDE = 32;
 
 type AtlasEntry = SdfMetrics & { u0: number; v0: number; u1: number; v1: number };
@@ -145,6 +151,11 @@ export class TextLayer {
   }
 
   /** Remesure tout le texte. À appeler au démarrage, au resize et quand une fonte arrive. */
+  /** Éléments [data-gl-morph] : leurs glyphes à la mise en page précédente. */
+  private morphPrev = new Map<HTMLElement, { key: string; glyphs: MorphGlyph[] }>();
+  /** Début du dernier morphing de chaque élément (horloge des animations). */
+  morphSince = new Map<HTMLElement, number>();
+
   layout(dpr: number) {
     const root = document.documentElement;
     // Les couleurs sont lues sans la classe qui rend le texte DOM transparent.
@@ -154,6 +165,8 @@ export class TextLayer {
     const containers = [...document.querySelectorAll<HTMLElement>("[data-gl-text]")];
     const out: number[] = [];
     const u32: number[] = [];
+    // Par glyphe : décalage de départ (x, y), genre (0 fixe, 1 voyage, 2 apparaît, 3 s'efface), retard.
+    const extra: number[] = [];
     this.elems = [];
     this.msdfGlyphs = 0;
     let total = 0;
@@ -164,6 +177,8 @@ export class TextLayer {
       const fx = el.dataset.glFx === "hero" ? 1 : el.dataset.glFx === "specimen" ? 2 : 0;
       const first = total;
       let idx = 0;
+      const morph = el.hasAttribute("data-gl-morph");
+      const cur: MorphGlyph[] = [];
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
         const parent = node.parentElement;
@@ -208,6 +223,8 @@ export class TextLayer {
                 out.push(qx - box.left, qy - box.top, aw * k, ah * k, ax / meta.width, ay / meta.height, (ax + aw) / meta.width, (ay + ah) / meta.height);
                 u32.push(color, elemIndex);
                 out.push(idx, -k);
+                extra.push(0, 0, 0, 0);
+                if (morph) cur.push({ ch, f: out.slice(out.length - 10), color });
                 total++;
                 idx++;
                 this.msdfGlyphs++;
@@ -220,6 +237,8 @@ export class TextLayer {
                 out.push(q.x - box.left, q.y - box.top, q.w, q.h, g.u0, g.v0, g.u1, g.v1);
                 u32.push(color, elemIndex);
                 out.push(idx, q.k);
+                extra.push(0, 0, 0, 0);
+                if (morph) cur.push({ ch, f: out.slice(out.length - 10), color });
                 total++;
                 idx++;
               }
@@ -228,23 +247,56 @@ export class TextLayer {
           i += len;
         }
       }
+      if (morph) {
+        // Morphing : chaque lettre du nouveau texte cherche, dans l'ancien, la
+        // première lettre identique encore libre, et part de sa place. Les
+        // lettres sans partenaire apparaissent ; les anciennes orphelines
+        // restent un temps, en fantômes, pour s'effacer.
+        const key = cur.map((g) => g.ch).join("");
+        const prev = this.morphPrev.get(el);
+        if (prev && prev.key !== key) {
+          const used = new Set<number>();
+          cur.forEach((g, i) => {
+            const j = prev.glyphs.findIndex((p, k) => !used.has(k) && p.ch === g.ch);
+            const e = (first + i) * 4;
+            const delay = (i / Math.max(1, cur.length)) * 0.32 + ((i * 7919) % 13) / 13 * 0.08;
+            if (j >= 0) {
+              used.add(j);
+              const p = prev.glyphs[j]!;
+              extra.splice(e, 4, p.f[0]! - g.f[0]!, p.f[1]! - g.f[1]!, 1, delay);
+            } else {
+              extra.splice(e, 4, 0, 0, 2, delay + 0.12);
+            }
+          });
+          prev.glyphs.forEach((p, k) => {
+            if (used.has(k)) return;
+            out.push(...p.f);
+            u32.push(p.color, elemIndex);
+            extra.push(0, 0, 3, (k / Math.max(1, prev.glyphs.length)) * 0.25);
+            total++;
+          });
+          this.morphSince.set(el, clockNow());
+        }
+        this.morphPrev.set(el, { key, glyphs: cur });
+      }
       this.elems.push({ el, fx, count: idx, first, revealStart: -1 });
     });
 
     if (had) root.classList.add("gl-on");
 
-    // Entrelacement f32/u32 selon la struct WGSL (12 mots par glyphe).
+    // Entrelacement f32/u32 selon la struct WGSL (16 mots par glyphe).
     const buf = new ArrayBuffer(Math.max(GLYPH_STRIDE, total * GLYPH_STRIDE));
     const f = new Float32Array(buf);
     const u = new Uint32Array(buf);
     for (let g = 0; g < total; g++) {
-      const o = g * 12;
+      const o = g * 16;
       const s = g * 10;
       for (let k = 0; k < 8; k++) f[o + k] = out[s + k]!;
       u[o + 8] = u32[g * 2]!;
       u[o + 9] = u32[g * 2 + 1]!;
       f[o + 10] = out[s + 8]!;
       f[o + 11] = out[s + 9]!;
+      for (let k = 0; k < 4; k++) f[o + 12 + k] = extra[g * 4 + k]!;
     }
     this.glyphData = buf;
     this.glyphCount = total;
