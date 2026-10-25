@@ -60,6 +60,41 @@ p.replay();                  // rejouer l'impression des sections
 - **Mise en page liquide** (`liquide.html`) : grille CSS réordonnable rendue en verre qui fusionne.
 - **Sommaire en lettres** : style « Lettres » du sommaire en feuilles.
 
-## Ensuite
+## Feuille de route
 
-Un éditeur visuel : sélectionner un élément, régler ses attributs dans un inspecteur, exporter du HTML propre.
+Deux chantiers : l'outil de fabrication (le « framework » au sens d'Aristide Benoist) et l'éditeur. L'idée directrice vient
+de lui : tout ce qui peut être calculé à la construction l'est, pour laisser à JavaScript et à WebGPU presque rien à faire
+à l'exécution.
+
+### A. Fabrication (build)
+
+| # | Brique | Existe déjà | Reste à faire |
+|---|---|---|---|
+| 1 | Serveur local, rechargement à chaud | Vite (`npm run dev`) | Rechargement à chaud des shaders WGSL sans perdre l'état du moteur. |
+| 2 | Gabarits HTML et composants | `tools/build-sampler.py` (assemblage à la main) | Un vrai système de gabarits : `<x-grille>`, `<x-liquide>`, `<x-sommaire>` déroulés en HTML statique à la construction, avec leurs attributs `data-gl-*`. |
+| 3 | Minification et renommage | Vite minifie JS et CSS | Renommer les classes CSS et les attributs, minifier le WGSL (noms, espaces, constantes repliées). |
+| 4 | Sortie statique ou rendu serveur | Sortie statique (`dist/`) | Rendu serveur (Vercel ou AWS Lambda) pour les contenus issus d'un CMS ; même gabarits, même sortie. |
+| 5 | Fontes et SVG prêts pour le GPU | `tools/msdf.py` : atlas MTSDF des titres | Toutes les fontes du site, et les SVG convertis en champs de distance (logos, pictos nets à toute taille). |
+| 6 | Images | Redimensionnement à la main | Chaîne d'images : tailles, mipmaps et formats compressés pour le GPU (KTX2/Basis), générés à la construction. |
+| 7 | Champs de distance | MTSDF des titres ; SDF du texte courant générés au chargement | Générer aussi les SDF du texte courant à la construction : plus rien à dessiner au démarrage. |
+| 8 | Morphings et effets précalculés | Appariement des lettres fait à l'exécution | Précalculer les appariements de lettres, les positions des glyphes de chaque gabarit, les trajectoires et les tables des effets ; le moteur ne fait plus que lire. |
+
+### B. Éditeur
+
+Sélectionner un élément, régler ses attributs dans un inspecteur, exporter du HTML propre. Le panneau de débogage en est
+l'embryon.
+
+### C. Composants et navigation
+
+Grille infinie, mise en page liquide, sommaire en lettres sont faits en pages de démonstration ; il reste à les extraire en
+composants (A2), et à étendre le routeur de la grille (images partagées entre deux vues) à tout le site.
+
+### Ordre proposé
+
+1. **A5 + A7 + A8** : tout le texte prêt pour le GPU à la construction. C'est ce qui rend l'alignement DOM / GPU instantané au
+   chargement, et ce que la démo fait aujourd'hui au démarrage.
+2. **A2 + C** : gabarits et composants, pour poser une grille ou un liquide en une balise.
+3. **A6** : chaîne d'images, le plus gros gain de poids.
+4. **A3** : renommage et minification du WGSL.
+5. **A4** : rendu serveur, quand un CMS arrive.
+6. **B** : l'éditeur, une fois les composants stables.

@@ -108,10 +108,17 @@
       <section class="pd-sec" data-gl-print aria-labelledby="pd-next">
         <h2 id="pd-next" class="pd-h2" data-gl-text>Ensuite</h2>
         <p class="pd-p" data-gl-text>
-          Un éditeur visuel par-dessus : on sélectionne un élément dans la page, l'inspecteur propose les attributs (matière,
-          transition, morphing) avec leurs réglages, et l'export rend du HTML propre. Puis des composants prêts à poser : grille
-          infinie, mise en page liquide, sommaire en lettres, transitions de page avec images partagées.
+          Le principe vient d'Aristide Benoist : tout ce qui peut être calculé à la construction l'est, pour laisser à
+          JavaScript et à WebGPU presque rien à faire à l'exécution.
         </p>
+        <ol class="pd-list" data-gl-text>
+          <li><strong>Texte prêt pour le GPU à la construction.</strong> Atlas de distances de toutes les fontes, positions des glyphes de chaque gabarit, appariements des morphings précalculés.</li>
+          <li><strong>Gabarits et composants.</strong> Une balise pour poser une grille infinie, une mise en page liquide ou un sommaire en lettres, déroulée en HTML statique.</li>
+          <li><strong>Chaîne d'images et de SVG.</strong> Tailles, mipmaps et formats compressés pour le GPU ; SVG convertis en champs de distance.</li>
+          <li><strong>Minification et renommage</strong> du CSS, du JavaScript et des shaders WGSL.</li>
+          <li><strong>Sortie statique ou rendu serveur</strong> (Vercel, AWS Lambda) quand le contenu vient d'un CMS.</li>
+          <li><strong>Un éditeur visuel</strong> : sélectionner un élément, régler ses attributs dans un inspecteur, exporter du HTML propre.</li>
+        </ol>
       </section>
     </main>
   </body>
