@@ -86,6 +86,13 @@ const CUI: [string, string, string, string?][] = [
   ["tramage", "Loupe tramée", "Sous le pointeur, un tramage ordonné en deux encres, pixel par pixel."],
   ["deplacement", "Déplacement", "Une grille qui s'écarte du pointeur, avec des franges de couleur et du grain."],
   ["champ", "Champ de force", "Un bouclier hexagonal qui luit près du pointeur ; un clic déclenche une onde de choc qui réfracte la page.", "Onde de choc"],
+  ["eclats", "Éclats", "La page brisée en éclats de verre : près du pointeur ils se soulèvent, tournent et s'écartent, avec un liseré qui réfracte et leur ombre dans les joints."],
+  ["particules", "Particules", "Toute la page en grains fins qui frémissent ; sous le pointeur, ils se rassemblent en interface nette."],
+  ["sable", "Sable", "Sous une ligne, la page se défait en sable de plus en plus clairsemé ; faites défiler, elle se reforme en passant au-dessus."],
+  ["tissu", "Tissu", "La page suspendue comme une étoffe au vent, avec sa trame ; le pointeur qui passe y envoie des vagues."],
+  ["dechiffrer", "Déchiffrer", "La page n'est plus qu'un chiffre de caractères qui changent sans cesse ; autour du pointeur, elle se déchiffre."],
+  ["pluie", "Pluie de glyphes", "Des colonnes de caractères tombent et allument l'encre de la page au passage ; elles accélèrent sous le pointeur."],
+  ["hexagones", "Hexagones", "La page sur des tuiles hexagonales brillantes qui se soulèvent et se penchent vers le pointeur."],
   ["laser", "Laser", "Un faisceau près du bas de l'écran : sous lui la page attend dans le noir, et se révèle en passant au-dessus quand on fait défiler."],
 ];
 /** Une onde au centre du spécimen (pour l'essayer sans viser). */

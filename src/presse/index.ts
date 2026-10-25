@@ -31,7 +31,7 @@ export type PresseOptions = {
   debug?: boolean;
   /** Canvas à utiliser ; sinon, Presse en crée un, fixe, derrière la page. */
   canvas?: HTMLCanvasElement;
-  /** Un effet d'après Canvas UI sur toute la page (ondes, vhs, glitch, pli, tuiles, ascii, tramage, deplacement, champ, laser). */
+  /** Un effet d'après Canvas UI sur toute la page (voir CUI_EFFECTS : ondes, vhs, glitch, pli, tuiles, ascii, éclats, sable, tissu…). */
   canvasUi?: CuiEffect;
   /** Polices à attendre avant de mesurer les lettres (descripteurs CSS font). */
   fonts?: string[];

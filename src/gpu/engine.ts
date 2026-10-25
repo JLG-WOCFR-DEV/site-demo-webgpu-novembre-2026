@@ -737,9 +737,19 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   // Ondes et champ de force (effets Canvas UI) : chaque clic sur la page lance une onde.
   addEventListener("pointerdown", (e) => {
     const fx = settings.cui.effect;
-    if (fx !== 1 && fx !== 9) return;
+    if (fx !== 1 && fx !== 9 && fx !== 14) return;
     if ((e.target as Element | null)?.closest?.("button, a, input, select, textarea, label, summary, [role=button]")) return;
     pushRipple(e.clientX, e.clientY);
+  });
+  // Tissu : le pointeur qui passe laisse une ride, d'autant plus forte qu'il va vite.
+  let lastStroke = { x: 0, y: 0, t: 0 };
+  addEventListener("pointermove", (e) => {
+    if (settings.cui.effect !== 14) return;
+    const now = performance.now();
+    if (now - lastStroke.t < 70) return;
+    const v = Math.hypot(e.clientX - lastStroke.x, e.clientY - lastStroke.y) / Math.max(1, now - lastStroke.t);
+    lastStroke = { x: e.clientX, y: e.clientY, t: now };
+    if (v > 0.25) pushRipple(e.clientX, e.clientY, Math.min(1, v / 2.5));
   });
   // Couche d'écran du froissé : décalage de défilement en reste (texels), et remise à zéro.
   let creaseCarry = 0;
