@@ -7,6 +7,7 @@
  * valeur ici que dans la feuille de style. La cible de scène est en
  * rgba16float pour que les hautes lumières des photos puissent dépasser 1.
  */
+import { CUI_WGSL, MAX_RIPPLES } from "./cui.ts";
 
 export const FRAME_STRUCT = /* wgsl */ `
 struct Frame {
@@ -1513,6 +1514,9 @@ struct Post {
   tears: array<vec4f, ${MAX_TEARS}>, // y, gauche, droite (px), 0
   grid: vec4f,     // masque (1 colonnes, 2 rangées, 4 centre), x gauche, x droite, gouttière (px)
   grid2: vec4f,    // nombre de colonnes, pas des rangées (px), défilement (px), 0
+  cui: vec4f,      // effet Canvas UI (0 aucun…10), intensité, taille, 0
+  cui2: vec4f,     // pointeur amorti x, y (px), présent, défilement (px)
+  ripples: array<vec4f, ${MAX_RIPPLES}>, // clics : x, y (px), départ (s), force
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -2341,6 +2345,8 @@ fn image_filter(px: vec2f, st: vec4f) -> vec3f {
   return f_casse(px, st, size, amt);
 }
 
+${CUI_WGSL}
+
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4f {
   let px = in.uv * u.res.xy;
@@ -2406,6 +2412,8 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 
   // Tri de pixels : la traînée relit la ligne du front, plus haut.
   lens.y -= sort_pull(px);
+  // Effets d'après Canvas UI : d'abord la déviation de la lecture.
+  lens += cui_offset(px);
   var col = source(px, lens);
 
   if (kind > 2.5 && kind < 3.5) {
@@ -2415,6 +2423,8 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   } else if (kind > 10.5 && kind < 11.5 && u.matter.w > 0.001) {
     col = m_dust(px, stage, u.matter.w);
   }
+  // … puis la couleur.
+  col = cui_color(px, col, lens);
 
   if (u.chain.z > 0.5) {
     if (kind > 0.5 && kind < 1.5) {

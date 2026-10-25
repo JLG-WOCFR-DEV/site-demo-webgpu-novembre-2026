@@ -1,6 +1,7 @@
 import { motionScale } from "../motion-scale.ts";
 import { menuGL } from "../menu.ts";
-import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
+import { cuiRipples, motion, pointer, pushRipple, settings, TRANSITION_NONE } from "../state.ts";
+import { MAX_RIPPLES } from "./cui.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
@@ -73,7 +74,7 @@ const TRACE_RATES: [number, number, number, number][] = [
 export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2 + 2 + MAX_RIPPLES;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
@@ -83,6 +84,7 @@ const CREASE_AT = SCREEN_AT + 4;
 const LENSM_AT = CREASE_AT + 4;
 const TEAR_AT = LENSM_AT + 4;
 const GRID_AT = TEAR_AT + 4 + MAX_TEARS * 4;
+const CUI_AT = GRID_AT + 8;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -732,6 +734,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage], [data-gl-material]")].filter((s) => stageName(s) !== "dechirure");
   // Pointeur amorti de la matière lentille, et sa force au survol.
   const lensP = { x: 0, y: 0, k: 0 };
+  // Ondes et champ de force (effets Canvas UI) : chaque clic sur la page lance une onde.
+  addEventListener("pointerdown", (e) => {
+    const fx = settings.cui.effect;
+    if (fx !== 1 && fx !== 9) return;
+    if ((e.target as Element | null)?.closest?.("button, a, input, select, textarea, label, summary, [role=button]")) return;
+    pushRipple(e.clientX, e.clientY);
+  });
   // Couche d'écran du froissé : décalage de défilement en reste (texels), et remise à zéro.
   let creaseCarry = 0;
   let creaseWas = false;
@@ -1086,6 +1095,16 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const gc = gridCache;
     postData.set(gm && gc ? [gm, gc.gl * dpr, (cssW - gc.gr) * dpr, gc.gap * dpr] : [0, 0, 0, 0], GRID_AT);
     postData.set([12, 8 * dpr, scrollY * dpr, 0], GRID_AT + 4);
+
+    // Effets d'après Canvas UI : pointeur amorti (celui de la lentille) et ondes des clics.
+    const cu = settings.cui;
+    postData.set([menuOpen ? 0 : cu.effect, cu.amount, cu.scale, 0], CUI_AT);
+    postData.set([lensP.x * dpr, lensP.y * dpr, pointer.inside && !menuOpen && !reduced ? 1 : 0, scrollY * dpr], CUI_AT + 4);
+    for (let i = 0; i < MAX_RIPPLES; i++) {
+      const r = cuiRipples[i];
+      if (r && r.t < 0) r.t = time;
+      postData.set(r ? [r.x * dpr, r.y * dpr, r.t, r.s] : [0, 0, 0, 0], CUI_AT + 8 + i * 4);
+    }
     device.queue.writeBuffer(postBuf, 0, postData);
 
     const nBoxes = Math.min(MAX_BOXES, boxes.length / 8);

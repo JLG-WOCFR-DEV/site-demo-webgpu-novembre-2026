@@ -1,7 +1,8 @@
 import "./main.ts";
 import { openMenu } from "./menu.ts";
 import { setDebugCaps } from "./debug-panel.ts";
-import { settings } from "./state.ts";
+import { CUI_EFFECTS } from "./gpu/cui.ts";
+import { pushRipple, settings } from "./state.ts";
 
 /**
  * Le sampler : un effet à la fois. Chaque échantillon remet la page à zéro
@@ -75,6 +76,23 @@ const MENUS = [
   ["galerie", "Galerie", "Des feuilles suspendues dans la profondeur."],
   ["salle", "Salle", "Au centre d'une pièce ronde : les feuilles tournent autour de vous."],
 ];
+const CUI: [string, string, string, string?][] = [
+  ["ondes", "Ondes", "Chaque clic jette un caillou dans la page : des rides qui s'écartent et la réfractent, avec un reflet sur les crêtes.", "Lancer une onde"],
+  ["vhs", "VHS", "Une cassette usée : l'image ondule, une bande de suivi passe, la couleur bave vers la droite, le bas de l'écran crépite."],
+  ["glitch", "Glitch", "Des salves : la page se déchire en tranches décalées, les canaux se séparent, des blocs se corrompent."],
+  ["pli", "Pli de cube", "Le haut et le bas de la page passent sur les faces d'un cube : faites défiler, le texte tourne autour des arêtes."],
+  ["tuiles", "Tuiles", "La page posée sur des carreaux qui se soulèvent en vagues autour du pointeur."],
+  ["ascii", "Loupe ASCII", "Sous le pointeur, la page est recomposée en caractères de la casse, du plus clair au plus noir."],
+  ["tramage", "Loupe tramée", "Sous le pointeur, un tramage ordonné en deux encres, pixel par pixel."],
+  ["deplacement", "Déplacement", "Une grille qui s'écarte du pointeur, avec des franges de couleur et du grain."],
+  ["champ", "Champ de force", "Un bouclier hexagonal qui luit près du pointeur ; un clic déclenche une onde de choc qui réfracte la page.", "Onde de choc"],
+  ["laser", "Laser", "Un faisceau près du bas de l'écran : sous lui la page attend dans le noir, et se révèle en passant au-dessus quand on fait défiler."],
+];
+/** Une onde au centre du spécimen (pour l'essayer sans viser). */
+function rippleHere() {
+  const r = document.querySelector("[data-sp-stage]")?.getBoundingClientRect();
+  pushRipple(r ? r.left + r.width / 2 : innerWidth / 2, r ? r.top + r.height / 2 : innerHeight / 2);
+}
 const VISIONS = ["Protanopie", "Deutéranopie", "Tritanopie", "Achromatopsie"];
 
 const radio = (name: string, value: string) => {
@@ -273,6 +291,21 @@ const CATS: Category[] = [
     ],
   },
   {
+    id: "canvas-ui",
+    name: "Canvas UI",
+    intro: "Des idées tirées de canvasui.dev, refaites dans la passe composite : elles agissent sur toute la page, texte et photo compris, puisque le moteur la repeint déjà. Aucun code repris.",
+    samples: CUI.map(([id, label, text, act]) => ({
+      id: `cui-${id}`,
+      label: label!,
+      text: text!,
+      forms: ["cui"],
+      patch: () => {
+        settings.cui.effect = CUI_EFFECTS.indexOf(id as (typeof CUI_EFFECTS)[number]);
+      },
+      action: act ? { label: act, run: rippleHere } : undefined,
+    })),
+  },
+  {
     id: "texte",
     name: "Texte",
     intro: "Le texte est lu sur le DOM et redessiné par le GPU, glyphe par glyphe.",
@@ -381,6 +414,7 @@ function neutral() {
   settings.grain.amp = 1;
   settings.crease.on = false;
   settings.inertia.amount = 0;
+  Object.assign(settings.cui, { effect: 0, amount: 1, scale: 1 });
   if (specB) morphSpecimen(true);
   settings.dust.target = 0;
   settings.dust.value = 0;

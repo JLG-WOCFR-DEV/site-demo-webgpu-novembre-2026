@@ -81,6 +81,12 @@ forms = {
               <label class="range"><span>Force</span><input type="range" name="force" min="0.2" max="3" step="0.05" value="1" /><output>1,00</output></label>
               <label class="range"><span>Suit le pointeur</span><input type="range" name="follow" min="1" max="30" step="0.5" value="7" /><output>7,00</output></label>
             </form>""",
+    "cui": """<form class="controls" aria-labelledby="c-sp-cui" data-controls="cui">
+              <p id="c-sp-cui" class="controls-title">Canvas UI</p>
+              <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="2" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Taille</span><input type="range" name="scale" min="0.4" max="2" step="0.05" value="1" /><output>1,00</output></label>
+              <p class="readout">L'effet agit sur toute la page. Mouvement réduit : il se fige.</p>
+            </form>""",
     "inertia": """<form class="controls" aria-labelledby="c-sp-inertia" data-controls="inertia">
               <p id="c-sp-inertia" class="controls-title">Inertie</p>
               <label class="range"><span>Cisaillement</span><input type="range" name="amount" min="0" max="3" step="0.05" value="1.5" /><output>1,50</output></label>

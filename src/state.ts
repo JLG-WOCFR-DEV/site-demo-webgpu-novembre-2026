@@ -36,6 +36,8 @@ export type Settings = {
   dust: { value: number; target: number };
   /** Inertie des plaques au défilement (0 coupée). */
   inertia: { amount: number };
+  /** Effets d'après Canvas UI, sur toute la page : effet (index de CUI_EFFECTS, 0 aucun), intensité, taille. */
+  cui: { effect: number; amount: number; scale: number };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
@@ -59,6 +61,7 @@ export const settings: Settings = {
   debug: { wire: false, col: false, row: false, ctr: false },
   dust: { value: 0, target: 0 },
   inertia: { amount: 0 },
+  cui: { effect: 0, amount: 1, scale: 1 },
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },
@@ -86,3 +89,10 @@ export const motion = {
     return this.system || this.paused;
   },
 };
+
+/** Clics qui lancent une onde (effets « ondes » et « champ de force ») ; t < 0 : l'heure sera posée par le moteur. */
+export const cuiRipples: { x: number; y: number; t: number; s: number }[] = [];
+export function pushRipple(x: number, y: number, s = 1) {
+  cuiRipples.push({ x, y, t: -1, s });
+  if (cuiRipples.length > 8) cuiRipples.shift();
+}

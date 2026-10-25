@@ -2,6 +2,7 @@ import "./presse.css";
 import { mountDebugPanel, setDebugCaps } from "../debug-panel.ts";
 import { createEngine, type Engine } from "../gpu/engine.ts";
 import { setMotionLevel, type MotionLevel } from "../motion-scale.ts";
+import { CUI_EFFECTS, type CuiEffect } from "../gpu/cui.ts";
 import { mountComponents } from "./components.ts";
 import { settings, TRANSITIONS } from "../state.ts";
 
@@ -30,6 +31,8 @@ export type PresseOptions = {
   debug?: boolean;
   /** Canvas à utiliser ; sinon, Presse en crée un, fixe, derrière la page. */
   canvas?: HTMLCanvasElement;
+  /** Un effet d'après Canvas UI sur toute la page (ondes, vhs, glitch, pli, tuiles, ascii, tramage, deplacement, champ, laser). */
+  canvasUi?: CuiEffect;
   /** Polices à attendre avant de mesurer les lettres (descripteurs CSS font). */
   fonts?: string[];
 };
@@ -57,6 +60,7 @@ export async function presse(o: PresseOptions = {}): Promise<Presse> {
   settings.transition.style = ti >= 0 ? ti : 0;
   root.dataset.transition = TRANSITIONS[settings.transition.style];
   if (o.motion) setMotionLevel(o.motion);
+  settings.cui.effect = Math.max(0, CUI_EFFECTS.indexOf(o.canvasUi ?? "aucun"));
   if (o.debug) mountDebugPanel();
 
   // Les composants (<x-liquide>, <x-grille>…) ont leur propre rendu et leur
@@ -118,5 +122,6 @@ export function presseFromHtml() {
     effects: d.presseEffects ? (d.presseEffects.split(/\s+/).filter(Boolean) as Effect[]) : undefined,
     motion: (d.presseMotion as MotionLevel) ?? undefined,
     debug: d.presseDebug !== undefined,
+    canvasUi: (d.presseCanvasUi as CuiEffect) ?? undefined,
   });
 }
