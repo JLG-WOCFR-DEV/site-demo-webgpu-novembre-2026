@@ -1,0 +1,275 @@
+/* Composant <x-grille> : le mur infini et la page d'une photo.
+   Plein écran (data-full), il couvre la fenêtre ; intégré, il occupe sa section. */
+.x-grille {
+  position: relative;
+  height: min(78vh, 720px);
+  overflow: hidden;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--paper, #efeee8) 92%, #000);
+  isolation: isolate;
+}
+.x-grille[data-full] {
+  position: fixed;
+  inset: 0;
+  height: auto;
+  border-radius: 0;
+  background: var(--paper, #efeee8);
+}
+.x-grille:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper, #efeee8), 0 0 0 4px var(--spot, #c8321c);
+}
+.x-grille .gr-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+  cursor: grab;
+}
+.x-grille[data-full] .gr-gl {
+  touch-action: none;
+}
+.x-grille.gr-dragging .gr-gl {
+  cursor: grabbing;
+}
+.x-grille.gr-detail-open .gr-gl {
+  cursor: default;
+}
+.x-grille .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* La pastille : nom et mode d'emploi. */
+.x-grille .gr-head {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  bottom: 16px;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper, #efeee8) 94%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.x-grille[data-full] .gr-head {
+  position: fixed;
+  bottom: max(16px, env(safe-area-inset-bottom));
+}
+.x-grille .gr-kicker {
+  font: 500 12px/1.4 var(--f-mono, monospace);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot, #c8321c);
+}
+.x-grille .gr-hint {
+  font: 12px/1.4 var(--f-mono, monospace);
+  color: var(--ink-soft, #55534d);
+}
+.x-grille.gr-detail-open .gr-head {
+  opacity: 0;
+}
+
+/* La liste des photos : invisible à l'œil, présente au clavier. */
+.x-grille .gr-index {
+  position: absolute;
+  z-index: 3;
+  top: 16px;
+  left: 16px;
+}
+.x-grille[data-full] .gr-index {
+  top: 60px;
+}
+.x-grille .gr-index ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.x-grille .gr-index a {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.x-grille .gr-index a:focus-visible {
+  position: static;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  padding: 8px 12px;
+  background: var(--ink, #121212);
+  color: var(--paper, #efeee8);
+  border-radius: 999px;
+  font: 500 12px/1 var(--f-mono, monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.x-grille.gr-detail-open .gr-index {
+  display: none;
+}
+
+/* Page d'une photo */
+.x-grille .gr-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: clamp(20px, 3vw, 48px);
+  align-items: center;
+  padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 64px);
+  pointer-events: none;
+}
+.x-grille[data-full] .gr-detail {
+  padding: 72px clamp(16px, 4vw, 64px) 48px;
+}
+.x-grille .gr-detail[hidden] {
+  display: none;
+}
+.x-grille .gr-hero {
+  aspect-ratio: 3 / 2;
+  width: 100%;
+}
+.x-grille .gr-text {
+  pointer-events: auto;
+}
+.x-grille .gr-num {
+  margin: 0 0 8px;
+  font: 500 12px/1.4 var(--f-mono, monospace);
+  letter-spacing: 0.12em;
+  color: var(--spot, #c8321c);
+}
+.x-grille .gr-title {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 92px);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.x-grille:not([data-full]) .gr-title {
+  font-size: clamp(30px, 4vw, 64px);
+}
+.x-grille .gr-body {
+  max-width: 34ch;
+  margin: 18px 0 10px;
+}
+.x-grille .gr-alt {
+  max-width: 40ch;
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: var(--ink-soft, #55534d);
+}
+.x-grille .gr-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--ink, #121212);
+  border-radius: 999px;
+  color: inherit;
+  font: 500 12px/1 var(--f-mono, monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.x-grille .gr-back:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper, #efeee8), 0 0 0 4px var(--spot, #c8321c);
+}
+/* Lettres sous masque : chaque lettre monte de sous sa ligne, en décalé. */
+.x-grille .gr-title .ltr {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.x-grille .gr-title .ltr > span {
+  display: inline-block;
+  transform: translateY(105%);
+  animation: gr-rise 0.7s cubic-bezier(0.2, 0.7, 0.1, 1) forwards;
+  animation-delay: calc(var(--i) * 28ms * var(--m, 1) + 280ms);
+}
+@keyframes gr-rise {
+  to {
+    transform: none;
+  }
+}
+.x-grille .gr-body,
+.x-grille .gr-alt,
+.x-grille .gr-back,
+.x-grille .gr-num {
+  opacity: 0;
+  animation: gr-fade 0.6s ease forwards 0.55s;
+}
+@keyframes gr-fade {
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .x-grille .gr-title .ltr > span,
+  .x-grille .gr-body,
+  .x-grille .gr-alt,
+  .x-grille .gr-back,
+  .x-grille .gr-num {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (max-width: 760px) {
+  .x-grille .gr-detail {
+    grid-template-columns: 1fr;
+    align-content: start;
+    overflow: auto;
+    pointer-events: auto;
+  }
+  .x-grille[data-full] .gr-detail {
+    padding-top: 64px;
+  }
+}
+
+.x-grille .gr-hero-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+}
+.x-grille.gr-gl .gr-hero-img {
+  opacity: 0;
+}
+/* Sans WebGPU : la liste des photos, en clair. */
+.x-grille.gr-nogl .gr-index a {
+  position: static;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  margin: 0 8px 8px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--ink, #121212);
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+}
+.x-grille.gr-nogl .gr-index ol {
+  display: flex;
+  flex-wrap: wrap;
+}

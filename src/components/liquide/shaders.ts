@@ -18,7 +18,7 @@ struct Card {
 struct U {
   res: vec4f,   // largeur, hauteur (px écran), dpr, temps
   look: vec4f,  // réfraction, dispersion, largeur de la lentille (px css), fusion
-  misc: vec4f,  // nombre de cartes, fil de fer, défilement (px css), 0
+  misc: vec4f,  // nombre de cartes, fil de fer, défilement (px css), intégré (1 : fond transparent, la page se voit)
   cards: array<Card, ${MAX_CARDS}>,
 };
 
@@ -131,10 +131,20 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     return vec4f(col, 1.0);
   }
 
+  // Intégré dans une page : pas de papier ni de filets, la page se voit au
+  // travers ; l'ombre devient un voile noir translucide.
+  let embedded = u.misc.w > 0.5;
   var col = backdrop(px);
+  var alpha = 1.0;
   // Ombre portée, sous le verre et un peu plus bas.
   let Ds = field(px - vec2f(0.0, 10.0 * dpr));
-  col *= 1.0 - 0.16 * (1.0 - smoothstep(-6.0 * dpr, 26.0 * dpr, Ds));
+  let shade = 0.16 * (1.0 - smoothstep(-6.0 * dpr, 26.0 * dpr, Ds));
+  if (embedded) {
+    col = vec3f(0.0);
+    alpha = shade;
+  } else {
+    col *= 1.0 - shade;
+  }
 
   let aa = 1.2;
   let cover = 1.0 - smoothstep(-aa, aa, D);
@@ -162,7 +172,10 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     let rim = 1.0 - smoothstep(0.0, 1.6 * dpr, -D);
     g = g * (1.0 - 0.12 * bend) + vec3f(0.55) * spec + vec3f(0.35) * rim;
     col = mix(col, g, cover);
+    alpha = mix(alpha, 1.0, cover);
   }
+  // Sortie prémultipliée (le canvas intégré compose avec la page).
+  if (embedded) { return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), alpha); }
   return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);
 }
 `;

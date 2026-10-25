@@ -1,0 +1,185 @@
+/* Composant <x-liquide> : la grille de photos et ses outils. Le canvas est
+   posé par-dessus la grille, avec une marge pour les ombres et les ponts de verre. */
+.x-liquide {
+  position: relative;
+}
+.x-liquide:not([data-full]) .lq-gl {
+  position: absolute;
+  inset: -60px;
+  width: calc(100% + 120px);
+  height: calc(100% + 120px);
+  pointer-events: none;
+  z-index: 2;
+}
+.x-liquide[data-full] .lq-gl {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.x-liquide .lq-tools,
+.x-liquide .lq-grid {
+  position: relative;
+  z-index: 1;
+}
+.x-liquide .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.x-liquide.is-gl .lq-img {
+  opacity: 0;
+}
+.lq-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin: 28px 0 24px;
+}
+
+.lq-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lq-legend {
+  float: left;
+  margin-right: 8px;
+  padding-top: 8px;
+  font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft, #55534d);
+}
+
+.lq-chips label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lq-chips input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  appearance: none;
+  opacity: 0;
+}
+
+.lq-chips label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.lq-chips label:has(input:focus-visible),
+.lq-btn:focus-visible,
+.lq-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
+}
+
+.lq-btn {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: 500 12px/1 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.lq-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.lq-range input {
+  width: 120px;
+  accent-color: var(--spot);
+}
+
+.lq-status {
+  margin: 0;
+  font: 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  color: var(--ink-soft, #55534d);
+}
+
+.lq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: clamp(14px, 2vw, 26px);
+  margin: 0;
+  padding: 0 0 40px;
+  list-style: none;
+}
+
+.lq-card {
+  position: relative;
+  margin: 0;
+  border-radius: 14px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+}
+
+.lq-card.is-dragging {
+  cursor: grabbing;
+  z-index: 5;
+}
+
+.lq-card.is-out {
+  position: absolute;
+  pointer-events: none;
+}
+
+.lq-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 14px;
+  -webkit-user-drag: none;
+}
+
+.lq-cap {
+  margin: 8px 2px 0;
+  font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft, #55534d);
+}
+
+@media (max-width: 640px) {
+  .lq-range input {
+    width: 96px;
+  }
+}

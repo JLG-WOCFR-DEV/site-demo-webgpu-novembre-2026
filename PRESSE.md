@@ -54,11 +54,41 @@ p.replay();                  // rejouer l'impression des sections
 5. **Une chaîne après la scène** : bloom, repérage, trame, matières, transitions et grain dans une passe de composition.
 6. **Le contenu change** (CMS, script) : un `MutationObserver` relance la mise en page, et le morphing s'en charge si l'élément le demande.
 
-## Composants (pages de démonstration, à extraire)
+## Composants
 
-- **Grille infinie** (`grille.html`) : mur tirable avec inertie ; routeur à vraies URL (`?photo=…`) et image partagée qui vole vers la page.
-- **Mise en page liquide** (`liquide.html`) : grille CSS réordonnable rendue en verre qui fusionne.
-- **Sommaire en lettres** : style « Lettres » du sommaire en feuilles.
+Une balise dans la page, déroulée en HTML statique à la construction (`presse/build/`, plugin Vite, en développement comme
+en production). La page arrive complète et lisible sans JavaScript ; la feuille de style du composant est ajoutée au
+`<head>` ; le module qui l'anime n'est chargé que si la page contient le composant (`src/presse/components.ts`).
+
+```html
+<x-liquide filters="eau:L'eau|terre:La terre">
+  <img src="pont.jpg" alt="…" data-cat="eau" data-caption="Le pont">
+</x-liquide>
+
+<x-grille param="vue" kicker="Mes photos">
+  <img src="lac.jpg" alt="…" data-title="Le lac" data-body="Un lac de barrage…">
+</x-grille>
+
+<x-lettres label="Sommaire">
+  <a href="#un">Premier chapitre</a>
+</x-lettres>
+
+<x-include src="partials/pied.html" annee="2026">contenu du slot</x-include>
+```
+
+| Balise | Ce qu'elle produit | Attributs |
+|---|---|---|
+| `<x-liquide>` | Grille CSS de photos, réordonnable (glisser, Alt + flèches, mélanger, filtrer), rendue en verre qui fusionne. | `filters` (`valeur:Libellé\|…`), `label`, `full` (plein écran : le canvas peint aussi le papier). Images : `data-cat`, `data-caption`. |
+| `<x-grille>` | Mur infini avec inertie ; chaque photo a sa vraie URL et vole vers sa page. | `param` (nom du paramètre d'URL, `photo` par défaut), `label`, `hint`, `kicker`, `back`, `full`. Images : `data-id`, `data-title`, `data-body`. |
+| `<x-lettres>` | Sommaire aux titres découpés en lettres : montée à l'arrivée, roulement au survol. Pur CSS. | `label`. Enfants : des liens. |
+| `<x-include>` | Fragment HTML partagé. | `src` ; tout autre attribut remplace `{{attribut}}` ; `<slot></slot>` reçoit le contenu. |
+
+Intégrés, le liquide et la grille ont un canvas à fond transparent, ne dessinent rien hors de l'écran, partagent un même
+appareil WebGPU et s'abonnent au fil de fer du panneau de débogage sans écraser celui de la page. Plein écran (`full`),
+ils sont la page : capture vidéo et PNG comprises. Sans WebGPU, chacun garde son HTML et son comportement de base.
+
+Écrire un composant : une fonction `(attributs, enfants) → HTML` dans `presse/build/components.ts`, sa feuille de style
+dans `STYLES`, et, s'il a un comportement, un module `mount(racine) → arrêt` déclaré dans `src/presse/components.ts`.
 
 ## Feuille de route
 
@@ -71,7 +101,7 @@ de lui : tout ce qui peut être calculé à la construction l'est, pour laisser 
 | # | Brique | Existe déjà | Reste à faire |
 |---|---|---|---|
 | 1 | Serveur local, rechargement à chaud | Vite (`npm run dev`) | Rechargement à chaud des shaders WGSL sans perdre l'état du moteur. |
-| 2 | Gabarits HTML et composants | `tools/build-sampler.py` (assemblage à la main) | Un vrai système de gabarits : `<x-grille>`, `<x-liquide>`, `<x-sommaire>` déroulés en HTML statique à la construction, avec leurs attributs `data-gl-*`. |
+| 2 | Gabarits HTML et composants | **Fait** : `<x-liquide>`, `<x-grille>`, `<x-lettres>`, `<x-include>` déroulés à la construction (`presse/build/`), animés à la demande (`src/presse/components.ts`). `liquide.html` et `grille.html` ne sont plus que des gabarits | Porter le sampler (`tools/build-sampler.py`) sur les composants ; des données (JSON, CMS) en entrée des gabarits. |
 | 3 | Minification et renommage | Vite minifie JS et CSS | Renommer les classes CSS et les attributs, minifier le WGSL (noms, espaces, constantes repliées). |
 | 4 | Sortie statique ou rendu serveur | Sortie statique (`dist/`) | Rendu serveur (Vercel ou AWS Lambda) pour les contenus issus d'un CMS ; même gabarits, même sortie. |
 | 5 | Fontes et SVG prêts pour le GPU | **Fait pour les fontes** : `tools/bake.mjs` relève les fontes de titre de chaque page, `tools/msdf.py` en fait l'atlas MTSDF | Les SVG convertis en champs de distance (logos, pictos nets à toute taille). |
@@ -86,13 +116,13 @@ l'embryon.
 
 ### C. Composants et navigation
 
-Grille infinie, mise en page liquide, sommaire en lettres sont faits en pages de démonstration ; il reste à les extraire en
-composants (A2), et à étendre le routeur de la grille (images partagées entre deux vues) à tout le site.
+**Fait** : grille infinie, mise en page liquide et sommaire en lettres sont des composants. Reste à étendre le routeur de la
+grille (une image partagée qui vole d'une vue à l'autre) à tout le site, entre de vraies pages.
 
 ### Ordre proposé
 
 1. ~~**A5 + A7 + A8**~~ : fait pour les fontes et les SDF ; A8 reporté (voir le tableau). Reste les SVG.
-2. **A2 + C** : gabarits et composants, pour poser une grille ou un liquide en une balise.
+2. ~~**A2 + C**~~ : fait. Une balise pour poser une grille, un liquide ou un sommaire.
 3. **A6** : chaîne d'images, le plus gros gain de poids.
 4. **A3** : renommage et minification du WGSL.
 5. **A4** : rendu serveur, quand un CMS arrive.

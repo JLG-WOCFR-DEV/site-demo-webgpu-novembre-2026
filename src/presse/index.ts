@@ -2,6 +2,7 @@ import "./presse.css";
 import { mountDebugPanel, setDebugCaps } from "../debug-panel.ts";
 import { createEngine, type Engine } from "../gpu/engine.ts";
 import { setMotionLevel, type MotionLevel } from "../motion-scale.ts";
+import { mountComponents } from "./components.ts";
 import { settings, TRANSITIONS } from "../state.ts";
 
 /**
@@ -57,6 +58,10 @@ export async function presse(o: PresseOptions = {}): Promise<Presse> {
   root.dataset.transition = TRANSITIONS[settings.transition.style];
   if (o.motion) setMotionLevel(o.motion);
   if (o.debug) mountDebugPanel();
+
+  // Les composants (<x-liquide>, <x-grille>…) ont leur propre rendu et leur
+  // repli sans WebGPU : ils démarrent quoi qu'il arrive au moteur.
+  void mountComponents();
 
   const api: Presse = { engine: null, settings, relayout: () => {}, replay: () => {} };
   if (!navigator.gpu) return api;

@@ -159,3 +159,9 @@ body.pd {
     order: 0;
   }
 }
+.pd-h3 {
+  margin: 48px 0 16px;
+  font-size: 22px;
+  font-weight: 800;
+  font-stretch: 112%;
+}

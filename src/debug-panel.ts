@@ -49,13 +49,33 @@ const save = () => {
 };
 
 let caps: DebugCaps = {};
+// Le fil de fer peut venir de la page et de composants (une grille, un liquide
+// posés dans la page) : tous reçoivent l'état.
+let pageWire: DebugCaps["wire"];
+const extraWires = new Set<(on: boolean) => void>();
+const combinedWire = (on: boolean) => {
+  pageWire?.(on);
+  for (const w of extraWires) w(on);
+};
 const size = (b: number) => (b < 1e6 ? `${Math.max(1, Math.round(b / 1e3))} Ko` : `${(b / 1e6).toFixed(1).replace(".", ",")} Mo`);
 let apply = () => {};
 
 /** La page déclare (ou complète) ce qu'elle sait faire ; l'état courant lui est réappliqué. */
 export function setDebugCaps(c: DebugCaps) {
-  caps = { ...caps, ...c };
+  const { wire, ...rest } = c;
+  if ("wire" in c) pageWire = wire;
+  caps = { ...caps, ...rest, wire: pageWire || extraWires.size ? combinedWire : undefined };
   apply();
+}
+
+/** Un composant s'abonne au fil de fer sans écraser celui de la page ; renvoie le désabonnement. */
+export function addDebugWire(fn: (on: boolean) => void) {
+  extraWires.add(fn);
+  setDebugCaps({});
+  return () => {
+    extraWires.delete(fn);
+    setDebugCaps({});
+  };
 }
 
 const ICON =

@@ -70,6 +70,50 @@
         </div>
       </section>
 
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-comp">
+        <h2 id="pd-comp" class="pd-h2" data-gl-text>Les composants</h2>
+        <p class="pd-p" data-gl-text>
+          Une balise, et c'est posé. <code>&lt;x-liquide&gt;</code>, <code>&lt;x-grille&gt;</code> et <code>&lt;x-lettres&gt;</code>
+          sont déroulées en HTML statique à la construction : la page arrive complète, lisible sans JavaScript, avec sa feuille de
+          style dans l'en-tête. Le comportement n'est chargé que si la page contient le composant.
+        </p>
+        <pre class="pd-code"><code>&lt;x-liquide filters="eau:L'eau|terre:La terre"&gt;
+  &lt;img src="pont.jpg" alt="…" data-cat="eau" data-caption="Le pont"&gt;
+  …
+&lt;/x-liquide&gt;
+
+&lt;x-grille param="vue"&gt;
+  &lt;img src="lac.jpg" alt="…" data-title="Le lac" data-body="…"&gt;
+&lt;/x-grille&gt;</code></pre>
+
+        <h3 class="pd-h3" data-gl-text>Mise en page liquide</h3>
+        <x-liquide filters="eau:L'eau|terre:La terre" label="Quatre photos, réordonnables : glisser, ou Alt + flèches au clavier">
+          <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-caption="Le pont" />
+          <img src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." data-cat="terre" data-caption="La vallée" />
+          <img src="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." data-cat="eau" data-caption="Le lac" />
+          <img src="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." data-cat="terre" data-caption="Les dunes" />
+        </x-liquide>
+
+        <h3 class="pd-h3" data-gl-text>Grille infinie</h3>
+        <x-grille param="vue" label="Mur de photos : flèches pour le parcourir, Entrée sur un nom pour l'ouvrir">
+          <img src="./plates/jardin.jpg" data-id="jardin" data-title="Le jardin" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." data-body="Un jardin japonais au printemps. Les azalées rouges tiennent le premier plan, la maison de thé se cache sous les pins." />
+          <img src="./plates/alcatraz.jpg" data-id="alcatraz" data-title="L'île" alt="L'île d'Alcatraz et son phare au milieu de la baie." data-body="Alcatraz au milieu de la baie : le phare, les bâtiments clairs, et tout autour une eau d'un seul bleu." />
+          <img src="./plates/lac.jpg" data-id="lac" data-title="Le lac" alt="Un lac entre des collines dorées, sous un ciel strié." data-body="Un lac de barrage entre des collines dorées. Le ciel est strié de traînées d'avion, l'eau les reprend à peine." />
+          <img src="./plates/cerf.jpg" data-id="cerf" data-title="Le cerf" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." data-body="Un jeune cerf dans un jardin en pente. Il s'est arrêté dans la seule tache d'ombre, le temps de la photo." />
+          <img src="./plates/pont.jpg" data-id="pont" data-title="Le pont" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-body="Le Golden Gate depuis la côte, à marée montante. Le rouge du pont, le vert de la falaise, l'écume : trois couleurs, une seule lumière de fin de matinée." />
+        </x-grille>
+
+        <h3 class="pd-h3" data-gl-text>Sommaire en lettres</h3>
+        <p class="pd-p" data-gl-text>Sans une ligne de JavaScript : les lettres sont découpées à la construction, le reste est du CSS.</p>
+        <x-lettres label="Sommaire de cette page">
+          <a href="#pd-start">Démarrer</a>
+          <a href="#pd-img">Les images</a>
+          <a href="#pd-dust">Les matières</a>
+          <a href="#pd-how">Comment ça marche</a>
+          <a href="#pd-ref">Référence</a>
+        </x-lettres>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-how">
         <h2 id="pd-how" class="pd-h2" data-gl-text>Comment ça marche</h2>
         <ol class="pd-list" data-gl-text>
@@ -100,6 +144,10 @@
               <tr><td><code>data-presse-motion</code></td><td>html</td><td>sobre, normal, expressif.</td></tr>
               <tr><td><code>data-presse-debug</code></td><td>html</td><td>Le panneau de débogage : fil de fer, grille, capture vidéo, image PNG.</td></tr>
               <tr><td><code>--paper</code></td><td>:root (CSS)</td><td>La couleur du papier, lue par le GPU : une seule source de vérité.</td></tr>
+              <tr><td><code>&lt;x-liquide&gt;</code></td><td>page</td><td>Grille de photos réordonnable rendue en verre. Attributs : filters, label, full.</td></tr>
+              <tr><td><code>&lt;x-grille&gt;</code></td><td>page</td><td>Mur infini, routeur à vraies URL. Attributs : param, label, hint, kicker, full.</td></tr>
+              <tr><td><code>&lt;x-lettres&gt;</code></td><td>page</td><td>Sommaire aux titres découpés en lettres, sans JavaScript. Attribut : label.</td></tr>
+              <tr><td><code>&lt;x-include&gt;</code></td><td>page</td><td>Fragment HTML partagé : src, {{attributs}} remplacés, &lt;slot&gt; pour le contenu.</td></tr>
             </tbody>
           </table>
         </div>
@@ -112,8 +160,7 @@
           JavaScript et à WebGPU presque rien à faire à l'exécution.
         </p>
         <ol class="pd-list" data-gl-text>
-          <li><strong>Texte prêt pour le GPU à la construction.</strong> Atlas de distances de toutes les fontes, positions des glyphes de chaque gabarit, appariements des morphings précalculés.</li>
-          <li><strong>Gabarits et composants.</strong> Une balise pour poser une grille infinie, une mise en page liquide ou un sommaire en lettres, déroulée en HTML statique.</li>
+          <li><strong>Fait : texte prêt pour le GPU à la construction</strong> (atlas MTSDF et SDF), <strong>gabarits et composants</strong> (ci-dessus).</li>
           <li><strong>Chaîne d'images et de SVG.</strong> Tailles, mipmaps et formats compressés pour le GPU ; SVG convertis en champs de distance.</li>
           <li><strong>Minification et renommage</strong> du CSS, du JavaScript et des shaders WGSL.</li>
           <li><strong>Sortie statique ou rendu serveur</strong> (Vercel, AWS Lambda) quand le contenu vient d'un CMS.</li>
