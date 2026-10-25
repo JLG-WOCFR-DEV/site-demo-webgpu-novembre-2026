@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Liquide</title>
+    <meta name="description" content="Une mise en page liquide : les photos sont des cartes HTML qu'on glisse, mélange et filtre ; le GPU les rend en verre qui fusionne là où elles se frôlent." />
+    <meta name="theme-color" content="#efeee8" />
+    <script type="module" src="/src/liquide/main.ts"></script>
+  </head>
+  <body class="lq">
+    <a class="lq-skip" href="#lq-grid">Aller aux photos</a>
+    <canvas id="lq-gl" aria-hidden="true"></canvas>
+
+    <header class="lq-head">
+      <p class="lq-kicker">WebGPU-demo-UBS · Liquide</p>
+      <h1 class="lq-title">Mise en page liquide</h1>
+      <p class="lq-lede">
+        Sept photos, sept cartes HTML dans une grille CSS. Glissez-en une, mélangez, filtrez : le navigateur fait la mise en
+        page, le GPU rend chaque carte en verre, qui s'étire quand elle file et fusionne avec ses voisines quand elles se frôlent.
+      </p>
+    </header>
+
+    <div class="lq-tools">
+      <fieldset class="lq-chips">
+        <legend class="lq-legend">Filtrer</legend>
+        <label><input type="radio" name="lq-filter" value="tout" checked /> Tout</label>
+        <label><input type="radio" name="lq-filter" value="eau" /> L'eau</label>
+        <label><input type="radio" name="lq-filter" value="terre" /> La terre</label>
+        <label><input type="radio" name="lq-filter" value="vivant" /> Le vivant</label>
+      </fieldset>
+      <button type="button" class="lq-btn" data-lq-shuffle>Mélanger</button>
+      <label class="lq-range"><span>Fusion</span><input type="range" name="fusion" min="0" max="2.5" step="0.05" value="1" /></label>
+      <label class="lq-range"><span>Réfraction</span><input type="range" name="refraction" min="0" max="2.5" step="0.05" value="1" /></label>
+      <p class="lq-status" data-lq-status role="status"></p>
+    </div>
+
+    <main>
+      <ul id="lq-grid" class="lq-grid" aria-label="Photos, réordonnables : glisser, ou Alt + flèches au clavier">
+        <li class="lq-card" data-cat="eau" tabindex="0"><img class="lq-img" src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." /><p class="lq-cap">Le pont</p></li>
+        <li class="lq-card" data-cat="vivant" tabindex="0"><img class="lq-img" src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." /><p class="lq-cap">Le jardin</p></li>
+        <li class="lq-card" data-cat="eau" tabindex="0"><img class="lq-img" src="./plates/alcatraz.jpg" width="1728" height="1150" alt="L'île d'Alcatraz et son phare au milieu de la baie." /><p class="lq-cap">L'île</p></li>
+        <li class="lq-card" data-cat="terre" tabindex="0"><img class="lq-img" src="./plates/yosemite.jpg" width="1728" height="1150" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." /><p class="lq-cap">La vallée</p></li>
+        <li class="lq-card" data-cat="eau" tabindex="0"><img class="lq-img" src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac entre des collines dorées, sous un ciel strié." /><p class="lq-cap">Le lac</p></li>
+        <li class="lq-card" data-cat="terre" tabindex="0"><img class="lq-img" src="./plates/dunes.jpg" width="1728" height="1150" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." /><p class="lq-cap">Les dunes</p></li>
+        <li class="lq-card" data-cat="vivant" tabindex="0"><img class="lq-img" src="./plates/cerf.jpg" width="1728" height="1150" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." /><p class="lq-cap">Le cerf</p></li>
+      </ul>
+      <p class="sr-only" aria-live="polite" data-lq-live></p>
+
+      <section class="lq-essay" aria-labelledby="lq-how">
+        <h2 id="lq-how">Comment c'est fait</h2>
+        <p>
+          La grille est du CSS ordinaire. Pour réordonner, le script déplace les éléments dans le DOM puis anime l'écart avec un
+          ressort (la technique FLIP) ; le navigateur reste maître de la mise en page. À chaque image, le moteur lit le rectangle
+          de chaque photo, en déduit sa vitesse, et la transforme en une forme molle : elle s'étire dans le sens du mouvement, se
+          tasse à l'arrêt, s'arrondit quand elle file.
+        </p>
+        <p>
+          Le GPU calcule ensuite, pour chaque pixel, la distance à chaque carte, et les fond par un minimum lissé : là où deux
+          cartes se frôlent, un pont de verre les relie, et ses couleurs mêlent celles des deux photos. Le bord est une lentille :
+          la normale du champ dévie la lecture de la photo, avec une légère dispersion des couleurs et un reflet. Au repos, les
+          cartes redeviennent des rectangles arrondis exacts.
+        </p>
+        <p>
+          D'après l'exemple « Liquid Layout » de vgpu, réécrit en WebGPU brut. Le texte, les légendes et les images restent dans le
+          HTML : sans WebGPU, ou avec le mouvement réduit, la grille fonctionne de la même façon, sans le verre.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

@@ -76,6 +76,7 @@ async function start() {
       },
       record: (o) => eng.record(o),
       stopRecord: () => eng.stopRecording(),
+      snapshot: (cb) => eng.snapshot(cb),
     });
     setupHtmlInCanvas(engine.device);
     const btn = document.querySelector<HTMLButtonElement>("[data-action='toggle-gpu']");

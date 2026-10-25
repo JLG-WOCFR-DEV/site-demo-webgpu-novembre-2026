@@ -174,16 +174,20 @@ export class Recorder {
  */
 export function recordable(device: GPUDevice, canvas: HTMLCanvasElement, format: GPUTextureFormat) {
   let rec: Recorder | null = null;
+  const snap = new Snapshot(device, format);
   return {
     copy(enc: GPUCommandEncoder, tex: GPUTexture) {
       rec?.copy(enc, tex);
+      snap.copy(enc, tex);
     },
     after() {
+      snap.after();
       if (!rec) return;
       rec.afterSubmit();
       if (rec.done) rec = null;
     },
     caps: {
+      snapshot: (cb: (png: Blob | null) => void) => snap.request(cb),
       record: (o: RecordOptions) => {
         if (rec) return false;
         rec = new Recorder(device, canvas, format, performance.now(), o);
@@ -192,4 +196,59 @@ export function recordable(device: GPUDevice, canvas: HTMLCanvasElement, format:
       stopRecord: () => rec?.stop(),
     },
   };
+}
+
+/**
+ * Instantané PNG de l'image du canvas : demandé à tout moment, servi à
+ * l'image suivante (copie de texture, lecture, conversion). Même raison que
+ * pour la vidéo : on lit la texture, pas le canvas.
+ */
+export class Snapshot {
+  private want: ((png: Blob | null) => void) | null = null;
+  private pending: { buf: GPUBuffer; w: number; h: number; stride: number; cb: (png: Blob | null) => void } | null = null;
+  constructor(
+    private device: GPUDevice,
+    private format: GPUTextureFormat,
+  ) {}
+  request(cb: (png: Blob | null) => void) {
+    this.want = cb;
+  }
+  copy(enc: GPUCommandEncoder, tex: GPUTexture) {
+    if (!this.want) return;
+    const w = tex.width;
+    const h = tex.height;
+    const stride = Math.ceil((w * 4) / 256) * 256;
+    const buf = this.device.createBuffer({ size: stride * h, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+    enc.copyTextureToBuffer({ texture: tex }, { buffer: buf, bytesPerRow: stride }, [w, h]);
+    this.pending = { buf, w, h, stride, cb: this.want };
+    this.want = null;
+  }
+  after() {
+    const p = this.pending;
+    this.pending = null;
+    if (!p) return;
+    const bgra = this.format === "bgra8unorm";
+    p.buf
+      .mapAsync(GPUMapMode.READ)
+      .then(async () => {
+        const src = new Uint8Array(p.buf.getMappedRange());
+        const img = new ImageData(p.w, p.h);
+        for (let y = 0; y < p.h; y++) {
+          for (let x = 0; x < p.w; x++) {
+            const i = y * p.stride + x * 4;
+            const o = (y * p.w + x) * 4;
+            img.data[o] = src[i + (bgra ? 2 : 0)]!;
+            img.data[o + 1] = src[i + 1]!;
+            img.data[o + 2] = src[i + (bgra ? 0 : 2)]!;
+            img.data[o + 3] = 255;
+          }
+        }
+        p.buf.unmap();
+        p.buf.destroy();
+        const c = new OffscreenCanvas(p.w, p.h);
+        c.getContext("2d")!.putImageData(img, 0, 0);
+        p.cb(await c.convertToBlob({ type: "image/png" }));
+      })
+      .catch(() => p.cb(null));
+  }
 }

@@ -25,6 +25,8 @@ export type DebugCaps = {
   /** Capture à pas fixe ; renvoie false si elle n'a pas pu démarrer. */
   record?: (o: RecordRequest) => boolean;
   stopRecord?: () => void;
+  /** Instantané PNG de l'image suivante, lu sur la texture du canvas. */
+  snapshot?: (cb: (png: Blob | null) => void) => void;
   /** Nom du fichier capturé, sans extension. */
   fileName?: () => string;
 };
@@ -46,6 +48,7 @@ const save = () => {
 };
 
 let caps: DebugCaps = {};
+const size = (b: number) => (b < 1e6 ? `${Math.max(1, Math.round(b / 1e3))} Ko` : `${(b / 1e6).toFixed(1).replace(".", ",")} Mo`);
 let apply = () => {};
 
 /** La page déclare (ou complète) ce qu'elle sait faire ; l'état courant lui est réappliqué. */
@@ -203,6 +206,7 @@ export function mountDebugPanel(anchor?: { parent: HTMLElement; before?: Element
         <label class="dbg-field">Durée <select data-dbg-sec><option value="3">3 s</option><option value="6" selected>6 s</option><option value="10">10 s</option></select></label>
         <label class="dbg-field">Images/s <select data-dbg-fps><option value="30">30</option><option value="60" selected>60</option></select></label>
         <button type="button" class="dbg-go" data-dbg-go>Enregistrer</button>
+        <button type="button" class="dbg-go" data-dbg-png>Image PNG</button>
       </div>
       <p class="dbg-note" data-dbg-status aria-live="polite"></p>
       <a class="dbg-link" data-dbg-link hidden>Télécharger la vidéo</a>
@@ -234,9 +238,30 @@ export function mountDebugPanel(anchor?: { parent: HTMLElement; before?: Element
   const link = pop.querySelector<HTMLAnchorElement>("[data-dbg-link]")!;
   const go = pop.querySelector<HTMLButtonElement>("[data-dbg-go]")!;
   const wireLabel = pop.querySelector<HTMLElement>("[data-dbg-wirelabel]")!;
+  const png = pop.querySelector<HTMLButtonElement>("[data-dbg-png]")!;
+  let url = "";
+  png.addEventListener("click", () => {
+    if (!caps.snapshot) return;
+    status.dataset.idle = "0";
+    status.textContent = "Instantané…";
+    caps.snapshot((blob) => {
+      if (!blob) {
+        status.textContent = "Instantané impossible.";
+        return;
+      }
+      if (url) URL.revokeObjectURL(url);
+      url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `${caps.fileName?.() ?? document.title.replace(/[^\w-]+/g, "-").toLowerCase()}.png`;
+      link.textContent = "Télécharger l'image";
+      link.hidden = false;
+      status.textContent = `Image PNG, ${size(blob.size)}, à la taille réelle de l'écran.`;
+    });
+  });
 
   apply = () => {
     for (const b of boxes) b.checked = state[b.dataset.dbg as keyof State];
+    png.hidden = !caps.snapshot;
     const wireBox = boxes.find((b) => b.dataset.dbg === "wire")!;
     wireBox.disabled = !caps.wire;
     if (!caps.wire) wireBox.checked = false;
@@ -268,7 +293,6 @@ export function mountDebugPanel(anchor?: { parent: HTMLElement; before?: Element
   }
 
   // Capture
-  let url = "";
   let stopGeneric: (() => void) | null = null;
   let busy = false;
   const done = (video: Blob | null, error?: string, info = "") => {
@@ -283,8 +307,9 @@ export function mountDebugPanel(anchor?: { parent: HTMLElement; before?: Element
     url = URL.createObjectURL(video);
     link.href = url;
     link.download = `${caps.fileName?.() ?? document.title.replace(/[^\w-]+/g, "-").toLowerCase()}.webm`;
+    link.textContent = "Télécharger la vidéo";
     link.hidden = false;
-    status.textContent = `${(video.size / 1e6).toFixed(1)} Mo${info}.`;
+    status.textContent = `${size(video.size)}${info}.`;
   };
   go.addEventListener("click", () => {
     if (busy) {

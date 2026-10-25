@@ -1,0 +1,250 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #efeee8;
+  --ink: #121212;
+  --ink-soft: #55534d;
+  --rule: #c8c5ba;
+  --spot: #c8321c;
+  --f-text: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  --col-gap: clamp(16px, 2.2vw, 32px);
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body.lq {
+  margin: 0;
+  font: 17px/1.55 var(--f-text);
+  background: var(--paper);
+}
+
+#lq-gl {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.lq-skip {
+  position: absolute;
+  left: -9999px;
+}
+.lq-skip:focus {
+  left: 16px;
+  top: 60px;
+  z-index: 60;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 8px 12px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.lq-head,
+.lq-tools,
+main {
+  position: relative;
+  z-index: 1;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter-r);
+}
+
+.lq-head {
+  padding-top: 76px;
+  max-width: 980px;
+}
+.lq-kicker {
+  margin: 0 0 10px;
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.lq-title {
+  margin: 0;
+  font-size: clamp(40px, 7vw, 88px);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.lq-lede {
+  max-width: 62ch;
+  margin: 18px 0 0;
+  color: var(--ink-soft);
+}
+
+.lq-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin: 28px 0 24px;
+}
+.lq-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.lq-legend {
+  float: left;
+  margin-right: 8px;
+  padding-top: 8px;
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.lq-chips label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lq-chips input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  appearance: none;
+  opacity: 0;
+}
+.lq-chips label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.lq-chips label:has(input:focus-visible),
+.lq-btn:focus-visible,
+.lq-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
+}
+.lq-btn {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.lq-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.lq-range input {
+  width: 120px;
+  accent-color: var(--spot);
+}
+.lq-status {
+  margin: 0;
+  font: 12px/1.4 var(--f-mono);
+  color: var(--ink-soft);
+}
+
+.lq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: clamp(14px, 2vw, 26px);
+  margin: 0;
+  padding: 0 0 40px;
+  list-style: none;
+}
+.lq-card {
+  position: relative;
+  margin: 0;
+  border-radius: 14px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+}
+.lq-card.is-dragging {
+  cursor: grabbing;
+  z-index: 5;
+}
+.lq-card.is-out {
+  position: absolute;
+  pointer-events: none;
+}
+.lq-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 14px;
+  -webkit-user-drag: none;
+}
+/* Rendu GPU : la photo est peinte par le canvas ; le HTML reste là, invisible. */
+.lq-gl .lq-img {
+  opacity: 0;
+}
+.lq-cap {
+  margin: 8px 2px 0;
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.lq-essay {
+  max-width: 68ch;
+  padding: 24px 0 96px;
+}
+.lq-essay h2 {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 12px;
+}
+.lq-essay p {
+  margin: 0 0 14px;
+}
+
+@media (max-width: 640px) {
+  .lq-range input {
+    width: 96px;
+  }
+}

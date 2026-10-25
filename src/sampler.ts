@@ -26,7 +26,7 @@ type Sample = {
 };
 type Category = { id: string; name: string; intro: string; samples: Sample[] };
 
-const TRANSITIONS = ["Impression", "Trame", "Quadrichromie", "Buvard", "Massicot", "Fondu", "Rouleau", "Composition", "Ligne à ligne", "Révélateur", "Pli", "Aucune"];
+const TRANSITIONS = ["Impression", "Trame", "Quadrichromie", "Buvard", "Massicot", "Fondu", "Rouleau", "Composition", "Ligne à ligne", "Révélateur", "Pli", "Aucune", "Tri de pixels"];
 const TRANSITION_TEXT = [
   "Un front d'encre irrégulier, plus sombre là où l'encre est encore humide.",
   "Des points de trame qui grossissent jusqu'à se toucher, puis l'aplat.",
@@ -40,6 +40,7 @@ const TRANSITION_TEXT = [
   "Comme une épreuve dans le bain : les noirs montent d'abord, le rouge traîne.",
   "La feuille se déplie, avec l'ombre au creux du pli.",
   "Rien : la page est imprimée d'avance. Le point de comparaison.",
+  "Chaque colonne coule vers le bas : la ligne du front s'étire en traînées de longueurs inégales, comme un tri de pixels.",
 ];
 const FILTERS = [
   ["Trame noire", "Une grille de points dont la taille porte la valeur."],
@@ -217,6 +218,40 @@ const CATS: Category[] = [
     ],
   },
   {
+    id: "canvas-html",
+    name: "HTML dans le canvas",
+    intro: "Des idées tirées des démos html-in-canvas.dev, refaites avec ce moteur : le HTML reste la source, le GPU le défait et le refait.",
+    samples: [
+      {
+        id: "hic-poussiere",
+        label: "Désintégration",
+        text: "La photo se défait en carrés de 5 px qui montent en dérivant, de gauche à droite, puis se recompose. Le texte et la photo restent dans le DOM pendant tout ce temps.",
+        material: { sel: "[data-sp-stage] .sp-plate, .sp-page-plate", name: "poussiere" },
+        action: {
+          label: "Désintégrer / recomposer",
+          run: () => (settings.dust.target = settings.dust.target > 0.5 ? 0 : 1),
+        },
+      },
+      {
+        id: "hic-tri",
+        label: "Tri de pixels",
+        text: "Une transition de la démo « Morphing Text » : sous le front, chaque colonne coule et étire la ligne du front en traînées inégales.",
+        forms: ["transition"],
+        patch: () => {
+          settings.chain.print = true;
+          settings.transition.style = 12;
+        },
+        action: { label: "Rejouer", run: replay },
+      },
+      {
+        id: "hic-liquide",
+        label: "Verre liquide",
+        text: "Des photos en verre qui fusionnent quand elles se frôlent, sur une grille qu'on réordonne : une page à part, la mise en page liquide.",
+        action: { label: "Ouvrir la page Liquide", run: () => (location.href = "./liquide.html") },
+      },
+    ],
+  },
+  {
     id: "texte",
     name: "Texte",
     intro: "Le texte est lu sur le DOM et redessiné par le GPU, glyphe par glyphe.",
@@ -324,6 +359,8 @@ function neutral() {
   settings.dom.boxes = false;
   settings.grain.amp = 1;
   settings.crease.on = false;
+  settings.dust.target = 0;
+  settings.dust.value = 0;
   for (const el of document.querySelectorAll<HTMLElement>("[data-gl-material]")) delete el.dataset.glMaterial;
 }
 
@@ -413,7 +450,7 @@ function select(id: string, fromHash = false) {
     }
   }
   dispatchEvent(new Event("pli:relayout"));
-  if (cat.id === "transitions") requestAnimationFrame(() => replay());
+  if (cat.id === "transitions" || s.id === "hic-tri") requestAnimationFrame(() => replay());
 }
 
 info.action.addEventListener("click", () => byId.get(current)?.s.action?.run());

@@ -1470,7 +1470,7 @@ struct Post {
   a11y: vec4f,     // vision simulée (0…4), encre délavée (0…1), 0, 0
   casse: vec4f,    // nombre de caractères, largeur et hauteur de l'atlas, corps (px d'atlas)
   ramp: array<vec4f, 16>, // x, y, l, h dans l'atlas MTSDF, du plus clair au plus noir
-  matter: vec4f,   // intensité des matières, marge de l'enveloppe de feu (px), écran du sommaire (0, 1 CRT, 2 projecteur), 0
+  matter: vec4f,   // intensité des matières, marge de l'enveloppe de feu (px), écran du sommaire (0, 1 CRT, 2 projecteur), désintégration (0…1)
   screen: vec4f,   // rectangle de la scène du sommaire (px)
   crease: vec4f,   // froissé de page : actif, profondeur, 0, défilement de la page (px)
   lensm: vec4f,    // matière lentille : pointeur amorti x, y (px), force au survol, force réglée
@@ -1667,6 +1667,28 @@ fn tr_hash(p: vec2f) -> f32 {
   return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
 }
 
+// Tri de pixels (style 12) : sous le front, chaque colonne de 2 px coule
+// d'une longueur tirée au sort ; les pixels de la traînée relisent la ligne du
+// front, étirée vers le bas. Renvoie la distance de relecture (px), 0 sinon.
+fn sort_pull(px: vec2f) -> f32 {
+  if (u.print.z < 0.5 || i32(u.print.w + 0.5) != 12) { return 0.0; }
+  let n = i32(u.print.x);
+  for (var i = 0; i < ${MAX_CHAPTERS}; i++) {
+    if (i >= n) { break; }
+    let c = u.chapters[i];
+    if (px.y >= c.x && px.y < c.y && px.x >= c.w) {
+      let front = u.print.y;
+      let base = (c.z - (px.y - c.x)) / front;
+      if (base >= 0.0 || base < -1.6) { return 0.0; }
+      let h = tr_hash(vec2f(floor(px.x / (2.0 * u.res.z)), f32(i) * 13.0));
+      let len = 0.12 + 1.3 * h * h;
+      if (-base > len) { return 0.0; }
+      return -base * front;
+    }
+  }
+  return 0.0;
+}
+
 fn printed(px: vec2f, col: vec3f) -> vec4f {
   print_shade = 1.0;
   if (u.print.z < 0.5) { return vec4f(1.0, 1.0, 1.0, 0.0); }
@@ -1684,6 +1706,14 @@ fn printed(px: vec2f, col: vec3f) -> vec4f {
       // 0 sur la ligne déjà imprimée la plus basse, 1 une largeur de front plus haut.
       let base = (c.z - rel) / front;
       if (base > 2.5) { return vec4f(1.0, 1.0, 1.0, 0.0); }
+      if (style == 12) {
+        // Tri de pixels : les traînées (voir sort_pull) sont encrées, le reste attend.
+        let h = tr_hash(vec2f(floor(px.x / (2.0 * dpr)), f32(i) * 13.0));
+        let len = 0.12 + 1.3 * h * h;
+        let m = select(0.0, 1.0, base >= 0.0 || -base <= len);
+        print_shade = select(1.0, 0.94 + 0.06 * clamp(1.0 + base / max(len, 0.01), 0.0, 1.0), base < 0.0);
+        return vec4f(m, m, m, 0.0);
+      }
       if (style == 1) {
         // Trame : les points grossissent jusqu'à se toucher, puis l'aplat.
         let cell = 9.0 * dpr;
@@ -1975,6 +2005,45 @@ var<private> tr_layer: i32 = 0;
 fn trace_at(px: vec2f, st: vec4f, _kind_layer: i32) -> vec4f {
   let q = clamp((px - st.xy) / st.zw, vec2f(0.0), vec2f(1.0));
   return textureSampleLevel(trace, samp, q, tr_layer, 0.0);
+}
+
+// Désintégration (matière « poussiere », d'après la démo Pixel Disintegration
+// de html-in-canvas) : la plaque se défait en carrés de 5 px qui montent en
+// dérivant, rétrécissent et pâlissent, de gauche à droite ; à rebours, ils
+// reviennent. Chaque pixel cherche, parmi les cellules voisines d'en dessous,
+// la particule qui passe sur lui.
+fn dh(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(41.3, 289.1))) * 43758.5453); }
+fn m_dust(px: vec2f, st: vec4f, prog: f32) -> vec3f {
+  let dpr = u.res.z;
+  let cell = 5.0 * dpr;
+  let own = floor((px - st.xy) / cell);
+  let ncol = st.z / cell;
+  var col = u.paper.rgb;
+  // La cellule du pixel, si elle n'est pas encore partie.
+  let h0 = dh(own);
+  let s0 = (own.x / max(ncol, 1.0)) * 0.6 + h0 * 0.25;
+  if (prog <= s0) { return stage_src(px, st); }
+  var best = -1.0;
+  for (var dy = 0; dy <= 8; dy++) {
+    for (var dx = -2; dx <= 2; dx++) {
+      let id = own + vec2f(f32(dx), f32(dy));
+      if (id.x < 0.0 || id.y < 0.0 || id.x * cell >= st.z || id.y * cell >= st.w) { continue; }
+      let h = dh(id);
+      let start = (id.x / max(ncol, 1.0)) * 0.6 + h * 0.25;
+      let t = clamp((prog - start) / 0.35, 0.0, 1.0);
+      if (t <= 0.0 || t >= 1.0) { continue; }
+      let h2 = dh(id + 17.3);
+      let drift = vec2f((h2 - 0.35) * 2.0, -(0.55 + 0.45 * dh(id + 3.1)) * 7.0) * cell * t * (0.6 + 0.4 * t);
+      let c = st.xy + (id + 0.5) * cell + drift;
+      let half = cell * 0.5 * (1.0 - 0.75 * t);
+      if (all(abs(px - c) <= vec2f(half)) && t > best) {
+        best = t;
+        let src = stage_src(st.xy + (id + 0.5) * cell, st);
+        col = mix(src, u.paper.rgb, t * t);
+      }
+    }
+  }
+  return col;
 }
 
 fn stage_src(p: vec2f, st: vec4f) -> vec3f {
@@ -2300,12 +2369,16 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     }
   }
 
+  // Tri de pixels : la traînée relit la ligne du front, plus haut.
+  lens.y -= sort_pull(px);
   var col = source(px, lens);
 
   if (kind > 2.5 && kind < 3.5) {
     col = image_filter(px, stage);
   } else if (kind > 3.5 && kind < 9.5) {
     col = matter(kind, px, stage);
+  } else if (kind > 10.5 && kind < 11.5 && u.matter.w > 0.001) {
+    col = m_dust(px, stage, u.matter.w);
   }
 
   if (u.chain.z > 0.5) {

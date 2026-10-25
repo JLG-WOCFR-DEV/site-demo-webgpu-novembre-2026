@@ -32,10 +32,12 @@ export type Settings = {
   tear: { amp: number; react: number };
   /** Débogage : fil de fer, grille (colonnes, rangées, centre). */
   debug: { wire: boolean; col: boolean; row: boolean; ctr: boolean };
+  /** Désintégration (matière « poussiere ») : progression courante et cible, 0 entier, 1 en poussière. */
+  dust: { value: number; target: number };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
-export const TRANSITIONS = ["impression", "trame", "quadri", "buvard", "massicot", "fondu", "rouleau", "composition", "ligne", "revelateur", "pli", "aucune"] as const;
+export const TRANSITIONS = ["impression", "trame", "quadri", "buvard", "massicot", "fondu", "rouleau", "composition", "ligne", "revelateur", "pli", "aucune", "tri"] as const;
 export const TRANSITION_NONE = 11;
 
 export type LayerId = "glass" | "flower" | "spot";
@@ -53,6 +55,7 @@ export const settings: Settings = {
   lens: { force: 1, follow: 7 },
   tear: { amp: 1, react: 1 },
   debug: { wire: false, col: false, row: false, ctr: false },
+  dust: { value: 0, target: 0 },
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },

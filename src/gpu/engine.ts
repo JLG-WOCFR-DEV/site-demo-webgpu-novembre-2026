@@ -2,7 +2,7 @@ import { menuGL } from "../menu.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
-import { Recorder, clockNow, type RecordOptions } from "./recorder.ts";
+import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, TextLayer, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 
@@ -37,6 +37,7 @@ const STAGE_KIND: Record<string, number> = {
   givre: 9,
   // Matières déclarées dans le HTML (data-gl-material) : n'importe quel élément.
   lentille: 10,
+  poussiere: 11,
 };
 /** Nom de la plaque : data-gl-stage (démonstrations), sinon data-gl-material. */
 const stageName = (s: HTMLElement) => s.dataset.glStage ?? s.dataset.glMaterial ?? "";
@@ -699,6 +700,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   // chaque image rendue devient une image de la vidéo, quelle que soit la
   // vitesse réelle de la machine.
   let recorder: Recorder | null = null;
+  const snapshot = new Snapshot(device, format);
   let gridCache: { gl: number; gr: number; gap: number; w: number } | null = null;
 
   const frame = () => {
@@ -966,7 +968,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     postData.set([settings.a11y.vision, settings.a11y.fade, 0, 0], A11Y_AT);
     postData.set(casseData, CASSE_AT);
-    postData.set([settings.matter.intensity, WRAP_PAD * dpr, menuOpen ? menuGL.screen : 0, 0], MATTER_AT);
+    // Désintégration : la progression avance vers sa cible en 1,6 s.
+    const Du = settings.dust;
+    Du.value = reduced ? Du.target : Du.value + Math.sign(Du.target - Du.value) * Math.min(Math.abs(Du.target - Du.value), dt / 1.6);
+    postData.set([settings.matter.intensity, WRAP_PAD * dpr, menuOpen ? menuGL.screen : 0, Du.value], MATTER_AT);
     const sr = menuGL.screenRect;
     postData.set([sr[0] * dpr, sr[1] * dpr, sr[2] * dpr, sr[3] * dpr], SCREEN_AT);
 
@@ -1310,7 +1315,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       }
     }
     recorder?.copy(enc, outTex);
+    snapshot.copy(enc, outTex);
     device.queue.submit([enc.finish()]);
+    snapshot.after();
     if (recorder) {
       recorder.afterSubmit();
       if (recorder.done) recorder = null;
@@ -1391,6 +1398,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       return true;
     },
     stopRecording: () => recorder?.stop(),
+    /** Instantané PNG de l'image suivante. */
+    snapshot: (cb: (png: Blob | null) => void) => snapshot.request(cb),
     get recording() {
       return recorder !== null;
     },
