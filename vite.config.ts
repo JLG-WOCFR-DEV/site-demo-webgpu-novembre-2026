@@ -1,12 +1,14 @@
 import { defineConfig } from "vite";
+import { presseImages } from "./presse/build/images.ts";
 import { presseComponents } from "./presse/build/plugin.ts";
 
 // Chemins relatifs : le build tourne tel quel sur n'importe quel hébergeur
 // statique, y compris un artifact claude.ai.
 export default defineConfig({
   base: "./",
-  // Presse : les balises <x-…> sont déroulées en HTML statique.
-  plugins: [presseComponents()],
+  // Presse : les balises <x-…> sont déroulées en HTML statique, puis les
+  // images préparées (tools/images.py) passent en AVIF/WebP aux bonnes tailles.
+  plugins: [presseComponents(), presseImages(import.meta.dirname)],
   build: {
     target: "es2022",
     assetsInlineLimit: 0,

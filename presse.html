@@ -160,8 +160,8 @@
           JavaScript et à WebGPU presque rien à faire à l'exécution.
         </p>
         <ol class="pd-list" data-gl-text>
-          <li><strong>Fait : texte prêt pour le GPU à la construction</strong> (atlas MTSDF et SDF), <strong>gabarits et composants</strong> (ci-dessus).</li>
-          <li><strong>Chaîne d'images et de SVG.</strong> Tailles, mipmaps et formats compressés pour le GPU ; SVG convertis en champs de distance.</li>
+          <li><strong>Fait : texte prêt pour le GPU à la construction</strong> (atlas MTSDF et SDF), <strong>gabarits et composants</strong> (ci-dessus), <strong>chaîne d'images</strong> (AVIF et WebP aux bonnes tailles, mipmaps filtrées à la construction).</li>
+          <li><strong>SVG prêts pour le GPU</strong> : convertis en champs de distance, nets à toute taille.</li>
           <li><strong>Minification et renommage</strong> du CSS, du JavaScript et des shaders WGSL.</li>
           <li><strong>Sortie statique ou rendu serveur</strong> (Vercel, AWS Lambda) quand le contenu vient d'un CMS.</li>
           <li><strong>Un éditeur visuel</strong> : sélectionner un élément, régler ses attributs dans un inspecteur, exporter du HTML propre.</li>

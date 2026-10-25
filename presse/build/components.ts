@@ -22,6 +22,8 @@ const hash = (s: string) => {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return (h >>> 0).toString(36).slice(0, 6);
 };
+/** Dimensions recopiées si l'auteur les a données (sinon la chaîne d'images les pose). */
+const dims = (im: Node) => ["width", "height"].map((k) => (im.getAttribute(k) ? ` ${k}="${esc(im.getAttribute(k)!)}"` : "")).join("");
 const slug = (s: string) =>
   s
     .normalize("NFD")
@@ -61,7 +63,7 @@ const liquide: Render = (a, children) => {
   const cards = items
     .map((im) => {
       const cap = im.getAttribute("data-caption") ?? "";
-      return `<li class="lq-card" data-cat="${esc(im.getAttribute("data-cat") ?? "")}" tabindex="0"><img class="lq-img" src="${esc(im.getAttribute("src") ?? "")}" width="${esc(im.getAttribute("width") ?? "1728")}" height="${esc(im.getAttribute("height") ?? "1150")}" alt="${esc(im.getAttribute("alt") ?? "")}" />${cap ? `<p class="lq-cap">${esc(cap)}</p>` : ""}</li>`;
+      return `<li class="lq-card" data-cat="${esc(im.getAttribute("data-cat") ?? "")}" tabindex="0"><img class="lq-img" src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} sizes="${esc(a.sizes ?? "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 340px")}" alt="${esc(im.getAttribute("alt") ?? "")}" />${cap ? `<p class="lq-cap">${esc(cap)}</p>` : ""}</li>`;
     })
     .join("\n");
   return `<div class="x-liquide" data-presse-component="liquide"${a.full !== undefined ? " data-full" : ""}>
@@ -100,7 +102,7 @@ const grille: Render = (a, children) => {
 ${items.map((p) => `    <li><a href="?${esc(param)}=${esc(p.id)}" data-photo="${esc(p.id)}">${esc(p.title)}</a></li>`).join("\n")}
   </ol></nav>
   <div class="gr-photos" hidden>
-${items.map((p) => `    <img src="${esc(p.src)}" data-photo="${esc(p.id)}" data-title="${esc(p.title)}" data-body="${esc(p.body)}" alt="${esc(p.alt)}" />`).join("\n")}
+${items.map((p) => `    <img src="${esc(p.src)}" data-photo="${esc(p.id)}" data-title="${esc(p.title)}" data-body="${esc(p.body)}" alt="${esc(p.alt)}" loading="lazy" sizes="(max-width: 760px) 100vw, 60vw" />`).join("\n")}
   </div>
   <article class="gr-detail" data-gr-detail hidden>
     <div class="gr-hero" data-gr-hero></div>

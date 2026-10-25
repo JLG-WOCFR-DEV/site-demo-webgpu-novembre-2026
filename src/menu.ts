@@ -175,6 +175,8 @@ function build() {
     const section = document.getElementById(id);
     const num = String(i + 1).padStart(2, "0");
     const title = section?.querySelector("h2")?.textContent?.trim() ?? a.textContent!.trim();
+    // src : la photo de la page, dont le moteur réutilise la texture. La vignette
+    // HTML (visible sans WebGPU) prend la version de 960 px de la chaîne d'images.
     const src = `./plates/${PHOTO[id] ?? "jardin"}.jpg`;
     const link = document.createElement("a");
     link.className = "sheet";
@@ -182,7 +184,9 @@ function build() {
     link.dataset.index = String(i);
     const photo = document.createElement("img");
     photo.className = "sheet-photo";
-    photo.src = src;
+    // Cachée sous le rendu GPU (qui reprend la texture de la page) : chargée seulement si on la voit.
+    photo.loading = "lazy";
+    photo.src = `./img/${PHOTO[id] ?? "jardin"}-960.webp`;
     photo.alt = "";
     photo.decoding = "async";
     const label = document.createElement("span");

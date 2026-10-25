@@ -186,11 +186,16 @@ export function mount(root: HTMLElement) {
     detail.replaceChildren(...fresh.childNodes);
     const q = <T extends HTMLElement>(s: string) => detail.querySelector<T>(s)!;
     // La photo en HTML : visible sans WebGPU, transparente quand le GPU la peint.
-    const img = document.createElement("img");
+    // On reprend son <picture> (AVIF, WebP, original) quand il existe.
+    const pic = p.img.parentElement?.tagName === "PICTURE" ? (p.img.parentElement.cloneNode(true) as HTMLElement) : null;
+    const img = (pic?.querySelector("img") ?? document.createElement("img")) as HTMLImageElement;
+    if (!pic) img.src = p.img.src;
     img.className = "gr-hero-img";
-    img.src = p.img.src;
     img.alt = "";
-    q("[data-gr-hero]").replaceChildren(img);
+    img.loading = "eager";
+    img.removeAttribute("data-photo");
+    for (const s of pic?.querySelectorAll("source") ?? []) s.sizes = "(max-width: 760px) 100vw, 60vw";
+    q("[data-gr-hero]").replaceChildren(pic ?? img);
     q("[data-gr-num]").textContent = `${String(p.layer + 1).padStart(2, "0")} / ${String(photos.length).padStart(2, "0")}`;
     splitLetters(q("[data-gr-title]"), p.title);
     q("[data-gr-body]").textContent = p.body;

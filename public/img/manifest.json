@@ -1,0 +1,353 @@
+{
+ "plates/alcatraz.jpg": {
+  "hash": "b98dbfd6a277",
+  "w": 1728,
+  "h": 1150,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/alcatraz",
+  "mips": "img/alcatraz.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#7399b4",
+  "files": [
+   "img/alcatraz-480.avif",
+   "img/alcatraz-480.webp",
+   "img/alcatraz-960.avif",
+   "img/alcatraz-960.webp",
+   "img/alcatraz-1440.avif",
+   "img/alcatraz-1440.webp",
+   "img/alcatraz.mips.avif"
+  ]
+ },
+ "plates/bowl.jpg": {
+  "hash": "253f2e5a87f1",
+  "w": 1728,
+  "h": 1152,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/bowl",
+  "mips": "img/bowl.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#c6c0b8",
+  "files": [
+   "img/bowl-480.avif",
+   "img/bowl-480.webp",
+   "img/bowl-960.avif",
+   "img/bowl-960.webp",
+   "img/bowl-1440.avif",
+   "img/bowl-1440.webp",
+   "img/bowl.mips.avif"
+  ]
+ },
+ "plates/cerf.jpg": {
+  "hash": "b6f5b3d40fa5",
+  "w": 1728,
+  "h": 1150,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/cerf",
+  "mips": "img/cerf.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#707a65",
+  "files": [
+   "img/cerf-480.avif",
+   "img/cerf-480.webp",
+   "img/cerf-960.avif",
+   "img/cerf-960.webp",
+   "img/cerf-1440.avif",
+   "img/cerf-1440.webp",
+   "img/cerf.mips.avif"
+  ]
+ },
+ "plates/dunes.jpg": {
+  "hash": "d252a2279a8f",
+  "w": 1728,
+  "h": 1150,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/dunes",
+  "mips": "img/dunes.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#9dabb5",
+  "files": [
+   "img/dunes-480.avif",
+   "img/dunes-480.webp",
+   "img/dunes-960.avif",
+   "img/dunes-960.webp",
+   "img/dunes-1440.avif",
+   "img/dunes-1440.webp",
+   "img/dunes.mips.avif"
+  ]
+ },
+ "plates/fig.jpg": {
+  "hash": "04d23d89334d",
+  "w": 1408,
+  "h": 1408,
+  "widths": [
+   480,
+   960,
+   1408
+  ],
+  "base": "img/fig",
+  "mips": "img/fig.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#93806c",
+  "files": [
+   "img/fig-480.avif",
+   "img/fig-480.webp",
+   "img/fig-960.avif",
+   "img/fig-960.webp",
+   "img/fig-1408.avif",
+   "img/fig-1408.webp",
+   "img/fig.mips.avif"
+  ]
+ },
+ "plates/flower.jpg": {
+  "hash": "5a5dcacdd295",
+  "w": 1408,
+  "h": 1408,
+  "widths": [
+   480,
+   960,
+   1408
+  ],
+  "base": "img/flower",
+  "mips": "img/flower.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#afaeaa",
+  "files": [
+   "img/flower-480.avif",
+   "img/flower-480.webp",
+   "img/flower-960.avif",
+   "img/flower-960.webp",
+   "img/flower-1408.avif",
+   "img/flower-1408.webp",
+   "img/flower.mips.avif"
+  ]
+ },
+ "plates/glass.jpg": {
+  "hash": "08a825c5eca8",
+  "w": 1728,
+  "h": 1152,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/glass",
+  "mips": "img/glass.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#9b9a9a",
+  "files": [
+   "img/glass-480.avif",
+   "img/glass-480.webp",
+   "img/glass-960.avif",
+   "img/glass-960.webp",
+   "img/glass-1440.avif",
+   "img/glass-1440.webp",
+   "img/glass.mips.avif"
+  ]
+ },
+ "plates/jardin.jpg": {
+  "hash": "55b35392c64c",
+  "w": 1728,
+  "h": 1150,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/jardin",
+  "mips": "img/jardin.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#525846",
+  "files": [
+   "img/jardin-480.avif",
+   "img/jardin-480.webp",
+   "img/jardin-960.avif",
+   "img/jardin-960.webp",
+   "img/jardin-1440.avif",
+   "img/jardin-1440.webp",
+   "img/jardin.mips.avif"
+  ]
+ },
+ "plates/lac.jpg": {
+  "hash": "f7101e7a7c91",
+  "w": 1728,
+  "h": 1150,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/lac",
+  "mips": "img/lac.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#687b7e",
+  "files": [
+   "img/lac-480.avif",
+   "img/lac-480.webp",
+   "img/lac-960.avif",
+   "img/lac-960.webp",
+   "img/lac-1440.avif",
+   "img/lac-1440.webp",
+   "img/lac.mips.avif"
+  ]
+ },
+ "plates/pont.jpg": {
+  "hash": "084e96b6f7e6",
+  "w": 1728,
+  "h": 1150,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/pont",
+  "mips": "img/pont.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#83a1b6",
+  "files": [
+   "img/pont-480.avif",
+   "img/pont-480.webp",
+   "img/pont-960.avif",
+   "img/pont-960.webp",
+   "img/pont-1440.avif",
+   "img/pont-1440.webp",
+   "img/pont.mips.avif"
+  ]
+ },
+ "plates/steel.jpg": {
+  "hash": "927c1145da36",
+  "w": 1408,
+  "h": 1408,
+  "widths": [
+   480,
+   960,
+   1408
+  ],
+  "base": "img/steel",
+  "mips": "img/steel.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#2e2f32",
+  "files": [
+   "img/steel-480.avif",
+   "img/steel-480.webp",
+   "img/steel-960.avif",
+   "img/steel-960.webp",
+   "img/steel-1408.avif",
+   "img/steel-1408.webp",
+   "img/steel.mips.avif"
+  ]
+ },
+ "plates/vanilla.jpg": {
+  "hash": "bde377444457",
+  "w": 1728,
+  "h": 1152,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/vanilla",
+  "mips": "img/vanilla.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#c0b5a7",
+  "files": [
+   "img/vanilla-480.avif",
+   "img/vanilla-480.webp",
+   "img/vanilla-960.avif",
+   "img/vanilla-960.webp",
+   "img/vanilla-1440.avif",
+   "img/vanilla-1440.webp",
+   "img/vanilla.mips.avif"
+  ]
+ },
+ "plates/yosemite.jpg": {
+  "hash": "416783a4d93c",
+  "w": 1728,
+  "h": 1150,
+  "widths": [
+   480,
+   960,
+   1440
+  ],
+  "base": "img/yosemite",
+  "mips": "img/yosemite.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#6e7e83",
+  "files": [
+   "img/yosemite-480.avif",
+   "img/yosemite-480.webp",
+   "img/yosemite-960.avif",
+   "img/yosemite-960.webp",
+   "img/yosemite-1440.avif",
+   "img/yosemite-1440.webp",
+   "img/yosemite.mips.avif"
+  ]
+ }
+}

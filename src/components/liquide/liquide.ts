@@ -10,6 +10,7 @@
  * de l'exemple « Liquid Layout » de vgpu.
  */
 import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
+import { loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { getDevice } from "../device.ts";
@@ -390,28 +391,8 @@ export function mount(root: HTMLElement) {
     if (full) setDebugCaps({ ...rec.caps, fileName: () => "webgpu-demo-ubs-liquide" });
 
     // Les photos, une couche de texture chacune, avec leur chaîne de mipmaps
-    // (une vignette de 280 px lue dans une texture de 768 px scintille).
-    const TW = 768;
-    const TH = 512;
-    const MIPS = 4;
-    const tex = device.createTexture({
-      size: [TW, TH, Math.max(1, cards.length)],
-      mipLevelCount: MIPS,
-      format: "rgba8unorm",
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-    await Promise.all(
-      cards.map(async (c) => {
-        await c.img.decode().catch(() => undefined);
-        for (let m = 0; m < MIPS; m++) {
-          const w = TW >> m;
-          const h = TH >> m;
-          const bmp = await createImageBitmap(c.img, { resizeWidth: w, resizeHeight: h, resizeQuality: "high" });
-          device.queue.copyExternalImageToTexture({ source: bmp }, { texture: tex, mipLevel: m, origin: [0, 0, c.layer] }, [w, h]);
-          bmp.close();
-        }
-      }),
-    );
+    // (préparée à la construction quand elle existe : src/gpu/photos.ts).
+    const { tex, width: TW, mips: MIPS } = await loadPhotoArray(device, cards.map((c) => c.img));
 
     const mod = device.createShaderModule({ code: LIQUID });
     const errs = (await mod.getCompilationInfo()).messages.filter((m) => m.type === "error");
