@@ -11,7 +11,8 @@ Pour chaque photo de public/plates/*.jpg (l'original, gardé tel quel) :
   seule image (public/img/<nom>.mips.avif) : 768×512, 384×256, 192×128, 96×64
   côte à côte. Le moteur la décode une fois et copie chaque niveau, au lieu de
   décoder l'original de 1728 px et de le réduire quatre fois à l'exécution ;
-- la couleur moyenne, posée en fond de l'image tant qu'elle charge.
+- la couleur moyenne, posée en fond de l'image tant qu'elle charge, et les
+  trois couleurs dominantes (fond dégradé de la galerie).
 
 Le tout est décrit dans public/img/manifest.json, que lit le plugin de
 construction (presse/build/images.ts) pour réécrire les <img>.
@@ -35,6 +36,19 @@ Q_AVIF, Q_WEBP, Q_MIPS = 58, 76, 78
 
 def digest(p: Path) -> str:
     return hashlib.sha1(p.read_bytes()).hexdigest()[:12]
+
+
+def palette(im: Image.Image, k: int = 3) -> list[str]:
+    """Couleurs dominantes (fond dégradé de la galerie) : coupe médiane sur une vignette."""
+    q = im.resize((64, 64), Image.BOX).quantize(colors=6, method=Image.Quantize.MEDIANCUT)
+    pal = q.getpalette()
+    counts = sorted(q.getcolors(), reverse=True)
+    out = []
+    for _, i in counts[:k]:
+        out.append("#%02x%02x%02x" % tuple(pal[i * 3 : i * 3 + 3]))
+    while len(out) < k:
+        out.append(out[-1])
+    return out
 
 
 def mip_strip(im: Image.Image) -> Image.Image:
@@ -63,6 +77,8 @@ def main():
         files = []
         if entry and entry.get("hash") == h and all((ROOT / "public" / f).exists() for f in entry["files"]):
             files = entry["files"]
+            if "palette" not in entry:
+                entry["palette"] = palette(Image.open(src).convert("RGB"))
         else:
             im = Image.open(src).convert("RGB")
             widths = [w for w in WIDTHS if w < im.width] + [min(im.width, WIDTHS[-1])]
@@ -87,6 +103,7 @@ def main():
                 "mips": f"img/{mf.name}",
                 "mipLayout": [MIP_W, MIP_H, MIPS],
                 "color": "#%02x%02x%02x" % avg,
+                "palette": palette(im),
                 "files": files,
             }
             manifest[key] = entry

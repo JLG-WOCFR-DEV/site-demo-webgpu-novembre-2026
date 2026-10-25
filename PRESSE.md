@@ -81,6 +81,7 @@ en production). La page arrive complète et lisible sans JavaScript ; la feuille
 | `<x-liquide>` | Grille CSS de photos, réordonnable (glisser, Alt + flèches, mélanger, filtrer), rendue en verre qui fusionne. | `filters` (`valeur:Libellé\|…`), `label`, `full` (plein écran : le canvas peint aussi le papier). Images : `data-cat`, `data-caption`. |
 | `<x-grille>` | Mur infini avec inertie ; chaque photo a sa vraie URL et vole vers sa page. | `param` (nom du paramètre d'URL, `photo` par défaut), `label`, `hint`, `kicker`, `back`, `full`. Images : `data-id`, `data-title`, `data-body`. |
 | `<x-lettres>` | Sommaire aux titres découpés en lettres : montée à l'arrivée, roulement au survol. Pur CSS. | `label`. Enfants : des liens. |
+| `<x-galerie>` | Galerie 3D, équivalent WebGPU de la Gallery de Motion+ et du Gradient Carousel de React Bits : neuf arrangements (`list`, `grid`, `barrel`, `coverflow`, `helix`, `ring`, `sphere`, `stack`, `carousel`), transitions qui partent de la pose courante (valeurs séparées, chemin le plus court pour les angles), modificateurs liés à la vitesse (`tilt`, `ripple`), ouverture en place, en boîte avec bande de vignettes (`selection="detail"`) ou en fiche (`selection="reveal"`), entrées et sorties (`presence`), fond dégradé aux couleurs de la photo de tête (`backdrop`). Un appel de dessin pour toute la galerie, ombres comprises ; filtrage anisotrope. Page de réglages : `galerie.html`. | `arrange`, `options` (`clé:valeur;…`, mêmes noms que Motion), `axis`, `gap`, `item` (`220x300`), `loop`, `snap`, `tilt`, `ripple`, `follow`, `drift`, `selection`, `detail-fit`, `presence`, `filter`, `perspective`, `shadow`, `friction`, `drag-sensitivity`, `wheel-sensitivity`, `backdrop`, `backdrop-size`, `backdrop-blur`, `full`. Images : `data-title`, `data-cat`, `data-spec` (sinon la fiche est remplie avec les vraies données du fichier). |
 | `<x-include>` | Fragment HTML partagé. | `src` ; tout autre attribut remplace `{{attribut}}` ; `<slot></slot>` reçoit le contenu. |
 
 Intégrés, le liquide et la grille ont un canvas à fond transparent, ne dessinent rien hors de l'écran, partagent un même
@@ -118,7 +119,7 @@ l'embryon.
 
 ### C. Composants et navigation
 
-**Fait** : grille infinie, mise en page liquide et sommaire en lettres sont des composants. Reste à étendre le routeur de la
+**Fait** : grille infinie, mise en page liquide, sommaire en lettres et galerie 3D sont des composants. Reste à étendre le routeur de la
 grille (une image partagée qui vole d'une vue à l'autre) à tout le site, entre de vraies pages.
 
 ### Ordre proposé

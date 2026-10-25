@@ -148,6 +148,11 @@ var y = [
 		text: "Un mur sans fin ; chaque photo ouvre sa page, l'image vole"
 	},
 	{
+		href: "galerie.html",
+		name: "Galerie",
+		text: "Neuf arrangements 3D : tonneau, cartes, film, fond dégradé…"
+	},
+	{
 		href: "presse.html",
 		name: "Presse",
 		text: "Le framework : un Webflow WebGPU, en attributs HTML"

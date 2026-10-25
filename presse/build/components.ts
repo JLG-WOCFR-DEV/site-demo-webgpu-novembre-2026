@@ -11,6 +11,8 @@
  * peut être calculé ici l'est : découpage des titres en lettres, ordre
  * d'apparition, liste d'accès clavier.
  */
+import { readFileSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import type { HTMLElement as Node } from "node-html-parser";
 
 export type Render = (attrs: Record<string, string>, children: Node[], ctx: { read: (path: string) => string }) => string;
@@ -143,11 +145,83 @@ const include: Render = (a, children, ctx) => {
   return html.replace("<slot></slot>", children.map((c) => c.toString()).join(""));
 };
 
-export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include };
+/**
+ * <x-galerie arrange="barrel" options="rotateX:-8" selection="detail" tilt="1">
+ *   <img src="…" alt="…" data-title="Le pont" data-cat="eau">
+ * </x-galerie>
+ * Tous les attributs passent tels quels en data-* (voir src/components/galerie).
+ * La fiche de chaque image (panneau révélé) est remplie ici avec de vraies
+ * données de la chaîne d'images : dimensions, poids, couleurs dominantes.
+ */
+const GX_ATTRS = ["arrange", "options", "axis", "gap", "item", "loop", "snap", "tilt", "ripple", "follow", "drift", "selection", "detail-fit", "presence", "filter", "perspective", "shadow", "friction", "drag-sensitivity", "wheel-sensitivity", "backdrop", "backdrop-size", "backdrop-blur", "preset"];
+let manifestCache: Record<string, { w: number; h: number; widths: number[]; base: string; palette?: string[] }> | null = null;
+const manifest = () => {
+  if (manifestCache) return manifestCache;
+  try {
+    manifestCache = JSON.parse(readFileSync(resolve(process.cwd(), "public/img/manifest.json"), "utf8"));
+  } catch {
+    manifestCache = {};
+  }
+  return manifestCache!;
+};
+const kb = (f: string) => {
+  try {
+    return `${Math.round(statSync(resolve(process.cwd(), "public", f)).size / 1024)} Ko`;
+  } catch {
+    return "";
+  }
+};
+const galerie: Render = (a, children) => {
+  const items = imgs(children);
+  const data = GX_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k] === "" ? "true" : a[k]!)}"`).join("");
+  const li = items
+    .map((im, i) => {
+      const src = (im.getAttribute("src") ?? "").replace(/^\.?\//, "");
+      const title = im.getAttribute("data-title") ?? im.getAttribute("alt") ?? "";
+      const cat = im.getAttribute("data-cat") ?? "";
+      const m = manifest()[src];
+      // Fiche : ce que l'auteur donne, sinon les données réelles du fichier.
+      const spec =
+        im.getAttribute("data-spec") ??
+        [
+          `Planche=${String(i + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`,
+          cat ? `Catégorie=${cat}` : "",
+          m ? `Original=${m.w} × ${m.h} px` : "",
+          m ? `AVIF ${m.widths.at(-1)} px=${kb(`${m.base}-${m.widths.at(-1)}.avif`)}` : "",
+          m ? `WebP ${m.widths.at(-1)} px=${kb(`${m.base}-${m.widths.at(-1)}.webp`)}` : "",
+          m?.palette ? `Couleurs=${m.palette.join(" ")}` : "",
+        ]
+          .filter(Boolean)
+          .join("|");
+      return `    <li class="gx-item" data-title="${esc(title)}" data-cat="${esc(cat)}" data-spec="${esc(spec)}"><button type="button" class="gx-btn" aria-label="${esc(title)}"><img src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} alt="${esc(im.getAttribute("alt") ?? "")}" loading="lazy" sizes="(max-width: 760px) 60vw, 320px" /><span class="gx-cap" aria-hidden="true">${esc(title)}</span></button></li>`;
+    })
+    .join("\n");
+  return `<section class="x-galerie" data-presse-component="galerie"${data}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-roledescription="galerie" aria-label="${esc(a.label ?? "Galerie : flèches pour parcourir, Entrée pour ouvrir")}">
+  <canvas class="gx-gl" aria-hidden="true"></canvas>
+  <ol class="gx-list" aria-label="${esc(a.label ?? "Photos")}">
+${li}
+  </ol>
+  <div class="gx-detail" data-gx-detail hidden>
+    <div class="gx-detail-frame"><div class="gx-detail-media"></div></div>
+    <p class="gx-detail-cap"></p>
+    <button type="button" class="gx-close">Fermer</button>
+  </div>
+  <div class="gx-strip" data-gx-strip hidden></div>
+  <aside class="gx-reveal" data-gx-reveal hidden aria-label="Fiche">
+    <h3 class="gx-reveal-title" data-gx-reveal-title></h3>
+    <dl></dl>
+    <button type="button" class="gx-close">Fermer</button>
+  </aside>
+  <p class="sr-only" aria-live="polite" data-gx-live></p>
+</section>`;
+};
+
+export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie };
 
 /** Feuille de style de chaque composant, ajoutée au <head> des pages qui l'emploient. */
 export const STYLES: Record<string, string> = {
   liquide: "/src/components/liquide/liquide.css",
   grille: "/src/components/grille/grille.css",
   lettres: "/src/components/lettres/lettres.css",
+  galerie: "/src/components/galerie/galerie.css",
 };

@@ -103,6 +103,17 @@
           <img src="./plates/pont.jpg" data-id="pont" data-title="Le pont" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-body="Le Golden Gate depuis la côte, à marée montante. Le rouge du pont, le vert de la falaise, l'écume : trois couleurs, une seule lumière de fin de matinée." />
         </x-grille>
 
+        <h3 class="pd-h3" data-gl-text>Galerie</h3>
+        <p class="pd-p" data-gl-text>Neuf arrangements 3D, un seul appel de dessin. Ici un carrousel sur fond dégradé, ouvert en fiche ; tous les réglages sont sur la page Galerie.</p>
+        <x-galerie arrange="carousel" item="220x275" gap="22" backdrop="0.6" selection="reveal" tilt="0.6" label="Six photos : flèches pour parcourir, Entrée pour ouvrir">
+          <img src="./plates/fig.jpg" data-title="La figue" data-cat="objets" alt="Une figue ouverte sur une pierre calcaire, près d'une fenêtre." />
+          <img src="./plates/lac.jpg" data-title="Le lac" data-cat="eau" alt="Un lac entre des collines dorées, sous un ciel strié." />
+          <img src="./plates/flower.jpg" data-title="La renoncule" data-cat="vivant" alt="Une renoncule blanche sur fond gris." />
+          <img src="./plates/pont.jpg" data-title="Le pont" data-cat="eau" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." />
+          <img src="./plates/steel.jpg" data-title="L'acier" data-cat="objets" alt="Un cylindre d'acier brossé sur une ardoise sombre." />
+          <img src="./plates/dunes.jpg" data-title="Les dunes" data-cat="terre" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." />
+        </x-galerie>
+
         <h3 class="pd-h3" data-gl-text>Sommaire en lettres</h3>
         <p class="pd-p" data-gl-text>Sans une ligne de JavaScript : les lettres sont découpées à la construction, le reste est du CSS.</p>
         <x-lettres label="Sommaire de cette page">
@@ -146,6 +157,7 @@
               <tr><td><code>--paper</code></td><td>:root (CSS)</td><td>La couleur du papier, lue par le GPU : une seule source de vérité.</td></tr>
               <tr><td><code>&lt;x-liquide&gt;</code></td><td>page</td><td>Grille de photos réordonnable rendue en verre. Attributs : filters, label, full.</td></tr>
               <tr><td><code>&lt;x-grille&gt;</code></td><td>page</td><td>Mur infini, routeur à vraies URL. Attributs : param, label, hint, kicker, full.</td></tr>
+              <tr><td><code>&lt;x-galerie&gt;</code></td><td>page</td><td>Galerie 3D : list, grid, barrel, coverflow, helix, ring, sphere, stack, carousel ; ouverture en place, en boîte ou en fiche. Attributs : arrange, options, item, gap, tilt, ripple, selection, backdrop…</td></tr>
               <tr><td><code>&lt;x-lettres&gt;</code></td><td>page</td><td>Sommaire aux titres découpés en lettres, sans JavaScript. Attribut : label.</td></tr>
               <tr><td><code>&lt;x-include&gt;</code></td><td>page</td><td>Fragment HTML partagé : src, {{attributs}} remplacés, &lt;slot&gt; pour le contenu.</td></tr>
             </tbody>

@@ -17,7 +17,7 @@ import type { Plugin } from "vite";
  * Le <picture> est en display: contents : il ne change pas la mise en page,
  * l'<img> reste l'élément que lisent le CSS et le moteur.
  */
-type Entry = { w: number; h: number; widths: number[]; base: string; mips: string; color: string };
+type Entry = { w: number; h: number; widths: number[]; base: string; mips: string; color: string; palette?: string[] };
 const DEFAULT_SIZES = "(max-width: 760px) 100vw, 50vw";
 
 export function presseImages(root: string): Plugin {
@@ -52,6 +52,7 @@ export function presseImages(root: string): Plugin {
           if (!img.hasAttribute("decoding")) img.setAttribute("decoding", "async");
           img.setAttribute("data-gl-tex", url(`${e.base}-${e.widths.at(-1)}.avif`));
           img.setAttribute("data-gl-mips", url(e.mips));
+          if (e.palette) img.setAttribute("data-palette", e.palette.join(","));
           const style = img.getAttribute("style");
           img.setAttribute("style", `${style ? `${style.replace(/;?\s*$/, ";")} ` : ""}background-color:${e.color}`);
           img.removeAttribute("sizes");

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Galerie</title>
+    <meta name="description" content="Une galerie WebGPU : neuf arrangements 3D (liste, grille, tonneau, coverflow, hélice, anneau, sphère, paquet, carrousel dégradé), transitions qui partent de la pose courante, ouverture en place, en boîte ou en fiche." />
+    <meta name="theme-color" content="#efeee8" />
+    <script type="module" src="/src/galerie/main.ts"></script>
+  </head>
+  <body class="gp">
+    <header class="gp-head">
+      <p class="gp-kicker">WebGPU-demo-UBS · Galerie</p>
+      <h1 class="gp-title" data-gp-title>Tonneau</h1>
+      <p class="gp-lede" data-gp-lede></p>
+    </header>
+
+    <nav class="gp-presets" aria-label="Exemples">
+      <button type="button" data-preset="tonneau" aria-pressed="true">Tonneau</button>
+      <button type="button" data-preset="archive">Archive</button>
+      <button type="button" data-preset="cartes">Cartes</button>
+      <button type="button" data-preset="film">Film</button>
+      <button type="button" data-preset="objets">Objets</button>
+      <button type="button" data-preset="degrade">Dégradé</button>
+      <button type="button" data-preset="bac">Bac à sable</button>
+    </nav>
+
+    <main>
+      <!-- Un composant : déroulé en HTML statique à la construction (presse/build). -->
+      <x-galerie full arrange="barrel" options="rotateX:-8" item="200x280" gap="20" tilt="1" follow="0.8" selection="detail" label="Treize photos : flèches pour parcourir, Entrée pour ouvrir, Échap pour fermer">
+        <img src="./plates/pont.jpg" data-title="Le pont" data-cat="eau" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." />
+        <img src="./plates/jardin.jpg" data-title="Le jardin" data-cat="vivant" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." />
+        <img src="./plates/bowl.jpg" data-title="Le bol" data-cat="objets" alt="Un bol de grès blanc sur une table claire." />
+        <img src="./plates/alcatraz.jpg" data-title="L'île" data-cat="eau" alt="L'île d'Alcatraz et son phare au milieu de la baie." />
+        <img src="./plates/fig.jpg" data-title="La figue" data-cat="objets" alt="Une figue ouverte sur une pierre calcaire, près d'une fenêtre." />
+        <img src="./plates/yosemite.jpg" data-title="La vallée" data-cat="terre" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." />
+        <img src="./plates/flower.jpg" data-title="La renoncule" data-cat="vivant" alt="Une renoncule blanche sur fond gris." />
+        <img src="./plates/lac.jpg" data-title="Le lac" data-cat="eau" alt="Un lac entre des collines dorées, sous un ciel strié." />
+        <img src="./plates/glass.jpg" data-title="Le verre" data-cat="objets" alt="Un cylindre de verre épais couché sur une surface claire." />
+        <img src="./plates/dunes.jpg" data-title="Les dunes" data-cat="terre" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." />
+        <img src="./plates/steel.jpg" data-title="L'acier" data-cat="objets" alt="Un cylindre d'acier brossé sur une ardoise sombre." />
+        <img src="./plates/cerf.jpg" data-title="Le cerf" data-cat="vivant" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." />
+        <img src="./plates/vanilla.jpg" data-title="La vanille" data-cat="objets" alt="Deux gousses de vanille sur un papier crème." />
+      </x-galerie>
+    </main>
+
+    <!-- Décors des exemples (index, feuille de montage, compteur), remplis par le script. -->
+    <aside class="gp-dress" data-gp-dress aria-label="Index"></aside>
+
+    <button type="button" class="gp-toggle" data-gp-toggle aria-expanded="false" aria-controls="gp-panel">Options</button>
+    <section id="gp-panel" class="gp-panel" data-gp-panel hidden aria-label="Options de la galerie">
+      <div data-gp-controls></div>
+      <h2 class="gp-h">Balise</h2>
+      <pre class="gp-code"><code data-gp-code></code></pre>
+      <button type="button" class="gp-copy" data-gp-copy>Copier</button>
+    </section>
+  </body>
+</html>

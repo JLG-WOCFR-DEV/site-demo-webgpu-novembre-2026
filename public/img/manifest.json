@@ -24,6 +24,11 @@
    "img/alcatraz-1440.avif",
    "img/alcatraz-1440.webp",
    "img/alcatraz.mips.avif"
+  ],
+  "palette": [
+   "#5785a4",
+   "#7baad4",
+   "#92b5d1"
   ]
  },
  "plates/bowl.jpg": {
@@ -51,6 +56,11 @@
    "img/bowl-1440.avif",
    "img/bowl-1440.webp",
    "img/bowl.mips.avif"
+  ],
+  "palette": [
+   "#d3cec8",
+   "#c2bcb4",
+   "#9a9082"
   ]
  },
  "plates/cerf.jpg": {
@@ -78,6 +88,11 @@
    "img/cerf-1440.avif",
    "img/cerf-1440.webp",
    "img/cerf.mips.avif"
+  ],
+  "palette": [
+   "#394446",
+   "#81876f",
+   "#6c6467"
   ]
  },
  "plates/dunes.jpg": {
@@ -105,6 +120,11 @@
    "img/dunes-1440.avif",
    "img/dunes-1440.webp",
    "img/dunes.mips.avif"
+  ],
+  "palette": [
+   "#88b4d8",
+   "#c9baaf",
+   "#88aac9"
   ]
  },
  "plates/fig.jpg": {
@@ -132,6 +152,11 @@
    "img/fig-1408.avif",
    "img/fig-1408.webp",
    "img/fig.mips.avif"
+  ],
+  "palette": [
+   "#442d1f",
+   "#b7a58c",
+   "#cdbda7"
   ]
  },
  "plates/flower.jpg": {
@@ -159,6 +184,11 @@
    "img/flower-1408.avif",
    "img/flower-1408.webp",
    "img/flower.mips.avif"
+  ],
+  "palette": [
+   "#a6a6a4",
+   "#b8b8b8",
+   "#b2b1b1"
   ]
  },
  "plates/glass.jpg": {
@@ -186,6 +216,11 @@
    "img/glass-1440.avif",
    "img/glass-1440.webp",
    "img/glass.mips.avif"
+  ],
+  "palette": [
+   "#3b3a38",
+   "#b0b0af",
+   "#babab9"
   ]
  },
  "plates/jardin.jpg": {
@@ -213,6 +248,11 @@
    "img/jardin-1440.avif",
    "img/jardin-1440.webp",
    "img/jardin.mips.avif"
+  ],
+  "palette": [
+   "#161e15",
+   "#5d623d",
+   "#373d25"
   ]
  },
  "plates/lac.jpg": {
@@ -240,6 +280,11 @@
    "img/lac-1440.avif",
    "img/lac-1440.webp",
    "img/lac.mips.avif"
+  ],
+  "palette": [
+   "#424b32",
+   "#646856",
+   "#73a6d5"
   ]
  },
  "plates/pont.jpg": {
@@ -267,6 +312,11 @@
    "img/pont-1440.avif",
    "img/pont-1440.webp",
    "img/pont.mips.avif"
+  ],
+  "palette": [
+   "#9dc7ea",
+   "#8bbbe6",
+   "#5d6056"
   ]
  },
  "plates/steel.jpg": {
@@ -294,6 +344,11 @@
    "img/steel-1408.avif",
    "img/steel-1408.webp",
    "img/steel.mips.avif"
+  ],
+  "palette": [
+   "#2d2e32",
+   "#36373b",
+   "#18191b"
   ]
  },
  "plates/vanilla.jpg": {
@@ -321,6 +376,11 @@
    "img/vanilla-1440.avif",
    "img/vanilla-1440.webp",
    "img/vanilla.mips.avif"
+  ],
+  "palette": [
+   "#463a30",
+   "#e1d5c3",
+   "#eadecf"
   ]
  },
  "plates/yosemite.jpg": {
@@ -348,6 +408,11 @@
    "img/yosemite-1440.avif",
    "img/yosemite-1440.webp",
    "img/yosemite.mips.avif"
+  ],
+  "palette": [
+   "#6f818f",
+   "#3a443b",
+   "#bcd5f0"
   ]
  }
 }

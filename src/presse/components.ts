@@ -12,6 +12,7 @@ type Mount = (root: HTMLElement) => () => void;
 const REGISTRY: Record<string, () => Promise<{ mount: Mount }>> = {
   liquide: () => import("../components/liquide/liquide.ts"),
   grille: () => import("../components/grille/grille.ts"),
+  galerie: () => import("../components/galerie/galerie.ts"),
 };
 
 const mounted = new WeakMap<HTMLElement, () => void>();

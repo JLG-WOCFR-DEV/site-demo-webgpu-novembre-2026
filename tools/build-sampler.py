@@ -116,7 +116,7 @@ more = "\n".join(
             <h3 id="sp-page-t{i + 1}" class="sp-page-title">{title}</h3>
             <p class="sp-page-body">{text}</p>
           </div>
-          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/{img}.jpg" width="1728" height="1150" alt="" /></figure>
+          <figure class="plate sp-page-plate" data-gl-source><img data-gl-img data-gl-quad src="./plates/{img}.jpg" width="1728" height="1150" sizes="(max-width: 760px) 45vw, 340px" alt="" /></figure>
         </section>"""
     for i, (img, title, text) in enumerate(PAGES)
 )
@@ -154,17 +154,17 @@ page = f"""{head}</head>
               </p>
             </div>
             <figure class="plate sp-plate" data-sp-photo="fig">
-              <img data-gl-img data-gl-quad src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." />
+              <img data-gl-img data-gl-quad src="./plates/jardin.jpg" width="1728" height="1150" sizes="(max-width: 760px) 45vw, 340px" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." />
             </figure>
             <figure class="plate sp-plate" data-sp-photo="glass" hidden>
-              <img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate depuis la côte : l'écume des vagues au pied d'une falaise verte." />
+              <img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" sizes="(max-width: 760px) 45vw, 340px" alt="Le Golden Gate depuis la côte : l'écume des vagues au pied d'une falaise verte." />
             </figure>
             <!-- Toujours masquée : sa texture sert à la pile de calques. -->
             <figure class="plate sp-plate" data-sp-photo="flower" hidden>
-              <img data-gl-img src="./plates/dunes.jpg" width="1728" height="1150" alt="" />
+              <img data-gl-img src="./plates/dunes.jpg" width="1728" height="1150" sizes="(max-width: 760px) 45vw, 340px" alt="" />
             </figure>
             <figure class="plate sp-plate" data-sp-photo="fluid" hidden>
-              <img data-gl-img data-gl-fluid src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées, ciel strié de traînées d'avion." />
+              <img data-gl-img data-gl-fluid src="./plates/lac.jpg" width="1728" height="1150" sizes="(max-width: 760px) 45vw, 340px" alt="Un lac de barrage entre des collines dorées, ciel strié de traînées d'avion." />
             </figure>
           </div>
           <div class="sp-block" data-sp-block="layers" hidden>
