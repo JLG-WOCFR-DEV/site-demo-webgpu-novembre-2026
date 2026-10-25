@@ -30,6 +30,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "node_modules/@fontsource-variable/archivo/files/archivo-latin-standard-normal.woff2")
 OUT = os.path.join(ROOT, "public/msdf")
 INSTANCES = [(900, 125), (800, 112)]
+# Fontes de titre relevées sur les pages par tools/bake.mjs (≥ 24 px) : elles
+# rejoignent l'atlas, pour que tous les grands textes aient des angles vifs.
+_REPORT = os.path.join(ROOT, "public/sdf/report.json")
+if os.path.exists(_REPORT):
+    for key in json.load(open(_REPORT, encoding="utf8")).get("titleFonts", []):
+        w, st = (int(float(v)) for v in key.split("|"))
+        if (w, st) not in INSTANCES:
+            INSTANCES.append((w, st))
 SIZE = 64
 RANGE = 8
 CHARSET = (

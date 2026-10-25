@@ -22,6 +22,14 @@ export const GLYPH_STRIDE = 64;
 /** Durée d'un morphing de texte (ms). */
 export const MORPH_MS = 1150;
 
+/**
+ * Atlas SDF précalculé à la construction (tools/bake.mjs) : une texture r8 et,
+ * par clé « fonte|palier|caractère », [x, y, l, h, glyphTop, glyphLeft, buffer, fontSize].
+ */
+export type BakedAtlas = { width: number; height: number; glyphs: Record<string, [number, number, number, number, number, number, number, number]> };
+/** Glyphe dessiné à l'exécution, consigné en mode « presse-bake » pour être précalculé. */
+export type BakeGlyph = { key: string; m: [number, number, number, number, number, number]; data: number[] };
+
 /** Glyphe tel qu'émis, gardé pour le morphing de l'élément au prochain changement de texte. */
 type MorphGlyph = { ch: string; f: number[]; color: number };
 export const ELEM_STRIDE = 32;
@@ -65,6 +73,33 @@ export class TextLayer {
   glyphCount = 0;
   elems: TextElem[] = [];
   atlasGlyphs = 0;
+
+  /** Glyphes repris de l'atlas précalculé (le reste est dessiné à l'exécution). */
+  bakedGlyphs = 0;
+  /** Mode construction : ?presse-bake dans l'URL ; chaque glyphe dessiné est consigné. */
+  bakeLog: BakeGlyph[] | null = new URLSearchParams(location.search).has("presse-bake") ? [] : null;
+
+  /** Charge l'atlas précalculé en haut de la texture ; ses glyphes ne seront plus dessinés au démarrage. */
+  useBaked(meta: BakedAtlas, pixels: Uint8Array) {
+    if (this.bakeLog || meta.width > ATLAS_SIZE || meta.height > ATLAS_SIZE) return;
+    this.device.queue.writeTexture({ texture: this.texture }, pixels, { bytesPerRow: meta.width }, [meta.width, meta.height]);
+    this.packer.reserve(meta.height);
+    for (const [key, [x, y, w, h, glyphTop, glyphLeft, buffer, fontSize]] of Object.entries(meta.glyphs)) {
+      this.entries.set(key, {
+        width: w,
+        height: h,
+        glyphTop,
+        glyphLeft,
+        buffer,
+        fontSize,
+        u0: x / ATLAS_SIZE,
+        v0: y / ATLAS_SIZE,
+        u1: (x + w) / ATLAS_SIZE,
+        v1: (y + h) / ATLAS_SIZE,
+      });
+    }
+    this.bakedGlyphs = Object.keys(meta.glyphs).length;
+  }
 
   get atlasUsed() {
     return this.packer.used;
@@ -137,6 +172,7 @@ export class TextLayer {
     };
     this.entries.set(key, e);
     this.atlasGlyphs++;
+    this.bakeLog?.push({ key, m: [g.width, g.height, g.glyphTop, g.glyphLeft, tier.buffer, tier.fontSize], data: Array.from(g.data) });
     return e;
   }
 
@@ -157,6 +193,15 @@ export class TextLayer {
   morphSince = new Map<HTMLElement, number>();
 
   layout(dpr: number) {
+    performance.mark("presse:text-start");
+    try {
+      this.layoutInner(dpr);
+    } finally {
+      performance.measure("presse:text-layout", "presse:text-start");
+    }
+  }
+
+  private layoutInner(dpr: number) {
     const root = document.documentElement;
     // Les couleurs sont lues sans la classe qui rend le texte DOM transparent.
     const had = root.classList.contains("gl-on");

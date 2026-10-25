@@ -49,7 +49,7 @@ p.replay();                  // rejouer l'impression des sections
 
 1. **Le DOM fait foi.** Le moteur relit les boîtes à chaque image et repeint tout dans un seul canvas fixe.
 2. **Chaque lettre est mesurée** avec un `Range` : le texte du GPU tombe au pixel près sur le texte HTML, quelle que soit la fonte, l'approche ou l'interligne.
-3. **Deux atlas de distances** : MTSDF préparé à l'avance pour les titres (`tools/msdf.py`), SDF simple généré au chargement pour le texte courant. Les lettres sont des instances : un appel de dessin.
+3. **Deux atlas de distances, préparés à la construction** (`npm run bake`) : MTSDF pour chaque fonte de titre relevée sur les pages (`tools/msdf.py`), SDF du texte courant dessiné dans Chromium par le code même du moteur puis rangé (`tools/bake.mjs` → `public/sdf/`). Le moteur ne dessine plus au démarrage que les glyphes absents. Les lettres sont des instances : un appel de dessin.
 4. **Les images sont des plans** sans géométrie : quatre sommets générés dans le shader, la boîte relue sur le DOM.
 5. **Une chaîne après la scène** : bloom, repérage, trame, matières, transitions et grain dans une passe de composition.
 6. **Le contenu change** (CMS, script) : un `MutationObserver` relance la mise en page, et le morphing s'en charge si l'élément le demande.
@@ -74,10 +74,10 @@ de lui : tout ce qui peut être calculé à la construction l'est, pour laisser 
 | 2 | Gabarits HTML et composants | `tools/build-sampler.py` (assemblage à la main) | Un vrai système de gabarits : `<x-grille>`, `<x-liquide>`, `<x-sommaire>` déroulés en HTML statique à la construction, avec leurs attributs `data-gl-*`. |
 | 3 | Minification et renommage | Vite minifie JS et CSS | Renommer les classes CSS et les attributs, minifier le WGSL (noms, espaces, constantes repliées). |
 | 4 | Sortie statique ou rendu serveur | Sortie statique (`dist/`) | Rendu serveur (Vercel ou AWS Lambda) pour les contenus issus d'un CMS ; même gabarits, même sortie. |
-| 5 | Fontes et SVG prêts pour le GPU | `tools/msdf.py` : atlas MTSDF des titres | Toutes les fontes du site, et les SVG convertis en champs de distance (logos, pictos nets à toute taille). |
+| 5 | Fontes et SVG prêts pour le GPU | **Fait pour les fontes** : `tools/bake.mjs` relève les fontes de titre de chaque page, `tools/msdf.py` en fait l'atlas MTSDF | Les SVG convertis en champs de distance (logos, pictos nets à toute taille). |
 | 6 | Images | Redimensionnement à la main | Chaîne d'images : tailles, mipmaps et formats compressés pour le GPU (KTX2/Basis), générés à la construction. |
-| 7 | Champs de distance | MTSDF des titres ; SDF du texte courant générés au chargement | Générer aussi les SDF du texte courant à la construction : plus rien à dessiner au démarrage. |
-| 8 | Morphings et effets précalculés | Appariement des lettres fait à l'exécution | Précalculer les appariements de lettres, les positions des glyphes de chaque gabarit, les trajectoires et les tables des effets ; le moteur ne fait plus que lire. |
+| 7 | Champs de distance | **Fait** : atlas SDF du texte courant précalculé (`public/sdf/text.png`, 380 glyphes, 2 densités d'écran). Première mise en page : −35 % sur la démo, −55 % sur la page Presse | Ce qui reste au démarrage est la mesure des lettres (Range) : c'est le DOM, pas le dessin. |
+| 8 | Morphings et effets précalculés | Rampe de la casse de plomb précalculée ; appariement des lettres à l'exécution | **Positions des glyphes : non**, elles dépendent de la largeur d'écran et du DOM, qui fait foi. **Appariements : inutile** pour l'instant (quelques dizaines de lettres, moins d'une milliseconde). À refaire quand les gabarits (A2) fixeront les textes. |
 
 ### B. Éditeur
 
@@ -91,8 +91,7 @@ composants (A2), et à étendre le routeur de la grille (images partagées entre
 
 ### Ordre proposé
 
-1. **A5 + A7 + A8** : tout le texte prêt pour le GPU à la construction. C'est ce qui rend l'alignement DOM / GPU instantané au
-   chargement, et ce que la démo fait aujourd'hui au démarrage.
+1. ~~**A5 + A7 + A8**~~ : fait pour les fontes et les SDF ; A8 reporté (voir le tableau). Reste les SVG.
 2. **A2 + C** : gabarits et composants, pour poser une grille ou un liquide en une balise.
 3. **A6** : chaîne d'images, le plus gros gain de poids.
 4. **A3** : renommage et minification du WGSL.

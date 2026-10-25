@@ -75,7 +75,7 @@
         <ol class="pd-list" data-gl-text>
           <li><strong>Le DOM fait foi.</strong> Le navigateur met en page ; le moteur relit les boîtes à chaque image et repeint tout dans un seul canvas.</li>
           <li><strong>Chaque lettre est mesurée sur le DOM</strong>, caractère par caractère, avec un Range : le texte du GPU tombe au pixel près sur le texte HTML, quelle que soit la fonte, l'approche ou la hauteur de ligne.</li>
-          <li><strong>Deux atlas de distances.</strong> Les titres viennent d'un atlas MTSDF préparé à l'avance (angles vifs à toute taille) ; le texte courant, d'un champ simple généré au chargement. Toutes les lettres sont des instances : un seul appel de dessin.</li>
+          <li><strong>Deux atlas de distances, préparés à la construction.</strong> Les titres : un atlas MTSDF (angles vifs à toute taille), pour chaque fonte de titre relevée sur les pages. Le texte courant : un atlas SDF dessiné par le même code que dans le navigateur, puis rangé et chargé d'un bloc. Toutes les lettres sont des instances : un seul appel de dessin.</li>
           <li><strong>Les images sont des plans</strong> qui suivent leur élément, sans buffer de géométrie : quatre sommets générés dans le shader.</li>
           <li><strong>Une chaîne après la scène</strong> : bloom, repérage, trame, matières, transitions et grain dans une seule passe de composition.</li>
           <li><strong>Le morphing</strong> apparie les lettres de l'ancien et du nouveau texte : celles qui existent dans les deux voyagent, les autres naissent ou s'effacent.</li>

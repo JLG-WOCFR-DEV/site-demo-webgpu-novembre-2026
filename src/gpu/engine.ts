@@ -4,7 +4,7 @@ import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
-import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type MsdfMeta } from "./text.ts";
+import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
@@ -412,6 +412,29 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
 
   const text = new TextLayer(device);
+  // Atlas SDF du texte courant, précalculé à la construction (tools/bake.mjs) :
+  // les glyphes qu'il contient ne sont plus dessinés au démarrage.
+  try {
+    if (new URLSearchParams(location.search).has("presse-nobake")) throw new Error("atlas précalculé désactivé");
+    const [meta, blob] = await Promise.all([
+      fetch(new URL("./sdf/text.json", document.baseURI)).then((r) => (r.ok ? (r.json() as Promise<BakedAtlas>) : null)),
+      fetch(new URL("./sdf/text.png", document.baseURI)).then((r) => (r.ok ? r.blob() : null)),
+    ]);
+    if (meta && blob) {
+      const bmp = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+      const c = new OffscreenCanvas(bmp.width, bmp.height);
+      const g = c.getContext("2d", { willReadFrequently: true })!;
+      g.drawImage(bmp, 0, 0);
+      const rgba = g.getImageData(0, 0, bmp.width, bmp.height).data;
+      const r8 = new Uint8Array(bmp.width * bmp.height);
+      for (let i = 0; i < r8.length; i++) r8[i] = rgba[i * 4]!;
+      bmp.close();
+      text.useBaked(meta, r8);
+    }
+  } catch {
+    // Pas d'atlas précalculé : tout est dessiné à l'exécution, comme avant.
+  }
+  if (text.bakeLog) (window as unknown as { __presseBake: () => unknown }).__presseBake = () => text.bakeLog;
   const casseData = new Float32Array(4 + 16 * 4);
   // Atlas MTSDF des titres. S'il manque, les titres restent en SDF simple.
   let msdfTex = device.createTexture({ size: [1, 1], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING });

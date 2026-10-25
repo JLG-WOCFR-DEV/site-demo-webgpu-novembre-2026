@@ -29,6 +29,10 @@ html.gl-on [data-gl-text] {
 html.gl-on [data-gl-text] a {
   color: var(--ink, #121212);
 }
+/* Les puces et numéros de liste ne sont pas des lettres : le DOM les garde. */
+html.gl-on [data-gl-text] li::marker {
+  color: var(--ink, #121212);
+}
 html.gl-on img[data-gl-img] {
   opacity: 0;
 }
