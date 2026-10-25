@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Grille infinie</title>
+    <meta name="description" content="Un mur de photos sans fin, qu'on tire dans tous les sens ; chaque photo ouvre sa page, et l'image vole d'une vue à l'autre." />
+    <meta name="theme-color" content="#efeee8" />
+    <script type="module" src="/src/grille/main.ts"></script>
+  </head>
+  <body class="gr">
+    <canvas id="gr-gl" aria-hidden="true"></canvas>
+
+    <header class="gr-head">
+      <p class="gr-kicker">WebGPU-demo-UBS · Grille infinie</p>
+      <p class="gr-hint" data-gr-hint>Tirez le mur dans tous les sens, ou utilisez les flèches. Cliquez une photo pour l'ouvrir.</p>
+    </header>
+
+    <!-- Le mur, en HTML : la même liste que le GPU répète à l'infini. C'est elle
+         que lisent le clavier et les lecteurs d'écran. -->
+    <nav class="gr-index" aria-label="Photos">
+      <ol>
+        <li><a href="?photo=pont" data-photo="pont">Le pont</a></li>
+        <li><a href="?photo=jardin" data-photo="jardin">Le jardin</a></li>
+        <li><a href="?photo=alcatraz" data-photo="alcatraz">L'île</a></li>
+        <li><a href="?photo=yosemite" data-photo="yosemite">La vallée</a></li>
+        <li><a href="?photo=lac" data-photo="lac">Le lac</a></li>
+        <li><a href="?photo=dunes" data-photo="dunes">Les dunes</a></li>
+        <li><a href="?photo=cerf" data-photo="cerf">Le cerf</a></li>
+      </ol>
+    </nav>
+
+    <div class="gr-photos" hidden>
+      <img src="./plates/pont.jpg" data-photo="pont" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." />
+      <img src="./plates/jardin.jpg" data-photo="jardin" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." />
+      <img src="./plates/alcatraz.jpg" data-photo="alcatraz" alt="L'île d'Alcatraz et son phare au milieu de la baie." />
+      <img src="./plates/yosemite.jpg" data-photo="yosemite" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." />
+      <img src="./plates/lac.jpg" data-photo="lac" alt="Un lac entre des collines dorées, sous un ciel strié." />
+      <img src="./plates/dunes.jpg" data-photo="dunes" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." />
+      <img src="./plates/cerf.jpg" data-photo="cerf" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." />
+    </div>
+
+    <!-- Page d'une photo : une vraie URL (?photo=…), le retour du navigateur ramène au mur. -->
+    <article class="gr-detail" data-gr-detail hidden aria-labelledby="gr-title">
+      <div class="gr-hero" data-gr-hero></div>
+      <div class="gr-text">
+        <p class="gr-num" data-gr-num></p>
+        <h1 id="gr-title" class="gr-title" data-gr-title></h1>
+        <p class="gr-body" data-gr-body></p>
+        <p class="gr-alt" data-gr-alt></p>
+        <a class="gr-back" href="./grille.html" data-gr-back>← Le mur</a>
+      </div>
+    </article>
+    <p class="sr-only" aria-live="polite" data-gr-live></p>
+  </body>
+</html>

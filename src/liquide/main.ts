@@ -1,6 +1,7 @@
 import "./style.css";
 import { mountDebugPanel, setDebugCaps } from "../debug-panel.ts";
 import { clockNow, recordable } from "../gpu/recorder.ts";
+import { motionScale } from "../motion-scale.ts";
 import { mountPagesNav } from "../pages-nav.ts";
 import { LIQUID, MAX_CARDS } from "./shaders.ts";
 
@@ -278,7 +279,7 @@ function stepCard(c: Card, rect: { x: number; y: number; w: number; h: number },
   let txy = 0;
   let ty = 0;
   if (!calm && speed > 1) {
-    const a = STRETCH_MAX * (1 - Math.exp(-speed / 1600));
+    const a = STRETCH_MAX * motionScale() * (1 - Math.exp(-speed / 1600));
     const dx = c.vel[0] / speed;
     const dy = c.vel[1] / speed;
     const sq = -0.35 * a;
@@ -293,7 +294,7 @@ function stepCard(c: Card, rect: { x: number; y: number; w: number; h: number },
     c.sv[i] = v;
   }
   // Fonte : en vol, la carte s'arrondit et rétrécit un peu.
-  const meltT = calm ? 0 : smoothstep(120, 1000, speed) * (c.drag ? DRAG_MELT : 1);
+  const meltT = calm ? 0 : Math.min(1, smoothstep(120, 1000, speed) * (c.drag ? DRAG_MELT : 1) * motionScale());
   [c.melt, c.meltV] = spring(c.melt, c.meltV, meltT, MELT_OMEGA, MELT_DAMPING, dt);
   const melt = Math.max(0, Math.min(1.2, c.melt));
 

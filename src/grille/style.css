@@ -1,0 +1,262 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #efeee8;
+  --ink: #121212;
+  --ink-soft: #55534d;
+  --rule: #c8c5ba;
+  --spot: #c8321c;
+  --f-text: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body.gr {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font: 17px/1.55 var(--f-text);
+}
+#gr-gl {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.gr-dragging #gr-gl {
+  cursor: grabbing;
+}
+.gr-detail-open #gr-gl {
+  cursor: default;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.gr-head {
+  position: fixed;
+  z-index: 2;
+  left: 16px;
+  right: auto;
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  pointer-events: none;
+}
+.gr-kicker {
+  margin: 0;
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.gr-hint {
+  margin: 0;
+  font: 12px/1.4 var(--f-mono);
+  color: var(--ink-soft);
+}
+.gr-detail-open .gr-head {
+  opacity: 0;
+}
+/* La liste des photos : invisible à l'œil, présente au clavier. */
+.gr-index {
+  position: fixed;
+  z-index: 3;
+  top: 60px;
+  left: 16px;
+}
+.gr-index ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gr-index a {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.gr-index a:focus-visible {
+  position: static;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  padding: 8px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 999px;
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.gr-detail-open .gr-index {
+  display: none;
+}
+
+/* Page d'une photo */
+.gr-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: clamp(20px, 3vw, 48px);
+  align-items: center;
+  padding: 72px clamp(16px, 4vw, 64px) 48px;
+  pointer-events: none;
+}
+.gr-detail[hidden] {
+  display: none;
+}
+.gr-hero {
+  aspect-ratio: 3 / 2;
+  width: 100%;
+}
+.gr-text {
+  pointer-events: auto;
+}
+.gr-num {
+  margin: 0 0 8px;
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.12em;
+  color: var(--spot);
+}
+.gr-title {
+  margin: 0;
+  font-size: clamp(40px, 6vw, 92px);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.gr-body {
+  max-width: 34ch;
+  margin: 18px 0 10px;
+}
+.gr-alt {
+  max-width: 40ch;
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.gr-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  color: inherit;
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.gr-back:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
+}
+/* Lettres sous masque : chaque lettre monte de sous sa ligne, en décalé. */
+.gr-title .ltr {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.gr-title .ltr > span {
+  display: inline-block;
+  transform: translateY(105%);
+  animation: gr-rise 0.7s cubic-bezier(0.2, 0.7, 0.1, 1) forwards;
+  animation-delay: calc(var(--i) * 28ms * var(--m, 1) + 280ms);
+}
+@keyframes gr-rise {
+  to {
+    transform: none;
+  }
+}
+.gr-body,
+.gr-alt,
+.gr-back,
+.gr-num {
+  opacity: 0;
+  animation: gr-fade 0.6s ease forwards 0.55s;
+}
+@keyframes gr-fade {
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gr-title .ltr > span,
+  .gr-body,
+  .gr-alt,
+  .gr-back,
+  .gr-num {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (max-width: 760px) {
+  .gr-detail {
+    grid-template-columns: 1fr;
+    align-content: start;
+    padding-top: 64px;
+    overflow: auto;
+    pointer-events: auto;
+  }
+}
+
+.gr-hero-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+}
+.gr-gl .gr-hero-img {
+  opacity: 0;
+}
+/* Sans WebGPU : la liste des photos, en clair. */
+.gr-nogl .gr-index a {
+  position: static;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  margin: 0 8px 8px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+}
+.gr-nogl .gr-index ol {
+  display: flex;
+  flex-wrap: wrap;
+}

@@ -2114,3 +2114,59 @@ html.gl-on .menu[data-style="planche"] .sheet {
 .sp-stage.is-b .sp-plate {
   order: -1;
 }
+
+/* Lettres : l'index, mais chaque titre se compose lettre à lettre sous un
+   masque, et roule d'une ligne au survol (d'après les transitions en lettres
+   d'Aristide Benoist). Les lettres sont aria-hidden ; le titre entier est lu. */
+.sheet-title .ltr {
+  display: inline;
+}
+.menu[data-style="lettres"] .sheet {
+  background: none;
+  box-shadow: none;
+}
+.menu[data-style="lettres"] .sheet-photo {
+  display: none;
+}
+.menu[data-style="lettres"] .sheet-label {
+  inset: 0;
+  height: auto;
+  gap: 16px;
+}
+.menu[data-style="lettres"] .sheet-title {
+  font-size: min(clamp(20px, 3.6vh, 42px), calc(var(--row, 60px) * 0.66));
+  white-space: nowrap;
+  color: var(--ink);
+}
+.menu[data-style="lettres"] .menu-preview {
+  display: block;
+}
+.menu[data-style="lettres"] .ltr {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  line-height: 1.1;
+}
+.menu[data-style="lettres"] .ltr > span {
+  display: inline-block;
+  /* Le double de la lettre, une ligne plus bas, pour le roulement. */
+  text-shadow: 0 1.1em 0 var(--spot);
+  animation: menu-rise 0.65s cubic-bezier(0.2, 0.7, 0.1, 1) backwards;
+  animation-delay: calc(var(--row-i, 0) * 55ms + var(--i, 0) * 16ms);
+  transition: transform 0.5s cubic-bezier(0.6, 0, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 14ms);
+}
+.menu[data-style="lettres"] .sheet.is-active .ltr > span {
+  transform: translateY(-1.1em);
+}
+@keyframes menu-rise {
+  from {
+    transform: translateY(110%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu[data-style="lettres"] .ltr > span {
+    animation: none;
+    transition: none;
+  }
+}

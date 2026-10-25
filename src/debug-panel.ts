@@ -1,3 +1,4 @@
+import { motionLevel, setMotionLevel, type MotionLevel } from "./motion-scale.ts";
 /**
  * Panneau de débogage commun à toutes les pages : fil de fer, grille de mise
  * en page, capture vidéo. Il s'ouvre depuis une icône de la barre (ou, sur les
@@ -175,10 +176,17 @@ export function mountDebugPanel(anchor?: { parent: HTMLElement; before?: Element
     anchor.parent.insertBefore(btn, anchor.before ?? null);
   } else {
     btn.classList.add("dbg-pill");
-    const pill = document.querySelector<HTMLElement>(".pages-pill");
-    const left = pill ? pill.getBoundingClientRect().right + 8 : 10;
-    btn.style.left = `max(${left}px, env(safe-area-inset-left))`;
+    // À droite de la pastille « Pages », une fois sa largeur connue (polices chargées).
+    const place = () => {
+      const pill = document.querySelector<HTMLElement>(".pages-pill");
+      const left = pill ? pill.getBoundingClientRect().right + 8 : 10;
+      btn.style.left = `max(${left}px, env(safe-area-inset-left))`;
+    };
     document.body.prepend(btn);
+    place();
+    const pill = document.querySelector<HTMLElement>(".pages-pill");
+    if (pill) new ResizeObserver(place).observe(pill);
+    addEventListener("resize", place);
   }
   triggers.push(btn);
 
@@ -193,6 +201,14 @@ export function mountDebugPanel(anchor?: { parent: HTMLElement; before?: Element
     <fieldset>
       <legend>Rendu</legend>
       <label data-dbg-wirelabel><input type="checkbox" data-dbg="wire" /> Fil de fer : ce que reçoit le GPU</label>
+    </fieldset>
+    <fieldset>
+      <legend>Mouvement</legend>
+      <div class="dbg-row" role="radiogroup" aria-label="Intensité du mouvement">
+        <label><input type="radio" name="dbg-motion" value="sobre" /> Sobre</label>
+        <label><input type="radio" name="dbg-motion" value="normal" /> Normal</label>
+        <label><input type="radio" name="dbg-motion" value="expressif" /> Expressif</label>
+      </div>
     </fieldset>
     <fieldset>
       <legend>Grille</legend>
@@ -234,6 +250,10 @@ export function mountDebugPanel(anchor?: { parent: HTMLElement; before?: Element
   addEventListener("scroll", () => (rows.style.backgroundPosition = `0 ${-(scrollY % 8)}px`), { passive: true });
 
   const boxes = [...pop.querySelectorAll<HTMLInputElement>("[data-dbg]")];
+  for (const r of pop.querySelectorAll<HTMLInputElement>("input[name='dbg-motion']")) {
+    r.checked = r.value === motionLevel();
+    r.addEventListener("change", () => r.checked && setMotionLevel(r.value as MotionLevel));
+  }
   const status = pop.querySelector<HTMLElement>("[data-dbg-status]")!;
   const link = pop.querySelector<HTMLAnchorElement>("[data-dbg-link]")!;
   const go = pop.querySelector<HTMLButtonElement>("[data-dbg-go]")!;

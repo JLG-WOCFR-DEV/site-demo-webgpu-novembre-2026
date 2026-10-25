@@ -14,7 +14,7 @@ struct Frame {
   pointer: vec4f,  // x, y (css), inside, reduced
   glyph: vec4f,    // wave, ink, scatter, glyphBoxes
   misc: vec4f,     // atlasSize, hdr, paperLum, fil de fer (0/1)
-  motion: vec4f,   // vitesse de défilement (−1…1), inertie des plaques (0…), 0, 0
+  motion: vec4f,   // vitesse de défilement (−1…1), inertie des plaques (0…), intensité du mouvement (0,4 sobre … 1,6), 0
 };
 
 // Débogage, fil de fer : chaque plan n'est plus que ses arêtes et la diagonale
@@ -500,8 +500,8 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
     let k = q * q * (3.0 - 2.0 * q);
     if (g.mk < 1.5) {
       center += g.src * (1.0 - k);
-      center.y -= sin(3.14159 * k) * g.size.y * (0.18 + 0.25 * hash11(g.idx + 4.2)) * select(1.0, -1.0, g.src.x < 0.0);
-      local = rot(sin(3.14159 * k) * (hash11(g.idx * 1.3) - 0.5) * 0.5) * local;
+      center.y -= sin(3.14159 * k) * g.size.y * (0.18 + 0.25 * hash11(g.idx + 4.2)) * select(1.0, -1.0, g.src.x < 0.0) * frame.motion.z;
+      local = rot(sin(3.14159 * k) * (hash11(g.idx * 1.3) - 0.5) * 0.5 * frame.motion.z) * local;
     } else if (g.mk < 2.5) {
       reveal = min(reveal, k);
       local *= 0.75 + 0.25 * k;

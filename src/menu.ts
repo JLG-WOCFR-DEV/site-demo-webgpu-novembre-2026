@@ -13,7 +13,9 @@ import { motion, pointer, settings } from "./state.ts";
  * Sans WebGPU, le CSS rend la même géométrie avec les mêmes matrices.
  */
 
-export const MENU_STYLES = ["leporello", "index", "ramette", "planche", "nuancier", "bande", "rotative", "galerie", "salle"] as const;
+export const MENU_STYLES = ["leporello", "index", "lettres", "ramette", "planche", "nuancier", "bande", "rotative", "galerie", "salle"] as const;
+/** « Lettres » est un index dont les titres se composent lettre à lettre. */
+const indexLike = (s: string) => s === "index" || s === "lettres";
 export type MenuStyle = (typeof MENU_STYLES)[number];
 
 export type MenuQuad = {
@@ -123,7 +125,7 @@ const N = () => items.length;
 /** Styles qui tournent en boucle : leur compteur est continu, l'index en est le modulo. */
 const cyclic = () => style === "ramette" || style === "bande" || style === "rotative" || style === "salle";
 /** Styles qu'on feuillette en tirant (les autres se survolent). */
-const draggable = () => style !== "index" && style !== "planche";
+const draggable = () => !indexLike(style) && style !== "planche";
 let vel = 0;
 let lastPos = 0;
 const wrap = (i: number) => ((i % N()) + N()) % N();
@@ -186,7 +188,24 @@ function build() {
     const label = document.createElement("span");
     label.className = "sheet-label";
     label.innerHTML = `<span class="sheet-num">${num}</span> <span class="sheet-title"></span>`;
-    label.querySelector(".sheet-title")!.textContent = title;
+    // Le titre, coupé en lettres (style « Lettres ») : chaque lettre a son
+    // masque, et un double juste dessous pour le roulement au survol.
+    const tEl = label.querySelector<HTMLElement>(".sheet-title")!;
+    const sr = document.createElement("span");
+    sr.className = "sr-only";
+    sr.textContent = title;
+    tEl.append(sr);
+    [...title].forEach((ch, li) => {
+      const w = document.createElement("span");
+      w.className = "ltr";
+      w.setAttribute("aria-hidden", "true");
+      const c = document.createElement("span");
+      c.textContent = ch === " " ? "\u00a0" : ch;
+      c.style.setProperty("--i", String(li));
+      w.append(c);
+      tEl.append(w);
+    });
+    link.style.setProperty("--row-i", String(i));
     link.append(photo, label);
     link.addEventListener("click", (e) => {
       e.preventDefault();
@@ -197,7 +216,7 @@ function build() {
       if (wrap(active) !== i) go(i, false);
     });
     link.addEventListener("pointerenter", () => {
-      if ((style === "index" || style === "planche") && !drag) go(i, false);
+      if ((indexLike(style) || style === "planche") && !drag) go(i, false);
     });
     stage.append(link);
     return { id, num, title, src, link, photo, label, lift: 0, hx: 0 };
@@ -530,7 +549,7 @@ function step(t: number) {
     label.style.opacity = (p.label * p.alpha).toFixed(3);
     link.classList.toggle("is-active", p.it === items[wrap(active)]);
     link.style.pointerEvents = p.alpha < 0.3 ? "none" : "";
-    if (p.alpha > 0.002 && style !== "index") {
+    if (p.alpha > 0.002 && !indexLike(style)) {
       const ph: [number, number, number, number] = [photo.offsetLeft, photo.offsetTop, photo.offsetWidth, photo.offsetHeight];
       quads.push({
         m: new Float32Array(P.multiply(p.m).toFloat32Array()),
@@ -548,7 +567,7 @@ function step(t: number) {
 
   // Index : une grande épreuve à droite, imprimée avec la transition choisie.
   menuGL.print = null;
-  if (style === "index") {
+  if (indexLike(style)) {
     const pv = previewRect(W, H);
     const it = items[sel]!;
     const par = reduced || !pointer.inside ? [0, 0] : [(pointer.x - sr.left - W / 2) * -0.012, (pointer.y - sr.top - H / 2) * -0.012];
@@ -667,7 +686,7 @@ function layout(s: MenuStyle, W: number, H: number, dt: number, k: (r: number) =
     return out;
   }
 
-  if (s === "index") {
+  if (indexLike(s)) {
     const mobile = W < 720;
     const top = mobile ? H * 0.44 : H * 0.12;
     const rowH = Math.min(((mobile ? H * 0.52 : H * 0.76) / n), 64);

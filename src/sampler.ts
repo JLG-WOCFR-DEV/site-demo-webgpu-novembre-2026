@@ -66,6 +66,7 @@ const MATTERS = [
 const MENUS = [
   ["leporello", "Leporello", "Un dépliant en accordéon : plis alternés, creux assombris."],
   ["index", "Index", "De grands titres ; l'épreuve s'imprime avec la transition choisie."],
+  ["lettres", "Lettres", "Les titres se composent lettre à lettre sous un masque, et roulent d'une ligne au survol."],
   ["ramette", "Ramette", "Une pile de feuilles : la première s'envole, puis revient se poser."],
   ["planche", "Planche contact", "Des vues de pellicule, un cercle au crayon gras."],
   ["nuancier", "Nuancier", "Des bandes rivetées qui pivotent en éventail."],

@@ -1,3 +1,4 @@
+import { motionScale } from "../motion-scale.ts";
 import { menuGL } from "../menu.ts";
 import { motion, pointer, settings, TRANSITION_NONE } from "../state.ts";
 import { TIMED } from "./chain.ts";
@@ -16,7 +17,21 @@ export type EngineHooks = {
   onContrast?: (ratio: number) => void;
 };
 
-const PAPER = [0.937, 0.933, 0.91] as const;
+/**
+ * Couleur du papier : lue sur le jeton CSS --paper s'il existe, pour que le
+ * DOM et le GPU partagent une seule source de vérité (sinon, le papier de PLI).
+ * Les valeurs sont en sRGB, comme le reste de la chaîne.
+ */
+const PAPER: [number, number, number] = [0.937, 0.933, 0.91];
+function readPaper() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
+  const m = v.match(/^#([0-9a-f]{6})$/i);
+  if (!m) return;
+  const n = Number.parseInt(m[1]!, 16);
+  PAPER[0] = ((n >> 16) & 255) / 255;
+  PAPER[1] = ((n >> 8) & 255) / 255;
+  PAPER[2] = (n & 255) / 255;
+}
 const SCENE_FORMAT: GPUTextureFormat = "rgba16float";
 const PLANE_STRIDE = 256;
 const MAX_PLANES = 16;
@@ -79,6 +94,7 @@ const additive: GPUBlendState = {
 };
 
 export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks = {}) {
+  readPaper();
   if (!navigator.gpu) throw new Error("WebGPU absent de ce navigateur");
   const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
   if (!adapter) throw new Error("Aucun adaptateur WebGPU");
@@ -680,7 +696,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   // front d'impression l'atteint. Le focus clavier imprime tout le chapitre.
   const DOM_INK = ".controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button";
   const onFocus = (e: FocusEvent) => {
-    const ch = (e.target as Element | null)?.closest?.(".chapter, .colophon");
+    const ch = (e.target as Element | null)?.closest?.(".chapter, .colophon, [data-gl-print]");
     const st = ch ? printDepth.get(ch) : undefined;
     if (st) st.target = 1e6;
   };
@@ -756,7 +772,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     frameData.set([pointer.x, pointer.y, pointer.inside ? 1 : 0, reduced ? 1 : 0], 4);
     frameData.set([settings.glyph.wave, settings.glyph.ink, settings.glyph.scatter, settings.dom.boxes ? 1 : 0], 8);
     frameData.set([2048, 1.6, PAPER[0], settings.debug.wire ? 1 : 0], 12);
-    frameData.set([slip, settings.inertia.amount, 0, 0], 16);
+    frameData.set([slip, settings.inertia.amount * motionScale(), motionScale(), 0], 16);
     device.queue.writeBuffer(frameBuf, 0, frameData);
 
     /* Éléments de texte : seule la boîte de l'élément est relue. */
@@ -919,7 +935,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const atBottom = scrollY + innerHeight >= document.documentElement.scrollHeight - 2;
     let nch = 0;
     const printEase = 1 - Math.exp(-dt * P.speed);
-    for (const ch of menuOpen ? [] : document.querySelectorAll(".chapter, .colophon")) {
+    for (const ch of menuOpen ? [] : document.querySelectorAll(".chapter, .colophon, [data-gl-print]")) {
       const r = ch.getBoundingClientRect();
       let st = printDepth.get(ch);
       if (!st) {
@@ -1408,7 +1424,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     },
     /** Remet chaque chapitre au papier vierge : les transitions se rejouent. */
     replayPrint: () => {
-      for (const ch of document.querySelectorAll(".chapter, .colophon")) printDepth.set(ch, { shown: 0, target: 0 });
+      for (const ch of document.querySelectorAll(".chapter, .colophon, [data-gl-print]")) printDepth.set(ch, { shown: 0, target: 0 });
       for (const el of document.querySelectorAll(".is-printed")) el.classList.remove("is-printed");
     },
     destroy: () => {
