@@ -270,13 +270,13 @@ const orbite: Render = (a, children) => {
 ${items.map((it) => `    <li class="or-item" data-id="${esc(it.id)}" data-title="${esc(it.title)}" data-tag="${esc(it.tag)}"${it.color ? ` data-color="${esc(it.color)}"` : ""}><a href="${esc(it.href)}" data-flight="${esc(it.id)}"><img src="${esc(it.src)}" alt="${esc(it.alt)}" loading="lazy" sizes="(max-width: 760px) 90vw, 50vw" /><span class="or-name">${esc(it.title)}</span><span class="or-tagline">${esc(it.tag)}</span></a></li>`).join("\n")}
   </ol>
   <div class="or-caption">
-    ${a.kicker ? `<p class="or-kicker">${esc(a.kicker)}</p>` : ""}
-    <p class="or-num" data-or-num>01 / ${String(items.length).padStart(2, "0")}</p>
-    <${hTag} class="or-title" data-or-title>${esc(first?.title ?? "")}</${hTag}>
-    <p class="or-tag" data-or-tag>${esc(first?.tag ?? "")}</p>
-    <a class="or-open" data-or-open href="${esc(first?.href ?? "#")}" data-flight="${esc(first?.id ?? "")}">${esc(a.open ?? "Entrer")} <span aria-hidden="true">↗</span></a>
+    ${a.kicker ? `<p class="or-kicker" data-intro>${esc(a.kicker)}</p>` : ""}
+    <p class="or-num" data-intro data-or-num>01 / ${String(items.length).padStart(2, "0")}</p>
+    <${hTag} class="or-title" data-intro data-or-title>${esc(first?.title ?? "")}</${hTag}>
+    <p class="or-tag" data-intro data-or-tag>${esc(first?.tag ?? "")}</p>
+    <a class="or-open" data-intro data-magnet="0.25" data-or-open href="${esc(first?.href ?? "#")}" data-flight="${esc(first?.id ?? "")}">${esc(a.open ?? "Entrer")} <span aria-hidden="true">↗</span></a>
   </div>
-  <div class="or-nav"><button type="button" data-or-prev aria-label="Application précédente">←</button><button type="button" data-or-next aria-label="Application suivante">→</button></div>
+  <div class="or-nav" data-intro><button type="button" data-magnet="0.35" data-or-prev aria-label="Application précédente">←</button><button type="button" data-magnet="0.35" data-or-next aria-label="Application suivante">→</button></div>
   <p class="or-hint" aria-hidden="true">${esc(a.hint ?? "Glissez, ou ← →. La carte de face est au point ; cliquez-la pour entrer.")}</p>
   <p class="sr-only" aria-live="polite" data-or-live></p>
 </section>`;

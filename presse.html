@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-presse-scroll="doux" data-presse-transition="buvard" data-presse-effects="loupe bloom grain" data-presse-debug>
+<html lang="fr" data-presse-cursor data-presse-scroll="doux" data-presse-transition="buvard" data-presse-effects="loupe bloom grain" data-presse-debug>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -16,7 +16,7 @@
         Un « Webflow » WebGPU, sous forme de bibliothèque : on écrit une page HTML ordinaire, quelques attributs disent au GPU
         ce qu'il doit en faire, et une ligne de script lance le moteur. Cette page est faite ainsi, et rien d'autre.
       </p>
-      <button type="button" class="pd-btn" data-pd-morph-btn>Changer le titre</button>
+      <button type="button" class="pd-btn" data-magnet data-pd-morph-btn>Changer le titre</button>
     </header>
 
     <main>
@@ -68,6 +68,23 @@
           <p class="pd-card-title" data-gl-text>Vitre gelée</p>
           <p class="pd-p" data-gl-text>Gardez le pointeur dessus : la glace fond, avec un bord d'eau.</p>
         </div>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-fx">
+        <h2 id="pd-fx" class="pd-h2" data-gl-text>Survols et révélations</h2>
+        <p class="pd-p" data-gl-text>
+          Deux attributs sur une image GPU. <code>data-gl-reveal</code> la fait apparaître quand elle entre dans l'écran ;
+          <code>data-gl-hover</code> la fait répondre au pointeur. Le plan, ses coins et son ombre ne bougent pas : seule la
+          lecture de la photo change.
+        </p>
+        <div class="pd-fx-grid">
+          <figure class="pd-fx"><img data-gl-img data-gl-reveal="rideau" data-gl-hover="deplacement" src="./plates/fig.jpg" alt="Une figue ouverte sur une pierre calcaire." /><figcaption><code>rideau</code> · <code>deplacement</code></figcaption></figure>
+          <figure class="pd-fx"><img data-gl-img data-gl-reveal="dissolution" data-gl-hover="rvb" src="./plates/flower.jpg" alt="Une renoncule blanche sur fond gris." /><figcaption><code>dissolution</code> · <code>rvb</code></figcaption></figure>
+          <figure class="pd-fx"><img data-gl-img data-gl-reveal="pixels" data-gl-hover="onde" src="./plates/steel.jpg" alt="Un cylindre d'acier brossé sur une ardoise sombre." /><figcaption><code>pixels</code> · <code>onde</code></figcaption></figure>
+          <figure class="pd-fx"><img data-gl-img data-gl-reveal="tri" data-gl-hover="pixels" src="./plates/bowl.jpg" alt="Un bol de grès blanc sur une table claire." /><figcaption><code>tri</code> · <code>pixels</code></figcaption></figure>
+        </div>
+        <pre class="pd-code"><code>&lt;img data-gl-img data-gl-reveal="rideau" data-gl-hover="deplacement" src="…" alt="…"&gt;
+&lt;!-- révélation : rideau, dissolution, pixels, tri · survol : deplacement, rvb, onde, pixels --&gt;</code></pre>
       </section>
 
       <section class="pd-sec" data-gl-print aria-labelledby="pd-scroll">

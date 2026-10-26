@@ -60,7 +60,72 @@ struct Plane {
   params: vec4f,  // radius, shadow, lift, alpha
   flags: vec4f,   // wire, mono (1 atlas, 2 négatif), hover, hdr
   peel: vec4f,    // décollement 0…1, 0, 0, 0
+  fx: vec4f,      // survol (0 aucun, 1 deplacement, 2 rvb, 3 onde, 4 pixels), révélation (1 rideau, 2 dissolution, 3 pixels, 4 tri), progression 0…1, graine
 };
+
+/* D4 — survols et révélations d'une image (data-gl-hover, data-gl-reveal).
+   Tout se joue sur la coordonnée de lecture de la photo et sur sa couverture ;
+   le plan, ses coins et son ombre ne changent pas. */
+fn fx_hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
+fn fx_noise(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(fx_hash(i), fx_hash(i + vec2f(1.0, 0.0)), u.x), mix(fx_hash(i + vec2f(0.0, 1.0)), fx_hash(i + vec2f(1.0, 1.0)), u.x), u.y);
+}
+/** La lecture de la photo, déformée par le survol et la révélation ; .z : couverture (0 … 1). */
+fn fx_uv(local0: vec2f, size: vec2f, ptr: vec2f, hov: f32, t: f32) -> vec3f {
+  let fx = plane.fx;
+  var local = local0;
+  var cover = 1.0;
+  let hm = u32(fx.x + 0.5);
+  if (hm > 0u && hov > 0.001 && frame.pointer.w < 0.5) {
+    let d = (local - ptr) * size;
+    let l = length(d);
+    if (hm == 1u) {
+      // Déplacement : la photo se bombe sous le pointeur, comme une goutte posée dessus.
+      let fall = exp(-l * l / (2.0 * 110.0 * 110.0));
+      local -= (local - ptr) * fall * 0.22 * hov;
+    } else if (hm == 3u) {
+      // Onde : des anneaux partent du pointeur et s'amortissent.
+      let w = sin(l * 0.075 - t * 7.0) * exp(-l * 0.008);
+      local += (d / max(l, 1.0)) * w * 9.0 / size * hov;
+    } else if (hm == 4u) {
+      // Pixels : la photo se pixélise loin du pointeur, nette sous lui.
+      let fall = exp(-l * l / (2.0 * 140.0 * 140.0));
+      let b = mix(1.0, 22.0, hov * (1.0 - fall));
+      local = (floor(local * size / b) + 0.5) * b / size;
+    }
+  }
+  let rm = u32(fx.y + 0.5);
+  let p = fx.z;
+  if (rm > 0u && p < 0.999) {
+    let e = 1.0 - pow(1.0 - p, 3.0);
+    if (rm == 1u) {
+      // Rideau : il monte du bas, la photo glisse dessous et se pose (un léger zoom qui retombe).
+      let front = 1.0 - e * 1.08 + 0.04;
+      cover = smoothstep(front - 0.02, front + 0.02, local.y);
+      local = 0.5 + (local - 0.5) / (1.0 + 0.18 * (1.0 - e));
+    } else if (rm == 2u) {
+      // Dissolution : la photo apparaît par taches, d'un bruit à deux échelles.
+      let n = fx_noise(local * size / 46.0 + fx.w * 13.0) * 0.7 + fx_hash(floor(local * size / 3.0)) * 0.3;
+      cover = smoothstep(n - 0.06, n + 0.06, e * 1.15 - 0.05);
+    } else if (rm == 3u) {
+      // Pixels : de gros pavés qui s'affinent jusqu'au pixel.
+      let b = max(1.0, mix(64.0, 1.0, e));
+      local = (floor(local * size / b) + 0.5) * b / size;
+      cover = smoothstep(0.0, 0.18, p);
+    } else if (rm == 4u) {
+      // Tri : chaque colonne coule en traînée, puis se range.
+      let col = floor(local.x * size.x / 4.0);
+      let lag = fx_hash(vec2f(col, fx.w * 31.0));
+      let k = clamp((e - lag * 0.45) / 0.55, 0.0, 1.0);
+      local.y = local.y * k + (1.0 - k) * min(local.y, 0.02 + lag * 0.4) * 0.6;
+      cover = smoothstep(0.0, 0.25, k + 0.05);
+    }
+  }
+  return vec3f(local, cover);
+}
 
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(1) @binding(0) var<uniform> plane: Plane;
@@ -136,8 +201,17 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
   let d = sd_round_box(in.px - (r.xy + half), half, rad);
   let aa = max(fwidth(d), 0.5);
   let fill = 1.0 - smoothstep(-aa, aa, d);
-  let uv = mix(plane.uv.xy, plane.uv.zw, in.local);
-  var col = textureSample(tex, samp, uv).rgb;
+  // D4 : la lecture de la photo (survol, révélation). Dérivées prises sur la coordonnée lisse : pas de couture de mip.
+  let ptr = (frame.pointer.xy - r.xy) / max(r.zw, vec2f(1.0));
+  let fxr = fx_uv(in.local, r.zw, ptr, plane.flags.z, frame.viewport.w);
+  let uv0 = mix(plane.uv.xy, plane.uv.zw, in.local);
+  let uv = mix(plane.uv.xy, plane.uv.zw, fxr.xy);
+  var col = textureSampleGrad(tex, samp, uv, dpdx(uv0), dpdy(uv0)).rgb;
+  if (u32(plane.fx.x + 0.5) == 2u && plane.flags.z > 0.001) {
+    // RVB : les trois couches se séparent dans l'axe du pointeur.
+    let dir = normalize((in.local - ptr) * r.zw + vec2f(1e-3)) * 4.5 * plane.flags.z / r.zw * (plane.uv.zw - plane.uv.xy);
+    col = vec3f(textureSampleGrad(tex, samp, uv + dir, dpdx(uv0), dpdy(uv0)).r, col.g, textureSampleGrad(tex, samp, uv - dir, dpdx(uv0), dpdy(uv0)).b);
+  }
   if (wire_on(frame)) {
     let l = quad_wire(in.local, r.zw) * plane.params.w;
     return vec4f(WIRE_INK * l, l);
@@ -183,7 +257,7 @@ fn fs_plane(in: VsOut) -> @location(0) vec4f {
     return vec4f(col, 1.0) * select(fill, 1.0, line > 0.01) * plane.params.w;
   }
 
-  let a = fill * plane.params.w;
+  let a = fill * plane.params.w * fxr.z;
   return vec4f(col * a, a);
 }
 `;

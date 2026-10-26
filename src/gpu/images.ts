@@ -18,7 +18,17 @@ export type Plate = {
   peel: number;
   /** Plaque de l'encre fraîche (chapitre 08.2) : dessinée depuis le colorant du fluide. */
   fluid: boolean;
+  /** Survol (D4) : 0 aucun, 1 deplacement, 2 rvb, 3 onde, 4 pixels. */
+  hoverMode: number;
+  /** Révélation à l'entrée dans l'écran (D4) : 0 aucune, 1 rideau, 2 dissolution, 3 pixels, 4 tri. */
+  revealMode: number;
+  /** Progression de la révélation (0 → 1), et l'instant où elle a commencé (−1 : pas encore). */
+  reveal: number;
+  revealT0: number;
 };
+
+export const HOVER_MODES = ["", "deplacement", "rvb", "onde", "pixels"];
+export const REVEAL_MODES = ["", "rideau", "dissolution", "pixels", "tri"];
 
 /** Le cadre d'une image : son parent, en sautant le <picture> de la chaîne d'images. */
 export const frameOf = (img: HTMLImageElement): Element => {
@@ -64,6 +74,10 @@ export class ImageLayer {
       hover: 0,
       peel: 0,
       fluid: img.hasAttribute("data-gl-fluid"),
+      hoverMode: Math.max(0, HOVER_MODES.indexOf(img.dataset.glHover ?? "")),
+      revealMode: Math.max(0, REVEAL_MODES.indexOf(img.dataset.glReveal ?? "")),
+      reveal: img.dataset.glReveal ? 0 : 1,
+      revealT0: -1,
     }));
     for (const p of this.plates) void this.load(p);
   }

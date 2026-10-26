@@ -129,7 +129,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       {
         binding: 0,
         visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 80 },
+        // rect, uv, params, flags, peel, fx (D4) : six vec4f.
+        buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 96 },
       },
     ],
   });
@@ -404,7 +405,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
   const planeBind = device.createBindGroup({
     layout: planeLayout,
-    entries: [{ binding: 0, resource: { buffer: planeBuf, size: 80 } }],
+    entries: [{ binding: 0, resource: { buffer: planeBuf, size: 96 } }],
   });
   const sheetBuf = device.createBuffer({ size: PLANE_STRIDE * MAX_SHEETS, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const sheetBind = device.createBindGroup({ layout: sheetLayout, entries: [{ binding: 0, resource: { buffer: sheetBuf, size: SHEET_BYTES } }] });
@@ -737,6 +738,16 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage], [data-gl-material]")].filter((s) => stageName(s) !== "dechirure");
   // Pointeur amorti de la matière lentille, et sa force au survol.
   const lensP = { x: 0, y: 0, k: 0 };
+  // Le pointeur, suivi par le moteur lui-même : une page Presse n'a pas d'autre script pour le faire
+  // (sans lui, loupe, givre et survols restaient immobiles hors de la démo principale).
+  const onPtr = (e: PointerEvent) => {
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+    pointer.inside = e.pointerType !== "touch" || e.pressure > 0;
+  };
+  addEventListener("pointermove", onPtr, { passive: true });
+  addEventListener("pointerdown", onPtr, { passive: true });
+  document.documentElement.addEventListener("pointerleave", () => (pointer.inside = false));
   // Ondes et champ de force (effets Canvas UI) : chaque clic sur la page lance une onde.
   addEventListener("pointerdown", (e) => {
     const fx = settings.cui.effect;
@@ -843,7 +854,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     let fluidPlate: { plate: (typeof images.plates)[number]; rect: DOMRect } | null = null;
     const jobs: Job[] = [];
     let slot = 0;
-    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean, peel = 0) => {
+    const pushPlane = (rect: DOMRect, uv: readonly number[], params: number[], flags: number[], bind: GPUBindGroup, shadow: boolean, peel = 0, fx: readonly number[] = [0, 0, 1, 0]) => {
       if (slot >= MAX_PLANES) return;
       const o = (slot * PLANE_STRIDE) / 4;
       planeData.set([rect.left, rect.top, rect.width, rect.height], o);
@@ -851,6 +862,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       planeData.set(params, o + 8);
       planeData.set(flags, o + 12);
       planeData.set([peel, 0, 0, 0], o + 16);
+      planeData.set(fx, o + 20);
       jobs.push({ offset: slot * PLANE_STRIDE, bind, shadow, peel: peel > 0.001 });
       slot++;
     };
@@ -878,15 +890,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const shadow = p.quad ? q.shadow : 0.32;
       const lift = p.quad ? q.lift : 0.15;
       const uv = coverUV(r.width, r.height, p.width, p.height);
+      // D4 : la révélation part quand l'image entre aux 85 % de l'écran, une seule fois.
+      if (p.revealMode && p.revealT0 < 0 && r.top < cssH * 0.85 && r.bottom > 0) p.revealT0 = now;
+      if (p.revealMode && p.revealT0 >= 0) p.reveal = reduced ? 1 : Math.min(1, (now - p.revealT0) / 1300);
+      const fx = [p.hoverMode, p.revealMode, p.reveal, (images.plates.indexOf(p) * 0.618) % 1];
+      // L'ombre naît avec l'image.
+      const shadowK = p.revealMode ? Math.min(1, p.reveal * 1.6) : 1;
       // Chapitre 02 : l'épreuve se décolle au réglage, et d'un souffle au survol.
       const wantPeel = p.quad ? Math.max(q.peel, reduced || !q.hoverPeel ? 0 : p.hover * 0.22) : 0;
       p.peel += (wantPeel - p.peel) * (reduced ? 1 : 1 - Math.exp(-dt * 7));
       if (p.peel > 0.001) {
         // Dessous : la plaque offset, en négatif ; dessus : l'épreuve maillée.
-        pushPlane(r, uv, [radius, shadow, lift, 1], [0, 2, p.hover, 0], p.bind, shadow > 0.01);
-        pushPlane(r, uv, [radius, 0, lift, 1], [0, 0, p.hover, 1.6], p.bind, false, p.peel);
+        pushPlane(r, uv, [radius, shadow * shadowK, lift, 1], [0, 2, p.hover, 0], p.bind, shadow > 0.01, 0, fx);
+        pushPlane(r, uv, [radius, 0, lift, 1], [0, 0, p.hover, 1.6], p.bind, false, p.peel, fx);
       } else {
-        pushPlane(r, uv, [radius, shadow, lift, 1], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01);
+        pushPlane(r, uv, [radius, shadow * shadowK, lift, 1], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01, 0, fx);
       }
     }
 

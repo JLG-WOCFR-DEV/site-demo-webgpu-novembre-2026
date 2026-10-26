@@ -290,13 +290,169 @@ function ae() {
 	t.__presseFlight ? (P(t.__presseFlight.f, t.__presseFlight.el), delete t.__presseFlight) : P(S(), null);
 }
 //#endregion
+//#region src/presse/tokens.ts
+var I = {
+	out: "cubic-bezier(0.16, 1, 0.3, 1)",
+	inOut: "cubic-bezier(0.65, 0, 0.35, 1)",
+	spring: ""
+}, L = {
+	1: 240,
+	2: 520,
+	3: 900,
+	4: 1400
+};
+function oe(e, t = .62, n = 11) {
+	if (e >= 1) return 1;
+	let r = n * Math.sqrt(1 - t * t);
+	return 1 - Math.exp(-t * n * e) * (Math.cos(r * e) + t * n / r * Math.sin(r * e));
+}
+I.spring = `linear(${Array.from({ length: 33 }, (e, t) => +oe(t / 32).toFixed(4)).join(", ")})`;
+var se = !1;
+function ce() {
+	if (se || typeof document > "u") return;
+	se = !0;
+	let e = document.createElement("style");
+	e.dataset.presseTokens = "", e.textContent = `:root { --ease-out: ${I.out}; --ease-in-out: ${I.inOut}; --ease-spring: ${I.spring}; ${Object.entries(L).map(([e, t]) => `--dur-${e}: ${t}ms;`).join(" ")} }`, document.head.prepend(e);
+}
+//#endregion
+//#region src/presse/cursor.ts
+var le = `
+html.presse-cursor-on, html.presse-cursor-on * { cursor: none !important; }
+html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [contenteditable="true"]) { cursor: text !important; }
+.presse-cursor { position: fixed; inset: 0 auto auto 0; z-index: 2147482990; pointer-events: none; mix-blend-mode: difference; opacity: 0; transition: opacity 0.25s; }
+.presse-cursor.is-on { opacity: 1; }
+.presse-cursor.is-text { opacity: 0; }
+.pc-dot, .pc-ring { position: fixed; left: 0; top: 0; border-radius: 999px; will-change: transform; }
+.pc-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; transition: scale 0.25s ${I.out}; }
+.pc-ring { box-sizing: border-box; border: 1.5px solid #fff; display: grid; place-items: center; transition: width 0.35s ${I.out}, height 0.35s ${I.out}, border-radius 0.35s ${I.out}, background 0.25s, border-width 0.25s; }
+.pc-label { font: 500 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: #000; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+.presse-cursor.is-link .pc-dot { scale: 0; }
+.presse-cursor.is-label .pc-ring { background: #fff; }
+.presse-cursor.is-label .pc-label { opacity: 1; }
+.presse-cursor.is-down .pc-ring { border-width: 3px; }
+.presse-cursor.is-stuck .pc-dot { scale: 0; }
+.presse-cursor.is-stuck .pc-ring { background: transparent; }
+[data-magnet] { transition: translate 0.5s ${I.out}; }
+`, ue = "a[href], button, [role=button], label[for], summary, input[type=checkbox], input[type=radio], input[type=range]", de = ".gr-gl, .gx-gl, .or-gl, .ob-gl, .lq-card, [data-cursor=glisser]", fe = "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]", R = !1;
+function pe() {
+	if (R || typeof window > "u") return;
+	let e = document.documentElement;
+	if (e.dataset.presseCursor === void 0 || !matchMedia("(hover: hover) and (pointer: fine)").matches || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+	R = !0;
+	let t = document.createElement("style");
+	t.dataset.presseCursor = "", t.textContent = le, document.head.append(t);
+	let n = document.createElement("div");
+	n.className = "presse-cursor", n.setAttribute("aria-hidden", "true"), n.innerHTML = "<span class=\"pc-ring\"><span class=\"pc-label\"></span></span><span class=\"pc-dot\"></span>", e.append(n), e.classList.add("presse-cursor-on");
+	let r = n.querySelector(".pc-dot"), i = n.querySelector(".pc-ring"), a = n.querySelector(".pc-label"), o = {
+		x: -100,
+		y: -100
+	}, s = {
+		x: -100,
+		y: -100,
+		w: 34,
+		h: 34
+	}, c = null, l = null, u = 0, d = performance.now(), f = (e) => {
+		c = e;
+		let t = e?.closest("[data-cursor]"), r = !!e?.closest(fe), i = !!e?.closest(ue), o = !i && !!e?.closest(de), s = t && t.dataset.cursor !== "glisser" ? t.dataset.cursor : o || t?.dataset.cursor === "glisser" ? "↔" : "";
+		a.textContent = s, n.classList.toggle("is-text", r), n.classList.toggle("is-link", i || !!s), n.classList.toggle("is-label", !!s);
+		let u = e?.closest("[data-magnet]") ?? null;
+		u !== l && (l && (l.style.translate = ""), l = u);
+	}, p = (e) => {
+		u = 0;
+		let t = Math.min(.05, (e - d) / 1e3);
+		d = e;
+		let c = a.textContent ? Math.max(64, a.offsetWidth + 28) : n.classList.contains("is-link") ? 56 : 34, f = a.textContent ? Math.max(64, c * .5) : c;
+		a.textContent && a.textContent.length > 2 && (f = 40);
+		let m = o.x, h = o.y, g = "999px";
+		if (n.classList.toggle("is-stuck", !!l), l) {
+			let e = l.getBoundingClientRect(), t = e.left + e.width / 2, n = e.top + e.height / 2, r = Number(l.dataset.magnet) || .3;
+			l.style.translate = `${((o.x - t) * r).toFixed(1)}px ${((o.y - n) * r).toFixed(1)}px`, m = t + (o.x - t) * r * 1.2, h = n + (o.y - n) * r * 1.2, c = e.width + 12, f = e.height + 12, g = getComputedStyle(l).borderTopLeftRadius || "12px";
+		}
+		let _ = 1 - Math.exp(-t * 18);
+		s.x += (m - s.x) * _, s.y += (h - s.y) * _, s.w = c, s.h = f, r.style.transform = `translate3d(${o.x}px, ${o.y}px, 0)`, i.style.transform = `translate3d(${(s.x - s.w / 2).toFixed(1)}px, ${(s.y - s.h / 2).toFixed(1)}px, 0)`, i.style.width = `${s.w}px`, i.style.height = `${s.h}px`, i.style.borderRadius = g, (Math.abs(m - s.x) > .2 || Math.abs(h - s.y) > .2) && (u = requestAnimationFrame(p));
+	}, m = () => {
+		u ||= (d = performance.now(), requestAnimationFrame(p));
+	};
+	addEventListener("pointermove", (e) => {
+		if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
+		o.x = e.clientX, o.y = e.clientY, n.classList.add("is-on");
+		let t = e.target;
+		t !== c && f(t), m();
+	}, { passive: !0 }), addEventListener("pointerdown", () => n.classList.add("is-down"), { passive: !0 }), addEventListener("pointerup", () => n.classList.remove("is-down"), { passive: !0 }), e.addEventListener("pointerleave", () => {
+		n.classList.remove("is-on"), l && (l.style.translate = ""), l = null;
+	}), addEventListener("scroll", () => (f(document.elementFromPoint(o.x, o.y)), m()), { passive: !0 });
+}
+//#endregion
+//#region src/presse/intro.ts
+var me = `
+html.presse-intro-pending [data-intro] { opacity: 0; translate: 0 26px; filter: blur(6px); }
+html.presse-intro-done [data-intro] { transition: opacity ${L[3]}ms ${I.out}, translate ${L[3]}ms ${I.out}, filter ${L[3]}ms ${I.out}; transition-delay: calc(var(--intro-i, 0) * 70ms + 120ms); }
+.presse-intro .pi-num { font-variant-numeric: tabular-nums; }
+`, he = [
+	"liquide",
+	"grille",
+	"galerie",
+	"objet",
+	"orbite"
+];
+function ge() {
+	let e = window, t = e.__presseIntro, n = document.documentElement, r = () => document.querySelectorAll("[data-intro]").forEach((e, t) => e.style.setProperty("--intro-i", e.dataset.intro || String(t)));
+	if (!t) return;
+	delete e.__presseIntro;
+	let i = document.createElement("style");
+	i.textContent = me, document.head.append(i);
+	let a = 0, o = 0, s = 0, c = 0, l = (e) => {
+		c++, e.catch(() => void 0).then(() => {
+			s++, a = s / c;
+		});
+	}, u = (e) => new Promise((t) => setTimeout(t, e)), d = () => {
+		r(), l(document.fonts?.ready ?? Promise.resolve());
+		for (let e of document.images) {
+			let t = e.getBoundingClientRect();
+			t.width > 0 && t.top < innerHeight && t.bottom > 0 && l(Promise.race([e.decode(), u(3500)]));
+		}
+		for (let e of document.querySelectorAll("[data-presse-component]")) {
+			if (!he.includes(e.dataset.presseComponent ?? "")) continue;
+			let t = e.getBoundingClientRect();
+			t.bottom < 0 || t.top > innerHeight || l(Promise.race([e.dataset.painted === void 0 ? new Promise((t) => e.addEventListener("presse:painted", t, { once: !0 })) : Promise.resolve(), u(3800)]));
+		}
+		document.querySelector("[data-gl-text], [data-gl-img], [data-gl-print]") && l(Promise.race([new Promise((e) => {
+			if (n.classList.contains("gl-on")) return e();
+			let t = new MutationObserver(() => n.classList.contains("gl-on") && (t.disconnect(), e()));
+			t.observe(n, {
+				attributes: !0,
+				attributeFilter: ["class"]
+			});
+		}), u(3800)])), c || (a = 1);
+	};
+	document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", d, { once: !0 }) : d();
+	let f = performance.now(), p = (e) => {
+		let n = (e - f) / 1e3;
+		f = e;
+		let r = (e - t.t0) / L[3], i = Math.min(a, r, 1);
+		if (o += (i - o) * (1 - Math.exp(-n * 7)), i >= 1 && o > .995 && (o = 1), e - t.t0 > 4e3 && (o = 1), t.num.textContent = String(Math.round(o * 100)).padStart(3, "0"), t.bar.style.scale = `${o} 1`, o < 1) return void requestAnimationFrame(p);
+		m();
+	};
+	requestAnimationFrame(p);
+	let m = () => {
+		let e = t.el.animate([{ clipPath: "inset(0 0 0 0)" }, { clipPath: "inset(0 0 100% 0)" }], {
+			duration: L[3],
+			easing: I.inOut,
+			fill: "forwards"
+		});
+		window.setTimeout(() => {
+			n.classList.add("presse-intro-done"), n.classList.remove("presse-intro-pending");
+		}, L[3] * .35), e.finished.then(() => t.el.remove());
+	};
+}
+//#endregion
 //#region src/presse/scroll.ts
-var oe = () => matchMedia("(prefers-reduced-motion: reduce)").matches, se = 9, ce = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", le = /* @__PURE__ */ new Set(), I = !1;
-function L() {
-	if (I || typeof window > "u") return;
-	I = !0;
+var _e = () => matchMedia("(prefers-reduced-motion: reduce)").matches, ve = 9, ye = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", be = /* @__PURE__ */ new Set(), z = !1;
+function xe() {
+	if (z || typeof window > "u") return;
+	z = !0;
 	let e = document.documentElement, t = document.createElement("style");
-	t.dataset.presseScroll = "", t.textContent = ce, document.head.append(t);
+	t.dataset.presseScroll = "", t.textContent = ye, document.head.append(t);
 	let n = 0, r = performance.now(), i = scrollY, a = 0, o = 0, s = (t) => {
 		n = 0;
 		let c = Math.min(.1, Math.max(.001, (t - r) / 1e3));
@@ -305,16 +461,16 @@ function L() {
 		i = u;
 		let f = Math.abs(d) > innerHeight * .9 ? 0 : d / c;
 		a += (f - a) * (1 - Math.exp(-c * 10)), Math.abs(a) < 2 ? a = 0 : l = !0, e.style.setProperty("--v", Math.max(-1, Math.min(1, a / 3e3)).toFixed(3)), b();
-		for (let e of le) e({
+		for (let e of be) e({
 			y: u,
 			v: a
 		});
 		(l || t < o) && (n = requestAnimationFrame(s));
 	}, c = (e = 120) => {
 		o = Math.max(o, performance.now() + e), n ||= (r = performance.now(), requestAnimationFrame(s));
-	}, l = () => e.dataset.presseScroll === "doux" && !oe(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
+	}, l = () => e.dataset.presseScroll === "doux" && !_e(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
 	function m(e) {
-		return f ? (d += (u - d) * (1 - Math.exp(-e * se)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
+		return f ? (d += (u - d) * (1 - Math.exp(-e * ve)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
 	}
 	let h = (t, n, r) => {
 		for (let i = t; i && i !== document.body && i !== e; i = i.parentElement) {
@@ -369,21 +525,21 @@ function L() {
 }
 //#endregion
 //#region src/components/device.ts
-var R = null;
-function ue() {
-	return R ??= (async () => {
+var B = null;
+function Se() {
+	return B ??= (async () => {
 		if (!navigator.gpu) throw Error("WebGPU absent");
 		let e = await navigator.gpu.requestAdapter();
 		if (!e) throw Error("Aucun adaptateur WebGPU");
 		let t = await e.requestDevice();
-		return t.lost.then(() => R = null), t;
-	})(), R;
+		return t.lost.then(() => B = null), t;
+	})(), B;
 }
 //#endregion
 //#region src/presse/sweep.ts
-var z = "presse:sweep", B = 9, V = 16, H = 520, de = 720, fe = " .,:;-=+*%#@aeinorstuldcmphbgfvqjykxwz", pe = () => matchMedia("(prefers-reduced-motion: reduce)").matches, U = () => document.querySelector("meta[name=\"presse-transition\"]")?.getAttribute("content") === "ascii" && !!navigator.gpu && !pe(), me = /* @__PURE__ */ new Set();
-function he(e, t, n, r, i, a) {
-	let o = W.get(t);
+var V = "presse:sweep", H = 9, U = 16, Ce = 520, we = 720, Te = " .,:;-=+*%#@aeinorstuldcmphbgfvqjykxwz", Ee = () => matchMedia("(prefers-reduced-motion: reduce)").matches, W = () => document.querySelector("meta[name=\"presse-transition\"]")?.getAttribute("content") === "ascii" && !!navigator.gpu && !Ee(), De = /* @__PURE__ */ new Set();
+function Oe(e, t, n, r, i, a) {
+	let o = G.get(t);
 	if (o) {
 		let t = o.width / o.height, [s, c] = [o.width, o.height];
 		t > i / a ? s = i / a * c : c = s / (i / a), e.drawImage(o, (o.width - s) / 2, (o.height - c) / 2, s, c, n, r, i, a);
@@ -392,42 +548,42 @@ function he(e, t, n, r, i, a) {
 		e.fillStyle = o && o !== "rgba(0, 0, 0, 0)" ? o : "#8a877c", e.fillRect(n, r, i, a);
 	}
 }
-var W = /* @__PURE__ */ new WeakMap(), G = /* @__PURE__ */ new WeakSet();
-function K() {
-	Y(Math.ceil(innerWidth / B), Math.ceil(innerHeight / V));
+var G = /* @__PURE__ */ new WeakMap(), K = /* @__PURE__ */ new WeakSet();
+function q() {
+	Ae(Math.ceil(innerWidth / H), Math.ceil(innerHeight / U));
 	for (let e of document.images) {
-		if (W.has(e) || G.has(e) || !e.complete || !e.naturalWidth || e.classList.contains("presse-flight")) continue;
+		if (G.has(e) || K.has(e) || !e.complete || !e.naturalWidth || e.classList.contains("presse-flight")) continue;
 		let t = e.getBoundingClientRect();
-		t.width > 0 && (t.bottom < -innerHeight || t.top > innerHeight * 2) || (G.add(e), createImageBitmap(e, {
+		t.width > 0 && (t.bottom < -innerHeight || t.top > innerHeight * 2) || (K.add(e), createImageBitmap(e, {
 			resizeWidth: 96,
 			resizeHeight: Math.max(1, Math.round(96 * e.naturalHeight / e.naturalWidth)),
 			resizeQuality: "medium"
-		}).then((t) => W.set(e, t)).catch(() => void 0).finally(() => G.delete(e)));
+		}).then((t) => G.set(e, t)).catch(() => void 0).finally(() => K.delete(e)));
 	}
 }
-var q = (e) => "requestIdleCallback" in window ? requestIdleCallback(e, { timeout: 1500 }) : setTimeout(e, 300), ge = () => {
+var J = (e) => "requestIdleCallback" in window ? requestIdleCallback(e, { timeout: 1500 }) : setTimeout(e, 300), ke = () => {
 	for (let e of [document.body, document.documentElement]) {
 		let t = getComputedStyle(e).backgroundColor;
 		if (t && t !== "transparent" && !/rgba\(.*,\s*0\)$/.test(t)) return t;
 	}
 	return "#efeee8";
-}, J = null;
-function Y(e, t) {
-	if (!J) {
+}, Y = null;
+function Ae(e, t) {
+	if (!Y) {
 		let n = new OffscreenCanvas(e, t), r = new OffscreenCanvas(e, t);
-		J = {
+		Y = {
 			img: n,
 			txt: r,
 			gi: n.getContext("2d"),
 			gt: r.getContext("2d")
 		};
 	}
-	for (let n of [J.img, J.txt]) (n.width !== e || n.height !== t) && (n.width = e, n.height = t);
-	for (let n of [J.gi, J.gt]) n.setTransform(1, 0, 0, 1, 0, 0), n.clearRect(0, 0, e, t);
-	return J;
+	for (let n of [Y.img, Y.txt]) (n.width !== e || n.height !== t) && (n.width = e, n.height = t);
+	for (let n of [Y.gi, Y.gt]) n.setTransform(1, 0, 0, 1, 0, 0), n.clearRect(0, 0, e, t);
+	return Y;
 }
-function _e(e, t) {
-	let { img: n, txt: r, gi: i, gt: a } = Y(e, t), o = e / innerWidth, s = t / innerHeight;
+function je(e, t) {
+	let { img: n, txt: r, gi: i, gt: a } = Ae(e, t), o = e / innerWidth, s = t / innerHeight;
 	i.imageSmoothingQuality = "high", i.setTransform(o, 0, 0, s, 0, 0);
 	for (let e of document.images) {
 		if (e.classList.contains("presse-flight")) continue;
@@ -435,10 +591,10 @@ function _e(e, t) {
 		if (t.width < 12 || t.height < 12 || t.bottom < 0 || t.top > innerHeight || t.right < 0 || t.left > innerWidth) continue;
 		let n = getComputedStyle(e);
 		if (n.visibility !== "hidden" && n.display !== "none") try {
-			he(i, e, t.left, t.top, t.width, t.height);
+			Oe(i, e, t.left, t.top, t.width, t.height);
 		} catch {}
 	}
-	for (let e of me) try {
+	for (let e of De) try {
 		i.save(), e(i), i.restore();
 	} catch {}
 	a.setTransform(o, 0, 0, s, 0, 0);
@@ -463,13 +619,13 @@ function _e(e, t) {
 		txt: r
 	};
 }
-var ve = "\nstruct U { size: vec2f, cell: vec2f, p: f32, dir: f32, t: f32, n: f32, hole: vec4f, paper: vec4f };\n@group(0) @binding(0) var<uniform> u: U;\n@group(0) @binding(1) var imgT: texture_2d<f32>;\n@group(0) @binding(2) var txtT: texture_2d<f32>;\n@group(0) @binding(3) var atlas: texture_2d<f32>;\n@group(0) @binding(4) var samp: sampler;\n\n@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {\n  let p = vec2f(f32((i << 1u) & 2u), f32(i & 2u));\n  return vec4f(p * 2.0 - 1.0, 0.0, 1.0);\n}\nfn hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }\n\n@fragment fn fs(@builtin(position) fc: vec4f) -> @location(0) vec4f {\n  let px = fc.xy;\n  // La photo en passage n'est pas balayée.\n  if (px.x >= u.hole.x && px.y >= u.hole.y && px.x < u.hole.x + u.hole.z && px.y < u.hole.y + u.hole.w) { return vec4f(0.0); }\n  let cell = floor(px / u.cell);\n  let local = fract(px / u.cell);\n  let dims = vec2f(textureDimensions(imgT));\n  let ci = vec2i(clamp(cell, vec2f(0.0), dims - 1.0));\n  let im = textureLoad(imgT, ci, 0);\n  let tx = textureLoad(txtT, ci, 0);\n  // Le front : une diagonale, un peu déchiquetée cellule par cellule.\n  let q = (cell + 0.5) * u.cell / u.size;\n  let f = (q.x * 0.78 + q.y * 0.22) * 0.86 + hash(cell) * 0.14;\n  let band = 0.22;\n  let s = (u.p * (1.0 + band * 2.0) - band) - f;   // > 0 : le front est passé\n  // Sortie : page → caractères → papier. Entrée (dir < 0) : papier → caractères → page.\n  var k = clamp(s / band, 0.0, 1.0);\n  if (u.dir < 0.0) { k = 1.0 - k; }\n  // k : 0 = la page telle quelle, 1 = papier ; entre les deux, les caractères.\n  if (k <= 0.0) { return vec4f(0.0); }\n  let ground = smoothstep(0.0, 0.35, k);\n  let paper = u.paper.rgb;\n  // Le caractère : image (densité de la rampe), sinon texte (une lettre), sinon rien.\n  let lum = dot(im.rgb, vec3f(0.299, 0.587, 0.114));\n  let flick = floor(u.t * 18.0 + hash(cell + 3.1) * 7.0);\n  let busy = 1.0 - abs(k * 2.0 - 1.0);\n  var g = -1.0;\n  var col = vec3f(0.0);\n  if (tx.a > 0.25) {\n    g = 12.0 + floor(hash(cell + vec2f(flick * busy, 0.0)) * 26.0);\n    col = tx.rgb / max(tx.a, 0.001);\n  } else if (im.a > 0.25) {\n    // Sur papier clair, l'ombre de la photo est la plus dense ; les caractères gardent sa couleur.\n    let d = clamp(1.0 - lum + (hash(cell + flick) - 0.5) * 0.25 * busy, 0.0, 1.0);\n    g = floor(d * 11.0 + 0.5);\n    col = im.rgb / max(im.a, 0.001);\n  }\n  // Après le front, les caractères s'éteignent dans le papier.\n  let glyphA = select(0.0, 1.0, g > 0.0) * (1.0 - smoothstep(0.55, 1.0, k));\n  var a = 0.0;\n  if (g > 0.0) {\n    let uv = vec2f((g + mix(0.08, 0.92, local.x)) / u.n, mix(0.04, 0.96, local.y));\n    a = textureSampleLevel(atlas, samp, uv, 0.0).r;\n  }\n  let rgb = mix(paper, col, a * glyphA);\n  // La page apparaît entre les caractères pendant que le fond se pose.\n  let alpha = max(ground, a * glyphA);\n  return vec4f(rgb * alpha, alpha);\n}\n";
-function ye() {
+var Me = "\nstruct U { size: vec2f, cell: vec2f, p: f32, dir: f32, t: f32, n: f32, hole: vec4f, paper: vec4f };\n@group(0) @binding(0) var<uniform> u: U;\n@group(0) @binding(1) var imgT: texture_2d<f32>;\n@group(0) @binding(2) var txtT: texture_2d<f32>;\n@group(0) @binding(3) var atlas: texture_2d<f32>;\n@group(0) @binding(4) var samp: sampler;\n\n@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {\n  let p = vec2f(f32((i << 1u) & 2u), f32(i & 2u));\n  return vec4f(p * 2.0 - 1.0, 0.0, 1.0);\n}\nfn hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }\n\n@fragment fn fs(@builtin(position) fc: vec4f) -> @location(0) vec4f {\n  let px = fc.xy;\n  // La photo en passage n'est pas balayée.\n  if (px.x >= u.hole.x && px.y >= u.hole.y && px.x < u.hole.x + u.hole.z && px.y < u.hole.y + u.hole.w) { return vec4f(0.0); }\n  let cell = floor(px / u.cell);\n  let local = fract(px / u.cell);\n  let dims = vec2f(textureDimensions(imgT));\n  let ci = vec2i(clamp(cell, vec2f(0.0), dims - 1.0));\n  let im = textureLoad(imgT, ci, 0);\n  let tx = textureLoad(txtT, ci, 0);\n  // Le front : une diagonale, un peu déchiquetée cellule par cellule.\n  let q = (cell + 0.5) * u.cell / u.size;\n  let f = (q.x * 0.78 + q.y * 0.22) * 0.86 + hash(cell) * 0.14;\n  let band = 0.22;\n  let s = (u.p * (1.0 + band * 2.0) - band) - f;   // > 0 : le front est passé\n  // Sortie : page → caractères → papier. Entrée (dir < 0) : papier → caractères → page.\n  var k = clamp(s / band, 0.0, 1.0);\n  if (u.dir < 0.0) { k = 1.0 - k; }\n  // k : 0 = la page telle quelle, 1 = papier ; entre les deux, les caractères.\n  if (k <= 0.0) { return vec4f(0.0); }\n  let ground = smoothstep(0.0, 0.35, k);\n  let paper = u.paper.rgb;\n  // Le caractère : image (densité de la rampe), sinon texte (une lettre), sinon rien.\n  let lum = dot(im.rgb, vec3f(0.299, 0.587, 0.114));\n  let flick = floor(u.t * 18.0 + hash(cell + 3.1) * 7.0);\n  let busy = 1.0 - abs(k * 2.0 - 1.0);\n  var g = -1.0;\n  var col = vec3f(0.0);\n  if (tx.a > 0.25) {\n    g = 12.0 + floor(hash(cell + vec2f(flick * busy, 0.0)) * 26.0);\n    col = tx.rgb / max(tx.a, 0.001);\n  } else if (im.a > 0.25) {\n    // Sur papier clair, l'ombre de la photo est la plus dense ; les caractères gardent sa couleur.\n    let d = clamp(1.0 - lum + (hash(cell + flick) - 0.5) * 0.25 * busy, 0.0, 1.0);\n    g = floor(d * 11.0 + 0.5);\n    col = im.rgb / max(im.a, 0.001);\n  }\n  // Après le front, les caractères s'éteignent dans le papier.\n  let glyphA = select(0.0, 1.0, g > 0.0) * (1.0 - smoothstep(0.55, 1.0, k));\n  var a = 0.0;\n  if (g > 0.0) {\n    let uv = vec2f((g + mix(0.08, 0.92, local.x)) / u.n, mix(0.04, 0.96, local.y));\n    a = textureSampleLevel(atlas, samp, uv, 0.0).r;\n  }\n  let rgb = mix(paper, col, a * glyphA);\n  // La page apparaît entre les caractères pendant que le fond se pose.\n  let alpha = max(ground, a * glyphA);\n  return vec4f(rgb * alpha, alpha);\n}\n";
+function Ne() {
 	let e = new OffscreenCanvas(1216, 56), t = e.getContext("2d");
-	return t.fillStyle = "#fff", t.textAlign = "center", t.textBaseline = "middle", t.font = "500 40px \"IBM Plex Mono\", ui-monospace, monospace", [...fe].forEach((e, n) => t.fillText(e, n * 32 + 16, 56 * .54)), e;
+	return t.fillStyle = "#fff", t.textAlign = "center", t.textBaseline = "middle", t.font = "500 40px \"IBM Plex Mono\", ui-monospace, monospace", [...Te].forEach((e, n) => t.fillText(e, n * 32 + 16, 56 * .54)), e;
 }
 async function X(e, t, n, r, i) {
-	let a = await ue(), o = Math.min(devicePixelRatio || 1, 2), s = Math.ceil(innerWidth / B), c = Math.ceil(innerHeight / V), l = performance.now(), u = _e(s, c);
+	let a = await Se(), o = Math.min(devicePixelRatio || 1, 2), s = Math.ceil(innerWidth / H), c = Math.ceil(innerHeight / U), l = performance.now(), u = je(s, c);
 	performance.measure("presse:capture", {
 		start: l,
 		end: performance.now()
@@ -492,7 +648,7 @@ async function X(e, t, n, r, i) {
 			texture: t,
 			premultipliedAlpha: !0
 		}, [e.width, e.height]), t;
-	}, h = m(u.img), g = m(u.txt), _ = m(ye()), v = a.createShaderModule({ code: ve }), y = await a.createRenderPipelineAsync({
+	}, h = m(u.img), g = m(u.txt), _ = m(Ne()), v = a.createShaderModule({ code: Me }), y = await a.createRenderPipelineAsync({
 		layout: "auto",
 		vertex: {
 			module: v,
@@ -563,8 +719,8 @@ async function X(e, t, n, r, i) {
 		C.set([
 			d.width,
 			d.height,
-			B * o,
-			V * o,
+			H * o,
+			U * o,
 			t,
 			e,
 			n,
@@ -608,9 +764,9 @@ async function X(e, t, n, r, i) {
 }
 var Z = (e) => {
 	try {
-		e ? sessionStorage.setItem(z, JSON.stringify(e)) : sessionStorage.removeItem(z);
+		e ? sessionStorage.setItem(V, JSON.stringify(e)) : sessionStorage.removeItem(V);
 	} catch {}
-}, be = () => {
+}, Pe = () => {
 	try {
 		let e = JSON.parse(sessionStorage.getItem("presse:flight") ?? "null");
 		return e && Date.now() - e.t < 2e3 ? {
@@ -622,23 +778,23 @@ var Z = (e) => {
 	} catch {
 		return null;
 	}
-}, Q = !1, $ = !1, xe = [
+}, Q = !1, $ = !1, Fe = [
 	"liquide",
 	"grille",
 	"galerie",
 	"objet",
 	"orbite"
 ];
-async function Se() {
+async function Ie() {
 	document.readyState === "loading" && await new Promise((e) => document.addEventListener("DOMContentLoaded", e, { once: !0 }));
 	let e = [...document.querySelectorAll("[data-presse-component]")].filter((e) => {
-		if (!xe.includes(e.dataset.presseComponent ?? "")) return !1;
+		if (!Fe.includes(e.dataset.presseComponent ?? "")) return !1;
 		let t = e.getBoundingClientRect();
 		return t.bottom > 0 && t.top < innerHeight && t.width > 0;
 	}), t = Promise.all(e.map((e) => e.dataset.painted === void 0 ? new Promise((t) => e.addEventListener("presse:painted", t, { once: !0 })) : null));
 	await Promise.race([t, new Promise((e) => setTimeout(e, 1400))]);
 }
-function Ce() {
+function Le() {
 	if (Q || typeof window > "u") return;
 	Q = !0;
 	let e = window;
@@ -646,17 +802,17 @@ function Ce() {
 		let { d: t, cover: n } = e.__presseSweep;
 		delete e.__presseSweep, Z(null);
 		let r = () => n.remove();
-		U() ? (async () => {
-			await Se(), await new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e))), (await X(-1, de, t.paper, null, r).catch(() => (r(), null)))?.();
+		W() ? (async () => {
+			await Ie(), await new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e))), (await X(-1, we, t.paper, null, r).catch(() => (r(), null)))?.();
 		})() : r();
 	} else Z(null);
-	if (U()) {
-		addEventListener("load", () => q(() => K()), { once: !0 }), document.readyState === "complete" && q(() => K());
+	if (W()) {
+		addEventListener("load", () => J(() => q()), { once: !0 }), document.readyState === "complete" && J(() => q());
 		let e = 0;
-		addEventListener("scroll", () => (clearTimeout(e), e = window.setTimeout(() => q(() => K()), 250)), { passive: !0 }), document.addEventListener("pointerover", (e) => e.target?.closest?.("a[href]") && K(), { passive: !0 });
+		addEventListener("scroll", () => (clearTimeout(e), e = window.setTimeout(() => J(() => q()), 250)), { passive: !0 }), document.addEventListener("pointerover", (e) => e.target?.closest?.("a[href]") && q(), { passive: !0 });
 	}
 	document.addEventListener("click", (e) => {
-		if ($ || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !U()) return;
+		if ($ || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !W()) return;
 		let t = e.target?.closest?.("a[href]");
 		if (!t || t.target && t.target !== "_self" || t.hasAttribute("download") || t.origin !== location.origin || t.dataset.transition === "none" || t.closest("[data-transition=none]")) return;
 		let n = new URL(t.href);
@@ -665,7 +821,7 @@ function Ce() {
 		for (let e of document.querySelectorAll(":popover-open")) e.hidePopover();
 		let r = document.createElement("link");
 		r.rel = "prefetch", r.href = n.href, document.head.append(r);
-		let i = ge(), a = () => {
+		let i = ke(), a = () => {
 			Z({
 				t: Date.now(),
 				to: n.href,
@@ -680,7 +836,7 @@ function Ce() {
 			} catch {}
 			location.href = n.href;
 		};
-		X(1, H, i, be()).then(() => a()).catch(() => a());
+		X(1, Ce, i, Pe()).then(() => a()).catch(() => a());
 	}), addEventListener("pageshow", (e) => {
 		if (e.persisted) {
 			$ = !1;
@@ -690,7 +846,7 @@ function Ce() {
 }
 //#endregion
 //#region src/pages-nav.ts
-var we = [
+var Re = [
 	{
 		href: "index.html",
 		name: "WebGPU-demo-UBS",
@@ -746,17 +902,17 @@ var we = [
 		name: "WebGPU-demo-UBS v0",
 		text: "La toute première version, générée par Grok"
 	}
-], Te = "\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  background: var(--paper, #f6f1e4);\n  color: var(--ink, #16110d);\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.72);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
-function Ee(e = "./") {
-	ae(), Ce(), L();
+], ze = "\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  background: var(--paper, #f6f1e4);\n  color: var(--ink, #16110d);\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.72);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
+function Be(e = "./") {
+	ce(), ge(), ae(), Le(), xe(), pe();
 	let t = document.createElement("style");
-	t.textContent = Te, document.head.append(t);
+	t.textContent = ze, document.head.append(t);
 	let n = document.querySelector("[data-pages-trigger]");
 	n || (n = document.createElement("button"), n.type = "button", n.className = "pages-pill", n.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(n));
 	let r = document.createElement("nav");
 	r.id = "pages-pop", r.className = "pages-pop", r.setAttribute("popover", ""), r.setAttribute("aria-label", "Pages");
 	let i = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0].split("?")[0], a = document.createElement("ul");
-	for (let t of we) {
+	for (let t of Re) {
 		let n = document.createElement("li"), r = document.createElement("a");
 		r.href = e + t.href, r.href === i && r.setAttribute("aria-current", "page"), r.innerHTML = "<span class=\"pages-name\"></span><span class=\"pages-text\"></span>", r.querySelector(".pages-name").textContent = t.name, r.querySelector(".pages-text").textContent = t.text, n.append(r), a.append(n);
 	}
@@ -770,5 +926,5 @@ function Ee(e = "./") {
 		r.style.left = `${Math.max(8, Math.min(t.left, innerWidth - r.offsetWidth - 8))}px`, r.style.top = `${t.bottom + 8}px`;
 	});
 }
-Ee("../"), v();
+Be("../"), v();
 //#endregion
