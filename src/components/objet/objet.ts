@@ -12,6 +12,7 @@
 import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
+import { painted } from "../../presse/sweep.ts";
 import { getDevice } from "../device.ts";
 import { parseGLB, writeGLB } from "./gltf.ts";
 import { inflate, maskFromSource, type Mesh, pebble, relief, torusKnot, vase } from "./meshes.ts";
@@ -567,6 +568,7 @@ export function mount(root: HTMLElement) {
       sp.end();
       rec.copy(enc, out);
       device.queue.submit([enc.finish()]);
+      painted(root);
       rec.after();
       void wire;
     };

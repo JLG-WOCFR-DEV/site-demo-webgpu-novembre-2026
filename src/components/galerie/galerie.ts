@@ -19,6 +19,7 @@ import { loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { claimFlight, type Flight, onArrive, onLeave, onSource, type Source } from "../../presse/flight.ts";
+import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { getDevice } from "../device.ts";
 import { ARRANGEMENTS, apply, type ArrangeName, type Ctx, DEG, type Inst, mod, OPTIONS, type Pose, pose, rotation, stackDir } from "./arrange.ts";
 import { BACKDROP, GALERIE, MAX_ITEMS, STRIDE } from "./shader.ts";
@@ -990,6 +991,16 @@ export function mount(root: HTMLElement) {
       if (f) receive(idx, f);
     }
   }
+  // Le balayage entre les pages : chaque photo dans la capture, à son rectangle projeté.
+  const unsnap = onSnapshot((g) => {
+    measure();
+    const b = box();
+    for (const d of drawn) {
+      if (d.p.o < 0.2) continue;
+      const bb = bounds(d);
+      drawCover(g, items[d.idx]!.img, b.left + b.W / 2 + bb.l, b.top + b.H / 2 + bb.t, bb.r - bb.l, bb.b - bb.t);
+    }
+  });
   const unarrive = onArrive((id) => {
     if (sel.idx === null || items[sel.idx]!.id !== id) return;
     const f = claimFlight(id);
@@ -1141,6 +1152,7 @@ export function mount(root: HTMLElement) {
       pass.end();
       if (full) rec.copy(enc, out);
       device.queue.submit([enc.finish()]);
+      painted(root);
       if (full) rec.after();
     };
     requestAnimationFrame(frame);
@@ -1155,6 +1167,7 @@ export function mount(root: HTMLElement) {
     unsource();
     unleave();
     unarrive();
+    unsnap();
     finishArrival();
     apis.delete(root);
     root.classList.remove("is-gl");

@@ -13,6 +13,7 @@ import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
+import { painted } from "../../presse/sweep.ts";
 import { getDevice } from "../device.ts";
 import { LIQUID, MAX_CARDS } from "./shaders.ts";
 
@@ -489,6 +490,7 @@ export function mount(root: HTMLElement) {
       pass.end();
       if (full) rec.copy(enc, texOut);
       device.queue.submit([enc.finish()]);
+      painted(root);
       if (full) rec.after();
     };
     requestAnimationFrame(frame);

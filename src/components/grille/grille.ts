@@ -16,6 +16,7 @@ import { claimFlight, onArrive, onLeave, type Flight } from "../../presse/flight
 import * as stock from "./stock.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
+import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { getDevice } from "../device.ts";
 
 const MAX_TILES = 1400;
@@ -1030,6 +1031,32 @@ export function mount(root: HTMLElement) {
   // Retour arrière depuis la page d'une photo : elle repart vers la page d'avant.
   const unleave = onLeave(() => (open && !fly ? { box: heroSlot(), id: open.photo.id } : null));
   void restoreLocal();
+  // Le balayage entre les pages : le mur (ou la table) dessiné dans la capture, une photo par case.
+  const unsnap = onSnapshot((g) => {
+    if (!onScreen) return;
+    const ox = full ? 0 : box.left;
+    const oy = full ? 0 : box.top;
+    if (!full) {
+      g.beginPath();
+      g.rect(box.left, box.top, box.width, box.height);
+      g.clip();
+    }
+    if (mode === "grille") {
+      for (const t of visible()) {
+        const r = tileRect(t);
+        drawCover(g, photoOf(t).img, r.x + ox, r.y + oy, r.w, r.h);
+      }
+    } else {
+      for (const i of items.map((_, k) => k).filter((k) => !photos[k]!.gone).sort((a, b) => items[a]!.z - items[b]!.z)) {
+        const r = itemRect(i);
+        g.save();
+        g.translate(r.x + ox + r.w / 2, r.y + oy + r.h / 2);
+        g.rotate(items[i]!.arot);
+        drawCover(g, photos[i]!.img, -r.w / 2, -r.h / 2, r.w, r.h);
+        g.restore();
+      }
+    }
+  });
 
   const start = async () => {
     const device = await getDevice();
@@ -1273,6 +1300,7 @@ export function mount(root: HTMLElement) {
       pass.end();
       if (full) rec.copy(enc, out);
       device.queue.submit([enc.finish()]);
+      painted(root);
       if (full) rec.after();
     };
     requestAnimationFrame(frame);
@@ -1292,6 +1320,7 @@ export function mount(root: HTMLElement) {
     io.disconnect();
     unleave();
     unarrive();
+    unsnap();
     finishLanding();
     unwire();
     removeEventListener("popstate", onPop);

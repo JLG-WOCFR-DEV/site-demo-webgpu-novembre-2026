@@ -8,11 +8,13 @@
  * CSS) n'a pas d'entrée.
  */
 import { flightSettled, initFlights } from "./flight.ts";
+import { initSweep } from "./sweep.ts";
 
 type Mount = (root: HTMLElement) => () => void;
 
 // Le passage (une photo qui vole d'une page à l'autre) est branché sur toute page à composants.
 initFlights();
+initSweep();
 
 const REGISTRY: Record<string, () => Promise<{ mount: Mount }>> = {
   liquide: () => import("../components/liquide/liquide.ts"),

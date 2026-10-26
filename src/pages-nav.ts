@@ -5,6 +5,8 @@
  */
 
 import { openDebugPanel } from "./debug-panel.ts";
+import { initFlights } from "./presse/flight.ts";
+import { initSweep } from "./presse/sweep.ts";
 
 export const PAGES = [
   { href: "index.html", name: "WebGPU-demo-UBS", text: "La presse WebGPU : le guide et la démo" },
@@ -73,6 +75,9 @@ const CSS = `
  * de la racine, « ../ » pour PLI v0, servie depuis legacy/).
  */
 export function mountPagesNav(base = "./") {
+  // Entre les pages : la photo qui passe, le balayage ASCII (si la page le demande).
+  initFlights();
+  initSweep();
   const style = document.createElement("style");
   style.textContent = CSS;
   document.head.append(style);

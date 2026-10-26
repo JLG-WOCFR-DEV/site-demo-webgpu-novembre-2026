@@ -9,7 +9,7 @@ export default defineConfig({
   base: "./",
   // Presse : les balises <x-…> sont déroulées en HTML statique, puis les
   // images préparées (tools/images.py) passent en AVIF/WebP aux bonnes tailles.
-  plugins: [presseComponents(), presseImages(import.meta.dirname), presseFlight()],
+  plugins: [presseComponents(), presseImages(import.meta.dirname), presseFlight({ transition: "ascii" })],
   build: {
     target: "es2022",
     assetsInlineLimit: 0,

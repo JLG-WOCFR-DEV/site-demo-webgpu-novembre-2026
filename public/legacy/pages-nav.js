@@ -125,8 +125,446 @@ function v(e) {
 	}), u();
 }
 //#endregion
+//#region src/presse/flight.ts
+var y = "presse:flight", b = 15e3, x = () => matchMedia("(prefers-reduced-motion: reduce)").matches, S = () => {
+	try {
+		return JSON.parse(sessionStorage.getItem(y) ?? "null");
+	} catch {
+		return null;
+	}
+}, C = (e) => {
+	try {
+		e ? sessionStorage.setItem(y, JSON.stringify(e)) : sessionStorage.removeItem(y);
+	} catch {}
+}, w = (e) => {
+	if (Date.now() - e.t > b) return !1;
+	if (e.to === null) return !0;
+	let t = new URL(e.to, location.href);
+	return t.pathname === location.pathname && t.search === location.search;
+};
+function T(e) {
+	let t = e instanceof HTMLImageElement ? e : e.querySelector("img"), n = t ?? e;
+	return {
+		img: t,
+		el: n,
+		rect: n.getBoundingClientRect()
+	};
+}
+function E(e, t, n) {
+	let r = e.rect;
+	return !e.src || r.w < 8 || r.h < 8 || r.y + r.h < 0 || r.y > innerHeight || r.x + r.w < 0 || r.x > innerWidth ? !1 : (C({
+		id: t,
+		src: e.src,
+		x: r.x,
+		y: r.y,
+		w: r.w,
+		h: r.h,
+		r: e.radius,
+		t: Date.now(),
+		to: n
+	}), !0);
+}
+function D(e, t, n) {
+	let { img: r, el: i, rect: a } = T(e), o = e.dataset.flightSrc || r?.currentSrc || r?.src || "", s = parseFloat(getComputedStyle(i).borderTopLeftRadius) || parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0;
+	return E({
+		rect: {
+			x: a.left,
+			y: a.top,
+			w: a.width,
+			h: a.height
+		},
+		src: o,
+		radius: s
+	}, t, n);
+}
+var O = /* @__PURE__ */ new Map(), k = (e, t) => {
+	let n = `[data-flight-id="${CSS.escape(e)}"]`;
+	return (t?.closest(n) ?? t?.closest("[data-presse-component]")?.querySelector(n) ?? document.querySelector(n)) || null;
+}, A = /* @__PURE__ */ new Set(), j = 0, ee = /* @__PURE__ */ new Set(), M = null;
+function N(e) {
+	let t = new Image();
+	return t.src = e.src, t.alt = "", t.decoding = "sync", t.setAttribute("aria-hidden", "true"), t.className = "presse-flight", t.style.cssText = `position:fixed;z-index:2147483000;left:${e.x}px;top:${e.y}px;width:${e.w}px;height:${e.h}px;object-fit:cover;border-radius:${e.r}px;pointer-events:none;margin:0;max-width:none`, document.documentElement.append(t), t;
+}
+async function te(e, t, n) {
+	await Promise.race([e.decode().catch(() => void 0), new Promise((e) => setTimeout(e, 250))]);
+	let r = e.getBoundingClientRect(), i = x() ? 0 : Math.min(950, 560 + Math.hypot(t.x - r.left, t.y - r.top) * .35), a = {
+		left: `${t.x}px`,
+		top: `${t.y}px`,
+		width: `${t.w}px`,
+		height: `${t.h}px`,
+		borderRadius: `${n}px`
+	};
+	i > 0 && await e.animate([
+		{
+			left: `${r.left}px`,
+			top: `${r.top}px`,
+			width: `${r.width}px`,
+			height: `${r.height}px`,
+			borderRadius: e.style.borderRadius,
+			boxShadow: "0 0 0 rgba(0,0,0,0)"
+		},
+		{
+			offset: .5,
+			boxShadow: "0 24px 60px rgba(0,0,0,0.22)"
+		},
+		{
+			...a,
+			boxShadow: "0 0 0 rgba(0,0,0,0)"
+		}
+	], {
+		duration: i,
+		easing: "cubic-bezier(0.65, 0, 0.15, 1)"
+	}).finished.catch(() => void 0), Object.assign(e.style, a);
+}
+function P(e, t = 220) {
+	x() && (t = 0), e.animate([{ opacity: 1 }, { opacity: 0 }], {
+		duration: t,
+		fill: "forwards"
+	}).finished.catch(() => void 0).then(() => e.remove());
+}
+async function F(e) {
+	if (e.claimed) return;
+	e.claimed = !0, M === e && (M = null);
+	let t = k(e.d.id);
+	if (t) {
+		let { el: n, rect: r } = T(t);
+		if (r.width > 8 && r.bottom > 0 && r.top < innerHeight) {
+			await te(e.el, {
+				x: r.left,
+				y: r.top,
+				w: r.width,
+				h: r.height
+			}, parseFloat(getComputedStyle(n).borderTopLeftRadius) || 0), P(e.el, 200);
+			return;
+		}
+	}
+	P(e.el, 300);
+}
+var I = new Promise((e) => e);
+function L(e, t) {
+	if (C(null), !e || !w(e)) {
+		t?.remove();
+		return;
+	}
+	let n = {
+		d: e,
+		el: t ?? N(e),
+		claimed: !1
+	};
+	M = n;
+	for (let t of ee) n.claimed || t(e.id);
+	Promise.race([I.then(() => new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e)))), new Promise((e) => setTimeout(e, 1500))]).then(() => F(n));
+}
+var R = !1;
+function z() {
+	if (R || typeof window > "u") return;
+	R = !0, document.addEventListener("click", (e) => {
+		if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+		let t = e.target?.closest?.("a[data-flight]");
+		if (!t || t.target && t.target !== "_self" || t.origin !== location.origin) return;
+		let n = t.dataset.flight, r = O.get(t.closest("[data-presse-component]"))?.(n), i = r ? null : k(n, t);
+		(r && E(r, n, t.href) || i && D(i, n, t.href)) && (j = Date.now());
+	});
+	let e = (e) => {
+		if (!(Date.now() - j < 3e3)) for (let t of A) {
+			let n = t();
+			if (n && ("box" in n ? D(n.box, n.id, e) : E(n.source, n.id, e))) return;
+		}
+	};
+	addEventListener("pageswap", ((t) => {
+		t.activation?.navigationType === "traverse" && e(t.activation.entry.url);
+	})), addEventListener("pageshow", (e) => {
+		j = 0, e.persisted && L(S(), null);
+	});
+	let t = window;
+	t.__presseFlight ? (L(t.__presseFlight.f, t.__presseFlight.el), delete t.__presseFlight) : L(S(), null);
+}
+//#endregion
+//#region src/components/device.ts
+var B = null;
+function V() {
+	return B ??= (async () => {
+		if (!navigator.gpu) throw Error("WebGPU absent");
+		let e = await navigator.gpu.requestAdapter();
+		if (!e) throw Error("Aucun adaptateur WebGPU");
+		let t = await e.requestDevice();
+		return t.lost.then(() => B = null), t;
+	})(), B;
+}
+//#endregion
+//#region src/presse/sweep.ts
+var H = "presse:sweep", U = 9, W = 16, G = 520, K = 720, q = " .,:;-=+*%#@aeinorstuldcmphbgfvqjykxwz", J = () => matchMedia("(prefers-reduced-motion: reduce)").matches, Y = () => document.querySelector("meta[name=\"presse-transition\"]")?.getAttribute("content") === "ascii" && !!navigator.gpu && !J(), ne = /* @__PURE__ */ new Set();
+function re(e, t, n, r, i, a) {
+	if (t.complete && t.naturalWidth) {
+		let o = t.naturalWidth / t.naturalHeight, [s, c] = [t.naturalWidth, t.naturalHeight];
+		o > i / a ? s = i / a * c : c = s / (i / a), e.drawImage(t, (t.naturalWidth - s) / 2, (t.naturalHeight - c) / 2, s, c, n, r, i, a);
+	} else {
+		let o = getComputedStyle(t).backgroundColor;
+		e.fillStyle = o && o !== "rgba(0, 0, 0, 0)" ? o : "#8a877c", e.fillRect(n, r, i, a);
+	}
+}
+var ie = () => {
+	for (let e of [document.body, document.documentElement]) {
+		let t = getComputedStyle(e).backgroundColor;
+		if (t && t !== "transparent" && !/rgba\(.*,\s*0\)$/.test(t)) return t;
+	}
+	return "#efeee8";
+};
+function ae(e, t) {
+	let n = e / innerWidth, r = t / innerHeight, i = new OffscreenCanvas(e, t), a = i.getContext("2d");
+	a.imageSmoothingQuality = "high", a.setTransform(n, 0, 0, r, 0, 0);
+	for (let e of document.images) {
+		if (e.classList.contains("presse-flight")) continue;
+		let t = e.getBoundingClientRect();
+		if (t.width < 12 || t.height < 12 || t.bottom < 0 || t.top > innerHeight || t.right < 0 || t.left > innerWidth) continue;
+		let n = getComputedStyle(e);
+		if (n.visibility !== "hidden" && n.display !== "none") try {
+			re(a, e, t.left, t.top, t.width, t.height);
+		} catch {}
+	}
+	for (let e of ne) try {
+		a.save(), e(a), a.restore();
+	} catch {}
+	let o = new OffscreenCanvas(e, t), s = o.getContext("2d");
+	s.setTransform(n, 0, 0, r, 0, 0);
+	let c = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, { acceptNode: (e) => e.nodeValue && e.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT }), l = document.createRange(), u = 0;
+	for (let e = c.nextNode(); e && u < 4e3; e = c.nextNode()) {
+		let t = e.parentElement;
+		if (!t || t.closest(".sr-only, [hidden], script, style, noscript")) continue;
+		l.selectNodeContents(e);
+		let n = l.getBoundingClientRect();
+		if (n.bottom < 0 || n.top > innerHeight || n.width < 1) continue;
+		let r = getComputedStyle(t);
+		if (r.visibility !== "hidden" && Number(r.opacity) !== 0) {
+			s.fillStyle = r.color === "rgba(0, 0, 0, 0)" ? "#121212" : r.color;
+			for (let e of l.getClientRects()) {
+				let t = Math.min(e.height, Number.parseFloat(r.fontSize) * .9);
+				s.fillRect(e.left, e.top + (e.height - t) / 2, e.width, t), u++;
+			}
+		}
+	}
+	return {
+		img: i,
+		txt: o
+	};
+}
+var oe = "\nstruct U { size: vec2f, cell: vec2f, p: f32, dir: f32, t: f32, n: f32, hole: vec4f, paper: vec4f };\n@group(0) @binding(0) var<uniform> u: U;\n@group(0) @binding(1) var imgT: texture_2d<f32>;\n@group(0) @binding(2) var txtT: texture_2d<f32>;\n@group(0) @binding(3) var atlas: texture_2d<f32>;\n@group(0) @binding(4) var samp: sampler;\n\n@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {\n  let p = vec2f(f32((i << 1u) & 2u), f32(i & 2u));\n  return vec4f(p * 2.0 - 1.0, 0.0, 1.0);\n}\nfn hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }\n\n@fragment fn fs(@builtin(position) fc: vec4f) -> @location(0) vec4f {\n  let px = fc.xy;\n  // La photo en passage n'est pas balayée.\n  if (px.x >= u.hole.x && px.y >= u.hole.y && px.x < u.hole.x + u.hole.z && px.y < u.hole.y + u.hole.w) { return vec4f(0.0); }\n  let cell = floor(px / u.cell);\n  let local = fract(px / u.cell);\n  let dims = vec2f(textureDimensions(imgT));\n  let ci = vec2i(clamp(cell, vec2f(0.0), dims - 1.0));\n  let im = textureLoad(imgT, ci, 0);\n  let tx = textureLoad(txtT, ci, 0);\n  // Le front : une diagonale, un peu déchiquetée cellule par cellule.\n  let q = (cell + 0.5) * u.cell / u.size;\n  let f = (q.x * 0.78 + q.y * 0.22) * 0.86 + hash(cell) * 0.14;\n  let band = 0.22;\n  let s = (u.p * (1.0 + band * 2.0) - band) - f;   // > 0 : le front est passé\n  // Sortie : page → caractères → papier. Entrée (dir < 0) : papier → caractères → page.\n  var k = clamp(s / band, 0.0, 1.0);\n  if (u.dir < 0.0) { k = 1.0 - k; }\n  // k : 0 = la page telle quelle, 1 = papier ; entre les deux, les caractères.\n  if (k <= 0.0) { return vec4f(0.0); }\n  let ground = smoothstep(0.0, 0.35, k);\n  let paper = u.paper.rgb;\n  // Le caractère : image (densité de la rampe), sinon texte (une lettre), sinon rien.\n  let lum = dot(im.rgb, vec3f(0.299, 0.587, 0.114));\n  let flick = floor(u.t * 18.0 + hash(cell + 3.1) * 7.0);\n  let busy = 1.0 - abs(k * 2.0 - 1.0);\n  var g = -1.0;\n  var col = vec3f(0.0);\n  if (tx.a > 0.25) {\n    g = 12.0 + floor(hash(cell + vec2f(flick * busy, 0.0)) * 26.0);\n    col = tx.rgb / max(tx.a, 0.001);\n  } else if (im.a > 0.25) {\n    // Sur papier clair, l'ombre de la photo est la plus dense ; les caractères gardent sa couleur.\n    let d = clamp(1.0 - lum + (hash(cell + flick) - 0.5) * 0.25 * busy, 0.0, 1.0);\n    g = floor(d * 11.0 + 0.5);\n    col = im.rgb / max(im.a, 0.001);\n  }\n  // Après le front, les caractères s'éteignent dans le papier.\n  let glyphA = select(0.0, 1.0, g > 0.0) * (1.0 - smoothstep(0.55, 1.0, k));\n  var a = 0.0;\n  if (g > 0.0) {\n    let uv = vec2f((g + mix(0.08, 0.92, local.x)) / u.n, mix(0.04, 0.96, local.y));\n    a = textureSampleLevel(atlas, samp, uv, 0.0).r;\n  }\n  let rgb = mix(paper, col, a * glyphA);\n  // La page apparaît entre les caractères pendant que le fond se pose.\n  let alpha = max(ground, a * glyphA);\n  return vec4f(rgb * alpha, alpha);\n}\n";
+function se() {
+	let e = new OffscreenCanvas(1216, 56), t = e.getContext("2d");
+	return t.fillStyle = "#fff", t.textAlign = "center", t.textBaseline = "middle", t.font = "500 40px \"IBM Plex Mono\", ui-monospace, monospace", [...q].forEach((e, n) => t.fillText(e, n * 32 + 16, 56 * .54)), e;
+}
+async function X(e, t, n, r, i) {
+	let a = await V(), o = Math.min(devicePixelRatio || 1, 2), s = ae(Math.ceil(innerWidth / U), Math.ceil(innerHeight / W)), c = document.createElement("canvas");
+	c.className = "presse-sweep", c.setAttribute("aria-hidden", "true"), c.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;z-index:2147482999;pointer-events:none", c.width = Math.round(innerWidth * o), c.height = Math.round(innerHeight * o), document.documentElement.append(c);
+	let l = c.getContext("webgpu"), u = navigator.gpu.getPreferredCanvasFormat();
+	l.configure({
+		device: a,
+		format: u,
+		alphaMode: "premultiplied"
+	});
+	let d = (e) => {
+		let t = a.createTexture({
+			size: [e.width, e.height],
+			format: "rgba8unorm",
+			usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+		});
+		return a.queue.copyExternalImageToTexture({ source: e }, {
+			texture: t,
+			premultipliedAlpha: !0
+		}, [e.width, e.height]), t;
+	}, f = d(s.img), p = d(s.txt), m = d(se()), h = a.createShaderModule({ code: oe }), g = a.createRenderPipeline({
+		layout: "auto",
+		vertex: {
+			module: h,
+			entryPoint: "vs"
+		},
+		fragment: {
+			module: h,
+			entryPoint: "fs",
+			targets: [{
+				format: u,
+				blend: {
+					color: {
+						srcFactor: "one",
+						dstFactor: "one-minus-src-alpha"
+					},
+					alpha: {
+						srcFactor: "one",
+						dstFactor: "one-minus-src-alpha"
+					}
+				}
+			}]
+		},
+		primitive: { topology: "triangle-list" }
+	}), _ = a.createBuffer({
+		size: 64,
+		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+	}), v = a.createBindGroup({
+		layout: g.getBindGroupLayout(0),
+		entries: [
+			{
+				binding: 0,
+				resource: { buffer: _ }
+			},
+			{
+				binding: 1,
+				resource: f.createView()
+			},
+			{
+				binding: 2,
+				resource: p.createView()
+			},
+			{
+				binding: 3,
+				resource: m.createView()
+			},
+			{
+				binding: 4,
+				resource: a.createSampler({
+					magFilter: "linear",
+					minFilter: "linear"
+				})
+			}
+		]
+	}), y = (() => {
+		let e = new OffscreenCanvas(1, 1).getContext("2d");
+		return e.fillStyle = n, e.fillRect(0, 0, 1, 1), [...e.getImageData(0, 0, 1, 1).data].map((e) => e / 255);
+	})(), b = /* @__PURE__ */ new Float32Array(16), x = r ? [
+		r.x * o,
+		r.y * o,
+		r.w * o,
+		r.h * o
+	] : [
+		0,
+		0,
+		0,
+		0
+	], S = (t, n) => {
+		b.set([
+			c.width,
+			c.height,
+			U * o,
+			W * o,
+			t,
+			e,
+			n,
+			38,
+			...x,
+			y[0],
+			y[1],
+			y[2],
+			1
+		]), a.queue.writeBuffer(_, 0, b);
+		let r = a.createCommandEncoder(), i = r.beginRenderPass({ colorAttachments: [{
+			view: l.getCurrentTexture().createView(),
+			loadOp: "clear",
+			storeOp: "store",
+			clearValue: [
+				0,
+				0,
+				0,
+				0
+			]
+		}] });
+		i.setPipeline(g), i.setBindGroup(0, v), i.draw(3), i.end(), a.queue.submit([r.finish()]);
+	};
+	S(0, 0), await a.queue.onSubmittedWorkDone(), i?.();
+	let C = performance.now();
+	return await new Promise((e) => {
+		let n = () => {
+			let r = (performance.now() - C) / t;
+			if (S(Math.min(1, r), (performance.now() - C) / 1e3), r >= 1) return e();
+			requestAnimationFrame(n);
+		};
+		requestAnimationFrame(n);
+	}), () => {
+		c.remove();
+		for (let e of [
+			f,
+			p,
+			m
+		]) e.destroy();
+	};
+}
+var Z = (e) => {
+	try {
+		e ? sessionStorage.setItem(H, JSON.stringify(e)) : sessionStorage.removeItem(H);
+	} catch {}
+}, ce = () => {
+	try {
+		let e = JSON.parse(sessionStorage.getItem("presse:flight") ?? "null");
+		return e && Date.now() - e.t < 2e3 ? {
+			x: e.x,
+			y: e.y,
+			w: e.w,
+			h: e.h
+		} : null;
+	} catch {
+		return null;
+	}
+}, Q = !1, $ = !1, le = [
+	"liquide",
+	"grille",
+	"galerie",
+	"objet"
+];
+async function ue() {
+	document.readyState === "loading" && await new Promise((e) => document.addEventListener("DOMContentLoaded", e, { once: !0 }));
+	let e = [...document.querySelectorAll("[data-presse-component]")].filter((e) => {
+		if (!le.includes(e.dataset.presseComponent ?? "")) return !1;
+		let t = e.getBoundingClientRect();
+		return t.bottom > 0 && t.top < innerHeight && t.width > 0;
+	}), t = Promise.all(e.map((e) => e.dataset.painted === void 0 ? new Promise((t) => e.addEventListener("presse:painted", t, { once: !0 })) : null));
+	await Promise.race([t, new Promise((e) => setTimeout(e, 1400))]);
+}
+function de() {
+	if (Q || typeof window > "u") return;
+	Q = !0;
+	let e = window;
+	if (e.__presseSweep) {
+		let { d: t, cover: n } = e.__presseSweep;
+		delete e.__presseSweep, Z(null);
+		let r = () => n.remove();
+		Y() ? (async () => {
+			await ue(), await new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e))), (await X(-1, K, t.paper, null, r).catch(() => (r(), null)))?.();
+		})() : r();
+	} else Z(null);
+	document.addEventListener("click", (e) => {
+		if ($ || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !Y()) return;
+		let t = e.target?.closest?.("a[href]");
+		if (!t || t.target && t.target !== "_self" || t.hasAttribute("download") || t.origin !== location.origin || t.dataset.transition === "none" || t.closest("[data-transition=none]")) return;
+		let n = new URL(t.href);
+		if (n.pathname === location.pathname || !/(\/|\.html)$/.test(n.pathname)) return;
+		e.preventDefault(), $ = !0;
+		for (let e of document.querySelectorAll(":popover-open")) e.hidePopover();
+		let r = document.createElement("link");
+		r.rel = "prefetch", r.href = n.href, document.head.append(r);
+		let i = ie(), a = () => {
+			Z({
+				t: Date.now(),
+				to: n.href,
+				paper: i
+			});
+			try {
+				let e = JSON.parse(sessionStorage.getItem("presse:flight") ?? "null");
+				e && sessionStorage.setItem("presse:flight", JSON.stringify({
+					...e,
+					t: Date.now()
+				}));
+			} catch {}
+			location.href = n.href;
+		};
+		X(1, G, i, ce()).then(() => a()).catch(() => a());
+	}), addEventListener("pageshow", (e) => {
+		if (e.persisted) {
+			$ = !1;
+			for (let e of document.querySelectorAll("canvas.presse-sweep, .presse-sweep-cover")) e.remove();
+		}
+	});
+}
+//#endregion
 //#region src/pages-nav.ts
-var y = [
+var fe = [
 	{
 		href: "index.html",
 		name: "WebGPU-demo-UBS",
@@ -177,16 +615,17 @@ var y = [
 		name: "WebGPU-demo-UBS v0",
 		text: "La toute première version, générée par Grok"
 	}
-], b = "\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  background: var(--paper, #f6f1e4);\n  color: var(--ink, #16110d);\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.72);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
-function x(e = "./") {
+], pe = "\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  background: var(--paper, #f6f1e4);\n  color: var(--ink, #16110d);\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.72);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
+function me(e = "./") {
+	z(), de();
 	let t = document.createElement("style");
-	t.textContent = b, document.head.append(t);
+	t.textContent = pe, document.head.append(t);
 	let n = document.querySelector("[data-pages-trigger]");
 	n || (n = document.createElement("button"), n.type = "button", n.className = "pages-pill", n.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(n));
 	let r = document.createElement("nav");
 	r.id = "pages-pop", r.className = "pages-pop", r.setAttribute("popover", ""), r.setAttribute("aria-label", "Pages");
 	let i = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0].split("?")[0], a = document.createElement("ul");
-	for (let t of y) {
+	for (let t of fe) {
 		let n = document.createElement("li"), r = document.createElement("a");
 		r.href = e + t.href, r.href === i && r.setAttribute("aria-current", "page"), r.innerHTML = "<span class=\"pages-name\"></span><span class=\"pages-text\"></span>", r.querySelector(".pages-name").textContent = t.name, r.querySelector(".pages-text").textContent = t.text, n.append(r), a.append(n);
 	}
@@ -200,5 +639,5 @@ function x(e = "./") {
 		r.style.left = `${Math.max(8, Math.min(t.left, innerWidth - r.offsetWidth - 8))}px`, r.style.top = `${t.bottom + 8}px`;
 	});
 }
-x("../"), v();
+me("../"), v();
 //#endregion
