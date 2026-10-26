@@ -1,0 +1,280 @@
+/* Composant <x-galerie>. Le GPU dessine les images ; le HTML garde la liste
+   (clavier, lecteurs d'écran, repli sans WebGPU), la boîte de détail, la bande
+   de vignettes et la fiche, placées ici par CSS : le GPU les rejoint. */
+.x-galerie {
+  --gallery-item-width: 240px;
+  --gallery-item-height: 320px;
+  --gallery-radius: 10px;
+  position: relative;
+  height: min(80vh, 760px);
+  overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+  isolation: isolate;
+}
+.x-galerie[data-full] {
+  position: fixed;
+  inset: 0;
+  height: auto;
+  touch-action: none;
+}
+.x-galerie.gx-dragging {
+  cursor: grabbing;
+}
+.x-galerie:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--spot, #c8321c);
+}
+.x-galerie .gx-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.x-galerie .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* La liste : avec WebGPU, invisible à l'œil mais au clavier ; sans, une rangée qui défile. */
+.x-galerie .gx-list {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding: 24px;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  height: 100%;
+  align-items: center;
+}
+.x-galerie .gx-item {
+  flex: none;
+  scroll-snap-align: center;
+}
+.x-galerie .gx-btn {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.x-galerie .gx-btn img {
+  display: block;
+  width: var(--gallery-item-width);
+  height: var(--gallery-item-height);
+  object-fit: cover;
+  border-radius: var(--gallery-radius);
+}
+.x-galerie .gx-cap {
+  display: block;
+  margin-top: 8px;
+  font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Avec un script, les vignettes HTML ne se chargent pas d'avance : le GPU lit sa bande de mipmaps. */
+@media (scripting: enabled) {
+  .x-galerie:not(.no-gl) .gx-btn picture,
+  .x-galerie:not(.no-gl) .gx-btn img {
+    display: none;
+  }
+}
+.x-galerie.is-gl .gx-list {
+  position: absolute;
+  inset: auto auto 0 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.x-galerie.is-gl .gx-btn:focus-visible {
+  outline: 2px solid var(--spot, #c8321c);
+}
+
+/* Boîte de détail : le cadre est la cible du vol de l'image. */
+.x-galerie .gx-detail {
+  position: absolute;
+  inset: 5% 10% 20%;
+  z-index: 3;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+  pointer-events: none;
+}
+.x-galerie .gx-detail[hidden],
+.x-galerie .gx-strip[hidden],
+.x-galerie .gx-reveal[hidden] {
+  display: none;
+}
+.x-galerie .gx-detail-frame {
+  position: relative;
+  min-height: 0;
+}
+.x-galerie .gx-detail-media {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.x-galerie .gx-detail-media.is-ready {
+  opacity: 1;
+}
+.x-galerie .gx-detail-media img {
+  background: none !important;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--gallery-radius);
+}
+.x-galerie .gx-detail-cap {
+  margin: 0;
+  text-align: center;
+  font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+/* Fermer, et la même photo sur d'autres pages. */
+.x-galerie .gx-actions {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+.x-galerie .gx-close,
+.x-galerie .gx-page {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  text-decoration: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--paper, #efeee8);
+  color: var(--ink, #121212);
+  font: 500 11px/1 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.x-galerie .gx-page {
+  background: var(--ink, #121212);
+  color: var(--paper, #efeee8);
+  border-color: var(--ink, #121212);
+}
+.x-galerie .gx-page:focus-visible,
+.x-galerie .gx-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper, #efeee8), 0 0 0 4px var(--spot, #c8321c);
+}
+.x-galerie .gx-strip {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 4%;
+  height: 64px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Fiche révélée : elle s'ouvre depuis le bord de l'image. */
+.x-galerie .gx-reveal {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--ink, #121212);
+  border-radius: 6px;
+  background: var(--paper, #efeee8);
+  color: var(--ink, #121212);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: auto;
+}
+.x-galerie .gx-reveal.from-left {
+  clip-path: inset(0 0 0 100%);
+}
+.x-galerie .gx-reveal.is-in {
+  clip-path: inset(0 0 0 0);
+}
+.x-galerie .gx-reveal-title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  font-weight: 800;
+}
+.x-galerie .gx-reveal dl {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.x-galerie .gx-reveal dl > div {
+  display: grid;
+  grid-template-columns: 9em 1fr;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rule, #c8c5ba);
+  font-size: 13px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition-delay: calc(0.18s + var(--i) * 0.05s);
+}
+.x-galerie .gx-reveal.is-in dl > div {
+  opacity: 1;
+  transform: none;
+}
+.x-galerie .gx-reveal dt {
+  font: 500 11px/1.5 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft, #55534d);
+}
+.x-galerie .gx-reveal dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.x-galerie .gx-reveal .gx-actions {
+  position: static;
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .x-galerie .gx-reveal,
+  .x-galerie .gx-reveal dl > div,
+  .x-galerie .gx-detail-media {
+    transition: none;
+  }
+}
+@media (max-width: 760px) {
+  .x-galerie {
+    --gallery-item-width: 180px;
+    --gallery-item-height: 240px;
+  }
+  .x-galerie .gx-detail {
+    inset: 8% 4% 22%;
+  }
+  .x-galerie .gx-strip {
+    left: 4%;
+    right: 4%;
+    height: 48px;
+  }
+}

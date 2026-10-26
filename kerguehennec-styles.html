@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Kerguéhennec, huit regards</title>
+    <meta name="description" content="Le domaine de Kerguéhennec modélisé une fois en WebGPU et rendu de huit façons, chacune avec un menu de cinq entrées, pour comparer les styles." />
+    <meta name="theme-color" content="#16110d" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap"
+    />
+  </head>
+  <body class="k">
+    <a class="k-skip" href="#regards">Aller au choix des regards</a>
+
+    <header class="k-head">
+      <p class="k-kicker">Domaine de Kerguéhennec · Bignan · Morbihan</p>
+      <h1 class="k-title">Huit regards</h1>
+      <p class="k-sub">Une seule scène 3D, rendue de huit façons, pour comparer</p>
+    </header>
+
+    <div id="regards" class="k-tabs">
+      <p class="k-tabs-title" id="t-regards">Le regard</p>
+      <div class="k-tabs-list" role="group" aria-labelledby="t-regards" data-styles></div>
+      <p class="k-about" data-style-about aria-live="polite"></p>
+    </div>
+
+    <section class="k-stage" aria-label="Le domaine, dans le regard choisi">
+      <canvas id="k-gl" aria-hidden="true"></canvas>
+      <div class="k-fallback" aria-hidden="true">
+        <p>Ici, le domaine en 3D, rendu par WebGPU.</p>
+      </div>
+    </section>
+
+    <div class="k-controls">
+      <nav class="k-nav" aria-labelledby="t-menu">
+        <p class="k-menu-title" id="t-menu" data-menu-title>Heures</p>
+        <ol data-entries></ol>
+      </nav>
+
+      <aside class="k-card" aria-live="polite">
+        <p class="k-card-num" data-card-num></p>
+        <h2 class="k-card-name" data-card-name></h2>
+        <p class="k-card-text" data-card-text></p>
+      </aside>
+
+      <div class="k-tools">
+        <a href="#comparer">Comparer ↓</a>
+        <a href="./kerguehennec.html">Le théâtre de papier, 1910</a>
+        <p class="k-status" data-k-status role="status"></p>
+      </div>
+    </div>
+
+    <main id="comparer" class="k-essay">
+      <p class="k-orn" aria-hidden="true">❦</p>
+      <h2>Comparer</h2>
+      <p class="k-lede">
+        Le domaine est modélisé une seule fois : le château et ses onze travées, le parterre et son bassin, le miroir
+        d'eau, le parc, les écuries, la serre, la grille, les sculptures. Ce qui change d'un regard à l'autre, c'est la
+        lumière, la passe de style et ce que raconte le menu.
+      </p>
+
+      <section>
+        <h3>Les huit, côte à côte</h3>
+        <div class="k-scroll">
+          <table class="k-compare">
+            <thead>
+              <tr><th scope="col">Regard</th><th scope="col">Ce que dit le menu</th><th scope="col">Force</th><th scope="col">Limite</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Série de Monet</th><td>Cinq heures du jour</td><td>Émotion immédiate, juste pour l'époque ; un seul point de vue suffit</td><td>Raconte la lumière, pas le lieu ; le filtre peint coûte au GPU</td></tr>
+              <tr><th scope="row">Relevé au lavis</th><td>Plan, élévation, lieux</td><td>Parle d'architecture ; le passage du plan à la perspective est très lisible</td><td>Austère pour le grand public</td></tr>
+              <tr><th scope="row">Livre animé</th><td>Cinq doubles pages</td><td>Ludique, familier, idéal pour les familles et les enfants</td><td>Le geste se répète ; moins de poésie</td></tr>
+              <tr><th scope="row">Cyanotype</th><td>Calques du domaine</td><td>Le plus clair pour montrer ce qui est construit, planté, mis en eau, exposé</td><td>Froid ; une affaire de traits</td></tr>
+              <tr><th scope="row">Le temps du domaine</th><td>Cinq dates</td><td>Le meilleur récit : le parc pousse, les œuvres arrivent ; chaque époque a son tirage</td><td>Demande une vraie recherche historique par époque</td></tr>
+              <tr><th scope="row">Nocturne</th><td>Cinq lumières</td><td>Atmosphère forte pour peu d'éléments ; un menu qui se lit tout seul</td><td>Sombre : lisibilité et contraste à surveiller</td></tr>
+              <tr><th scope="row">Maquette en plâtre</th><td>Cinq coupes</td><td>Fait entrer dans le château ; élégant, muséal</td><td>Demande les plans intérieurs pour aller plus loin</td></tr>
+              <tr><th scope="row">Relevé en points</th><td>Cinq lieux</td><td>Spectaculaire, contemporain ; prêt pour une vraie captation (Gaussian splats)</td><td>Le moins « 1910 » ; dépend des données</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h3>La technique</h3>
+        <p>
+          Trois passes WebGPU. La première lance un rayon par pixel dans une scène décrite par fonctions de distance et
+          écrit trois tampons : normale et profondeur, matière avec ombre et occlusion, position. Les rayons qui touchent
+          l'eau repartent une fois, réfléchis, pour le miroir d'eau. La deuxième passe éclaire selon le regard ; la
+          troisième fait le style : filtre de Kuwahara et touches pour Monet, trait et lavis, découpes blanches, traits
+          de cyanotype, virages d'époque, halo et lucioles, plâtre, points. Le livre animé et les sculptures
+          sont dans la scène elle-même : le décor se couche autour de ses charnières, les œuvres poussent avec l'époque.
+        </p>
+        <p>
+          La première passe tourne à une résolution réduite, qui s'ajuste toute seule au temps réel des images ; les deux
+          autres travaillent à la résolution de l'écran. Pour le vrai projet, la scène se remplacerait par le modèle de
+          l'application et la passe de style se porterait telle quelle.
+        </p>
+      </section>
+
+      <section>
+        <h3>L'accessibilité</h3>
+        <ul>
+          <li>Les regards et les entrées sont de vrais boutons ; les flèches passent d'une entrée à l'autre.</li>
+          <li>Le carton décrit chaque entrée et il est annoncé poliment ; le choix du regard aussi.</li>
+          <li>Mouvement réduit : les réglages changent d'un coup, le livre ne se replie pas, les points ne se dispersent pas, rien ne scintille.</li>
+          <li>Sans WebGPU, la page reste lisible : regards et entrées décrits en texte.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="k-foot">
+      <p>
+        Sources historiques :
+        <a href="https://www.techno-science.net/fr/definitions/chateau-de-kerguehennec">Château de Kerguéhennec (techno-science.net)</a>,
+        <a href="https://monumentum.fr/monument-historique/pa00091041/bignan-chateau-de-kerguehennec-et-ses-dependances">Monumentum, PA00091041</a>.
+        Modèle simplifié et reconstitution imaginée des époques ; sculptures génériques, sans reproduire d'œuvre.
+      </p>
+      <p><a href="./kerguehennec.html">← Le théâtre de papier, 1910</a> · <a href="./index.html">WebGPU-demo-UBS, la presse WebGPU</a></p>
+    </footer>
+
+    <script type="module" src="./src/kstyles/main.ts"></script>
+  </body>
+</html>

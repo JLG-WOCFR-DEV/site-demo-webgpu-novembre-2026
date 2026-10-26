@@ -39,6 +39,11 @@ export class ShelfPacker {
   get used() {
     return this.bottom / this.height;
   }
+
+  /** Réserve le haut de l'atlas (atlas précalculé à la construction) : les étagères commencent dessous. */
+  reserve(h: number) {
+    this.bottom = Math.max(this.bottom, Math.min(this.height, h + this.pad));
+  }
 }
 
 /** Métriques d'un glyphe TinySDF, en pixels d'atlas. */

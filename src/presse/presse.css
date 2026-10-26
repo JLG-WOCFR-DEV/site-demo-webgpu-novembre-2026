@@ -1,0 +1,59 @@
+/*
+ * Presse : le strict nécessaire pour qu'une page soit repeinte par le GPU.
+ * Le DOM garde sa place, son texte et ses images ; il ne les peint plus
+ * quand le GPU a pris la main (html.gl-on). Sans WebGPU, rien ne change.
+ */
+.presse-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+html.gl-on .presse-canvas {
+  display: block;
+}
+/* Le contenu passe au-dessus du canvas, transparent là où le GPU peint. */
+html.gl-on body > :not(.presse-canvas) {
+  position: relative;
+  z-index: 1;
+}
+html.gl-on body {
+  background: transparent;
+}
+html.gl-on [data-gl-text] {
+  color: transparent;
+}
+html.gl-on [data-gl-text] a {
+  color: var(--ink, #121212);
+}
+/* Les puces et numéros de liste ne sont pas des lettres : le DOM les garde. */
+html.gl-on [data-gl-text] li::marker {
+  color: var(--ink, #121212);
+}
+html.gl-on img[data-gl-img] {
+  opacity: 0;
+}
+html.gl-on ::selection {
+  color: transparent;
+}
+/* Sections imprimées au défilement : ce que le DOM peint lui-même suit le front. */
+html.gl-on [data-gl-print] :is(a, button, .controls) {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+/* Un composant a son propre rendu : ses liens et boutons ne suivent pas l'impression. */
+html.gl-on [data-gl-print] [data-presse-component] :is(a, button, .controls),
+html.gl-on [data-gl-print] :is(a, button, .controls).is-printed,
+html.gl-on [data-gl-print] :focus-within,
+html.gl-on [data-gl-print] :focus-visible {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.gl-on [data-gl-print] :is(a, button, .controls) {
+    opacity: 1;
+    transition: none;
+  }
+}

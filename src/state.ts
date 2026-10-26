@@ -1,29 +1,98 @@
 /** État des réglages, écrit par l'interface et lu par la boucle de rendu. */
 export type Settings = {
   dom: { boxes: boolean; hideGpu: boolean };
-  quad: { radius: number; shadow: number; lift: number; wire: boolean };
+  quad: { radius: number; shadow: number; lift: number; wire: boolean; peel: number; hoverPeel: boolean };
   glyph: { wave: number; ink: number; scatter: number; atlas: boolean };
   chain: { distort: boolean; rgb: boolean; trame: boolean; bloom: boolean; grain: boolean; print: boolean; split: boolean };
   trame: { cell: number; gain: number; misreg: number; mix: number };
   light: { bloom: number; threshold: number; naive: boolean };
-  filter: { kind: number; size: number; amount: number };
+  /** Chapitre 06. source : 0 photo, 1 dégradé maillé, 2 encre marbrée, 3 ondes, 4 métaballes. */
+  filter: { kind: number; size: number; amount: number; source: number };
   ink: { flow: number; stir: number };
+  a11y: { reader: boolean; fade: number; vision: number; spacing: boolean };
+  fluid: { force: number; dry: number };
+  /** Chapitre 04.2 : pile de calques, du dessous vers le dessus. */
+  /**
+   * Transitions au défilement (leçon 04.1 et panneau de la barre).
+   * style : 0 impression, 1 trame, 2 quadrichromie, 3 buvard, 4 massicot,
+   * 5 fondu, 6 rouleau, 7 composition, 8 ligne à ligne, 9 révélateur, 10 pli,
+   * 11 aucune. speed : taux de l'amorti (1/s). line : hauteur de la
+   * ligne d'impression (part de l'écran). width : largeur du front (part de l'écran).
+   */
+  transition: { style: number; speed: number; line: number; width: number };
+  /** Leçon 06.1 : intensité des matières sur le HTML vivant. */
+  matter: { intensity: number };
+  /** Grain et fibre : 1 = le dosage réel, à peine visible ; au-delà, une loupe pour le sampler. */
+  grain: { amp: number };
+  /** Papier froissé de page : profondeur des plis, vitesse à laquelle il se défroisse (1/s). */
+  crease: { on: boolean; depth: number; heal: number };
+  /** Matière lentille : force, et vitesse à laquelle le centre rattrape le pointeur (1/s). */
+  lens: { force: number; follow: number };
+  /** Bords déchirés : amplitude, et réaction au défilement et au pointeur. */
+  tear: { amp: number; react: number };
+  /** Débogage : fil de fer, grille (colonnes, rangées, centre). */
+  debug: { wire: boolean; col: boolean; row: boolean; ctr: boolean };
+  /** Désintégration (matière « poussiere ») : progression courante et cible, 0 entier, 1 en poussière. */
+  dust: { value: number; target: number };
+  /** Inertie des plaques au défilement (0 coupée). */
+  inertia: { amount: number };
+  /** Effets d'après Canvas UI, sur toute la page : effet (index de CUI_EFFECTS, 0 aucun), intensité, taille. */
+  cui: { effect: number; amount: number; scale: number };
+  layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
+
+export const TRANSITIONS = ["impression", "trame", "quadri", "buvard", "massicot", "fondu", "rouleau", "composition", "ligne", "revelateur", "pli", "aucune", "tri"] as const;
+export const TRANSITION_NONE = 11;
+
+export type LayerId = "glass" | "flower" | "spot";
 
 export const settings: Settings = {
   dom: { boxes: false, hideGpu: false },
-  quad: { radius: 6, shadow: 0.45, lift: 0.3, wire: false },
+  quad: { radius: 6, shadow: 0.45, lift: 0.3, wire: false, peel: 0, hoverPeel: true },
   glyph: { wave: 0.35, ink: 0, scatter: 0, atlas: false },
   chain: { distort: true, rgb: true, trame: true, bloom: true, grain: true, print: true, split: false },
   trame: { cell: 7, gain: 0.08, misreg: 0.15, mix: 1 },
   light: { bloom: 0.6, threshold: 0.03, naive: false },
-  filter: { kind: 1, size: 6, amount: 0.5 },
+  filter: { kind: 1, size: 6, amount: 0.5, source: 0 },
+  grain: { amp: 1 },
+  crease: { on: false, depth: 1, heal: 0.35 },
+  lens: { force: 1, follow: 7 },
+  tear: { amp: 1, react: 1 },
+  debug: { wire: false, col: false, row: false, ctr: false },
+  dust: { value: 0, target: 0 },
+  inertia: { amount: 0 },
+  cui: { effect: 0, amount: 1, scale: 1 },
   ink: { flow: 1, stir: 1 },
+  a11y: { reader: false, fade: 0, vision: 0, spacing: false },
+  fluid: { force: 1, dry: 0.5 },
+  transition: { style: 0, speed: 4.5, line: 0.86, width: 0.22 },
+  matter: { intensity: 1 },
+  layers: {
+    order: ["glass", "flower", "spot"],
+    mode: { glass: 0, flower: 1, spot: 3 },
+    opacity: { glass: 1, flower: 0.9, spot: 0.7 },
+    visible: { glass: true, flower: true, spot: true },
+    mask: 1,
+  },
 };
 
 export type Pointer = { x: number; y: number; inside: boolean };
 export const pointer: Pointer = { x: 0, y: 0, inside: false };
 
 export const motion = {
-  reduced: typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches,
+  /** Préférence système. */
+  system: typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches,
+  /** Bouton Pause de la page (critère 2.2.2). */
+  paused: false,
+  /** Ce que lit le moteur : l'un ou l'autre suffit. */
+  get reduced() {
+    return this.system || this.paused;
+  },
 };
+
+/** Clics qui lancent une onde (effets « ondes » et « champ de force ») ; t < 0 : l'heure sera posée par le moteur. */
+export const cuiRipples: { x: number; y: number; t: number; s: number }[] = [];
+export function pushRipple(x: number, y: number, s = 1) {
+  cuiRipples.push({ x, y, t: -1, s });
+  if (cuiRipples.length > 8) cuiRipples.shift();
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Liquide</title>
+    <meta name="description" content="Une mise en page liquide : les photos sont des cartes HTML qu'on glisse, mélange et filtre ; le GPU les rend en verre qui fusionne là où elles se frôlent." />
+    <meta name="theme-color" content="#efeee8" />
+    <script type="module" src="/src/liquide/main.ts"></script>
+  </head>
+  <body class="lq">
+    <a class="lq-skip" href="#lq-main">Aller aux photos</a>
+    <header class="lq-head">
+      <p class="lq-kicker">WebGPU-demo-UBS · Liquide</p>
+      <h1 class="lq-title">Mise en page liquide</h1>
+      <p class="lq-lede">
+        Sept photos, sept cartes HTML dans une grille CSS. Glissez-en une, mélangez, filtrez : le navigateur fait la mise en
+        page, le GPU rend chaque carte en verre, qui s'étire quand elle file et fusionne avec ses voisines quand elles se frôlent.
+      </p>
+    </header>
+
+    <main id="lq-main">
+      <!-- Un composant : déroulé en HTML statique à la construction (presse/build). -->
+      <x-liquide full filters="eau:L'eau|terre:La terre|vivant:Le vivant" link="./grille.html?photo={id}">
+        <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-id="pont" data-caption="Le pont" />
+        <img src="./plates/jardin.jpg" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." data-cat="vivant" data-id="jardin" data-caption="Le jardin" />
+        <img src="./plates/alcatraz.jpg" alt="L'île d'Alcatraz et son phare au milieu de la baie." data-cat="eau" data-id="alcatraz" data-caption="L'île" />
+        <img src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." data-cat="terre" data-id="yosemite" data-caption="La vallée" />
+        <img src="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." data-cat="eau" data-id="lac" data-caption="Le lac" />
+        <img src="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." data-cat="terre" data-id="dunes" data-caption="Les dunes" />
+        <img src="./plates/cerf.jpg" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." data-cat="vivant" data-id="cerf" data-caption="Le cerf" />
+      </x-liquide>
+
+      <section class="lq-essay" aria-labelledby="lq-how">
+        <h2 id="lq-how">Comment c'est fait</h2>
+        <p>
+          La grille est du CSS ordinaire. Pour réordonner, le script déplace les éléments dans le DOM puis anime l'écart avec un
+          ressort (la technique FLIP) ; le navigateur reste maître de la mise en page. À chaque image, le moteur lit le rectangle
+          de chaque photo, en déduit sa vitesse, et la transforme en une forme molle : elle s'étire dans le sens du mouvement, se
+          tasse à l'arrêt, s'arrondit quand elle file.
+        </p>
+        <p>
+          Le GPU calcule ensuite, pour chaque pixel, la distance à chaque carte, et les fond par un minimum lissé : là où deux
+          cartes se frôlent, un pont de verre les relie, et ses couleurs mêlent celles des deux photos. Le bord est une lentille :
+          la normale du champ dévie la lecture de la photo, avec une légère dispersion des couleurs et un reflet. Au repos, les
+          cartes redeviennent des rectangles arrondis exacts.
+        </p>
+        <p>
+          D'après l'exemple « Liquid Layout » de vgpu, réécrit en WebGPU brut. Le texte, les légendes et les images restent dans le
+          HTML : sans WebGPU, ou avec le mouvement réduit, la grille fonctionne de la même façon, sans le verre.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

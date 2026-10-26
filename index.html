@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>PLI</title>
+    <title>WebGPU-demo-UBS</title>
     <meta
       name="description"
-      content="PLI, une presse WebGPU : démo et guide d'un site rendu en WebGPU natif. Le HTML compose la page, le GPU la repeint, glyphe par glyphe."
+      content="WebGPU-demo-UBS, une presse WebGPU : démo et guide d'un site rendu en WebGPU natif. Le HTML compose la page, le GPU la repeint, glyphe par glyphe."
     />
     <meta name="theme-color" content="#f2efe6" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2efe6'/%3E%3Ccircle cx='12' cy='14' r='7' fill='%2300a3d7' opacity='.85'/%3E%3Ccircle cx='20' cy='14' r='7' fill='%23e5007d' opacity='.85'/%3E%3Ccircle cx='16' cy='20' r='7' fill='%23f6d500' opacity='.85'/%3E%3C/svg%3E" />
@@ -18,7 +18,7 @@
     <canvas id="gl" aria-hidden="true"></canvas>
 
     <header class="bar" role="banner">
-      <a class="mark" href="#top" aria-label="PLI, retour en haut">PLI</a>
+      <button type="button" class="mark" data-pages-trigger aria-label="WebGPU-demo-UBS : choisir une page"><span class="mark-name">WebGPU-demo-<wbr />UBS</span> <span class="mark-caret" aria-hidden="true">▾</span></button>
       <nav aria-label="Chapitres">
         <ol class="toc">
           <li><a href="#ch-dom">DOM</a></li>
@@ -30,14 +30,85 @@
           <li><a href="#ch-light">Lumière</a></li>
           <li><a href="#ch-ink">Calcul</a></li>
           <li><a href="#ch-cost">Coût</a></li>
-          <li><a href="#ch-a11y">Accès</a></li>
+          <li><a href="#ch-a11y">Accessibilité</a></li>
         </ol>
       </nav>
       <div class="status" role="status" aria-live="polite">
         <span class="status-dot" aria-hidden="true"></span>
         <span id="status-text">Démarrage</span>
       </div>
+      <button type="button" class="pause-btn" data-action="menu" aria-haspopup="dialog" aria-expanded="false">Sommaire</button>
+      <button type="button" class="pause-btn" popovertarget="tr-pop" aria-controls="tr-pop">Transitions</button>
+      <button type="button" class="pause-btn" data-action="pause" aria-pressed="false">Pause</button>
+      <div id="tr-pop" class="tr-pop" popover>
+          <form class="controls controls--pop" aria-labelledby="p-transitions-title" data-controls="transition">
+            <p id="p-transitions-title" class="controls-title">Transitions au défilement</p>
+            <fieldset class="choices">
+              <legend class="sr-only">Style de transition</legend>
+              <label><input type="radio" name="style" value="0" checked /> Impression</label>
+              <label><input type="radio" name="style" value="1" /> Trame</label>
+              <label><input type="radio" name="style" value="2" /> Quadrichromie</label>
+              <label><input type="radio" name="style" value="3" /> Buvard</label>
+              <label><input type="radio" name="style" value="4" /> Massicot</label>
+              <label><input type="radio" name="style" value="5" /> Fondu</label>
+              <label><input type="radio" name="style" value="6" /> Rouleau</label>
+              <label><input type="radio" name="style" value="7" /> Composition</label>
+              <label><input type="radio" name="style" value="8" /> Ligne à ligne</label>
+              <label><input type="radio" name="style" value="9" /> Révélateur</label>
+              <label><input type="radio" name="style" value="10" /> Pli</label>
+              <label><input type="radio" name="style" value="12" /> Tri de pixels</label>
+              <label><input type="radio" name="style" value="11" /> Aucune</label>
+            </fieldset>
+            <label class="range"><span>Vitesse</span><input type="range" name="speed" min="1" max="14" step="0.5" value="4.5" /><output>0,15 s</output></label>
+            <label class="range"><span>Ligne d'impression</span><input type="range" name="line" min="0.5" max="1" step="0.01" value="0.86" /><output>86 %</output></label>
+            <label class="range"><span>Largeur du front</span><input type="range" name="width" min="0.04" max="0.6" step="0.01" value="0.22" /><output>22 %</output></label>
+            <button type="button" class="btn" data-action="replay">Rejouer l'impression</button>
+          </form>
+        <p class="tr-pop-note">Expliqué en <a href="#ch-transitions">04.1</a>. Échap pour fermer.</p>
+      </div>
     </header>
+
+
+    <!-- Sommaire en feuilles : un dialogue modal. Les feuilles sont des liens
+         créés depuis le sommaire de la barre ; le GPU les peint en perspective. -->
+    <div class="menu" data-menu hidden role="dialog" aria-modal="true" aria-labelledby="menu-title" data-style="leporello">
+      <div class="menu-head">
+        <h2 id="menu-title" class="menu-title">Sommaire</h2>
+        <fieldset class="choices menu-styles">
+          <legend class="sr-only">Présentation du sommaire</legend>
+          <label><input type="radio" name="menu-style" value="leporello" checked /> Leporello</label>
+          <label><input type="radio" name="menu-style" value="index" /> Index</label>
+          <label><input type="radio" name="menu-style" value="lettres" /> Lettres</label>
+          <label><input type="radio" name="menu-style" value="ramette" /> Ramette</label>
+          <label><input type="radio" name="menu-style" value="planche" /> Planche contact</label>
+          <label><input type="radio" name="menu-style" value="nuancier" /> Nuancier</label>
+          <label><input type="radio" name="menu-style" value="bande" /> Bande</label>
+          <label><input type="radio" name="menu-style" value="rotative" /> Rotative</label>
+          <label><input type="radio" name="menu-style" value="galerie" /> Galerie</label>
+          <label><input type="radio" name="menu-style" value="salle" /> Salle</label>
+        </fieldset>
+        <fieldset class="choices menu-screens">
+          <legend class="menu-screens-legend">Écran</legend>
+          <label><input type="radio" name="menu-screen" value="0" checked /> Aucun</label>
+          <label><input type="radio" name="menu-screen" value="1" /> CRT</label>
+          <label><input type="radio" name="menu-screen" value="2" /> Projecteur</label>
+        </fieldset>
+        <button type="button" class="pause-btn" data-menu-close>Fermer</button>
+      </div>
+      <div class="menu-stage" data-menu-stage>
+        <img class="menu-preview" data-menu-preview alt="" />
+        <svg class="menu-circle" data-menu-circle viewBox="-100 -70 200 140" aria-hidden="true" focusable="false">
+          <path pathLength="1" d="M -86 -6 C -84 -50 64 -66 88 -14 C 104 30 22 62 -36 56 C -84 50 -100 10 -74 -28 C -62 -44 -42 -52 -18 -56" />
+        </svg>
+      </div>
+      <div class="menu-foot">
+        <button type="button" class="pause-btn" data-menu-prev aria-label="Feuille précédente">←</button>
+        <span class="menu-counter" data-menu-counter aria-hidden="true">01 / 10</span>
+        <button type="button" class="pause-btn" data-menu-next aria-label="Feuille suivante">→</button>
+        <p class="menu-hint">Flèches pour feuilleter · Entrée pour ouvrir · Échap pour fermer</p>
+        <p class="sr-only" aria-live="polite" data-menu-live></p>
+      </div>
+    </div>
 
     <main id="top">
       <!-- ───────────── Ouverture ───────────── -->
@@ -51,13 +122,13 @@
         </h1>
         <div class="hero-plates" data-gl-stage="hero">
           <figure class="plate plate--sq">
-            <img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux posée sur une pierre calcaire, lumière de fenêtre." />
+            <img data-gl-img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." />
           </figure>
           <figure class="plate plate--sq">
-            <img data-gl-img src="./plates/steel.jpg" width="1408" height="1408" alt="Un cylindre d'acier poli debout sur une ardoise sombre." />
+            <img data-gl-img src="./plates/alcatraz.jpg" width="1728" height="1150" alt="L'île d'Alcatraz, son phare et ses bâtiments, au milieu de la baie bleue." />
           </figure>
           <figure class="plate plate--sq">
-            <img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="Une renoncule blanche sur fond gris clair." />
+            <img data-gl-img src="./plates/yosemite.jpg" width="1728" height="1150" alt="La vallée de Yosemite vue d'en haut : parois de granit, une cascade, la brume au fond." />
           </figure>
         </div>
         <p class="lede" data-gl-text>
@@ -113,10 +184,16 @@
               La texture est envoyée au GPU avec <span class="code-inline">copyExternalImageToTexture</span>, sans
               repasser par le processeur, puis réduite en mipmaps pour que les vignettes ne scintillent pas.
             </p>
+            <p>
+              Un quad a ses limites : il ne peut pas se plier. Pour décoller l'épreuve, le moteur remplace ses deux
+              triangles par une grille de 40 × 28 cellules, générée elle aussi dans le vertex shader. La partie proche du
+              coin s'enroule autour d'un cylindre dont l'axe suit la ligne de pli ; passé le quart de tour, on voit le
+              verso du papier. Dessous apparaît la plaque offset qui a servi à l'imprimer, en négatif.
+            </p>
           </div>
           <div class="stage" data-gl-stage="quad">
             <figure class="plate plate--wide">
-              <img data-gl-img data-gl-quad src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de grès empli d'eau, vu de trois quarts." />
+              <img data-gl-img data-gl-quad src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées, ciel strié de traînées d'avion." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-quad" data-controls="quad">
@@ -124,6 +201,7 @@
             <label class="range"><span>Coins</span><input type="range" name="radius" min="0" max="64" step="1" value="6" /><output>6 px</output></label>
             <label class="range"><span>Ombre</span><input type="range" name="shadow" min="0" max="1" step="0.01" value="0.45" /><output>0,45</output></label>
             <label class="range"><span>Élévation</span><input type="range" name="lift" min="0" max="1" step="0.01" value="0.3" /><output>0,30</output></label>
+            <label class="range"><span>Décoller l'épreuve</span><input type="range" name="peel" min="0" max="1" step="0.01" value="0" /><output>0,00</output></label>
             <label class="toggle"><input type="checkbox" name="wire" /> Afficher les deux triangles</label>
           </form>
           <pre class="wgsl" aria-label="Code WGSL du coin arrondi"><code>fn sd_round_box(p: vec2f, b: vec2f, r: f32) -> f32 {
@@ -132,6 +210,41 @@
        + min(max(q.x, q.y), 0.0) - r;
 }</code></pre>
         </div>
+
+        <section id="ch-sommaire" class="lesson" aria-labelledby="t-sommaire">
+          <h3 id="t-sommaire" class="lesson-title" data-gl-text><span class="lesson-num">02.1</span> Des plans en perspective</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Un plan peut aussi quitter le plan de la page. Le sommaire, ouvert depuis la barre, pose ses feuilles en
+                3D. Neuf présentations, au choix dans le sommaire : sans relief, un index typographique, une planche contact, un
+                nuancier en éventail et une bande sans fin ; en volume, un dépliant en accordéon, une ramette dont la
+                première feuille s'envole, une rotative, une galerie en profondeur et une salle ronde dont on occupe
+                le centre. Un écran CRT ou un projecteur de cinéma peut se poser par-dessus. Chaque feuille reçoit une matrice
+                4 × 4 calculée en JavaScript.
+              </p>
+              <p>
+                Cette matrice sert deux fois. Le DOM la reçoit en <span class="code-inline">transform: matrix3d()</span>,
+                sous la même perspective : le lien est exactement là où la feuille est dessinée, le clic, le focus et le
+                lecteur d'écran tombent juste. Le GPU la reçoit en uniforme, la multiplie par les coins du rectangle et
+                laisse la division par w au matériel, qui interpole aussi la texture en perspective. Les plis
+                s'assombrissent vers la charnière et la lumière rasante éclaire les faces tournées vers elle.
+              </p>
+              <p>
+                Lire la boîte d'un élément transformé ne suffirait pas : <span class="code-inline">getBoundingClientRect</span>
+                rend un rectangle droit qui l'englobe, pas ses quatre coins. C'est pourquoi la matrice part d'ici et va
+                vers le DOM, et non l'inverse. Sans WebGPU, le CSS rend la même géométrie. L'index imprime son épreuve
+                avec la transition choisie au chapitre 04.1 ; sur la bande, la vitesse décale les plaques de couleur,
+                comme une presse mal calée.
+              </p>
+            </div>
+            <div class="controls">
+              <p class="controls-title">Le sommaire</p>
+              <button type="button" class="btn" data-action="menu" aria-haspopup="dialog" aria-expanded="false">Ouvrir le sommaire</button>
+              <p class="readout">Flèches, molette ou glisser pour feuilleter ; Entrée ouvre le chapitre ; Échap ferme.</p>
+            </div>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 03 GLYPHES ───────────── -->
@@ -206,6 +319,132 @@
             <label class="toggle"><input type="checkbox" name="split" /> Couper l'écran : brut à gauche, composite à droite</label>
           </form>
         </div>
+
+        <section id="ch-transitions" class="lesson" aria-labelledby="t-transitions">
+          <h3 id="t-transitions" class="lesson-title" data-gl-text><span class="lesson-num">04.1</span> Transitions au défilement</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Le front d'impression n'est qu'une fonction du composite. Pour chaque pixel, elle reçoit la profondeur
+                déjà imprimée du chapitre et décide combien d'encre poser. Changer de transition, c'est changer cette
+                fonction et rien d'autre : le DOM, le défilement et le reste de la chaîne ne bougent pas.
+              </p>
+              <p>
+                Impression : un front irrégulier, plus sombre là où l'encre est encore humide. Trame : des points qui
+                grossissent jusqu'à se toucher. Quadrichromie : le jaune, le magenta puis le cyan passent l'un après
+                l'autre, comme des épreuves progressives. Buvard : l'encre gagne par taches. Massicot : une coupe nette,
+                en biais. Fondu : ce que ferait une transition CSS, pour comparer.
+              </p>
+              <p>
+                Rouleau : un rouleau peu chargé laisse des stries, et son ombre passe juste devant l'encre. Composition :
+                les blocs de plomb sont posés un à un, au hasard dans la ligne. Ligne à ligne : comme une linotype, chaque
+                ligne se compose de gauche à droite derrière un curseur. Révélateur : comme une épreuve dans le bain, les
+                noirs montent d'abord, puis les gris, puis les blancs ; ce style lit la couleur du pixel avant de décider.
+                Pli : la feuille se déplie, avec l'ombre au creux du pli. Tri de pixels : chaque colonne coule vers le bas, la ligne du front étirée en traînées, comme un glitch de tri. Aucune : la page est imprimée d'avance.
+              </p>
+              <p>
+                Trois réglages valent pour tous les styles. La vitesse est une demi-vie : le temps que met le front pour
+                combler la moitié de son retard. La ligne d'impression est la hauteur de l'écran où l'encre se pose ; la
+                largeur du front, l'épaisseur de la zone de transition. Changer de style rejoue l'impression de la page.
+                Le bouton Transitions de la barre donne les mêmes réglages partout dans la page. Avec le mouvement réduit
+                ou la pause, rien ne s'anime : tout est imprimé d'emblée. Sans WebGPU non plus : la page est alors son HTML, déjà là.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-transitions-title" data-controls="transition">
+            <p id="c-transitions-title" class="controls-title">Transition</p>
+            <fieldset class="choices">
+              <legend class="sr-only">Style de transition</legend>
+              <label><input type="radio" name="style" value="0" checked /> Impression</label>
+              <label><input type="radio" name="style" value="1" /> Trame</label>
+              <label><input type="radio" name="style" value="2" /> Quadrichromie</label>
+              <label><input type="radio" name="style" value="3" /> Buvard</label>
+              <label><input type="radio" name="style" value="4" /> Massicot</label>
+              <label><input type="radio" name="style" value="5" /> Fondu</label>
+              <label><input type="radio" name="style" value="6" /> Rouleau</label>
+              <label><input type="radio" name="style" value="7" /> Composition</label>
+              <label><input type="radio" name="style" value="8" /> Ligne à ligne</label>
+              <label><input type="radio" name="style" value="9" /> Révélateur</label>
+              <label><input type="radio" name="style" value="10" /> Pli</label>
+              <label><input type="radio" name="style" value="12" /> Tri de pixels</label>
+              <label><input type="radio" name="style" value="11" /> Aucune</label>
+            </fieldset>
+            <label class="range"><span>Vitesse</span><input type="range" name="speed" min="1" max="14" step="0.5" value="4.5" /><output>0,15 s</output></label>
+            <label class="range"><span>Ligne d'impression</span><input type="range" name="line" min="0.5" max="1" step="0.01" value="0.86" /><output>86 %</output></label>
+            <label class="range"><span>Largeur du front</span><input type="range" name="width" min="0.04" max="0.6" step="0.01" value="0.22" /><output>22 %</output></label>
+            <button type="button" class="btn" data-action="replay">Rejouer l'impression</button>
+          </form>
+          </div>
+        </section>
+
+        <section id="ch-calques" class="lesson" aria-labelledby="t-calques">
+          <h3 id="t-calques" class="lesson-title" data-gl-text><span class="lesson-num">04.2</span> Calques et modes de fusion</h3>
+          <div class="ch-body ch-body--stage">
+            <div class="prose" data-gl-text>
+              <p>
+                Avant la chaîne, il y a la composition : des calques posés les uns sur les autres. Un mode de fusion est
+                une formule qui combine la couleur du calque avec ce qu'il y a dessous. Produit assombrit comme deux
+                encres superposées, Écran éclaircit comme deux projecteurs, Superposition renforce le contraste.
+              </p>
+              <p>
+                Le mélange câblé du GPU ne sait faire que les opérations les plus simples. Pour les autres, le shader lit
+                toutes les sources d'un coup et applique les formules lui-même, du calque du dessous vers celui du
+                dessus, avec opacité et masque. C'est le modèle des bibliothèques de shaders récentes : une pile de
+                calques évaluée par le GPU, réordonnable comme dans un logiciel de retouche. Sans WebGPU, la même pile est rendue en CSS avec
+                <span class="code-inline">mix-blend-mode</span> : les formules sont celles de la même norme, le repli
+                donne la même image.
+              </p>
+            </div>
+            <div class="stage stage--layers" data-gl-stage="calques" role="img" aria-label="Composition de trois calques : le Golden Gate, des dunes claires et un aplat rouge, fusionnés selon les réglages ci-dessous.">
+              <!-- Repli sans WebGPU : la même pile en CSS (mix-blend-mode). -->
+              <div class="css-layers" aria-hidden="true">
+                <img class="css-layer" data-css-layer="glass" src="./plates/pont.jpg" alt="" />
+                <img class="css-layer" data-css-layer="flower" src="./plates/dunes.jpg" alt="" />
+                <div class="css-layer" data-css-layer="spot"></div>
+              </div>
+            </div>
+            <form class="controls" aria-labelledby="c-calques" data-layers>
+              <p id="c-calques" class="controls-title">La pile, du dessus vers le dessous</p>
+              <div class="layer-stack" data-layer-stack>
+              <fieldset class="layer" data-layer="spot">
+                <legend>Aplat rouge</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3" selected>Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.7" /><output>0,7</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Aplat rouge">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Aplat rouge">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="flower">
+                <legend>Dunes</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0">Normal</option><option value="1" selected>Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="0.9" /><output>0,9</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Dunes">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Dunes">▼</button>
+                </div>
+              </fieldset>
+              <fieldset class="layer" data-layer="glass">
+                <legend>Pont</legend>
+                <label class="layer-mode"><span>Mode</span><select name="mode"><option value="0" selected>Normal</option><option value="1">Produit</option><option value="2">Écran</option><option value="3">Superposition</option><option value="4">Lumière tamisée</option><option value="5">Différence</option></select></label>
+                <label class="range"><span>Opacité</span><input type="range" name="opacity" min="0" max="1" step="0.01" value="1" /><output>1</output></label>
+                <div class="layer-actions">
+                  <label class="layer-visible"><input type="checkbox" name="visible" checked /> Visible</label>
+                  <button type="button" class="btn-mini" data-move="up" aria-label="Monter le calque Pont">▲</button>
+                  <button type="button" class="btn-mini" data-move="down" aria-label="Descendre le calque Pont">▼</button>
+                </div>
+              </fieldset>
+              </div>
+              <fieldset class="choices">
+                <legend class="choices-legend">Masque du calque du dessus</legend>
+                <label><input type="radio" name="mask" value="0" /> Aucun</label>
+                <label><input type="radio" name="mask" value="1" checked /> Cercle sous le pointeur</label>
+                <label><input type="radio" name="mask" value="2" /> Dégradé</label>
+              </fieldset>
+            </form>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 05 TRAME ───────────── -->
@@ -229,7 +468,7 @@
           </div>
           <div class="stage" data-gl-stage="trame">
             <figure class="plate plate--wide">
-              <img data-gl-img src="./plates/vanilla.jpg" width="1728" height="1152" alt="Deux gousses de vanille sur un papier crème." />
+              <img data-gl-img src="./plates/cerf.jpg" width="1728" height="1150" alt="Un jeune cerf dans un jardin en pente, herbe verte et lumière rasante." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-trame" data-controls="trame">
@@ -246,7 +485,7 @@
       <section id="ch-filtre" class="chapter" aria-labelledby="t-filtre">
         <header class="ch-head">
           <p class="ch-num" data-gl-text>06</p>
-          <h2 id="t-filtre" data-gl-text>Cinq façons de relire une photo</h2>
+          <h2 id="t-filtre" data-gl-text>Six façons de relire une photo</h2>
         </header>
         <div class="ch-body ch-body--stage">
           <div class="prose" data-gl-text>
@@ -254,21 +493,35 @@
               Un filtre d'image n'est qu'une autre manière de lire la cible. Pour chaque pixel, il choisit où
               échantillonner, combien de fois, et ce qu'il fait de la couleur obtenue. Trame et tramage regroupent les
               pixels en cellules, le verre cannelé et la lentille déplacent l'endroit où l'on lit, le papier froissé
-              multiplie l'image par un relief.
+              multiplie l'image par un relief. La casse de plomb remplace chaque cellule par un caractère d'Archivo,
+              choisi parmi seize rangés du plus clair au plus noir : c'est l'art ASCII, version typographe.
             </p>
             <p>
-              Ces cinq filtres reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
+              La photo peut céder la place à une source animée, calculée par un shader : dégradé maillé, encre
+              marbrée, ondes, métaballes. Les filtres la relisent de la même façon, image par image ; la casse de plomb
+              devient alors une animation en caractères.
+            </p>
+            <p>
+              Les cinq premiers reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
               chaîne que la trame : après le bloom et le repérage, dans la passe composite. La photographie n'est
               envoyée qu'une fois au GPU ; seul le chemin de lecture change.
             </p>
           </div>
           <div class="stage" data-gl-stage="filtre">
             <figure class="plate plate--sq">
-              <img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue coupée en deux posée sur une pierre calcaire, lumière de fenêtre." />
+              <img data-gl-img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-filtre" data-controls="filter">
             <p id="c-filtre" class="controls-title">Le filtre</p>
+            <fieldset class="choices">
+              <legend class="choices-legend">Source</legend>
+              <label><input type="radio" name="source" value="0" checked /> Photo</label>
+              <label><input type="radio" name="source" value="1" /> Dégradé maillé</label>
+              <label><input type="radio" name="source" value="2" /> Encre marbrée</label>
+              <label><input type="radio" name="source" value="3" /> Ondes</label>
+              <label><input type="radio" name="source" value="4" /> Métaballes</label>
+            </fieldset>
             <fieldset class="choices">
               <legend class="sr-only">Filtre appliqué à la photo</legend>
               <label><input type="radio" name="kind" value="0" /> Trame noire</label>
@@ -276,11 +529,104 @@
               <label><input type="radio" name="kind" value="2" /> Verre cannelé</label>
               <label><input type="radio" name="kind" value="3" /> Lentille</label>
               <label><input type="radio" name="kind" value="4" /> Papier froissé</label>
+              <label><input type="radio" name="kind" value="5" /> Casse de plomb</label>
             </fieldset>
             <label class="range"><span>Taille</span><input type="range" name="size" min="2" max="16" step="0.5" value="6" /><output>6,0 px</output></label>
             <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
           </form>
         </div>
+
+        <section id="ch-matieres" class="lesson" aria-labelledby="t-matieres">
+          <h3 id="t-matieres" class="lesson-title" data-gl-text><span class="lesson-num">06.1</span> Six matières sur le HTML vivant</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Les filtres relisent une photo. Les mêmes outils peuvent recouvrir du HTML vivant : du texte, une image, un
+                bouton. Voici six matières, réécrites en WGSL d'après les composants Blaze, Clouds, Canvas, Droplets,
+                Flame Wrap et Frost de canvasui : flammes, brume, toile, gouttes, enveloppe de feu, givre. Elles se
+                calculent dans la passe composite, seulement dans leur plaque, et relisent l'image déjà peinte : le texte
+                qu'elles déforment est celui que le GPU vient de dessiner, et il reste dans le DOM, sélectionnable.
+              </p>
+              <p>
+                Quatre d'entre elles se souviennent du pointeur. Une passe de calcul tient une texture de traces par
+                matière : là où le pointeur passe, la brume s'écarte, la peinture fraîche s'étale, la buée s'essuie, le
+                givre fond. Chaque trace s'efface à son rythme : la brume revient en deux secondes, le givre regèle en
+                quatre, la peinture sèche lentement.
+              </p>
+              <p>
+                Une matière qui recouvre du texte en abaisse le contraste ; la mesure de la leçon 10.2 le montrerait. Elles
+                restent donc au décor. Le bouton enveloppé de flammes est peint par le DOM : il reste net, lisible et
+                cliquable au milieu du feu. Avec le mouvement réduit ou la pause, flammes, brume et gouttes s'arrêtent ;
+                le pointeur agit toujours.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-matter" data-controls="matter">
+              <p id="c-matter" class="controls-title">Les matières</p>
+              <label class="range"><span>Intensité</span><input type="range" name="intensity" min="0" max="1.5" step="0.01" value="1" /><output>1,00</output></label>
+            </form>
+          </div>
+          <div class="matters">
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="flammes">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Flammes</p>
+                  <p class="matter-title">L'épreuve brûle</p>
+                  <p class="matter-text">Le feu monte du pied de la plaque, l'air ondule au-dessus et la fumée voile le haut. Les flammes penchent vers le pointeur.</p>
+                </div>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="nuages">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Brume</p>
+                  <p class="matter-title">Soufflez dessus</p>
+                  <p class="matter-text">Un voile épais floute et dévie ce qu'il couvre. Le pointeur l'écarte en passant ; la brume revient en deux secondes.</p>
+                </div>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="toile">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Toile</p>
+                  <p class="matter-title">Peinture fraîche</p>
+                  <p class="matter-text">La page est peinte sur une toile de lin. Tirez la peinture avec le pointeur : elle garde des crêtes brillantes, puis sèche.</p>
+                </div>
+                <figure class="plate matter-plate"><img data-gl-img src="./plates/dunes.jpg" width="1728" height="1150" alt="" /></figure>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="gouttes">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Gouttes</p>
+                  <p class="matter-title">Pluie sur la vitre</p>
+                  <p class="matter-text">Les gouttes posées retournent l'image comme des lentilles, d'autres coulent en laissant une trace claire. Le pointeur essuie la buée.</p>
+                </div>
+                <figure class="plate matter-plate"><img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="" /></figure>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter stage--wrap">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Enveloppe de feu</p>
+                  <p class="matter-title">Un bouton en flammes</p>
+                  <p class="matter-text">Une bordure de feu autour d'un vrai bouton, plus haute au-dessus, avec un liseré en fusion. Plus vive au survol.</p>
+                </div>
+                <div class="matter-wrap" data-gl-stage="enveloppe">
+                  <button type="button" class="btn" data-matter-button>Tirer l'épreuve</button>
+                </div>
+              </div>
+            </div>
+            <div class="matter">
+              <div class="stage stage--matter" data-gl-stage="givre">
+                <div class="matter-card" data-gl-text>
+                  <p class="matter-kicker">Givre</p>
+                  <p class="matter-title">Vitre gelée</p>
+                  <p class="matter-text">Des cristaux blanchissent et dévient l'image. Gardez le pointeur dessus : la glace fond, avec un bord d'eau, puis regèle.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 07 LUMIÈRE ───────────── -->
@@ -298,13 +644,13 @@
             </p>
             <p>
               Ici, le seuil est placé juste au-dessus du papier, avec un genou doux : seules les vraies hautes
-              lumières, le reflet sur le métal ou le verre, débordent. L'extraction et le flou se font en
+              lumières, l'écume des vagues et les reflets sur l'eau, débordent. L'extraction et le flou se font en
               demi-résolution, par descentes et remontées successives.
             </p>
           </div>
           <div class="stage stage--duo" data-gl-stage="light">
             <figure class="plate plate--wide">
-              <img data-gl-img src="./plates/glass.jpg" width="1728" height="1152" alt="Un cylindre de verre couché qui accroche la lumière." />
+              <img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate depuis la côte : l'écume des vagues au pied d'une falaise verte." />
             </figure>
           </div>
           <form class="controls" aria-labelledby="c-light" data-controls="light">
@@ -344,6 +690,35 @@
           </form>
           <p class="readout" data-readout="ink" aria-live="off"></p>
         </div>
+
+        <section id="ch-fluid" class="lesson" aria-labelledby="t-fluid">
+          <h3 id="t-fluid" class="lesson-title" data-gl-text><span class="lesson-num">08.2</span> Encre fraîche</h3>
+          <div class="ch-body ch-body--stage">
+            <div class="prose" data-gl-text>
+              <p>
+                Ici, l'image elle-même devient liquide. Une grille de 160 × 120 cellules porte une vitesse ; à chaque frame,
+                cinq passes de calcul la font avancer : advection (la vitesse se transporte elle-même), impulsion du
+                pointeur, divergence, vingt itérations de Jacobi pour la pression, puis projection, qui retire la
+                pression pour que le fluide ne se comprime pas. C'est la méthode des fluides stables de Jos Stam (1999).
+              </p>
+              <p>
+                Le colorant transporté n'est pas une encre ajoutée : c'est la photo. Passez le pointeur dessus pour
+                l'étaler comme une épreuve dont l'encre n'a pas séché. Une part de l'original est réinjectée à chaque
+                frame : l'image sèche et se reforme.
+              </p>
+            </div>
+            <div class="stage" data-gl-stage="fluid">
+              <figure class="plate plate--fluid">
+                <img data-gl-img data-gl-fluid src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac entre des collines dorées ; au survol, l'image s'étale comme de l'encre fraîche." />
+              </figure>
+            </div>
+            <form class="controls" aria-labelledby="c-fluid" data-controls="fluid">
+              <p id="c-fluid" class="controls-title">Le fluide</p>
+              <label class="range"><span>Force du pointeur</span><input type="range" name="force" min="0" max="3" step="0.05" value="1" /><output>1,00</output></label>
+              <label class="range"><span>Séchage</span><input type="range" name="dry" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
+            </form>
+          </div>
+        </section>
       </section>
 
       <!-- ───────────── 09 COÛT ───────────── -->
@@ -379,31 +754,254 @@
         </div>
       </section>
 
-      <!-- ───────────── 10 ACCÈS ───────────── -->
-      <section id="ch-a11y" class="chapter" aria-labelledby="t-a11y">
+      <!-- ───────────── 10 ACCÈS : LE COURS ───────────── -->
+      <section id="ch-a11y" class="chapter chapter--course" aria-labelledby="t-a11y">
         <header class="ch-head">
           <p class="ch-num" data-gl-text>10</p>
-          <h2 id="t-a11y" data-gl-text>Ce qui reste sans GPU</h2>
+          <h2 id="t-a11y" data-gl-text>Accessible, ou rien</h2>
         </header>
         <div class="ch-body">
-          <div class="prose" data-gl-text>
+          <div class="prose prose--wide" data-gl-text>
             <p>
-              Tout. Le texte que lit un lecteur d'écran est celui du DOM, avec ses titres, ses listes et ses
-              descriptions d'images. Le clavier parcourt les liens et les réglages dans l'ordre du document. Le zoom du
-              navigateur agrandit la mise en page, et le canvas suit puisqu'il la relit.
-            </p>
-            <p>
-              Si vous avez demandé moins d'animations à votre système, les ondes, les dispersions et l'apparition des
-              lettres sont coupées ; les effets fixes restent réglables. Sans WebGPU, ou si le GPU décroche en cours de
-              route, la page retombe sur son HTML, tel quel : pas un canvas au rabais.
+              Un site rendu en WebGPU reste un site. Les règles d'accessibilité (WCAG 2.2) ne s'appliquent pas au code
+              mais à ce que la personne reçoit : l'image à l'écran, ce que lit son lecteur d'écran, ce que son clavier
+              atteint. Un shader peut casser un contraste, déclencher un vertige ou cacher un bouton sans qu'aucun
+              validateur HTML ne s'en aperçoive. Ce chapitre est un cours en huit leçons, chacune démontrée sur cette
+              page.
             </p>
           </div>
-          <form class="controls" aria-labelledby="c-a11y" data-controls="a11y">
-            <p id="c-a11y" class="controls-title">Essayer</p>
-            <button type="button" class="btn" data-action="toggle-gpu">Couper WebGPU</button>
-            <p class="readout" data-readout="motion"></p>
-          </form>
+          <nav class="lessons-toc" aria-label="Leçons du chapitre 10">
+            <ol>
+              <li><a href="#l-dom">Le DOM reste l'interface</a></li>
+              <li><a href="#l-contrast">Le contraste se mesure sur l'image finale</a></li>
+              <li><a href="#l-vision">Voir autrement</a></li>
+              <li><a href="#l-motion">Le mouvement se demande</a></li>
+              <li><a href="#l-forced">Couleurs forcées</a></li>
+              <li><a href="#l-focus">Clavier et focus</a></li>
+              <li><a href="#l-zoom">Zoom et espacement</a></li>
+              <li><a href="#l-check">Liste de contrôle</a></li>
+            </ol>
+          </nav>
         </div>
+
+        <section id="l-dom" class="lesson" aria-labelledby="t-l-dom">
+          <h3 id="t-l-dom" class="lesson-title" data-gl-text><span class="lesson-num">10.1</span> Le DOM reste l'interface</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Le canvas porte <span class="code-inline">aria-hidden="true"</span> : pour les technologies
+                d'assistance, il n'existe pas. Tout ce qui compte vit dans le HTML : les titres et leur niveau, les
+                repères (en-tête, navigation, contenu), le texte alternatif de chaque photo, l'intitulé de chaque
+                réglage. Le GPU ne fait que repeindre ; il n'ajoute aucune information qui ne soit pas déjà dans le DOM.
+              </p>
+              <p>
+                Une piste arrive dans les navigateurs : HTML-in-Canvas, en essai d'origine dans Chrome jusqu'à la
+                version 160. Le navigateur dessine lui-même un élément HTML dans une texture
+                (<span class="code-inline">drawElementImageToTexture</span> en WebGPU) et, si on lui donne la
+                transformation appliquée, garde alignés les zones de clic et les contours de focus. Ici, sans cette API,
+                c'est le moteur qui relit le DOM ; le principe reste le même.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-l-dom" data-controls="a11y">
+              <p id="c-l-dom" class="controls-title">Écouter la page</p>
+              <label class="toggle"><input type="checkbox" name="reader" /> Afficher ce qu'annonce un lecteur d'écran</label>
+              <div class="reader" data-reader hidden>
+                <p class="readout" data-readout="reader-count"></p>
+                <ol class="reader-list" data-reader-list></ol>
+              </div>
+            </form>
+            <div class="controls hic" data-hic aria-labelledby="c-hic">
+              <p id="c-hic" class="controls-title">Essai HTML-in-Canvas</p>
+              <div class="hic-card" data-hic-card drawable>
+                <p class="hic-kicker">Épreuve n° 1</p>
+                <p class="hic-title">Une carte en HTML</p>
+                <p class="hic-text">Titre, texte et bouton natifs. Si le navigateur le permet, ils sont dessinés dans le canvas et tramés par le GPU.</p>
+                <button type="button" class="btn" data-hic-button>Tamponner</button>
+              </div>
+              <p class="readout" data-readout="hic" aria-live="polite"></p>
+            </div>
+          </div>
+        </section>
+
+        <section id="l-contrast" class="lesson" aria-labelledby="t-l-contrast">
+          <h3 id="t-l-contrast" class="lesson-title" data-gl-text><span class="lesson-num">10.2</span> Le contraste se mesure sur l'image finale</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p data-contrast-probe>
+                Le critère 1.4.3 demande un rapport de 4,5 pour 1 entre le texte courant et son fond, 3 pour 1 pour les
+                grands titres. Sur un site classique, on le vérifie avec les couleurs CSS. Ici, ce serait faux : le grain,
+                la trame, le bloom et le repérage modifient les pixels après coup.
+              </p>
+              <p>
+                Le moteur relit donc l'image qu'il vient de produire. Toutes les demi-secondes, il copie depuis la
+                texture du canvas la zone du paragraphe ci-dessus, prend la luminance des pixels d'encre et celle du
+                papier, et calcule le rapport selon la formule WCAG. Délavez l'encre pour voir la mesure tomber sous le
+                seuil.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-l-contrast" data-controls="a11y">
+              <p id="c-l-contrast" class="controls-title">Mesure en direct</p>
+              <label class="range"><span>Encre délavée</span><input type="range" name="fade" min="0" max="0.9" step="0.01" value="0" /><output>0,00</output></label>
+              <p class="contrast" data-contrast aria-live="polite">
+                <span class="contrast-ratio" data-contrast-ratio>—</span>
+                <span class="contrast-verdict" data-contrast-verdict>Mesure en attente</span>
+              </p>
+              <p class="readout">Texte courant : 4,5:1 (AA), 7:1 (AAA). Mesuré sur le paragraphe « Le critère 1.4.3… ».</p>
+            </form>
+          </div>
+        </section>
+
+        <section id="l-vision" class="lesson" aria-labelledby="t-l-vision">
+          <h3 id="t-l-vision" class="lesson-title" data-gl-text><span class="lesson-num">10.3</span> Voir autrement</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Environ un homme sur douze distingue mal le rouge du vert. Comme toute l'image passe par une dernière
+                passe, on peut y simuler une vision différente : une matrice 3×3 appliquée à chaque pixel, en lumière
+                linéaire (modèle de Machado, 2009). C'est le meilleur outil de recette d'un site WebGPU : on voit
+                l'image réelle, effets compris, telle qu'une autre personne la perçoit.
+              </p>
+              <p>
+                La règle qui en découle (critère 1.4.1) : aucune information ne doit passer par la couleur seule. Dans
+                cette page, le chapitre courant est signalé par sa couleur, mais aussi par son numéro et par
+                <span class="code-inline">aria-current</span>.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-l-vision" data-controls="a11y">
+              <p id="c-l-vision" class="controls-title">Simuler sur toute la page</p>
+              <fieldset class="choices">
+                <legend class="sr-only">Vision simulée</legend>
+                <label><input type="radio" name="vision" value="0" /> Ordinaire</label>
+                <label><input type="radio" name="vision" value="1" /> Protanopie</label>
+                <label><input type="radio" name="vision" value="2" /> Deutéranopie</label>
+                <label><input type="radio" name="vision" value="3" /> Tritanopie</label>
+                <label><input type="radio" name="vision" value="4" /> Achromatopsie</label>
+              </fieldset>
+              <p class="readout">La simulation s'applique jusqu'à ce que vous reveniez à « Ordinaire ».</p>
+            </form>
+          </div>
+        </section>
+
+        <section id="l-motion" class="lesson" aria-labelledby="t-l-motion">
+          <h3 id="t-l-motion" class="lesson-title" data-gl-text><span class="lesson-num">10.4</span> Le mouvement se demande</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Les préférences du système passent avant les effets. Avec
+                <span class="code-inline">prefers-reduced-motion</span>, cette page coupe la chute des lettres,
+                l'impression des chapitres, la lentille, le courant d'encre et les ondes ; les réglages fixes restent.
+                Et comme tout le monde n'a pas trouvé ce réglage, la barre du haut porte un bouton Pause qui fait la même
+                chose à la demande (critère 2.2.2 : tout mouvement de plus de cinq secondes doit pouvoir s'arrêter).
+              </p>
+              <p>
+                Le critère 2.3.1 interdit plus de trois flashs par seconde. Le grain du papier change 24 fois par seconde,
+                mais de moins de 2 % de luminance : ce n'est pas un flash. Aucun effet de la page ne fait clignoter de
+                grande surface.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-l-motion" data-controls="a11y">
+              <p id="c-l-motion" class="controls-title">État</p>
+              <p class="readout" data-readout="motion"></p>
+              <button type="button" class="btn" data-action="pause">Mettre en pause</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="l-forced" class="lesson" aria-labelledby="t-l-forced">
+          <h3 id="t-l-forced" class="lesson-title" data-gl-text><span class="lesson-num">10.5</span> Couleurs forcées</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Avec le mode Contraste élevé de Windows, le système impose ses propres couleurs à toute la page. Un
+                canvas y échappe : il peindrait par-dessus les choix de la personne. Quand
+                <span class="code-inline">forced-colors: active</span> est vrai, cette page coupe donc WebGPU et rend la
+                main au HTML, que le système recolore comme il l'entend.
+              </p>
+              <p>
+                Même logique pour une perte du GPU ou un navigateur sans WebGPU : la page retombe sur son HTML, complet,
+                et non sur un rendu au rabais. Le bouton ci-contre fait l'essai.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-l-forced" data-controls="a11y">
+              <p id="c-l-forced" class="controls-title">Essayer</p>
+              <p class="readout" data-readout="forced"></p>
+              <button type="button" class="btn" data-action="toggle-gpu">Couper WebGPU</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="l-focus" class="lesson" aria-labelledby="t-l-focus">
+          <h3 id="t-l-focus" class="lesson-title" data-gl-text><span class="lesson-num">10.6</span> Clavier et focus</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Tout ce qui se règle ici est un contrôle natif : case, curseur, bouton radio, bouton. Ils se
+                parcourent à la touche Tab, dans l'ordre du document, et leur contour de focus est dessiné par le DOM,
+                au-dessus du canvas, jamais par le shader (critère 2.4.7). Quand le focus entre dans un chapitre pas
+                encore imprimé, le chapitre s'imprime aussitôt : rien d'atteignable au clavier ne reste invisible.
+              </p>
+              <p>
+                Les effets au pointeur (lentille, lettres bousculées, encre remuée) sont décoratifs : ils ne révèlent
+                aucune information. S'ils en révélaient, il leur faudrait un équivalent au clavier.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-l-focus" data-controls="a11y">
+              <p id="c-l-focus" class="controls-title">Focus actuel</p>
+              <p class="focus-now" data-readout="focus" aria-live="off">Appuyez sur Tab pour voir le nom accessible de l'élément atteint.</p>
+            </form>
+          </div>
+        </section>
+
+        <section id="l-zoom" class="lesson" aria-labelledby="t-l-zoom">
+          <h3 id="t-l-zoom" class="lesson-title" data-gl-text><span class="lesson-num">10.7</span> Zoom et espacement</h3>
+          <div class="ch-body">
+            <div class="prose" data-gl-text>
+              <p>
+                Un moteur qui calcule sa propre mise en page doit tout refaire pour le zoom à 200 % (critère 1.4.4),
+                l'affichage en une colonne à 320 pixels de large (1.4.10) et l'espacement imposé par une feuille de style
+                utilisateur (1.4.12). Ici, il n'y a rien à refaire : le navigateur recompose, le moteur relit les boîtes
+                et les lettres.
+              </p>
+              <p>
+                La case ci-contre applique les valeurs du critère 1.4.12 : interligne 1,5, approche de 0,12 em, espace
+                entre les mots de 0,16 em, espace après paragraphe de 2 em. Les glyphes du GPU suivent sans une ligne de
+                code dédiée.
+              </p>
+            </div>
+            <form class="controls" aria-labelledby="c-l-zoom" data-controls="a11y">
+              <p id="c-l-zoom" class="controls-title">Essayer</p>
+              <label class="toggle"><input type="checkbox" name="spacing" /> Espacement du critère 1.4.12</label>
+            </form>
+          </div>
+        </section>
+
+        <section id="l-check" class="lesson" aria-labelledby="t-l-check">
+          <h3 id="t-l-check" class="lesson-title" data-gl-text><span class="lesson-num">10.8</span> Liste de contrôle</h3>
+          <div class="ch-body">
+            <div class="table-wrap">
+              <table class="wcag" data-gl-text>
+                <caption class="sr-only">Critères WCAG 2.2 et leur traitement dans cette page</caption>
+                <thead>
+                  <tr><th scope="col">Critère</th><th scope="col">Ce que fait la page</th><th scope="col">Niveau</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">1.1.1 Contenu non textuel</th><td>Chaque photo a un texte alternatif ; le canvas est masqué aux technologies d'assistance.</td><td>A</td></tr>
+                  <tr><th scope="row">1.3.1 Information et relations</th><td>Titres, listes, tableaux et repères en HTML sémantique ; le GPU n'ajoute rien.</td><td>A</td></tr>
+                  <tr><th scope="row">1.4.1 Utilisation de la couleur</th><td>Le chapitre courant est indiqué par la couleur, le numéro et aria-current.</td><td>A</td></tr>
+                  <tr><th scope="row">1.4.3 Contraste minimum</th><td>Mesuré sur l'image rendue (leçon 10.2), pas sur les couleurs CSS.</td><td>AA</td></tr>
+                  <tr><th scope="row">1.4.4 Redimensionnement</th><td>Zoom navigateur : le moteur relit la mise en page.</td><td>AA</td></tr>
+                  <tr><th scope="row">1.4.10 Refusion</th><td>Une colonne sous 900 pixels ; aucun défilement horizontal.</td><td>AA</td></tr>
+                  <tr><th scope="row">1.4.12 Espacement du texte</th><td>Appliqué à la demande en leçon 10.7, glyphes GPU compris.</td><td>AA</td></tr>
+                  <tr><th scope="row">2.1.1 Clavier</th><td>Tous les réglages sont des contrôles natifs.</td><td>A</td></tr>
+                  <tr><th scope="row">2.2.2 Mettre en pause</th><td>Bouton Pause dans la barre ; préférence système respectée.</td><td>A</td></tr>
+                  <tr><th scope="row">2.3.1 Trois flashs</th><td>Aucun clignotement de surface ; grain sous 2 % de luminance.</td><td>A</td></tr>
+                  <tr><th scope="row">2.4.7 Visibilité du focus</th><td>Contour dessiné par le DOM ; le focus imprime le chapitre.</td><td>AA</td></tr>
+                  <tr><th scope="row">2.5.8 Taille des cibles</th><td>Cibles d'au moins 24 pixels CSS ; 44 pour les liens du sommaire.</td><td>AA</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </section>
     </main>
 
@@ -412,11 +1010,11 @@
       <div class="colophon-grid" data-gl-text>
         <p>
           Inspiré des posts d'Aristide Benoist (janvier – octobre 2026) sur un moteur WebGPU construit autour des calques,
-          du texte en champs de distance aligné sur le HTML et d'un front rendu en WebGPU natif. PLI n'est pas son moteur :
+          du texte en champs de distance aligné sur le HTML et d'un front rendu en WebGPU natif. WebGPU-demo-UBS n'est pas son moteur :
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
-          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL.
+          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle, l'encre fraîche et les six matières de la leçon 06.1 s'inspirent des composants Peel, Liquid, Blaze, Clouds, Canvas, Droplets, Flame Wrap et Frost de canvasui.dev, réécrits sans reprendre leur code, la pile de calques du modèle de composition de la bibliothèque shaders (MIT). Fluides stables d'après Jos Stam (1999) ; simulation de vision d'après Machado, Oliveira et Fernandes (2009).
           Archivo par Omnibus-Type, IBM Plex Mono par IBM, toutes deux sous licence SIL OFL, servies depuis ce site.
         </p>
         <p>
@@ -426,7 +1024,12 @@
       </div>
       <p class="colophon-legacy" data-gl-text>
         La toute première version, générée par Grok en une passe, reste consultable telle quelle :
-        <a href="./legacy/index.html">PLI v0</a>.
+        <a href="./legacy/index.html">WebGPU-demo-UBS v0</a>.
+      </p>
+      <p class="colophon-legacy colophon-next" data-gl-text>
+        Une autre idée, sur les mêmes principes : <a href="./kerguehennec.html">Kerguéhennec, 1910</a>, un théâtre de papier en
+        WebGPU pour le domaine de Kerguéhennec, avec un menu de cinq tableaux ; et
+        <a href="./kerguehennec-styles.html">huit regards</a> sur le même domaine en 3D, pour comparer les styles.
       </p>
     </footer>
   </body>

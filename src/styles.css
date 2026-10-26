@@ -159,15 +159,15 @@ main,
   top: env(safe-area-inset-top, 0px);
   z-index: 10;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto auto;
   align-items: center;
   gap: var(--col-gap);
   height: var(--bar-h);
   padding-left: var(--gutter);
   padding-right: var(--gutter-r);
-  background: color-mix(in srgb, var(--paper) 86%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* Opaque : le GPU peint le texte sous la barre ; un fond translucide le
+     laissait transparaître quand un titre passait dessous. */
+  background: var(--paper);
   border-bottom: 1px solid var(--rule);
 }
 
@@ -199,10 +199,47 @@ body::before {
 }
 
 .mark {
-  font: 900 20px/1 var(--f-display);
-  font-stretch: 125%;
-  letter-spacing: -0.02em;
+  /* Nom long (WebGPU-demo-UBS) : corps réduit, chasse normale, sur une ligne. */
+  font: 900 16px/1 var(--f-display);
+  font-stretch: 100%;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   text-decoration: none;
+}
+@media (max-width: 640px) {
+  /* Sur téléphone, le nom passe sur deux lignes plutôt que de pousser les boutons. */
+  .bar {
+    column-gap: 8px;
+  }
+  .mark {
+    font-size: 12px;
+    white-space: normal;
+  }
+  /* L'icône de débogage n'a pas la place : on l'ouvre depuis le menu des pages. */
+  .bar .dbg-btn {
+    display: none;
+  }
+  .mark-name {
+    display: block;
+    line-height: 1.05;
+    text-align: left;
+  }
+}
+/* Le logo ouvre le menu des pages. */
+button.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.mark-caret {
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .toc {
@@ -783,7 +820,12 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 640px) {
   .bar {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 8px;
+  }
+  /* Sur téléphone, le sommaire de la barre cède la place au bouton Sommaire. */
+  .bar nav {
+    display: none;
   }
   .status {
     display: none;
@@ -815,12 +857,22 @@ input[type="range"]::-moz-range-thumb {
   font-size: 14px;
   cursor: pointer;
 }
+.choices label {
+  -webkit-tap-highlight-color: transparent;
+}
+/* Le bouton radio natif est masqué pour de bon (le clic sur la pastille le
+   coche quand même) : aucun navigateur ne doit en dessiner le point. */
 .choices input {
   position: absolute;
-  inset: 0;
-  opacity: 0;
+  width: 1px;
+  height: 1px;
   margin: 0;
-  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  appearance: none;
+  opacity: 0;
 }
 .choices label:has(input:checked) {
   background: var(--ink);
@@ -828,8 +880,9 @@ input[type="range"]::-moz-range-thumb {
   color: var(--paper);
 }
 .choices label:has(input:focus-visible) {
-  outline: 2px solid var(--spot);
-  outline-offset: 2px;
+  /* Un contour qui suit l'arrondi de la pastille, dans tous les navigateurs. */
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
 }
 
 .stage--ink {
@@ -845,21 +898,1275 @@ html.gl-on .stage--ink {
 }
 
 /* Transition d'impression : ce que le DOM peint lui-même suit le front. */
-html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button),
+html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button),
 html.gl-on .colophon a {
   opacity: 0;
   transition: opacity 0.5s ease;
 }
-html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button).is-printed,
+html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button).is-printed,
 html.gl-on .colophon a.is-printed,
 html.gl-on .chapter :focus-within,
 html.gl-on .chapter :focus-visible {
   opacity: 1;
 }
+/* Le DOM suit le style du front : coupe nette au massicot, fondu plus long. */
+html.gl-on[data-transition="massicot"] .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button),
+html.gl-on[data-transition="massicot"] .colophon a {
+  transition: none;
+}
+html.gl-on[data-transition="fondu"] .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button),
+html.gl-on[data-transition="fondu"] .colophon a {
+  transition-duration: 1s;
+}
 @media (prefers-reduced-motion: reduce) {
-  html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .code-inline, a, button),
+  html.gl-on .chapter :is(.controls, .meter, .wgsl, .readout, .stage--type, .stage--ink, .stage--layers, .code-inline, a, button),
   html.gl-on .colophon a {
     opacity: 1;
+    transition: none;
+  }
+}
+
+/* ───────── Chapitre 10 : le cours ───────── */
+
+.prose--wide {
+  grid-column: 1 / 8;
+  max-width: 40em;
+}
+
+.lessons-toc {
+  grid-column: 8 / -1;
+  min-width: 0;
+}
+.lessons-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: lesson;
+  border-top: 1px solid var(--rule);
+}
+.lessons-toc li {
+  counter-increment: lesson;
+  border-bottom: 1px solid var(--rule);
+}
+.lessons-toc a {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-height: 40px;
+  padding: 10px 0;
+  font-size: 15px;
+  text-decoration: none;
+}
+.lessons-toc a::before {
+  content: "10." counter(lesson);
+  min-width: 3.2em;
+  font: 500 12px/1 var(--f-mono);
+  color: var(--spot);
+}
+.lessons-toc a:hover {
+  text-decoration: underline;
+}
+
+.lesson {
+  grid-column: 2 / -1;
+  margin-top: clamp(56px, 7vw, 104px);
+  padding-top: clamp(20px, 2vw, 28px);
+  border-top: 1px dashed var(--rule);
+}
+.lesson-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  margin: 0 0 clamp(20px, 2.4vw, 32px);
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-stretch: 112%;
+  font-size: clamp(26px, 2.8vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.lesson-num {
+  font: 500 13px/1 var(--f-mono);
+  letter-spacing: 0.06em;
+  color: var(--spot);
+}
+
+.contrast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  margin: 4px 0 0;
+}
+.contrast-ratio {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-stretch: 125%;
+  font-size: clamp(36px, 4vw, 56px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.contrast-verdict {
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.contrast[data-level="fail"] .contrast-ratio,
+.contrast[data-level="fail"] .contrast-verdict {
+  color: var(--spot);
+}
+.contrast[data-level="fail"] .contrast-verdict::before {
+  content: "✕ ";
+}
+.contrast[data-level="aa"] .contrast-verdict::before,
+.contrast[data-level="aaa"] .contrast-verdict::before {
+  content: "✓ ";
+}
+
+.reader {
+  display: grid;
+  gap: 10px;
+}
+.reader-list {
+  max-height: 22em;
+  margin: 0;
+  padding: 10px 12px 10px 2.4em;
+  overflow: auto;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  font: 400 13px/1.55 var(--f-mono);
+}
+
+.focus-now {
+  margin: 0;
+  min-height: 3em;
+  font: 500 14px/1.5 var(--f-mono);
+}
+
+.table-wrap {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-x: auto;
+}
+.wcag {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.wcag th,
+.wcag td {
+  padding: 12px 14px 12px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+}
+.wcag thead th {
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.wcag tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wcag td:last-child {
+  font: 500 13px/1.45 var(--f-mono);
+}
+
+.pause-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pause-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.pause-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Panneau des transitions, ouvert depuis la barre (API popover : couche
+   supérieure, Échap et clic extérieur ferment, le focus revient au bouton). */
+.tr-pop {
+  inset: auto;
+  top: calc(env(safe-area-inset-top, 0px) + var(--bar-h) + 10px);
+  right: var(--gutter-r);
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--bar-h) - 32px);
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 6px 6px 0 color-mix(in srgb, var(--ink) 85%, transparent);
+}
+.tr-pop .controls {
+  border: 0;
+}
+.tr-pop .range {
+  grid-template-columns: minmax(6.5em, 0.9fr) minmax(0, 2fr) 3.6em;
+}
+.tr-pop-note {
+  margin: 0;
+  padding: 0 20px 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+@media (max-width: 640px) {
+  .tr-pop {
+    right: 16px;
+  }
+}
+
+/* Critère 1.4.12 : valeurs minimales que la page doit supporter. */
+html.wcag-spacing body * {
+  line-height: 1.5 !important;
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.16em !important;
+}
+html.wcag-spacing p {
+  margin-bottom: 2em !important;
+}
+
+@media (max-width: 900px) {
+  .prose--wide,
+  .lessons-toc,
+  .lesson {
+    grid-column: 1 / -1;
+  }
+  .wcag tbody th {
+    white-space: normal;
+  }
+}
+
+/* ───────── 04.2 Calques ───────── */
+
+.stage--layers {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--paper-deep), var(--paper));
+}
+html.gl-on .stage--layers {
+  background: transparent;
+}
+.layer-stack {
+  display: grid;
+  gap: 8px;
+}
+.layer {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px 12px;
+  min-width: 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper);
+}
+.layer legend {
+  padding: 0 4px;
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.layer-mode {
+  display: grid;
+  grid-template-columns: minmax(7.5em, 0.9fr) minmax(0, 2fr);
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+.layer-mode select {
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 8px;
+  font: inherit;
+  color: inherit;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+}
+.layer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.layer-visible {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+.btn-mini {
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1;
+}
+.btn-mini:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.choices-legend {
+  width: 100%;
+  margin-bottom: 4px;
+  font: 500 12px/1.4 var(--f-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* ───────── 08.2 Encre fraîche ───────── */
+
+.plate--fluid img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+/* ───────── 10.1 Essai HTML-in-Canvas ───────── */
+
+.hic {
+  grid-column: 7 / -1;
+}
+.hic-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+}
+.hic-card p {
+  margin: 0;
+}
+.hic-kicker {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.hic-title {
+  font: 800 22px/1.1 var(--f-display);
+  font-stretch: 112%;
+}
+.hic-text {
+  font-size: 14px;
+}
+.hic-card .btn {
+  justify-self: start;
+  margin-top: 6px;
+}
+.hic-canvas {
+  display: block;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .hic {
+    grid-column: 1 / -1;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+/* 10.1 : la prose occupe deux rangées, les deux boîtes s'empilent à droite. */
+#l-dom .prose {
+  grid-row: span 2;
+}
+
+/* 04.2 sans WebGPU : la pile en CSS. */
+.stage--layers {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.css-layers {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  isolation: isolate;
+}
+.css-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+div.css-layer {
+  background: #c7331c;
+}
+html.gl-on .css-layers {
+  display: none;
+}
+
+
+/* ───────── Sommaire en feuilles ───────── */
+
+.menu {
+  position: fixed;
+  inset: calc(env(safe-area-inset-top, 0px) + var(--bar-h)) 0 0 0;
+  z-index: 9;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--paper);
+  color: var(--ink);
+}
+html.gl-on .menu {
+  /* Le GPU peint le papier et les feuilles ; le DOM ne garde que le texte et les commandes. */
+  background: transparent;
+}
+.menu[hidden] {
+  display: none;
+}
+/* Opacité plutôt que visibility : la page reste mesurable (glyphes, plaques)
+   pendant que le sommaire est ouvert ; inert la retire déjà du clavier et
+   des lecteurs d'écran. */
+.menu-under {
+  opacity: 0;
+}
+.menu-head,
+.menu-foot {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px var(--gutter-r) 14px var(--gutter);
+}
+.menu-title {
+  margin: 0 8px 0 0;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.menu-styles {
+  flex: 1 1 auto;
+}
+.menu-foot {
+  justify-content: center;
+}
+.menu-counter {
+  min-width: 5.5em;
+  text-align: center;
+  font: 500 12px/1 var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.menu-hint {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.menu-foot .pause-btn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 16px;
+}
+.menu-stage {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+/* Une feuille : un lien posé par matrix3d, origine en haut à gauche. */
+.sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  transform-origin: 0 0;
+  color: var(--ink);
+  text-decoration: none;
+  background: #f6f5ef;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14);
+  -webkit-user-drag: none;
+}
+/* Une feuille vue de dos ne montre pas son recto à l'envers ; le GPU en peint le verso. */
+.sheet {
+  backface-visibility: hidden;
+}
+.sheet:focus-visible {
+  outline: 3px solid var(--spot);
+  outline-offset: 4px;
+}
+.sheet-photo {
+  position: absolute;
+  left: 7%;
+  top: 6%;
+  width: 86%;
+  height: 72%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.sheet-label {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 4%;
+  height: 14%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+.sheet-num {
+  font: 500 12px/1 var(--f-mono);
+  color: var(--spot);
+}
+.sheet-title {
+  font: 800 clamp(14px, 1.6vw, 22px) / 1.05 var(--f-display);
+  font-stretch: 112%;
+  letter-spacing: -0.01em;
+}
+html.gl-on .sheet {
+  background: transparent;
+  box-shadow: none;
+}
+html.gl-on .sheet-photo,
+html.gl-on .menu-preview {
+  opacity: 0 !important;
+}
+
+/* Index : de grands titres, une épreuve à droite. */
+.menu[data-style="index"] .sheet {
+  background: none;
+  box-shadow: none;
+}
+.menu[data-style="index"] .sheet-photo {
+  display: none;
+}
+.menu[data-style="index"] .sheet-label {
+  inset: 0;
+  height: auto;
+  gap: 16px;
+}
+.menu[data-style="index"] .sheet-title {
+  font-size: min(clamp(20px, 3.6vh, 42px), calc(var(--row, 60px) * 0.66));
+  color: var(--ink-soft);
+  transition: color 0.25s;
+}
+.menu[data-style="index"] .sheet-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu[data-style="index"] .sheet.is-active .sheet-title {
+  color: var(--ink);
+}
+.menu-preview {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  transform-origin: 0 0;
+  object-fit: cover;
+  pointer-events: none;
+}
+.menu[data-style="index"] .menu-preview {
+  display: block;
+}
+
+/* Planche contact : des vues de pellicule, numérotées dessous. */
+.menu[data-style="planche"] .sheet {
+  background: linear-gradient(#131210, #131210) top / 100% calc(100% - 26px) no-repeat;
+  box-shadow: none;
+}
+.menu[data-style="planche"] .sheet-photo {
+  left: 8px;
+  top: 14px;
+  width: calc(100% - 16px);
+  height: calc(100% - 26px - 28px);
+}
+.menu[data-style="planche"] .sheet-label {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  gap: 8px;
+}
+.menu[data-style="planche"] .sheet-title {
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html.gl-on .menu[data-style="planche"] .sheet {
+  background: none;
+}
+.menu-circle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200px;
+  height: 140px;
+  margin: -70px 0 0 -100px;
+  transform-origin: 100px 70px;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 50;
+}
+.menu-circle path {
+  fill: none;
+  stroke: var(--spot);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.menu-circle.draw path {
+  animation: grease 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+}
+@keyframes grease {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-circle path {
+    stroke-dashoffset: 0;
+  }
+  .menu-circle.draw path {
+    animation: none;
+  }
+}
+@media (forced-colors: active) {
+  .sheet {
+    forced-color-adjust: auto;
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Nuancier : une bande étroite, photo en haut, légende en dessous. */
+.menu[data-style="nuancier"] .sheet-photo {
+  left: 8%;
+  width: 84%;
+  top: 4%;
+  height: 54%;
+}
+.menu[data-style="nuancier"] .sheet-label {
+  top: 61%;
+  bottom: auto;
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.menu[data-style="nuancier"] .sheet-title {
+  font-size: clamp(13px, 1.3vw, 17px);
+}
+.menu[data-style="rotative"] .sheet-photo {
+  left: 4%;
+  width: 62%;
+  top: 6%;
+  height: 88%;
+}
+.menu[data-style="rotative"] .sheet-label {
+  left: 70%;
+  right: 4%;
+  top: 6%;
+  bottom: auto;
+  height: 88%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+/* Le sommaire déplace le focus sur le chapitre ouvert : pas de cadre autour de toute la section. */
+.chapter[tabindex="-1"]:focus {
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  /* Téléphone : les styles défilent sur une ligne, l'en-tête reste mince. */
+  .menu-head {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .menu-title {
+    display: none;
+  }
+  .menu-styles {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+  }
+  .menu-styles label {
+    flex: none;
+  }
+  .menu-hint {
+    display: none;
+  }
+  .menu[data-style="planche"] .sheet {
+    background-size: 100% calc(100% - 20px);
+  }
+  .menu[data-style="planche"] .sheet-photo {
+    left: 5px;
+    top: 9px;
+    width: calc(100% - 10px);
+    height: calc(100% - 20px - 18px);
+  }
+  .menu[data-style="planche"] .sheet-label {
+    height: 20px;
+    gap: 4px;
+  }
+  .menu[data-style="planche"] .sheet-title {
+    font-size: 10px;
+  }
+}
+
+/* ───────── Leçon 06.1 : matières ───────── */
+
+.matters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  gap: var(--col-gap);
+  margin-top: 28px;
+}
+.stage--matter {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-height: 320px;
+  padding: 22px 22px 24px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.matter-card p {
+  margin: 0;
+}
+.matter-kicker {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.matter-title {
+  margin-top: 10px !important;
+  font: 800 34px/1 var(--f-display);
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+}
+.matter-text {
+  margin-top: 12px !important;
+  font-size: 15px;
+  line-height: 1.45;
+  max-width: 34ch;
+}
+.matter-plate {
+  margin: 0;
+  aspect-ratio: 16 / 9;
+}
+.matter-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* L'enveloppe de feu : la plaque est le bouton plus une marge où brûlent les flammes. */
+.matter-wrap {
+  justify-self: center;
+  width: max-content;
+  /* Marge où le feu a la place de monter (WRAP_PAD), rendue en partie à la mise en page. */
+  padding: 112px;
+  margin: -70px -112px -86px;
+}
+.matter-wrap .btn {
+  display: block;
+}
+/* La marge du feu déborde de la plaque : invisible dans le DOM, elle ne doit
+   pas élargir la page sur un écran étroit. Le GPU lit le rectangle entier. */
+.stage--wrap {
+  overflow-x: clip;
+}
+@media (max-width: 640px) {
+  .matter-title {
+    font-size: 28px;
+  }
+}
+
+.menu-screens {
+  align-items: center;
+}
+.menu-screens-legend {
+  float: left;
+  margin-right: 6px;
+  font: 500 11px/36px var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+@media (max-width: 640px) {
+  .menu-screens {
+    display: none;
+  }
+}
+
+/* ───────── Sampler : un effet à la fois ───────── */
+
+.sampler {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(320px, 400px);
+  gap: var(--col-gap);
+  padding: 24px var(--gutter-r) 80px var(--gutter);
+  align-items: start;
+}
+.sp-side {
+  position: sticky;
+  top: calc(var(--bar-h) + 16px);
+  max-height: calc(100dvh - var(--bar-h) - 32px);
+  overflow: auto;
+  padding-right: 6px;
+}
+.sp-kicker,
+.sp-catname {
+  margin: 0;
+  font: 500 11px/1.2 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.sp-h1 {
+  margin: 6px 0 8px;
+  font: 800 30px/1.02 var(--f-display);
+  font-stretch: 112%;
+}
+.sp-lede {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.sp-context {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+.sp-cat {
+  border-top: 1px solid var(--rule);
+}
+.sp-cat summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+.sp-cat summary::-webkit-details-marker {
+  display: none;
+}
+.sp-cat summary::before {
+  content: "▸";
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.sp-cat[open] summary::before {
+  content: "▾";
+}
+.sp-cat-name {
+  flex: 1;
+  margin: 0;
+  font: 700 16px/1.2 var(--f-display);
+}
+.sp-count {
+  font: 500 11px/1 var(--f-mono);
+  color: var(--ink-soft);
+}
+.sp-cat ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.sp-cat button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+.sp-cat button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.sp-main {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+/* Le spécimen est un chapitre (pour l'impression), sans la grille des chapitres. */
+.chapter.sp-spec {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+.chapter.sp-spec::before,
+.chapter.sp-spec::after {
+  display: none;
+}
+.sp-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  min-height: min(62vh, 560px);
+  padding: 36px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.sp-card p {
+  margin: 0;
+}
+.sp-card-kicker {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.sp-card-title {
+  margin-top: 12px !important;
+  font: 800 clamp(36px, 4.4vw, 64px) / 0.98 var(--f-display);
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+}
+.sp-card-body {
+  margin-top: 16px !important;
+  max-width: 36ch;
+  font-size: 18px;
+  line-height: 1.45;
+}
+.sp-plate {
+  margin: 0;
+  aspect-ratio: 1;
+}
+.sp-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sp-block {
+  min-height: min(62vh, 560px);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 24px;
+}
+.sp-block[hidden] {
+  display: none;
+}
+.sp-block > .stage {
+  width: 100%;
+}
+.sp-hero .display {
+  font-size: clamp(48px, 7vw, 110px);
+}
+.sp-info {
+  max-width: 70ch;
+}
+.sp-title {
+  margin: 6px 0 8px;
+  font: 800 28px/1.05 var(--f-display);
+  font-stretch: 112%;
+}
+.sp-text {
+  margin: 0;
+  font-size: 18px;
+}
+.sp-intro {
+  margin: 8px 0 14px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.sp-forms {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+}
+@media (max-width: 860px) {
+  /* Téléphone : le spécimen d'abord, puis la fiche, les réglages, les
+     catégories. Choisir un échantillon ramène au spécimen. Pas de spécimen
+     collé : un fond opaque cacherait ce que le GPU peint dessous, un fond
+     transparent laisserait voir la liste qui défile. */
+  .sampler {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 12px;
+  }
+  .sp-main {
+    display: contents;
+  }
+  .chapter.sp-spec {
+    order: 1;
+    scroll-margin-top: calc(var(--bar-h) + 8px);
+  }
+  .sp-inspector {
+    order: 2;
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .sp-page,
+  .sp-scroll-hint {
+    order: 3;
+  }
+  .chapter.sp-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding-block: 36px;
+  }
+  .sp-page--rev .sp-page-text {
+    order: 0;
+  }
+  .sp-side {
+    order: 4;
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .sp-stage {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 12px;
+    min-height: 0;
+    padding: 14px;
+  }
+  .sp-card-title {
+    font-size: 28px;
+  }
+  .sp-card-body {
+    font-size: 13px;
+    margin-top: 8px !important;
+  }
+  .sp-block {
+    min-height: 36vh;
+    padding: 10px;
+  }
+  .sp-hero .display {
+    font-size: 40px;
+  }
+}
+
+/* Inspecteur : la fiche et les réglages, à droite, toujours sous la main. */
+.sp-inspector {
+  position: sticky;
+  top: calc(var(--bar-h) + 16px);
+  max-height: calc(100dvh - var(--bar-h) - 32px);
+  overflow: auto;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding-left: 6px;
+}
+.sp-inspector .sp-forms {
+  max-width: none;
+}
+.sp-inspector .range {
+  grid-template-columns: minmax(6.5em, 0.9fr) minmax(0, 1.6fr) 4em;
+}
+.sp-scroll-hint {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+/* Planches à faire défiler. */
+.chapter.sp-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 32px;
+  align-items: center;
+  padding-block: 56px;
+}
+.sp-page--rev .sp-page-text {
+  order: 2;
+}
+.sp-page-text p,
+.sp-page-text h3 {
+  margin: 0;
+}
+.sp-page-num {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.sp-page-title {
+  margin-top: 10px !important;
+  font: 800 clamp(34px, 3.6vw, 56px) / 1 var(--f-display);
+  font-stretch: 112%;
+}
+.sp-page-body {
+  margin-top: 14px !important;
+  max-width: 38ch;
+  font-size: 18px;
+  line-height: 1.5;
+}
+.sp-page-plate {
+  margin: 0;
+  aspect-ratio: 3 / 2;
+}
+.sp-page-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@media (max-width: 1099px) and (min-width: 861px) {
+  /* Écran moyen : les échantillons passent au-dessus ; le spécimen et
+     l'inspecteur restent côte à côte. */
+  .sampler {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    grid-template-areas: "side side" "main insp";
+  }
+  .sp-side {
+    grid-area: side;
+    position: static;
+    max-height: none;
+  }
+  .sp-main {
+    grid-area: main;
+  }
+  .sp-inspector {
+    grid-area: insp;
+  }
+}
+
+/* Sampler : outils de débogage, sous les réglages de l'échantillon. */
+.sp-debug {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--rule);
+}
+.sp-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.sp-grid legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.sp-rec-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.sp-rec-field {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.sp-rec-field select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper);
+  color: inherit;
+  font: inherit;
+}
+
+/* Sampler, morphing : la seconde mise en page du spécimen (photo à gauche, plus grande). */
+.sp-stage.is-b {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+.sp-stage.is-b .sp-plate {
+  order: -1;
+}
+
+/* Lettres : l'index, mais chaque titre se compose lettre à lettre sous un
+   masque, et roule d'une ligne au survol (d'après les transitions en lettres
+   d'Aristide Benoist). Les lettres sont aria-hidden ; le titre entier est lu. */
+.sheet-title .ltr {
+  display: inline;
+}
+.menu[data-style="lettres"] .sheet {
+  background: none;
+  box-shadow: none;
+}
+.menu[data-style="lettres"] .sheet-photo {
+  display: none;
+}
+.menu[data-style="lettres"] .sheet-label {
+  inset: 0;
+  height: auto;
+  gap: 16px;
+}
+.menu[data-style="lettres"] .sheet-title {
+  font-size: min(clamp(20px, 3.6vh, 42px), calc(var(--row, 60px) * 0.66));
+  white-space: nowrap;
+  color: var(--ink);
+}
+.menu[data-style="lettres"] .menu-preview {
+  display: block;
+}
+.menu[data-style="lettres"] .ltr {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  line-height: 1.1;
+}
+.menu[data-style="lettres"] .ltr > span {
+  display: inline-block;
+  /* Le double de la lettre, une ligne plus bas, pour le roulement. */
+  text-shadow: 0 1.1em 0 var(--spot);
+  animation: menu-rise 0.65s cubic-bezier(0.2, 0.7, 0.1, 1) backwards;
+  animation-delay: calc(var(--row-i, 0) * 55ms + var(--i, 0) * 16ms);
+  transition: transform 0.5s cubic-bezier(0.6, 0, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 14ms);
+}
+.menu[data-style="lettres"] .sheet.is-active .ltr > span {
+  transform: translateY(-1.1em);
+}
+@keyframes menu-rise {
+  from {
+    transform: translateY(110%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu[data-style="lettres"] .ltr > span {
+    animation: none;
     transition: none;
   }
 }

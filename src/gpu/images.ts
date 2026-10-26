@@ -14,6 +14,16 @@ export type Plate = {
   radius: number;
   quad: boolean;
   hover: number;
+  /** Décollement lissé de l'épreuve (chapitre 02). */
+  peel: number;
+  /** Plaque de l'encre fraîche (chapitre 08.2) : dessinée depuis le colorant du fluide. */
+  fluid: boolean;
+};
+
+/** Le cadre d'une image : son parent, en sautant le <picture> de la chaîne d'images. */
+export const frameOf = (img: HTMLImageElement): Element => {
+  const p = img.parentElement;
+  return (p?.tagName === "PICTURE" ? p.parentElement : p) ?? img;
 };
 
 export class ImageLayer {
@@ -48,17 +58,40 @@ export class ImageLayer {
       bind: null,
       width: img.naturalWidth || Number(img.getAttribute("width")) || 1,
       height: img.naturalHeight || Number(img.getAttribute("height")) || 1,
-      radius: Number.parseFloat(getComputedStyle(img.parentElement ?? img).borderTopLeftRadius) || 0,
+      // Le <picture> de la chaîne d'images est transparent à la mise en page : on lit le vrai cadre.
+      radius: Number.parseFloat(getComputedStyle(frameOf(img)).borderTopLeftRadius) || 0,
       quad: img.hasAttribute("data-gl-quad"),
       hover: 0,
+      peel: 0,
+      fluid: img.hasAttribute("data-gl-fluid"),
     }));
     for (const p of this.plates) void this.load(p);
   }
 
   private async load(p: Plate) {
-    const res = await fetch(p.img.currentSrc || p.img.src);
-    const blob = await res.blob();
-    const bitmap = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+    // L'image que le navigateur a déjà choisie (srcset) si elle est assez fine
+    // pour sa place à l'écran : elle est en cache, rien à retélécharger. Sinon la
+    // texture préparée à la construction (data-gl-tex : AVIF à la plus grande
+    // largeur), sinon l'original.
+    const img = p.img;
+    await img.decode().catch(() => undefined);
+    const need = img.getBoundingClientRect().width * Math.min(devicePixelRatio || 1, 2);
+    // naturalWidth est corrigé de la densité du srcset : la vraie largeur est dans le nom (pont-960.avif).
+    const px = Number(/-(\d+)\.(?:avif|webp|jpe?g)$/.exec(img.currentSrc)?.[1] ?? img.naturalWidth);
+    const chosen = img.currentSrc && px >= need * 0.9 ? img.currentSrc : "";
+    const urls = [chosen, img.dataset.glTex, img.currentSrc, img.src].filter((u): u is string => !!u);
+    let bitmap: ImageBitmap | null = null;
+    for (const u of new Set(urls)) {
+      try {
+        const res = await fetch(u);
+        if (!res.ok) continue;
+        bitmap = await createImageBitmap(await res.blob(), { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+        break;
+      } catch {
+        /* format non décodable ici : source suivante */
+      }
+    }
+    if (!bitmap) return;
     const levels = Math.floor(Math.log2(Math.max(bitmap.width, bitmap.height))) + 1;
     const texture = this.device.createTexture({
       label: p.img.alt.slice(0, 40),

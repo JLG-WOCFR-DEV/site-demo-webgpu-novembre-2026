@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fr" data-presse-scroll="doux" data-presse-transition="buvard" data-presse-effects="loupe bloom grain" data-presse-debug>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Presse · un Webflow WebGPU</title>
+    <meta name="description" content="Presse : une bibliothèque à attributs pour faire des sites WebGPU. Du HTML ordinaire, quelques data-gl-*, une ligne de script." />
+    <meta name="theme-color" content="#efeee8" />
+    <script type="module" src="/src/presse/doc.ts"></script>
+  </head>
+  <body class="pd">
+    <header class="pd-hero" data-gl-print>
+      <p class="pd-kicker" data-gl-text>WebGPU-demo-UBS · Presse</p>
+      <h1 class="pd-title" data-gl-text data-gl-morph data-pd-morph="Presse|Un Webflow WebGPU">Presse</h1>
+      <p class="pd-lede" data-gl-text>
+        Un « Webflow » WebGPU, sous forme de bibliothèque : on écrit une page HTML ordinaire, quelques attributs disent au GPU
+        ce qu'il doit en faire, et une ligne de script lance le moteur. Cette page est faite ainsi, et rien d'autre.
+      </p>
+      <button type="button" class="pd-btn" data-pd-morph-btn>Changer le titre</button>
+    </header>
+
+    <main>
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-start">
+        <h2 id="pd-start" class="pd-h2" data-gl-text>Démarrer</h2>
+        <p class="pd-p" data-gl-text>Une balise script, et des options lues sur la balise html. C'est tout le JavaScript qu'il faut écrire.</p>
+        <pre class="pd-code"><code>&lt;html data-presse-transition="buvard" data-presse-effects="loupe bloom grain"&gt;
+  …
+  &lt;h1 data-gl-text data-gl-morph&gt;Titre&lt;/h1&gt;
+  &lt;img data-gl-img data-gl-material="lentille" src="…" alt="…"&gt;
+  &lt;section data-gl-print&gt;…&lt;/section&gt;
+  &lt;script type="module" src="/src/presse/auto.ts"&gt;&lt;/script&gt;  &lt;!-- projet Vite --&gt;
+&lt;/html&gt;</code></pre>
+      </section>
+
+      <section class="pd-sec pd-two" data-gl-print aria-labelledby="pd-img">
+        <div>
+          <h2 id="pd-img" class="pd-h2" data-gl-text>Les images</h2>
+          <p class="pd-p" data-gl-text>
+            <code>data-gl-img</code> fait d'une image un plan GPU, aux coins calculés pixel par pixel. Une matière s'y pose
+            par attribut : ici <code>lentille</code>, une loupe qui suit le pointeur avec retard.
+          </p>
+        </div>
+        <figure class="pd-fig" data-gl-material="lentille"><img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." /></figure>
+      </section>
+
+      <section class="pd-sec pd-two pd-rev" data-gl-print aria-labelledby="pd-dust">
+        <div>
+          <h2 id="pd-dust" class="pd-h2" data-gl-text>Les matières</h2>
+          <p class="pd-p" data-gl-text>
+            <code>data-gl-material="poussiere"</code> : l'image se défait en carrés qui montent, puis se recompose. Les autres
+            matières : <code>flammes</code>, <code>nuages</code>, <code>toile</code>, <code>gouttes</code>, <code>givre</code>,
+            <code>trame</code>, <code>filtre</code>, <code>dechirure</code>.
+          </p>
+          <button type="button" class="pd-btn" data-pd-dust>Désintégrer / recomposer</button>
+        </div>
+        <figure class="pd-fig" data-gl-material="poussiere"><img data-gl-img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." /></figure>
+      </section>
+
+      <section class="pd-sec pd-two" data-gl-print aria-labelledby="pd-frost">
+        <div>
+          <h2 id="pd-frost" class="pd-h2" data-gl-text>Sur du texte vivant</h2>
+          <p class="pd-p" data-gl-text>
+            Une matière se pose aussi sur un bloc de texte. Le givre fond sous le pointeur, puis regèle ; le texte reste
+            sélectionnable, lisible par les lecteurs d'écran, trouvable par la recherche dans la page.
+          </p>
+        </div>
+        <div class="pd-card" data-gl-material="givre">
+          <p class="pd-card-title" data-gl-text>Vitre gelée</p>
+          <p class="pd-p" data-gl-text>Gardez le pointeur dessus : la glace fond, avec un bord d'eau.</p>
+        </div>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-scroll">
+        <h2 id="pd-scroll" class="pd-h2" data-gl-text>Le défilement</h2>
+        <p class="pd-p" data-gl-text>
+          La molette glisse au lieu de sauter, et le défilement reste natif : ancres, clavier, tactile, recherche dans la page.
+          Chaque élément marqué <code>data-scroll</code> reçoit sa progression en variable CSS ; un plan GPU suit son rectangle,
+          donc une transformation CSS le transforme aussi.
+        </p>
+        <pre class="pd-code"><code>&lt;html data-presse-scroll="doux"&gt;
+&lt;section data-scroll="pin"&gt;            &lt;!-- --p : 0 → 1 pendant la traversée --&gt;
+  &lt;div&gt;                                 &lt;!-- épinglé (sticky) --&gt;
+    &lt;img data-gl-img style="scale: calc(.55 + .45 * var(--p))" …&gt;
+  &lt;/div&gt;
+&lt;/section&gt;</code></pre>
+      </section>
+
+      <section class="pd-pin" data-scroll="pin" aria-label="Démonstration : une section épinglée, la photo grandit au défilement">
+        <div class="pd-pin-stage">
+          <figure class="pd-pin-fig"><img data-gl-img data-gl-material="lentille" src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." /></figure>
+          <p class="pd-pin-words" aria-hidden="true"><span style="--i: 0">Une</span> <span style="--i: 1">section</span> <span style="--i: 2">épinglée,</span> <span style="--i: 3">une</span> <span style="--i: 4">photo</span> <span style="--i: 5">qui</span> <span style="--i: 6">grandit.</span></p>
+          <p class="pd-pin-meter" aria-hidden="true"><span></span></p>
+        </div>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-comp">
+        <h2 id="pd-comp" class="pd-h2" data-gl-text>Les composants</h2>
+        <p class="pd-p" data-gl-text>
+          Une balise, et c'est posé. <code>&lt;x-liquide&gt;</code>, <code>&lt;x-grille&gt;</code> et <code>&lt;x-lettres&gt;</code>
+          sont déroulées en HTML statique à la construction : la page arrive complète, lisible sans JavaScript, avec sa feuille de
+          style dans l'en-tête. Le comportement n'est chargé que si la page contient le composant.
+        </p>
+        <p class="pd-p" data-gl-text>
+          Entre deux pages, la photo passe : cliquez la légende d'une carte, ou « Sur le mur entier » sur la page d'une photo de la
+          grille. Ce sont de vraies pages, chargées par le navigateur ; seule l'image voyage, d'un rectangle à l'autre, et revient
+          au retour arrière.
+        </p>
+        <pre class="pd-code"><code>&lt;x-liquide filters="eau:L'eau|terre:La terre" link="grille.html?photo={id}"&gt;
+  &lt;img src="pont.jpg" alt="…" data-cat="eau" data-id="pont" data-caption="Le pont"&gt;
+  …
+&lt;/x-liquide&gt;
+
+&lt;x-grille param="vue" page="grille.html"&gt;
+  &lt;img src="lac.jpg" alt="…" data-title="Le lac" data-body="…"&gt;
+&lt;/x-grille&gt;</code></pre>
+
+        <h3 class="pd-h3" data-gl-text>Mise en page liquide</h3>
+        <x-liquide filters="eau:L'eau|terre:La terre" link="./grille.html?photo={id}" label="Quatre photos, réordonnables : glisser, ou Alt + flèches au clavier">
+          <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-id="pont" data-caption="Le pont" />
+          <img src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." data-cat="terre" data-id="yosemite" data-caption="La vallée" />
+          <img src="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." data-cat="eau" data-id="lac" data-caption="Le lac" />
+          <img src="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." data-cat="terre" data-id="dunes" data-caption="Les dunes" />
+        </x-liquide>
+
+        <h3 class="pd-h3" data-gl-text>Grille infinie</h3>
+        <x-grille param="vue" page="./grille.html" pages="Dans la galerie=./galerie.html" label="Mur de photos : flèches pour le parcourir, Entrée sur un nom pour l'ouvrir">
+          <img src="./plates/jardin.jpg" data-id="jardin" data-title="Le jardin" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." data-body="Un jardin japonais au printemps. Les azalées rouges tiennent le premier plan, la maison de thé se cache sous les pins." />
+          <img src="./plates/alcatraz.jpg" data-id="alcatraz" data-title="L'île" alt="L'île d'Alcatraz et son phare au milieu de la baie." data-body="Alcatraz au milieu de la baie : le phare, les bâtiments clairs, et tout autour une eau d'un seul bleu." />
+          <img src="./plates/lac.jpg" data-id="lac" data-title="Le lac" alt="Un lac entre des collines dorées, sous un ciel strié." data-body="Un lac de barrage entre des collines dorées. Le ciel est strié de traînées d'avion, l'eau les reprend à peine." />
+          <img src="./plates/cerf.jpg" data-id="cerf" data-title="Le cerf" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." data-body="Un jeune cerf dans un jardin en pente. Il s'est arrêté dans la seule tache d'ombre, le temps de la photo." />
+          <img src="./plates/pont.jpg" data-id="pont" data-title="Le pont" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-body="Le Golden Gate depuis la côte, à marée montante. Le rouge du pont, le vert de la falaise, l'écume : trois couleurs, une seule lumière de fin de matinée." />
+        </x-grille>
+
+        <h3 class="pd-h3" data-gl-text>Galerie</h3>
+        <p class="pd-p" data-gl-text>Neuf arrangements 3D, un seul appel de dessin. Ici un carrousel sur fond dégradé, ouvert en fiche ; tous les réglages sont sur la page Galerie.</p>
+        <x-galerie param="planche" page="./grille.html" arrange="carousel" item="220x275" gap="22" backdrop="0.6" selection="reveal" tilt="0.6" label="Six photos : flèches pour parcourir, Entrée pour ouvrir">
+          <img data-id="figue" src="./plates/fig.jpg" data-title="La figue" data-cat="objets" alt="Une figue ouverte sur une pierre calcaire, près d'une fenêtre." />
+          <img data-id="lac" src="./plates/lac.jpg" data-title="Le lac" data-cat="eau" alt="Un lac entre des collines dorées, sous un ciel strié." />
+          <img data-id="renoncule" src="./plates/flower.jpg" data-title="La renoncule" data-cat="vivant" alt="Une renoncule blanche sur fond gris." />
+          <img data-id="pont" src="./plates/pont.jpg" data-title="Le pont" data-cat="eau" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." />
+          <img data-id="acier" src="./plates/steel.jpg" data-title="L'acier" data-cat="objets" alt="Un cylindre d'acier brossé sur une ardoise sombre." />
+          <img data-id="dunes" src="./plates/dunes.jpg" data-title="Les dunes" data-cat="terre" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." />
+        </x-galerie>
+
+        <h3 class="pd-h3" data-gl-text>Objet</h3>
+        <p class="pd-p" data-gl-text>Un modèle GLB, un SVG ou une image posés dans un studio et rendus en ASCII, tramé, à l'encre, en verre, en particules ou en liquide. Glissez pour le tourner ; déposez votre fichier dessus. Tous les rendus sont sur la page Atelier.</p>
+        <x-objet style="encre" model="vase-glb" label="Un vase en 3D, rendu à l'encre : glisser pour le tourner"></x-objet>
+
+        <h3 class="pd-h3" data-gl-text>Sommaire en lettres</h3>
+        <p class="pd-p" data-gl-text>Sans une ligne de JavaScript : les lettres sont découpées à la construction, le reste est du CSS.</p>
+        <x-lettres label="Sommaire de cette page">
+          <a href="#pd-start">Démarrer</a>
+          <a href="#pd-img">Les images</a>
+          <a href="#pd-dust">Les matières</a>
+          <a href="#pd-how">Comment ça marche</a>
+          <a href="#pd-ref">Référence</a>
+        </x-lettres>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-how">
+        <h2 id="pd-how" class="pd-h2" data-gl-text>Comment ça marche</h2>
+        <ol class="pd-list" data-gl-text>
+          <li><strong>Le DOM fait foi.</strong> Le navigateur met en page ; le moteur relit les boîtes à chaque image et repeint tout dans un seul canvas.</li>
+          <li><strong>Chaque lettre est mesurée sur le DOM</strong>, caractère par caractère, avec un Range : le texte du GPU tombe au pixel près sur le texte HTML, quelle que soit la fonte, l'approche ou la hauteur de ligne.</li>
+          <li><strong>Deux atlas de distances, préparés à la construction.</strong> Les titres : un atlas MTSDF (angles vifs à toute taille), pour chaque fonte de titre relevée sur les pages. Le texte courant : un atlas SDF dessiné par le même code que dans le navigateur, puis rangé et chargé d'un bloc. Toutes les lettres sont des instances : un seul appel de dessin.</li>
+          <li><strong>Les images sont des plans</strong> qui suivent leur élément, sans buffer de géométrie : quatre sommets générés dans le shader.</li>
+          <li><strong>Une chaîne après la scène</strong> : bloom, repérage, trame, matières, transitions et grain dans une seule passe de composition.</li>
+          <li><strong>Le morphing</strong> apparie les lettres de l'ancien et du nouveau texte : celles qui existent dans les deux voyagent, les autres naissent ou s'effacent.</li>
+          <li><strong>Sans WebGPU, rien ne casse</strong> : la page reste son HTML. Le contenu peut venir de n'importe quel CMS ou générateur statique, puisque tout passe par des attributs.</li>
+        </ol>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-ref">
+        <h2 id="pd-ref" class="pd-h2" data-gl-text>Référence</h2>
+        <div class="pd-table-wrap">
+          <table class="pd-table">
+            <thead><tr><th scope="col">Attribut</th><th scope="col">Sur</th><th scope="col">Effet</th></tr></thead>
+            <tbody>
+              <tr><td><code>data-gl-text</code></td><td>tout bloc de texte</td><td>Le texte est repeint par le GPU, lettre par lettre.</td></tr>
+              <tr><td><code>data-gl-morph</code></td><td>avec data-gl-text</td><td>Quand le texte change, les lettres voyagent vers leur nouvelle place.</td></tr>
+              <tr><td><code>data-gl-img</code></td><td>img</td><td>L'image devient un plan GPU (coins, ombre, mipmaps).</td></tr>
+              <tr><td><code>data-gl-material</code></td><td>tout élément</td><td>lentille, poussiere, dechirure, flammes, nuages, toile, gouttes, givre, trame, filtre.</td></tr>
+              <tr><td><code>data-gl-print</code></td><td>section</td><td>La section s'imprime au défilement, avec la transition choisie.</td></tr>
+              <tr><td><code>data-gl-source</code></td><td>conteneur d'image</td><td>L'image peut être remplacée par une source animée.</td></tr>
+              <tr><td><code>data-presse-transition</code></td><td>html</td><td>impression, trame, quadri, buvard, massicot, fondu, rouleau, composition, ligne, revelateur, pli, tri, aucune.</td></tr>
+              <tr><td><code>data-presse-effects</code></td><td>html</td><td>loupe, rvb, trame, bloom, grain.</td></tr>
+              <tr><td><code>data-presse-motion</code></td><td>html</td><td>sobre, normal, expressif.</td></tr>
+              <tr><td><code>data-presse-debug</code></td><td>html</td><td>Le panneau de débogage : fil de fer, grille, capture vidéo, image PNG.</td></tr>
+              <tr><td><code>--paper</code></td><td>:root (CSS)</td><td>La couleur du papier, lue par le GPU : une seule source de vérité.</td></tr>
+              <tr><td><code>&lt;x-liquide&gt;</code></td><td>page</td><td>Grille de photos réordonnable rendue en verre. Attributs : filters, label, full.</td></tr>
+              <tr><td><code>&lt;x-grille&gt;</code></td><td>page</td><td>Mur infini, routeur à vraies URL. Attributs : param, label, hint, kicker, full.</td></tr>
+              <tr><td><code>&lt;x-galerie&gt;</code></td><td>page</td><td>Galerie 3D : list, grid, barrel, coverflow, helix, ring, sphere, stack, carousel ; ouverture en place, en boîte ou en fiche. Attributs : arrange, options, item, gap, tilt, ripple, selection, backdrop…</td></tr>
+              <tr><td><code>&lt;x-objet&gt;</code></td><td>page</td><td>Objet 3D en studio : style (ascii, tramage, encre, verre, particules, liquide), model (texte:…, noeud, galet, vase, ou un GLB, un SVG, une image), cell, amount, frost, spin.</td></tr>
+              <tr><td><code>&lt;x-lettres&gt;</code></td><td>page</td><td>Sommaire aux titres découpés en lettres, sans JavaScript. Attribut : label.</td></tr>
+              <tr><td><code>&lt;x-include&gt;</code></td><td>page</td><td>Fragment HTML partagé : src, {{attributs}} remplacés, &lt;slot&gt; pour le contenu.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-next">
+        <h2 id="pd-next" class="pd-h2" data-gl-text>Ensuite</h2>
+        <p class="pd-p" data-gl-text>
+          Le principe vient d'Aristide Benoist : tout ce qui peut être calculé à la construction l'est, pour laisser à
+          JavaScript et à WebGPU presque rien à faire à l'exécution.
+        </p>
+        <ol class="pd-list" data-gl-text>
+          <li><strong>Fait : texte prêt pour le GPU à la construction</strong> (atlas MTSDF et SDF), <strong>gabarits et composants</strong> (ci-dessus), <strong>chaîne d'images</strong> (AVIF et WebP aux bonnes tailles, mipmaps filtrées à la construction).</li>
+          <li><strong>SVG prêts pour le GPU</strong> : convertis en champs de distance, nets à toute taille.</li>
+          <li><strong>Minification et renommage</strong> du CSS, du JavaScript et des shaders WGSL.</li>
+          <li><strong>Sortie statique ou rendu serveur</strong> (Vercel, AWS Lambda) quand le contenu vient d'un CMS.</li>
+          <li><strong>Un éditeur visuel</strong> : sélectionner un élément, régler ses attributs dans un inspecteur, exporter du HTML propre.</li>
+        </ol>
+      </section>
+    </main>
+  </body>
+</html>

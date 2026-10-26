@@ -1,0 +1,439 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #efeee8;
+  --ink: #121212;
+  --ink-soft: #55534d;
+  --rule: #c8c5ba;
+  --spot: #c8321c;
+  --f-text: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body.gp {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.5 var(--f-text);
+}
+body[data-preset="film"] {
+  background: #161514;
+  color: #ece9e1;
+}
+body[data-preset="film"] .x-galerie {
+  --ink: #ece9e1;
+  --paper: #161514;
+}
+
+/* En-tête : sous le menu des pages, ne gêne pas le glisser. */
+.gp-head {
+  position: fixed;
+  z-index: 4;
+  left: 8px;
+  top: 52px;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 10px 14px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+.gp-kicker {
+  margin: 0 0 4px;
+  font: 500 11px/1.4 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.gp-title {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 52px);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.95;
+}
+.gp-lede {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* Exemples */
+.gp-presets {
+  position: fixed;
+  z-index: 5;
+  top: 12px;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  gap: 4px;
+  max-width: calc(100vw - 240px);
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.1);
+  scrollbar-width: none;
+}
+.gp-presets button {
+  flex: none;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.gp-presets button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.gp-presets button:focus-visible,
+.gp-toggle:focus-visible,
+.gp-panel :focus-visible,
+.gp-dress button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
+}
+
+/* Décors des exemples */
+.gp-dress {
+  position: fixed;
+  z-index: 4;
+  right: 16px;
+  bottom: 70px;
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+  font: 12px/1.4 var(--f-mono);
+}
+.gp-dress[hidden] {
+  display: none;
+}
+.gp-dress button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.gp-dress-h {
+  margin: 0 0 6px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.gp-index,
+.gp-cue,
+.gp-nums {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gp-index button {
+  display: block;
+  width: 100%;
+  padding: 3px 6px;
+  text-align: left;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+}
+.gp-index button span {
+  color: var(--spot);
+}
+.gp-index button[aria-current],
+.gp-cue button[aria-current] {
+  opacity: 1;
+  font-weight: 500;
+}
+.gp-seg {
+  display: inline-flex;
+  margin-bottom: 10px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+}
+.gp-seg button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.gp-seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.gp-dress--archive {
+  left: auto;
+  width: 220px;
+}
+.gp-dress--cards {
+  left: 16px;
+  right: auto;
+  bottom: 16px;
+  display: grid;
+  gap: 14px;
+}
+.gp-nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 300px;
+}
+.gp-nums button {
+  min-width: 34px;
+  min-height: 30px;
+  border: 1px solid var(--rule) !important;
+  border-radius: 6px;
+}
+.gp-nums button[aria-current] {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+  border-color: var(--ink) !important;
+}
+.gp-record {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  min-width: 240px;
+}
+.gp-record div {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+}
+.gp-record dt {
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.gp-record dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.gp-dress--film {
+  left: 16px;
+  right: auto;
+  width: 320px;
+  bottom: 16px;
+  max-height: 34vh;
+}
+.gp-cue button {
+  display: grid;
+  grid-template-columns: 3em 7.5em 1fr;
+  width: 100%;
+  padding: 3px 0;
+  text-align: left;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+/* Film : la boîte au format cinéma, bandes noires comprises. */
+.x-galerie[data-preset="film"] .gx-detail-frame {
+  align-self: center;
+  justify-self: center;
+  width: min(100%, calc((100vh * 0.62) * 2.39));
+  aspect-ratio: 2.39;
+  background: #000;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);
+}
+.x-galerie[data-preset="film"] .gx-detail-media img {
+  object-fit: cover;
+  border-radius: 0;
+}
+
+/* Panneau d'options */
+.gp-toggle {
+  position: fixed;
+  z-index: 6;
+  right: 16px;
+  bottom: 16px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 500 12px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.gp-panel {
+  position: fixed;
+  z-index: 5;
+  top: 60px;
+  right: 16px;
+  bottom: 68px;
+  width: min(340px, calc(100vw - 32px));
+  overflow: auto;
+  padding: 6px 14px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: color-mix(in srgb, #efeee8 96%, transparent);
+  color: #121212;
+  font-size: 13px;
+  --ink: #121212;
+  --paper: #efeee8;
+}
+.gp-panel[hidden] {
+  display: none;
+}
+.gp-panel-open .gp-dress {
+  right: 372px;
+}
+.gp-sec {
+  border-bottom: 1px solid var(--rule);
+  padding: 8px 0;
+}
+.gp-sec summary {
+  cursor: pointer;
+  font: 500 11px/1.6 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.gp-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 3.2em;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.gp-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--spot);
+}
+.gp-row output {
+  font: 12px/1 var(--f-mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.gp-auto {
+  grid-column: 2 / 4;
+  font-size: 12px;
+}
+.gp-choice {
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.gp-choice legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.gp-choice label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.gp-choice input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.gp-choice label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.gp-choice label:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
+}
+.gp-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.gp-check input {
+  accent-color: var(--spot);
+}
+.gp-h {
+  margin: 14px 0 6px;
+  font: 500 11px/1.6 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.gp-code {
+  margin: 0;
+  padding: 10px;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: #fff8;
+  font: 11px/1.5 var(--f-mono);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.gp-copy {
+  margin-top: 8px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: none;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .gp-presets {
+    max-width: calc(100vw - 32px);
+    top: 56px;
+  }
+  .gp-head {
+    top: 104px;
+  }
+  .gp-lede {
+    display: none;
+  }
+  .gp-panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    height: 52vh;
+    bottom: 64px;
+  }
+  .gp-dress {
+    display: none;
+  }
+}
+
+/* Une photo ouverte prend la scène : l'en-tête et les décors s'effacent. */
+.gp-head,
+.gp-dress {
+  transition: opacity 0.3s ease;
+}
+body:has(.x-galerie.gx-open[data-preset="tonneau"], .x-galerie.gx-open[data-preset="archive"], .x-galerie.gx-open[data-preset="film"]) .gp-head,
+body:has(.x-galerie.gx-open[data-preset="film"]) .gp-dress {
+  opacity: 0;
+  pointer-events: none;
+}

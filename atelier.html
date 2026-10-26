@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Atelier</title>
+    <meta name="description" content="Un objet 3D dans un studio, rendu en ASCII, en tramage 1 bit, à l'encre, en verre, en particules ou en liquide. Déposez votre propre modèle GLB, un SVG ou une image." />
+    <meta name="theme-color" content="#efeee8" />
+    <script type="module" src="/src/atelier/main.ts"></script>
+  </head>
+  <body class="at">
+    <header class="at-head">
+      <p class="at-kicker">WebGPU-demo-UBS · Atelier</p>
+      <h1 class="at-title" data-at-title>ASCII</h1>
+      <p class="at-lede" data-at-lede></p>
+    </header>
+
+    <main>
+      <x-objet full style="ascii" model="texte:UBS" label="Objet en 3D : glisser pour le tourner, flèches au clavier ; déposez un fichier GLB, SVG ou une image pour le remplacer"></x-objet>
+    </main>
+
+    <section class="at-panel" aria-label="Réglages de l'objet">
+      <fieldset class="at-choice" data-at-styles>
+        <legend>Rendu</legend>
+        <label><input type="radio" name="at-style" value="ascii" checked /> ASCII</label>
+        <label><input type="radio" name="at-style" value="tramage" /> Tramé</label>
+        <label><input type="radio" name="at-style" value="encre" /> Encre</label>
+        <label><input type="radio" name="at-style" value="verre" /> Verre</label>
+        <label><input type="radio" name="at-style" value="particules" /> Particules</label>
+        <label><input type="radio" name="at-style" value="liquide" /> Liquide</label>
+      </fieldset>
+      <fieldset class="at-choice" data-at-models>
+        <legend>Objet</legend>
+        <label><input type="radio" name="at-model" value="texte:UBS" checked /> Lettres UBS</label>
+        <label><input type="radio" name="at-model" value="noeud" /> Nœud</label>
+        <label><input type="radio" name="at-model" value="galet" /> Galet</label>
+        <label><input type="radio" name="at-model" value="vase-glb" /> Vase (GLB)</label>
+        <label><input type="radio" name="at-model" value="./models/cercles.svg" /> Cercles (SVG)</label>
+      </fieldset>
+      <label class="at-file">Votre fichier… <input type="file" accept=".glb,.svg,image/*" data-at-file /></label>
+      <label class="at-range"><span>Taille</span><input type="range" name="cell" min="0.5" max="2.5" step="0.05" value="1" /><output>1</output></label>
+      <label class="at-range"><span>Intensité</span><input type="range" name="amount" min="0" max="2" step="0.05" value="1" /><output>1</output></label>
+      <label class="at-range" data-at-frost><span>Givre</span><input type="range" name="frost" min="0" max="1" step="0.01" value="0.25" /><output>0,25</output></label>
+      <label class="at-range"><span>Rotation</span><input type="range" name="spin" min="0" max="3" step="0.05" value="1" /><output>1</output></label>
+      <pre class="at-code"><code data-at-code></code></pre>
+    </section>
+  </body>
+</html>

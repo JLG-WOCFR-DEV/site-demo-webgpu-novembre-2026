@@ -4,10 +4,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 8080",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && node tools/build-legacy-nav.mjs && vite build",
+    "bake": "node tools/bake.mjs && python3 tools/msdf.py && node tools/bake.mjs",
     "preview": "vite preview --host 0.0.0.0 --port 8080",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test 'src/**/*.test.ts'"
+    "test": "node --experimental-strip-types --test 'src/**/*.test.ts'",
+    "images": "python3 tools/images.py"
   },
   "devDependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
@@ -15,8 +17,12 @@
     "@mapbox/tiny-sdf": "^2.3.0",
     "@types/node": "^26.6.5",
     "@webgpu/types": "^0.1.74",
+    "node-html-parser": "^6.1.13",
     "playwright": "1.62",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "webm-muxer": "^5.1.4"
   }
 }
