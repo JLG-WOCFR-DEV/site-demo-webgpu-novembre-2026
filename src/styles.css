@@ -720,6 +720,14 @@ input[type="range"]::-moz-range-thumb {
   margin: 0;
   max-width: 32em;
 }
+.colophon-legacy {
+  margin: 40px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule, currentColor);
+  font: 400 12px/1.5 var(--f-mono);
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
 
 /* ───────── Étroit ───────── */
 
