@@ -237,6 +237,8 @@ export function mount(root: HTMLElement) {
   for (const c of cards) {
     c.el.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || !c.shown) return;
+      // Un lien dans la carte (la légende) reste un lien : on ne la saisit pas.
+      if ((e.target as Element).closest("a")) return;
       const r = c.el.getBoundingClientRect();
       c.drag = { id: e.pointerId, gx: e.clientX - r.left, gy: e.clientY - r.top, sx: e.clientX, sy: e.clientY, moved: 0 };
       c.el.setPointerCapture(e.pointerId);

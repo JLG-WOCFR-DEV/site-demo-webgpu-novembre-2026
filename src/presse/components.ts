@@ -7,7 +7,12 @@
  * contient un. Un composant sans comportement (le sommaire en lettres, pur
  * CSS) n'a pas d'entrée.
  */
+import { flightSettled, initFlights } from "./flight.ts";
+
 type Mount = (root: HTMLElement) => () => void;
+
+// Le passage (une photo qui vole d'une page à l'autre) est branché sur toute page à composants.
+initFlights();
 
 const REGISTRY: Record<string, () => Promise<{ mount: Mount }>> = {
   liquide: () => import("../components/liquide/liquide.ts"),
@@ -35,6 +40,7 @@ export async function mountComponents(root: ParentNode = document) {
       }
     }),
   );
+  flightSettled();
   return n;
 }
 

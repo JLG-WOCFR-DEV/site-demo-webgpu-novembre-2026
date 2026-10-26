@@ -21,14 +21,14 @@
 
     <main id="lq-main">
       <!-- Un composant : déroulé en HTML statique à la construction (presse/build). -->
-      <x-liquide full filters="eau:L'eau|terre:La terre|vivant:Le vivant">
-        <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-caption="Le pont" />
-        <img src="./plates/jardin.jpg" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." data-cat="vivant" data-caption="Le jardin" />
-        <img src="./plates/alcatraz.jpg" alt="L'île d'Alcatraz et son phare au milieu de la baie." data-cat="eau" data-caption="L'île" />
-        <img src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." data-cat="terre" data-caption="La vallée" />
-        <img src="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." data-cat="eau" data-caption="Le lac" />
-        <img src="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." data-cat="terre" data-caption="Les dunes" />
-        <img src="./plates/cerf.jpg" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." data-cat="vivant" data-caption="Le cerf" />
+      <x-liquide full filters="eau:L'eau|terre:La terre|vivant:Le vivant" link="./grille.html?photo={id}">
+        <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-id="pont" data-caption="Le pont" />
+        <img src="./plates/jardin.jpg" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." data-cat="vivant" data-id="jardin" data-caption="Le jardin" />
+        <img src="./plates/alcatraz.jpg" alt="L'île d'Alcatraz et son phare au milieu de la baie." data-cat="eau" data-id="alcatraz" data-caption="L'île" />
+        <img src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." data-cat="terre" data-id="yosemite" data-caption="La vallée" />
+        <img src="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." data-cat="eau" data-id="lac" data-caption="Le lac" />
+        <img src="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." data-cat="terre" data-id="dunes" data-caption="Les dunes" />
+        <img src="./plates/cerf.jpg" alt="Un jeune cerf dans un jardin en pente, en lumière rasante." data-cat="vivant" data-id="cerf" data-caption="Le cerf" />
       </x-liquide>
 
       <section class="lq-essay" aria-labelledby="lq-how">

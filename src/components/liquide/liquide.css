@@ -171,11 +171,30 @@
 }
 
 .lq-cap {
+  display: block;
+  width: fit-content;
   margin: 8px 2px 0;
   font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft, #55534d);
+}
+a.lq-cap {
+  text-decoration: none;
+}
+a.lq-cap::after {
+  content: " ↗";
+  color: var(--spot, #c8321c);
+}
+a.lq-cap:hover {
+  color: var(--ink, #121212);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+a.lq-cap:focus-visible {
+  outline: 2px solid var(--spot, #c8321c);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 @media (max-width: 640px) {

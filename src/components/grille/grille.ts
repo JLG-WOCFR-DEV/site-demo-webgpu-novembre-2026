@@ -12,6 +12,8 @@
  */
 import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { fromImage, growPhotoArray, loadPhotoArray } from "../../gpu/photos.ts";
+import { claimFlight, onLeave, type Flight } from "../../presse/flight.ts";
+import * as stock from "./stock.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { getDevice } from "../device.ts";
@@ -87,7 +89,8 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 }
 `;
 
-type Photo = { id: string; img: HTMLImageElement; layer: number; title: string; body: string; aspect: number; frame: number; cls: string };
+/** gone : une photo déposée puis retirée (sa couche de texture reste, inutilisée). */
+type Photo = { id: string; img: HTMLImageElement; layer: number; title: string; body: string; aspect: number; frame: number; cls: string; local?: boolean; gone?: boolean };
 /** Une case du mur : une place de la mosaïque (s), dans la copie (i, j) du motif. */
 type Tile = { s: number; i: number; j: number };
 type Slot = { x: number; y: number; w: number; h: number; photo: number };
@@ -108,16 +111,28 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 function splitLetters(el: HTMLElement, text: string) {
   el.textContent = "";
   el.setAttribute("aria-label", text);
-  [...text].forEach((ch, i) => {
-    const w = document.createElement("span");
-    w.className = "ltr";
-    w.setAttribute("aria-hidden", "true");
-    const s = document.createElement("span");
-    s.textContent = ch === " " ? "\u00a0" : ch;
-    s.style.setProperty("--i", String(i));
-    s.style.setProperty("--m", String(1 / Math.max(0.4, motionScale())));
-    w.append(s);
-    el.append(w);
+  // Les lettres d'un mot restent ensemble : la ligne ne se coupe qu'entre les mots.
+  let i = 0;
+  text.split(" ").forEach((word, k) => {
+    if (k) {
+      el.append(" ");
+      i++;
+    }
+    const wd = document.createElement("span");
+    wd.className = "wd";
+    wd.style.whiteSpace = "nowrap";
+    for (const ch of word) {
+      const w = document.createElement("span");
+      w.className = "ltr";
+      w.setAttribute("aria-hidden", "true");
+      const s = document.createElement("span");
+      s.textContent = ch;
+      s.style.setProperty("--i", String(i++));
+      s.style.setProperty("--m", String(1 / Math.max(0.4, motionScale())));
+      w.append(s);
+      wd.append(w);
+    }
+    el.append(wd);
   });
 }
 
@@ -140,6 +155,8 @@ export function mount(root: HTMLElement) {
   });
   const byId = new Map(photos.map((p) => [p.id, p]));
   if (!photos.length) return () => {};
+  /** Les photos présentes (sans celles qu'on a retirées). */
+  const present = () => photos.filter((p) => !p.gone);
 
   // Boîte du mur, en px css de la fenêtre : la fenêtre entière en plein écran, la section sinon.
   let box = root.getBoundingClientRect();
@@ -174,7 +191,7 @@ export function mount(root: HTMLElement) {
     let lastPut = -1;
     const next = () => {
       if (!queue.length) {
-        const order = photos.map((p) => p.layer);
+        const order = present().map((p) => p.layer);
         for (let i = order.length - 1; i > 0; i--) {
           const j = Math.floor(rnd() * (i + 1));
           [order[i], order[j]] = [order[j]!, order[i]!];
@@ -190,7 +207,7 @@ export function mount(root: HTMLElement) {
     const slots: Slot[] = [];
     let y = 0;
     let placed = 0;
-    while (y < Math.max(vh * 1.6, base * 7) || placed < 2 * photos.length) {
+    while (y < Math.max(vh * 1.6, base * 7) || placed < 2 * present().length) {
       const f = FACTORS[Math.floor(rnd() * FACTORS.length)]!;
       const target = base * (1 + (f - 1) * variety);
       const row: number[] = [];
@@ -304,7 +321,7 @@ export function mount(root: HTMLElement) {
       const o: Record<string, [number, number, number, number, number, number]> = {};
       photos.forEach((p, i) => {
         const it = items[i];
-        if (it && !p.id.startsWith("local-")) o[p.id] = [Math.round(it.x), Math.round(it.y), Math.round(it.h), +it.rot.toFixed(3), it.pile, it.z];
+        if (it && !p.gone) o[p.id] = [Math.round(it.x), Math.round(it.y), Math.round(it.h), +it.rot.toFixed(3), it.pile, it.z];
       });
       localStorage.setItem(STORE, JSON.stringify(o));
     } catch {
@@ -322,24 +339,26 @@ export function mount(root: HTMLElement) {
     const rowW = Math.max(B * 4, W() / 0.8);
     let x = 0;
     let y = 0;
-    photos.forEach((p, i) => {
+    const ps = present();
+    ps.forEach((p) => {
       const h = B * (0.8 + 0.4 * rnd());
       const w = h * p.frame;
       if (x > 0 && x + w > rowW) {
         x = 0;
         y += B * 1.45;
       }
-      items[i] = newItem(p, x + (rnd() - 0.5) * 30, y + (B * 1.2 - h) / 2 + (rnd() - 0.5) * 40, h, (rnd() - 0.5) * 0.14);
+      items[p.layer] = newItem(p, x + (rnd() - 0.5) * 30, y + (B * 1.2 - h) / 2 + (rnd() - 0.5) * 40, h, (rnd() - 0.5) * 0.14);
       x += w + B * (0.25 + 0.3 * rnd());
     });
     // Les trois dernières photos en pile sur la quatrième avant la fin.
-    const n = photos.length;
+    const n = ps.length;
     if (n >= 5) {
-      const base = items[n - 4]!;
+      const at = (k: number) => items[ps[k]!.layer]!;
+      const base = at(n - 4);
       const id = pileNext++;
       base.pile = id;
       for (let k = n - 3; k < n; k++) {
-        const it = items[k]!;
+        const it = at(k);
         it.pile = id;
         it.x = it.ax = base.x + (k - n + 4) * 10;
         it.y = it.ay = base.y + (k - n + 4) * 8;
@@ -348,26 +367,30 @@ export function mount(root: HTMLElement) {
       }
     }
   };
+  const saved = (() => {
+    try {
+      return (JSON.parse(localStorage.getItem(STORE) ?? "null") as Record<string, number[]> | null) ?? {};
+    } catch {
+      return {} as Record<string, number[]>; // disposition illisible : on garde le semis
+    }
+  })();
+  /** Remet un tirage à sa place gardée, s'il en a une. */
+  const applySaved = (p: Photo) => {
+    const v = saved[p.id];
+    const it = items[p.layer];
+    if (!v || v.length < 6 || !it) return false;
+    [it.x, it.y, it.h, it.rot, it.pile, it.z] = v as [number, number, number, number, number, number];
+    it.w = it.h * p.frame;
+    it.ax = it.x;
+    it.ay = it.y;
+    it.arot = it.rot;
+    zTop = Math.max(zTop, it.z);
+    pileNext = Math.max(pileNext, it.pile + 1);
+    return true;
+  };
   const restore = () => {
     scatter();
-    try {
-      const o = JSON.parse(localStorage.getItem(STORE) ?? "null") as Record<string, number[]> | null;
-      if (!o) return;
-      photos.forEach((p, i) => {
-        const v = o[p.id];
-        const it = items[i];
-        if (!v || !it) return;
-        [it.x, it.y, it.h, it.rot, it.pile, it.z] = v as [number, number, number, number, number, number];
-        it.w = it.h * p.frame;
-        it.ax = it.x;
-        it.ay = it.y;
-        it.arot = it.rot;
-        zTop = Math.max(zTop, it.z);
-        pileNext = Math.max(pileNext, it.pile + 1);
-      });
-    } catch {
-      /* disposition illisible : on garde le semis */
-    }
+    photos.forEach(applySaved);
   };
   /** Cadre la caméra du canevas sur tous les tirages. */
   const fitCanvas = () => {
@@ -375,7 +398,8 @@ export function mount(root: HTMLElement) {
     let y0 = Infinity;
     let x1 = -Infinity;
     let y1 = -Infinity;
-    for (const it of items) {
+    for (const p of present()) {
+      const it = items[p.layer]!;
       x0 = Math.min(x0, it.x);
       y0 = Math.min(y0, it.y);
       x1 = Math.max(x1, it.x + it.w);
@@ -399,6 +423,7 @@ export function mount(root: HTMLElement) {
     let best = -1;
     let bz = -Infinity;
     items.forEach((it, i) => {
+      if (photos[i]!.gone) return;
       const r = itemRect(i);
       const cx = r.x + r.w / 2;
       const cy = r.y + r.h / 2;
@@ -427,7 +452,7 @@ export function mount(root: HTMLElement) {
   const setMode = (m: View) => {
     if (m === mode && !morph) return;
     const tiles = new Map<number, Tile>();
-    for (const p of photos) tiles.set(p.layer, nearestTile(p));
+    for (const p of present()) tiles.set(p.layer, nearestTile(p));
     const cur = morph ? morphValue(clockNow()) : mode === "canevas" ? 1 : 0;
     morph = { t0: clockNow(), from: cur, to: m === "canevas" ? 1 : 0, tiles };
     mode = m;
@@ -493,7 +518,22 @@ export function mount(root: HTMLElement) {
     img.removeAttribute("data-photo");
     for (const s of pic?.querySelectorAll("source") ?? []) s.sizes = "(max-width: 760px) 100vw, 60vw";
     q("[data-gr-hero]").replaceChildren(pic ?? img);
-    q("[data-gr-num]").textContent = `${String(p.layer + 1).padStart(2, "0")} / ${String(photos.length).padStart(2, "0")}`;
+    const ps = present();
+    const rank = ps.indexOf(p) + 1;
+    q("[data-gr-num]").textContent = `${String(rank).padStart(2, "0")} / ${String(ps.length).padStart(2, "0")}`;
+    // La boîte de la photo : départ et arrivée du passage d'une page à l'autre.
+    q("[data-gr-hero]").dataset.flightId = p.id;
+    const wide = detail.querySelector<HTMLAnchorElement>("[data-gr-wide]");
+    if (wide) {
+      wide.hidden = !!p.local;
+      wide.href = `${wide.dataset.page}${wide.dataset.page!.includes("?") ? "&" : "?"}photo=${encodeURIComponent(p.id)}`;
+      wide.dataset.flight = p.id;
+    }
+    const rm = detail.querySelector<HTMLButtonElement>("[data-gr-remove]");
+    if (rm) {
+      rm.hidden = !p.local;
+      rm.addEventListener("click", () => removePhoto(p));
+    }
     splitLetters(q("[data-gr-title]"), p.title);
     q("[data-gr-body]").textContent = p.body;
     q("[data-gr-alt]").textContent = p.img.alt;
@@ -501,9 +541,15 @@ export function mount(root: HTMLElement) {
     back.href = urlWith(null);
     back.addEventListener("click", (e) => {
       e.preventDefault();
-      history.back();
+      // Ouverte ici : on revient d'un pas. Arrivée par son adresse (lien, autre page) :
+      // le retour ne doit pas quitter la page, on referme sur place.
+      if (pushed) history.back();
+      else {
+        history.replaceState(null, "", urlWith(null));
+        closePhoto();
+      }
     });
-    say(`${p.title}, photo ${p.layer + 1} sur ${photos.length}.`);
+    say(`${p.title}, photo ${rank} sur ${ps.length}.`);
     back.focus({ preventScroll: true });
   };
   const hideDetail = () => {
@@ -512,8 +558,11 @@ export function mount(root: HTMLElement) {
   };
 
   /** Ouvre une photo depuis sa case ou son tirage : elle vole vers la page. */
+  /** La page ouverte l'a été par nous (pushState), pas par son adresse. */
+  let pushed = false;
   const openPhoto = (p: Photo, ref: Ref, push = true) => {
     if (push) history.pushState({ [param]: p.id }, "", urlWith(p.id));
+    pushed = push;
     open = { photo: p, ref };
     fly = { photo: p, from: refRect(ref), t0: clockNow(), dir: 1, ref };
     showDetail(p);
@@ -581,60 +630,134 @@ export function mount(root: HTMLElement) {
   /** Envoi d'une photo au GPU (prêt une fois le rendu démarré). */
   let gpuAdd: ((ps: Photo[]) => Promise<void>) | null = null;
   const urls: string[] = [];
+  /** Une photo à partir d'un fichier déposé ou d'une photo gardée. */
+  const admit = async (blob: Blob, id: string, title: string): Promise<Photo | null> => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    try {
+      await img.decode();
+    } catch {
+      URL.revokeObjectURL(url);
+      return null;
+    }
+    urls.push(url);
+    img.alt = title;
+    img.width = img.naturalWidth;
+    img.height = img.naturalHeight;
+    const aspect = img.naturalWidth / img.naturalHeight;
+    return { id, img, layer: -1, title, body: "Déposée depuis votre ordinateur. Elle est gardée dans ce navigateur seulement : rien n'est envoyé.", aspect, frame: aspect, cls: aspect.toFixed(2), local: true };
+  };
+  /** Elle rejoint le mur : couche de texture, classe de proportion, lien d'accès au clavier. */
+  const enlist = (p: Photo) => {
+    p.layer = photos.length;
+    photos.push(p);
+    byId.set(p.id, p);
+    classes.set(p.cls, [...(classes.get(p.cls) ?? []), p.layer]);
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.href = `?${param}=${p.id}`;
+    a.dataset.photo = p.id;
+    a.textContent = p.title;
+    wireLink(a);
+    li.append(a);
+    root.querySelector(".gr-index ol")?.append(li);
+  };
+  /** Le mur se refait (photos ajoutées ou retirées) : l'ancien s'efface sous le nouveau. */
+  let ghost: { tiles: (Rect & { p: Photo })[]; t0: number } | null = null;
+  const GHOST_MS = 480;
+  const rebuild = () => {
+    if (mode === "grille" && !reduced.matches)
+      ghost = {
+        t0: clockNow(),
+        tiles: visible().map((t) => {
+          const r = tileRect(t);
+          return { x: r.x - cam.x, y: r.y - cam.y, w: r.w, h: r.h, p: photoOf(t) };
+        }),
+      };
+    morph = null;
+    build();
+  };
+  /** Un lot de tirages en pile, centré sur un point du canevas (coordonnées de la table). */
+  const pileAt = (ps: Photo[], wx: number, wy: number, drop = true) => {
+    const pile = ps.length > 1 ? pileNext++ : -1;
+    ps.forEach((p, k) => {
+      const h = 230;
+      const it = newItem(p, wx - (h * p.frame) / 2 + k * 12, wy - h / 2 + k * 9, h, Math.sin(p.layer * 12.9898) * 0.1);
+      it.pile = pile;
+      // Elles tombent d'un peu plus haut.
+      if (drop) it.ay -= 60;
+      items[p.layer] = it;
+    });
+  };
   const addFiles = async (files: File[], at?: { x: number; y: number }) => {
     const imgs = files.filter((f) => f.type.startsWith("image/"));
     if (!imgs.length || open) return;
     const added: Photo[] = [];
+    const kept: Promise<boolean>[] = [];
     for (const f of imgs) {
-      const url = URL.createObjectURL(f);
-      const img = new Image();
-      img.src = url;
-      try {
-        await img.decode();
-      } catch {
-        URL.revokeObjectURL(url);
-        continue;
-      }
-      urls.push(url);
-      img.alt = f.name;
-      img.width = img.naturalWidth;
-      img.height = img.naturalHeight;
-      const aspect = img.naturalWidth / img.naturalHeight;
-      const id = `local-${Date.now().toString(36)}-${photos.length}`;
-      const title = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Sans titre";
-      const p: Photo = { id, img, layer: photos.length, title, body: "Déposée depuis votre ordinateur : elle reste dans cet onglet, rien n'est envoyé.", aspect, frame: aspect, cls: aspect.toFixed(2) };
-      photos.push(p);
-      byId.set(id, p);
-      classes.set(p.cls, [...(classes.get(p.cls) ?? []), p.layer]);
+      const id = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      const raw = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Sans titre";
+      const title = raw[0]!.toUpperCase() + raw.slice(1);
+      const p = await admit(f, id, title);
+      if (!p) continue;
+      enlist(p);
       added.push(p);
-      const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.href = `?${param}=${id}`;
-      a.dataset.photo = id;
-      a.textContent = title;
-      wireLink(a);
-      li.append(a);
-      root.querySelector(".gr-index ol")?.append(li);
+      // Gardée dans ce navigateur, réduite : on la retrouve au prochain passage.
+      kept.push(stock.shrink(p.img, f).then((blob) => stock.put({ id, wall: STORE, title, blob, t: Date.now() })));
     }
     if (!added.length) return;
     // Sur le canevas : le lot en pile, sous le point de dépôt (ou au milieu de la vue).
     const c = at ?? { x: W() / 2, y: H() / 2 };
-    const wx = (c.x - cc.x) / cz;
-    const wy = (c.y - cc.y) / cz;
-    const pile = added.length > 1 ? pileNext++ : -1;
-    added.forEach((p, k) => {
-      const h = 230;
-      const it = newItem(p, wx - (h * p.frame) / 2 + k * 12, wy - h / 2 + k * 9, h, (Math.sin(p.layer * 12.9898) * 0.5) * 0.2);
-      it.pile = pile;
-      // Elles tombent d'un peu plus haut.
-      it.ay -= 60;
-      items[p.layer] = it;
-    });
-    // La grille se refait avec les nouvelles venues.
-    morph = null;
-    build();
+    pileAt(added, (c.x - cc.x) / cz, (c.y - cc.y) / cz);
+    rebuild();
     await gpuAdd?.(added);
-    say(added.length > 1 ? `${added.length} photos ajoutées, en pile sur le canevas.` : `« ${added[0]!.title} » ajoutée au mur.`);
+    const ok = (await Promise.all(kept)).every(Boolean);
+    save();
+    say(
+      (added.length > 1 ? `${added.length} photos ajoutées, en pile sur le canevas.` : `« ${added[0]!.title} » ajoutée au mur.`) +
+        (added.length > 1 ? (ok ? " Elles restent dans ce navigateur." : " Elles disparaîtront en fermant l'onglet.") : ok ? " Elle reste dans ce navigateur." : " Elle disparaîtra en fermant l'onglet."),
+    );
+  };
+  /** Les photos déposées lors d'une visite précédente. */
+  const restoreLocal = async () => {
+    const recs = await stock.list(STORE);
+    const back: Photo[] = [];
+    for (const r of recs) {
+      if (byId.has(r.id)) continue;
+      const p = await admit(r.blob, r.id, r.title);
+      if (!p) continue;
+      enlist(p);
+      back.push(p);
+    }
+    if (!back.length || stopped) return;
+    // À leur place gardée ; sinon en pile à droite de la table.
+    const right = Math.max(...present().filter((p) => !back.includes(p)).map((p) => items[p.layer]!.x + items[p.layer]!.w)) + 120;
+    pileAt(back, right + 120, 120, false);
+    back.forEach(applySaved);
+    rebuild();
+    await gpuAdd?.(back);
+    route(false);
+  };
+  /** Retirer une photo déposée : du mur, du canevas, et de ce navigateur. */
+  const removePhoto = (p: Photo) => {
+    if (!p.local) return;
+    p.gone = true;
+    byId.delete(p.id);
+    const m = (classes.get(p.cls) ?? []).filter((l) => l !== p.layer);
+    if (m.length) classes.set(p.cls, m);
+    else classes.delete(p.cls);
+    root.querySelector(`.gr-index a[data-photo="${CSS.escape(p.id)}"]`)?.parentElement?.remove();
+    void stock.remove(p.id);
+    // La page se referme sans vol : la photo n'a plus de place où retourner.
+    fly = null;
+    open = null;
+    hideDetail();
+    history.replaceState(null, "", urlWith(null));
+    rebuild();
+    save();
+    say(`« ${p.title} » retirée du mur.`);
+    if (!full) root.focus({ preventScroll: true });
   };
   let dragDepth = 0;
   const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes("Files");
@@ -817,7 +940,7 @@ export function mount(root: HTMLElement) {
       let best = -1;
       let bz = -Infinity;
       items.forEach((o, k) => {
-        if (k === i) return;
+        if (k === i || photos[k]!.gone) return;
         const q = itemRect(k);
         const cx = r.x + r.w / 2;
         const cy = r.y + r.h / 2;
@@ -829,7 +952,7 @@ export function mount(root: HTMLElement) {
       const o = items[under]!;
       const id = o.pile >= 0 ? o.pile : pileNext++;
       o.pile = id;
-      const n = items.filter((x) => x.pile === id).length;
+      const n = items.filter((x, k) => x.pile === id && !photos[k]!.gone).length;
       it.pile = id;
       // Il se pose sur la pile, un peu décalé, un peu de travers.
       it.x = o.x + (o.w - it.w) / 2 + ((n % 3) - 1) * 9;
@@ -862,6 +985,30 @@ export function mount(root: HTMLElement) {
   io.observe(root);
   let stopped = false;
   let unwire = () => {};
+
+  /* ───── Le passage : une photo qui arrive d'une autre page ───── */
+
+  let flight: Flight | null = null;
+  {
+    const id = new URLSearchParams(location.search).get(param);
+    const p = id ? byId.get(id) : undefined;
+    flight = p ? claimFlight(p.id) : null;
+    if (p && flight) {
+      // Sa page s'ouvre tout de suite, sans vol depuis le mur : l'image arrive de l'autre page.
+      open = { photo: p, ref: refOf(p) };
+      pushed = false;
+      showDetail(p);
+      const r = heroSlot().getBoundingClientRect();
+      if (r.bottom > 0 && r.top < innerHeight) {
+        // Sa photo HTML s'efface le temps du vol : une seule image à l'écran.
+        root.classList.add("gr-arriving");
+        void flight.land({ x: r.left, y: r.top, w: r.width, h: r.height }, 18);
+      } else (flight.release(), (flight = null));
+    }
+  }
+  // Retour arrière depuis la page d'une photo : elle repart vers la page d'avant.
+  const unleave = onLeave(() => (open && !fly ? { box: heroSlot(), id: open.photo.id } : null));
+  void restoreLocal();
 
   const start = async () => {
     const device = await getDevice();
@@ -1026,6 +1173,12 @@ export function mount(root: HTMLElement) {
         n++;
       };
       // La grille (elle s'efface quand on bascule vers le canevas).
+      // Refaite (photos ajoutées, retirées) : l'ancienne s'efface sous la nouvelle.
+      const gk = ghost ? Math.min(1, (now - ghost.t0) / GHOST_MS) : 1;
+      if (ghost) {
+        for (const g of ghost.tiles) put(g.x + cam.x, g.y + cam.y, g.w, g.h, g.p, (1 - gk) * (1 - mt) * (1 - 0.88 * detailK), Math.min(10, 4 + 6 * zoom));
+        if (gk >= 1) ghost = null;
+      }
       if (mt < 0.999) {
         for (const t of visible()) {
           if (flyTile && sameTile(flyTile, t)) continue;
@@ -1042,12 +1195,12 @@ export function mount(root: HTMLElement) {
           const s = squeeze * (1 + 0.03 * hv * m) * (1 - 0.06 * detailK);
           const w = r.w * s;
           const h = r.h * s;
-          put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, p, (1 - 0.88 * detailK) * (1 - mt), Math.min(10, 4 + 6 * zoom));
+          put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, p, (1 - 0.88 * detailK) * (1 - mt) * ease(gk), Math.min(10, 4 + 6 * zoom));
         }
       }
       // Le canevas : les tirages, du dessous vers le dessus ; pendant la bascule, chacun vole de sa case à sa place.
       if (mt > 0.001) {
-        const order = items.map((_, i) => i).sort((a, b) => items[a]!.z - items[b]!.z);
+        const order = items.map((_, i) => i).filter((i) => !photos[i]!.gone).sort((a, b) => items[a]!.z - items[b]!.z);
         for (const i of order) {
           if (flyItem === i) continue;
           const it = items[i]!;
@@ -1098,6 +1251,12 @@ export function mount(root: HTMLElement) {
       pass.end();
       if (full) rec.copy(enc, out);
       device.queue.submit([enc.finish()]);
+      // Le GPU peint la photo arrivée d'une autre page : l'image de passage peut s'effacer.
+      if (flight) {
+        flight.release();
+        flight = null;
+        root.classList.remove("gr-arriving");
+      }
       if (full) rec.after();
     };
     requestAnimationFrame(frame);
@@ -1107,6 +1266,9 @@ export function mount(root: HTMLElement) {
     console.warn("[grille]", e);
     // Sans WebGPU : la liste des photos devient visible, chaque lien ouvre sa page.
     root.classList.add("gr-nogl");
+    flight?.release();
+    flight = null;
+    root.classList.remove("gr-arriving");
     const hint = root.querySelector("[data-gr-hint]");
     if (hint) hint.textContent = "Sans WebGPU : la liste des photos reste disponible au clavier.";
     route(false);
@@ -1115,6 +1277,8 @@ export function mount(root: HTMLElement) {
   return () => {
     stopped = true;
     io.disconnect();
+    unleave();
+    flight?.release();
     unwire();
     removeEventListener("popstate", onPop);
     dropTarget.removeEventListener("dragenter", onDragEnter as EventListener);

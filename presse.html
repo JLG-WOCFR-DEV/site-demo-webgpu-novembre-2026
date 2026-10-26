@@ -77,25 +77,30 @@
           sont déroulées en HTML statique à la construction : la page arrive complète, lisible sans JavaScript, avec sa feuille de
           style dans l'en-tête. Le comportement n'est chargé que si la page contient le composant.
         </p>
-        <pre class="pd-code"><code>&lt;x-liquide filters="eau:L'eau|terre:La terre"&gt;
-  &lt;img src="pont.jpg" alt="…" data-cat="eau" data-caption="Le pont"&gt;
+        <p class="pd-p" data-gl-text>
+          Entre deux pages, la photo passe : cliquez la légende d'une carte, ou « Sur le mur entier » sur la page d'une photo de la
+          grille. Ce sont de vraies pages, chargées par le navigateur ; seule l'image voyage, d'un rectangle à l'autre, et revient
+          au retour arrière.
+        </p>
+        <pre class="pd-code"><code>&lt;x-liquide filters="eau:L'eau|terre:La terre" link="grille.html?photo={id}"&gt;
+  &lt;img src="pont.jpg" alt="…" data-cat="eau" data-id="pont" data-caption="Le pont"&gt;
   …
 &lt;/x-liquide&gt;
 
-&lt;x-grille param="vue"&gt;
+&lt;x-grille param="vue" page="grille.html"&gt;
   &lt;img src="lac.jpg" alt="…" data-title="Le lac" data-body="…"&gt;
 &lt;/x-grille&gt;</code></pre>
 
         <h3 class="pd-h3" data-gl-text>Mise en page liquide</h3>
-        <x-liquide filters="eau:L'eau|terre:La terre" label="Quatre photos, réordonnables : glisser, ou Alt + flèches au clavier">
-          <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-caption="Le pont" />
-          <img src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." data-cat="terre" data-caption="La vallée" />
-          <img src="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." data-cat="eau" data-caption="Le lac" />
-          <img src="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." data-cat="terre" data-caption="Les dunes" />
+        <x-liquide filters="eau:L'eau|terre:La terre" link="./grille.html?photo={id}" label="Quatre photos, réordonnables : glisser, ou Alt + flèches au clavier">
+          <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-id="pont" data-caption="Le pont" />
+          <img src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." data-cat="terre" data-id="yosemite" data-caption="La vallée" />
+          <img src="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." data-cat="eau" data-id="lac" data-caption="Le lac" />
+          <img src="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." data-cat="terre" data-id="dunes" data-caption="Les dunes" />
         </x-liquide>
 
         <h3 class="pd-h3" data-gl-text>Grille infinie</h3>
-        <x-grille param="vue" label="Mur de photos : flèches pour le parcourir, Entrée sur un nom pour l'ouvrir">
+        <x-grille param="vue" page="./grille.html" label="Mur de photos : flèches pour le parcourir, Entrée sur un nom pour l'ouvrir">
           <img src="./plates/jardin.jpg" data-id="jardin" data-title="Le jardin" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." data-body="Un jardin japonais au printemps. Les azalées rouges tiennent le premier plan, la maison de thé se cache sous les pins." />
           <img src="./plates/alcatraz.jpg" data-id="alcatraz" data-title="L'île" alt="L'île d'Alcatraz et son phare au milieu de la baie." data-body="Alcatraz au milieu de la baie : le phare, les bâtiments clairs, et tout autour une eau d'un seul bleu." />
           <img src="./plates/lac.jpg" data-id="lac" data-title="Le lac" alt="Un lac entre des collines dorées, sous un ciel strié." data-body="Un lac de barrage entre des collines dorées. Le ciel est strié de traînées d'avion, l'eau les reprend à peine." />

@@ -44,8 +44,11 @@ export function letters(text: string, row = 0) {
 }
 
 /**
- * <x-liquide filters="eau:L'eau|terre:La terre">
- *   <img src="…" alt="…" data-cat="eau" data-caption="Le pont">
+ * <x-liquide filters="eau:L'eau|terre:La terre" link="./grille.html?photo={id}">
+ *   <img src="…" alt="…" data-cat="eau" data-caption="Le pont" data-id="pont">
+ *
+ * Avec link et data-id, la légende devient un lien et la photo vole jusqu'à
+ * la page visée (src/presse/flight.ts).
  * </x-liquide>
  */
 const liquide: Render = (a, children) => {
@@ -65,7 +68,10 @@ const liquide: Render = (a, children) => {
   const cards = items
     .map((im) => {
       const cap = im.getAttribute("data-caption") ?? "";
-      return `<li class="lq-card" data-cat="${esc(im.getAttribute("data-cat") ?? "")}" tabindex="0"><img class="lq-img" src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} sizes="${esc(a.sizes ?? "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 340px")}" alt="${esc(im.getAttribute("alt") ?? "")}" />${cap ? `<p class="lq-cap">${esc(cap)}</p>` : ""}</li>`;
+      const id = im.getAttribute("data-id");
+      const href = id && a.link ? a.link.replace("{id}", encodeURIComponent(id)) : "";
+      const capHtml = cap ? (href ? `<a class="lq-cap" href="${esc(href)}" data-flight="${esc(id!)}">${esc(cap)}</a>` : `<p class="lq-cap">${esc(cap)}</p>`) : "";
+      return `<li class="lq-card" data-cat="${esc(im.getAttribute("data-cat") ?? "")}"${id ? ` data-flight-id="${esc(id)}"` : ""} tabindex="0"><img class="lq-img" src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} sizes="${esc(a.sizes ?? "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 340px")}" alt="${esc(im.getAttribute("alt") ?? "")}" />${capHtml}</li>`;
     })
     .join("\n");
   return `<div class="x-liquide" data-presse-component="liquide"${a.full !== undefined ? " data-full" : ""}>
@@ -85,7 +91,10 @@ ${cards}
 };
 
 /**
- * <x-grille label="Photos" view="grille|canevas" canvas="false" drop="false">
+ * <x-grille label="Photos" view="grille|canevas" canvas="false" drop="false" page="./grille.html">
+ *
+ * page : sur la page d'une photo, un lien vers la même photo sur une autre
+ * page (le mur entier) ; l'image y vole (src/presse/flight.ts).
  *   <img src="…" alt="…" data-title="Le pont" data-body="…">
  * </x-grille>
  */
@@ -116,7 +125,7 @@ ${items.map((p) => `    <img src="${esc(p.src)}" data-photo="${esc(p.id)}" data-
       <${hTag} class="gr-title" data-gr-title></${hTag}>
       <p class="gr-body" data-gr-body></p>
       <p class="gr-alt" data-gr-alt></p>
-      <a class="gr-back" href="?" data-gr-back>← ${esc(a.back ?? "Le mur")}</a>
+      <p class="gr-actions"><a class="gr-back" href="?" data-gr-back>← ${esc(a.back ?? "Le mur")}</a>${a.page ? `<a class="gr-wide" href="${esc(a.page)}" data-gr-wide data-page="${esc(a.page)}">${esc(a["page-label"] ?? "Sur le mur entier")} ↗</a>` : ""}<button type="button" class="gr-remove" data-gr-remove hidden>Retirer du mur</button></p>
     </div>
   </article>
   <p class="sr-only" aria-live="polite" data-gr-live></p>

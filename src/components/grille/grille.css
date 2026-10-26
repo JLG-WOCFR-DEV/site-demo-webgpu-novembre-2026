@@ -297,7 +297,15 @@
   font-size: 14px;
   color: var(--ink-soft, #55534d);
 }
-.x-grille .gr-back {
+.x-grille .gr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+.x-grille .gr-back,
+.x-grille .gr-wide,
+.x-grille .gr-remove {
   display: inline-flex;
   align-items: center;
   min-height: 40px;
@@ -309,7 +317,22 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   text-decoration: none;
+  background: none;
+  cursor: pointer;
 }
+.x-grille .gr-wide {
+  background: var(--ink, #121212);
+  color: var(--paper, #efeee8);
+}
+.x-grille .gr-remove {
+  border-color: transparent;
+  color: var(--spot, #c8321c);
+}
+.x-grille .gr-remove[hidden] {
+  display: none;
+}
+.x-grille .gr-wide:focus-visible,
+.x-grille .gr-remove:focus-visible,
 .x-grille .gr-back:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--paper, #efeee8), 0 0 0 4px var(--spot, #c8321c);
@@ -333,7 +356,7 @@
 }
 .x-grille .gr-body,
 .x-grille .gr-alt,
-.x-grille .gr-back,
+.x-grille .gr-actions,
 .x-grille .gr-num {
   opacity: 0;
   animation: gr-fade 0.6s ease forwards 0.55s;
@@ -347,7 +370,7 @@
   .x-grille .gr-title .ltr > span,
   .x-grille .gr-body,
   .x-grille .gr-alt,
-  .x-grille .gr-back,
+  .x-grille .gr-actions,
   .x-grille .gr-num {
     animation: none;
     transform: none;
@@ -373,7 +396,8 @@
   object-fit: cover;
   border-radius: 18px;
 }
-.x-grille.gr-gl .gr-hero-img {
+.x-grille.gr-gl .gr-hero-img,
+.x-grille.gr-arriving .gr-hero-img {
   opacity: 0;
 }
 /* Sans WebGPU : la liste des photos, en clair. */

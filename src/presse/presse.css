@@ -44,6 +44,8 @@ html.gl-on [data-gl-print] :is(a, button, .controls) {
   opacity: 0;
   transition: opacity 0.5s ease;
 }
+/* Un composant a son propre rendu : ses liens et boutons ne suivent pas l'impression. */
+html.gl-on [data-gl-print] [data-presse-component] :is(a, button, .controls),
 html.gl-on [data-gl-print] :is(a, button, .controls).is-printed,
 html.gl-on [data-gl-print] :focus-within,
 html.gl-on [data-gl-print] :focus-visible {
