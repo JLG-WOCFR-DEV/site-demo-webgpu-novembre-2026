@@ -525,6 +525,8 @@ export function mount(root: HTMLElement) {
     q("[data-gr-num]").textContent = `${String(rank).padStart(2, "0")} / ${String(ps.length).padStart(2, "0")}`;
     // La boîte de la photo : départ et arrivée du passage d'une page à l'autre.
     q("[data-gr-hero]").dataset.flightId = p.id;
+    // Son titre passe aussi d'une page à l'autre (D8).
+    q("[data-gr-title]").dataset.flightTitle = p.id;
     // Vers la même photo sur d'autres pages (le mur entier, la galerie) : elle y passe.
     for (const wide of detail.querySelectorAll<HTMLAnchorElement>("[data-gr-wide]")) {
       wide.hidden = !!p.local;

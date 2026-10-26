@@ -50,9 +50,14 @@ export type MsdfMeta = {
 /** En dessous de cette taille, le SDF simple suffit et le MTSDF n'apporte rien. */
 const MSDF_MIN_SIZE = 24;
 
+/** Typographie cinétique (D6) : data-gl-kinetic. */
+export const KINETIC = ["", "respire", "vitesse", "contour", "vague"];
+
 export type TextElem = {
   el: HTMLElement;
   fx: number;
+  /** Mode cinétique (0 aucun, 1 respire, 2 vitesse, 3 contour, 4 vague). */
+  kin: number;
   count: number;
   first: number;
   revealStart: number;
@@ -324,7 +329,7 @@ export class TextLayer {
         }
         this.morphPrev.set(el, { key, glyphs: cur });
       }
-      this.elems.push({ el, fx, count: idx, first, revealStart: -1 });
+      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: -1 });
     });
 
     if (had) root.classList.add("gl-on");

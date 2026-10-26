@@ -392,13 +392,19 @@ export function mount(root: HTMLElement) {
         detailMedia.classList.remove("is-ready");
         detailMedia.replaceChildren(pic);
       }
-      if (detailCap) detailCap.textContent = it.title;
+      if (detailCap) {
+        detailCap.textContent = it.title;
+        detailCap.dataset.flightTitle = it.id;
+      }
     }
     if (cfg.selection === "reveal" && reveal) {
       reveal.hidden = false;
       reveal.classList.remove("is-in");
       const h = reveal.querySelector("[data-gx-reveal-title]");
-      if (h) h.textContent = it.title;
+      if (h) {
+        h.textContent = it.title;
+        (h as HTMLElement).dataset.flightTitle = it.id;
+      }
       const dl = reveal.querySelector("dl");
       if (dl) dl.innerHTML = it.spec.map(([k, v], i) => `<div style="--i:${i}"><dt>${k}</dt><dd>${v}</dd></div>`).join("");
     }

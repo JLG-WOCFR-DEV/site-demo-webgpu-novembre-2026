@@ -193,7 +193,10 @@ export function mount(root: HTMLElement) {
     const a = apps[k]!;
     root.style.setProperty("--or-color", `rgb(${a.color.map((c) => Math.round(c * 255)).join(" ")})`);
     if (cap.num) cap.num.textContent = `${String(k + 1).padStart(2, "0")} / ${String(N).padStart(2, "0")}`;
-    if (cap.title) cap.title.textContent = a.title;
+    if (cap.title) {
+      cap.title.textContent = a.title;
+      cap.title.dataset.flightTitle = a.id;
+    }
     if (cap.tag) cap.tag.textContent = a.tag;
     if (cap.open) {
       cap.open.href = a.href;

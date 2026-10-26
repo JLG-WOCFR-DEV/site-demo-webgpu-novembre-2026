@@ -844,7 +844,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const hideSpecimen = e.fx === 2 && settings.glyph.atlas;
       const ms = text.morphSince.get(e.el);
       const morph = ms === undefined || reduced ? 1 : Math.min(1, (now - ms) / MORPH_MS);
-      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen ? 0 : 1, morph, 0], i * 8);
+      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen ? 0 : 1, morph, e.kin], i * 8);
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left, r.top, r.width, r.height, 0, 0.627, 0.863, 0.9);
     });
     if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 8);

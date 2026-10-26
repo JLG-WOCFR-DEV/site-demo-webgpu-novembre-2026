@@ -280,3 +280,15 @@ body.pd {
   background: var(--ink);
   color: var(--paper);
 }
+
+/* Typographie cinétique (D6). */
+.pd-kin {
+  margin: 24px 0 8px;
+}
+.pd-kin-line {
+  margin: 0;
+  font-size: clamp(56px, 10vw, 140px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}

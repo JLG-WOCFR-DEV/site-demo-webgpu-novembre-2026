@@ -494,7 +494,7 @@ struct Elem {
   count: f32,
   alpha: f32,
   morph: f32,    // progression du morphing de l'élément (0…1)
-  _p: f32,
+  kin: f32,      // typographie cinétique (D6) : 0 aucune, 1 respire, 2 vitesse, 3 contour, 4 vague
 };
 
 // État physique d'une lettre de l'ouverture, écrit par la passe de calcul.
@@ -523,6 +523,7 @@ struct VsOut {
   @location(3) @interpolate(flat) edge: f32,
   @location(4) @interpolate(flat) size: vec2f,
   @location(5) @interpolate(flat) multi: f32,
+  @location(6) @interpolate(flat) kin: vec2f,  // mode cinétique, intensité pour cette lettre
 };
 
 fn rot(a: f32) -> mat2x2f {
@@ -567,6 +568,36 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
     local = rot((h - 0.5) * sc * 1.4) * local;
   }
 
+  // D6 — typographie cinétique. La graisse se joue sur le seuil du champ de
+  // distance (plus bas : plus gras), la largeur sur le quad, le reste sur la place.
+  let km = u32(e.kin + 0.5);
+  var kAmt = 0.0;
+  var weight = 0.0;
+  if (km > 0u) {
+    let dp = length(frame.pointer.xy - center);
+    let near = select(0.0, exp(-dp * dp / (2.0 * 95.0 * 95.0)), frame.pointer.z > 0.5 && !reduced);
+    if (km == 1u) {
+      // Respire : les lettres s'épaississent et s'élargissent sous le pointeur.
+      kAmt = near;
+      weight = near;
+      local.x *= 1.0 + 0.12 * near;
+    } else if (km == 2u) {
+      // Vitesse : au défilement, les lettres s'étirent, maigrissent et ondulent.
+      let v = select(frame.motion.x, 0.0, reduced);
+      local.y *= 1.0 + abs(v) * 0.45;
+      local.x *= 1.0 - abs(v) * 0.14;
+      center.y += sin(g.idx * 0.7 + t * 3.0) * v * g.size.y * 0.14;
+      weight = -abs(v) * 0.8;
+    } else if (km == 3u) {
+      // Contour : la lettre n'est qu'un trait, et se remplit sous le pointeur.
+      kAmt = near;
+    } else if (km == 4u) {
+      // Vague : une onde de graisse traverse le mot, sans fin.
+      let w = select(0.5 + 0.5 * sin(g.idx * 0.45 - t * 2.4), 0.5, reduced);
+      weight = w * 1.6 - 0.4;
+    }
+  }
+
   if (g.mk > 0.5) {
     // Morphing (à la manière d'Aristide Benoist) : les lettres communes aux
     // deux textes voyagent en arc vers leur nouvelle place, les autres
@@ -596,7 +627,8 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
   // Au-dessus, la lettre maigrit ; à 1,4 elle a disparu (apparition à l'encre).
   var ink = 0.0;
   if (e.fx > 1.5) { ink = frame.glyph.y; }
-  out.edge = 0.75 - ink * 0.14 + (1.0 - reveal) * 0.65;
+  out.edge = 0.75 - ink * 0.14 - weight * 0.1 + (1.0 - reveal) * 0.65;
+  out.kin = vec2f(f32(km), kAmt);
   out.size = g.size;
   out.multi = select(0.0, 1.0, g.px < 0.0);
   return out;
@@ -615,6 +647,11 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   let edge = select(in.edge, 0.5 + (in.edge - 0.75) * 0.85, isMulti);
   let w = max(fwidth(d) * 0.75, 0.002);
   var a = smoothstep(edge - w, edge + w, d) * in.color.a;
+  if (in.kin.x > 2.5 && in.kin.x < 3.5) {
+    // Contour : une bande autour du bord, qui devient le plein près du pointeur.
+    let band = 1.0 - smoothstep(0.035 - w, 0.035 + w, abs(d - edge));
+    a = mix(band * in.color.a, a, in.kin.y);
+  }
   var col = in.color.rgb;
   if (wire_on(frame)) {
     let pxw = 1.0 / max(in.size, vec2f(1.0));

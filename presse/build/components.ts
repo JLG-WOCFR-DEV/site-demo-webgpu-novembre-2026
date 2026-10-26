@@ -83,7 +83,7 @@ const liquide: Render = (a, children) => {
       const cap = im.getAttribute("data-caption") ?? "";
       const id = im.getAttribute("data-id");
       const href = id && a.link ? a.link.replace("{id}", encodeURIComponent(id)) : "";
-      const capHtml = cap ? (href ? `<a class="lq-cap" href="${esc(href)}" data-flight="${esc(id!)}">${esc(cap)}</a>` : `<p class="lq-cap">${esc(cap)}</p>`) : "";
+      const capHtml = cap ? (href ? `<a class="lq-cap" href="${esc(href)}" data-flight="${esc(id!)}" data-flight-title="${esc(id!)}">${esc(cap)}</a>` : `<p class="lq-cap">${esc(cap)}</p>`) : "";
       return `<li class="lq-card" data-cat="${esc(im.getAttribute("data-cat") ?? "")}"${id ? ` data-flight-id="${esc(id)}"` : ""} tabindex="0"><img class="lq-img" src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} sizes="${esc(a.sizes ?? "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 340px")}" alt="${esc(im.getAttribute("alt") ?? "")}" />${capHtml}</li>`;
     })
     .join("\n");
