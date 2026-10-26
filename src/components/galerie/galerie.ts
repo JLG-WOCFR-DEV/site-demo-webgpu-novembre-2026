@@ -21,6 +21,7 @@ import { motionScale } from "../../motion-scale.ts";
 import { claimFlight, type Flight, onArrive, onLeave, onSource, type Source } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { renderScale } from "../../gpu/governor.ts";
+import { SPRINGS, springStep } from "../../presse/tokens.ts";
 import { getDevice } from "../device.ts";
 import { ARRANGEMENTS, apply, type ArrangeName, type Ctx, DEG, type Inst, mod, OPTIONS, type Pose, pose, rotation, stackDir } from "./arrange.ts";
 import { BACKDROP, GALERIE, MAX_ITEMS, STRIDE } from "./shader.ts";
@@ -697,17 +698,14 @@ export function mount(root: HTMLElement) {
     // Décalage : glisser direct, sinon ressort vers la cible, sinon élan qui s'éteint.
     if (!drag) {
       if (target) {
-        const k = 190;
-        const damp = 2 * Math.sqrt(k) * 0.86;
         for (const ax of ["x", "y"] as const) {
           if (calm) {
             off[ax] = target[ax];
             vel[ax] = 0;
             continue;
           }
-          const acc = -k * (off[ax] - target[ax]) - damp * vel[ax];
-          vel[ax] += acc * dt;
-          off[ax] += vel[ax] * dt;
+          // Le ressort « vif » des jetons de Presse (src/presse/tokens.ts).
+          [off[ax], vel[ax]] = springStep(off[ax], vel[ax], target[ax], dt, SPRINGS.vif);
         }
         if (Math.abs(off.x - target.x) < 1e-3 && Math.abs(off.y - target.y) < 1e-3 && Math.hypot(vel.x, vel.y) < 1e-2) {
           off.x = target.x;
@@ -734,9 +732,7 @@ export function mount(root: HTMLElement) {
     // Ouverture : ressort.
     if (calm) sel.a = sel.target;
     else {
-      const k = 130;
-      sel.av += (-k * (sel.a - sel.target) - 2 * Math.sqrt(k) * 0.82 * sel.av) * dt;
-      sel.a += sel.av * dt;
+      [sel.a, sel.av] = springStep(sel.a, sel.av, sel.target, dt, SPRINGS.ouverture);
     }
     if (sel.target === 0 && Math.abs(sel.a) < 0.002 && Math.abs(sel.av) < 0.01) {
       sel.a = 0;

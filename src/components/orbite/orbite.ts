@@ -14,6 +14,7 @@ import { loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { onSource } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
+import { SPRINGS, springStep } from "../../presse/tokens.ts";
 import { getDevice } from "../device.ts";
 import { DOF, DRAW, GRADE, MAX_CARDS, SCENE, SIM } from "./shaders.ts";
 
@@ -471,9 +472,8 @@ export function mount(root: HTMLElement) {
         if (target !== null) {
           if (calm) theta = target;
           else {
-            const k = 38;
-            vel += (-k * (theta - target) - 2 * Math.sqrt(k) * 0.9 * vel) * dt;
-            theta += vel * dt;
+            // Le ressort « ample » des jetons de Presse : un gros objet qui tourne, posément.
+            [theta, vel] = springStep(theta, vel, target, dt, SPRINGS.ample);
           }
           if (Math.abs(theta - target) < 1e-4 && Math.abs(vel) < 1e-3) ((theta = target), (vel = 0));
         } else {

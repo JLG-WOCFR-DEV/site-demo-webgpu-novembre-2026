@@ -207,7 +207,7 @@
   background: var(--paper, #efeee8);
   color: var(--ink, #121212);
   clip-path: inset(0 100% 0 0);
-  transition: clip-path 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: clip-path 0.5s var(--ease-out, cubic-bezier(0.2, 0.8, 0.2, 1));
   cursor: auto;
 }
 .x-galerie .gx-reveal.from-left {

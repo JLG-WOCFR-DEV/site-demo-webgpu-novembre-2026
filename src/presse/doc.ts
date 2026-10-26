@@ -2,6 +2,7 @@ import "./doc.css";
 import { mountPagesNav } from "../pages-nav.ts";
 import { settings } from "../state.ts";
 import { presseFromHtml } from "./index.ts";
+import { applyLook } from "./look.ts";
 
 // La page de documentation est elle-même faite avec Presse : options sur <html>, attributs dans le corps.
 mountPagesNav();
@@ -17,3 +18,11 @@ document.querySelector("[data-pd-morph-btn]")?.addEventListener("click", () => {
 document.querySelector("[data-pd-dust]")?.addEventListener("click", () => {
   settings.dust.target = settings.dust.target > 0.5 ? 0 : 1;
 });
+
+// Direction artistique (D7) : changer de look à chaud.
+for (const b of document.querySelectorAll<HTMLButtonElement>("[data-pd-look]")) {
+  b.addEventListener("click", () => {
+    applyLook(b.dataset.pdLook!);
+    for (const o of document.querySelectorAll("[data-pd-look]")) o.setAttribute("aria-pressed", String(o === b));
+  });
+}

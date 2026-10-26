@@ -346,7 +346,7 @@
 .x-grille .gr-title .ltr > span {
   display: inline-block;
   transform: translateY(105%);
-  animation: gr-rise 0.7s cubic-bezier(0.2, 0.7, 0.1, 1) forwards;
+  animation: gr-rise 0.7s var(--ease-out, cubic-bezier(0.2, 0.7, 0.1, 1)) forwards;
   animation-delay: calc(var(--i) * 28ms * var(--m, 1) + 280ms);
 }
 @keyframes gr-rise {

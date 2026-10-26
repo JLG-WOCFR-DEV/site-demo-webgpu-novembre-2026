@@ -87,6 +87,24 @@
 &lt;!-- révélation : rideau, dissolution, pixels, tri · survol : deplacement, rvb, onde, pixels --&gt;</code></pre>
       </section>
 
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-look">
+        <h2 id="pd-look" class="pd-h2" data-gl-text>La direction artistique</h2>
+        <p class="pd-p" data-gl-text>
+          Un attribut sur la balise html, et toute la page change de pellicule : texte, images, canvas de tous les composants.
+          Un étalonnage en fin de chaîne (courbes par couche, saturation), un grain animé qui casse aussi les bandes des
+          dégradés, une vignette. Essayez :
+        </p>
+        <div class="pd-looks" role="group" aria-label="Look de la page">
+          <button type="button" class="pd-btn" data-pd-look="neutre" aria-pressed="true">Neutre</button>
+          <button type="button" class="pd-btn" data-pd-look="papier" aria-pressed="false">Papier</button>
+          <button type="button" class="pd-btn" data-pd-look="argentique" aria-pressed="false">Argentique</button>
+          <button type="button" class="pd-btn" data-pd-look="nuit" aria-pressed="false">Nuit</button>
+          <button type="button" class="pd-btn" data-pd-look="presse" aria-pressed="false">Presse</button>
+        </div>
+        <pre class="pd-code"><code>&lt;html data-presse-look="argentique"&gt;          &lt;!-- neutre, papier, argentique, nuit, presse --&gt;
+&lt;html data-presse-grain="0.06" data-presse-vignette="0.3"&gt;   &lt;!-- réglages fins --&gt;</code></pre>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-scroll">
         <h2 id="pd-scroll" class="pd-h2" data-gl-text>Le défilement</h2>
         <p class="pd-p" data-gl-text>

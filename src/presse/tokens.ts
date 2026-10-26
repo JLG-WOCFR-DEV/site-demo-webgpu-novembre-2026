@@ -18,6 +18,27 @@ export const EASE = {
 };
 export const DUR = { 1: 240, 2: 520, 3: 900, 4: 1400 };
 
+/**
+ * Les ressorts de la maison : raideur k (1/s²) et amortissement ζ. Tous les
+ * composants s'en servent, pour qu'un carrousel, une galerie et une fiche
+ * répondent avec le même tempérament.
+ *   vif        navigation d'un cran (galerie, grille) : arrive vite, sans rebond.
+ *   ouverture  ouvrir, fermer, mettre en avant : un souffle d'élan.
+ *   ample      gros objet qui tourne (l'anneau de l'orbite) : lent et posé.
+ */
+export const SPRINGS = {
+  vif: { k: 190, zeta: 0.86 },
+  ouverture: { k: 130, zeta: 0.82 },
+  ample: { k: 38, zeta: 0.9 },
+} as const;
+export type Spring = { k: number; zeta: number };
+/** Un pas de ressort (Euler semi-implicite) : renvoie [position, vitesse]. */
+export function springStep(x: number, v: number, target: number, dt: number, s: Spring): [number, number] {
+  const acc = -s.k * (x - target) - 2 * Math.sqrt(s.k) * s.zeta * v;
+  const nv = v + acc * dt;
+  return [x + nv * dt, nv];
+}
+
 /** Ressort amorti normalisé (0 → 1, léger dépassement), le même que les composants. */
 export function spring(t: number, zeta = 0.62, omega = 11) {
   if (t >= 1) return 1;
