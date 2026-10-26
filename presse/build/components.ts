@@ -92,19 +92,19 @@ ${cards}
 const grille: Render = (a, children) => {
   const items = imgs(children).map((im) => {
     const title = im.getAttribute("data-title") ?? im.getAttribute("alt") ?? "";
-    return { id: im.getAttribute("data-id") ?? slug(title), title, body: im.getAttribute("data-body") ?? "", src: im.getAttribute("src") ?? "", alt: im.getAttribute("alt") ?? "" };
+    return { id: im.getAttribute("data-id") ?? slug(title), title, body: im.getAttribute("data-body") ?? "", src: im.getAttribute("src") ?? "", alt: im.getAttribute("alt") ?? "", aspect: im.getAttribute("data-aspect") ?? "" };
   });
   const param = a.param ?? "photo";
   // Plein écran, la page d'une photo est la page : son titre est un h1.
   const hTag = a.full !== undefined ? "h1" : "h2";
-  return `<section class="x-grille" data-presse-component="grille" data-param="${esc(param)}"${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-label="${esc(a.label ?? "Mur de photos : flèches pour le parcourir")}">
+  return `<section class="x-grille" data-presse-component="grille" data-param="${esc(param)}"${a.variety !== undefined ? ` data-variety="${esc(a.variety)}"` : ""}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-label="${esc(a.label ?? "Mur de photos : flèches pour le parcourir")}">
   <canvas class="gr-gl" aria-hidden="true"></canvas>
-  <p class="gr-head">${a.kicker ? `<span class="gr-kicker">${esc(a.kicker)}</span>` : ""}<span class="gr-hint" data-gr-hint>${esc(a.hint ?? (a.full !== undefined ? "Tirez le mur dans tous les sens, ou utilisez les flèches. Cliquez une photo pour l'ouvrir." : "Tirez le mur de côté, ou flèches au clavier. Cliquez une photo pour l'ouvrir."))}</span></p>
+  <p class="gr-head">${a.kicker ? `<span class="gr-kicker">${esc(a.kicker)}</span>` : ""}<span class="gr-hint" data-gr-hint>${esc(a.hint ?? (a.full !== undefined ? "Tirez le mur, Ctrl + molette ou pincez pour zoomer. Cliquez une photo pour l'ouvrir." : "Tirez le mur de côté ; Ctrl + molette pour zoomer. Cliquez une photo pour l'ouvrir."))}</span><span class="gr-zoom"><button type="button" data-gr-zoom="-1" aria-label="Dézoomer">−</button><button type="button" data-gr-zoom="1" aria-label="Zoomer">+</button></span></p>
   <nav class="gr-index" aria-label="Photos"><ol>
 ${items.map((p) => `    <li><a href="?${esc(param)}=${esc(p.id)}" data-photo="${esc(p.id)}">${esc(p.title)}</a></li>`).join("\n")}
   </ol></nav>
   <div class="gr-photos" hidden>
-${items.map((p) => `    <img src="${esc(p.src)}" data-photo="${esc(p.id)}" data-title="${esc(p.title)}" data-body="${esc(p.body)}" alt="${esc(p.alt)}" loading="lazy" sizes="(max-width: 760px) 100vw, 60vw" />`).join("\n")}
+${items.map((p) => `    <img src="${esc(p.src)}" data-photo="${esc(p.id)}" data-title="${esc(p.title)}" data-body="${esc(p.body)}"${p.aspect ? ` data-aspect="${esc(p.aspect)}"` : ""} alt="${esc(p.alt)}" loading="lazy" sizes="(max-width: 760px) 100vw, 60vw" />`).join("\n")}
   </div>
   <article class="gr-detail" data-gr-detail hidden>
     <div class="gr-hero" data-gr-hero></div>

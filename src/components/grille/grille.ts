@@ -16,7 +16,7 @@ import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { getDevice } from "../device.ts";
 
-const MAX_TILES = 160;
+const MAX_TILES = 1400;
 const SHADER = /* wgsl */ `
 struct Tile {
   rect: vec4f,   // x, y, l, h (px écran)
@@ -80,7 +80,17 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 }
 `;
 
-type Photo = { id: string; img: HTMLImageElement; layer: number; title: string; body: string };
+type Photo = { id: string; img: HTMLImageElement; layer: number; title: string; body: string; aspect: number; frame: number; cls: string };
+/** Une case du mur : une place de la mosaïque (s), dans la copie (i, j) du motif. */
+type Tile = { s: number; i: number; j: number };
+type Slot = { x: number; y: number; w: number; h: number; photo: number };
+const sameTile = (a: Tile | null | undefined, b: Tile) => !!a && a.s === b.s && a.i === b.i && a.j === b.j;
+/** « 4:5 », « 0.8 » → 0.8. */
+const ratio = (v: string | undefined) => {
+  if (!v) return 0;
+  const [a, b] = v.split(/[:/x]/).map(Number);
+  return b ? a! / b : a || 0;
+};
 type Rect = { x: number; y: number; w: number; h: number };
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
@@ -115,13 +125,12 @@ export function mount(root: HTMLElement) {
     if (live) live.textContent = s;
   };
 
-  const photos: Photo[] = [...root.querySelectorAll<HTMLImageElement>(".gr-photos img")].map((img, i) => ({
-    id: img.dataset.photo!,
-    img,
-    layer: i,
-    title: img.dataset.title ?? img.alt,
-    body: img.dataset.body ?? "",
-  }));
+  const photos: Photo[] = [...root.querySelectorAll<HTMLImageElement>(".gr-photos img")].map((img, i) => {
+    const aspect = (Number(img.getAttribute("width")) || img.naturalWidth || 3) / (Number(img.getAttribute("height")) || img.naturalHeight || 2);
+    // Cadre : la proportion naturelle de la photo, ou un recadrage demandé (data-aspect="4:5").
+    const frame = ratio(img.dataset.aspect) || aspect;
+    return { id: img.dataset.photo!, img, layer: i, title: img.dataset.title ?? img.alt, body: img.dataset.body ?? "", aspect, frame, cls: frame.toFixed(2) };
+  });
   const byId = new Map(photos.map((p) => [p.id, p]));
   if (!photos.length) return () => {};
 
@@ -131,38 +140,140 @@ export function mount(root: HTMLElement) {
   const H = () => (full ? innerHeight : box.height);
   const local = (e: { clientX: number; clientY: number }) => ({ x: e.clientX - (full ? 0 : box.left), y: e.clientY - (full ? 0 : box.top) });
 
-  /* ───── Le mur : géométrie ───── */
+  /* ───── Le mur : une mosaïque répétée sans couture ───── */
 
-  const cell = () => {
-    const w = Math.max(full ? 200 : 150, Math.min(360, W() / 4.2));
-    return { w, h: w * 1.25, gap: Math.round(w * 0.1) };
-  };
-  /**
-   * Photo d'une case : un mélange qui évite les voisines identiques, pour tout
-   * nombre de photos. Pas de colonne (k1) et de rangée (k2) premiers avec ce
-   * nombre ; les voisines en biais (colonnes décalées) diffèrent aussi.
+  /*
+   * Rangées justifiées (comme une planche contact) : chaque photo garde la
+   * proportion de son cadre, portrait ou paysage ; chaque rangée a sa propre
+   * hauteur, de petites rangées serrées aux grandes rangées d'une ou deux
+   * photos, puis on l'ajuste pour remplir exactement la largeur du motif. Le
+   * motif se répète dans les deux sens sans couture ; d'une copie à l'autre,
+   * les photos de même proportion permutent, pour que la répétition ne se
+   * voie pas.
    */
   const N = photos.length;
-  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
-  const ok = (k: number) => N < 2 || (k % N !== 0 && gcd(k, N) === 1);
-  const k2 = [5, 2, 3, 7, 11, 13].find(ok) ?? 1;
-  const k1 = [3, 2, 4, 5, 7, 11, 13].find((k) => ok(k) && (N < 3 || ((k - k2) % N !== 0 && (k + k2) % N !== 0))) ?? 1;
-  const photoAt = (col: number, row: number) => photos[(((col * k1 + row * k2) % N) + N) % N]!;
-  /** Rectangle (px css, repère du mur) d'une case, pour un décalage donné. */
-  const cellRect = (col: number, row: number, ox: number, oy: number): Rect => {
-    const c = cell();
-    // Une colonne sur deux est décalée d'une demi-case : le mur respire.
-    return { x: col * (c.w + c.gap) + ox, y: row * (c.h + c.gap) + (col & 1 ? c.h * 0.5 : 0) + oy, w: c.w, h: c.h };
+  const variety = root.dataset.variety === undefined ? 1 : Number(root.dataset.variety);
+  const classes = new Map<string, number[]>();
+  for (const p of photos) classes.set(p.cls, [...(classes.get(p.cls) ?? []), p.layer]);
+  let chunk = { W: 1, H: 1, gap: 12, slots: [] as Slot[], vw: 0 };
+  const build = () => {
+    const vw = W();
+    const vh = H();
+    const base = Math.max(110, Math.min(250, vw * 0.15));
+    const gap = Math.round(base * 0.09);
+    const CW = Math.max(vw * 1.7, base * 9);
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const queue: number[] = [];
+    let lastPut = -1;
+    const next = () => {
+      if (!queue.length) {
+        const order = photos.map((p) => p.layer);
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(rnd() * (i + 1));
+          [order[i], order[j]] = [order[j]!, order[i]!];
+        }
+        // Pas deux fois la même photo à la jointure de deux tirages.
+        if (order.length > 1 && order[0] === lastPut) [order[0], order[1]] = [order[1]!, order[0]!];
+        queue.push(...order);
+      }
+      lastPut = queue.shift()!;
+      return lastPut;
+    };
+    const FACTORS = [0.6, 0.8, 1, 1, 1.2, 1.55, 2.1];
+    const slots: Slot[] = [];
+    let y = 0;
+    let placed = 0;
+    while (y < Math.max(vh * 1.6, base * 7) || placed < 2 * N) {
+      const f = FACTORS[Math.floor(rnd() * FACTORS.length)]!;
+      const target = base * (1 + (f - 1) * variety);
+      const row: number[] = [];
+      let sum = 0;
+      while (sum * target + gap * row.length < CW) {
+        const p = next();
+        row.push(p);
+        sum += photos[p]!.frame;
+      }
+      // Avec ou sans la dernière photo : la hauteur ajustée la plus proche de la visée.
+      const hWith = (CW - gap * row.length) / sum;
+      if (row.length > 1) {
+        const last = row[row.length - 1]!;
+        const sumWithout = sum - photos[last]!.frame;
+        const hWithout = (CW - gap * (row.length - 1)) / sumWithout;
+        if (Math.abs(hWithout - target) < Math.abs(hWith - target) && hWithout < target * 1.6) {
+          row.pop();
+          queue.unshift(last);
+          sum = sumWithout;
+        }
+      }
+      const h = (CW - gap * row.length) / sum;
+      let x = 0;
+      for (const p of row) {
+        const w = photos[p]!.frame * h;
+        slots.push({ x, y, w, h, photo: p });
+        x += w + gap;
+        placed++;
+      }
+      y += h + gap;
+    }
+    chunk = { W: CW, H: y, gap, slots, vw };
   };
+  /** Petit hachage entier d'une copie du motif. */
+  const hashIJ = (i: number, j: number) => ((((i * 73856093) ^ (j * 19349663)) >>> 0) % 9973);
+  /** La photo d'une case : celle du motif, permutée parmi les photos de même proportion. */
+  const photoOf = (t: Tile) => {
+    const base = chunk.slots[t.s]!.photo;
+    if (t.i === 0 && t.j === 0) return photos[base]!;
+    const m = classes.get(photos[base]!.cls)!;
+    return photos[m[(m.indexOf(base) + hashIJ(t.i, t.j)) % m.length]!]!;
+  };
+  let zoom = 1;
+  let zoomT = 1;
+  const anchor = { x: 0, y: 0 };
+  /** Rectangle (px css, repère du mur) d'une case. */
+  const tileRect = (t: Tile): Rect => {
+    const sl = chunk.slots[t.s]!;
+    return { x: (sl.x + t.i * chunk.W) * zoom + cam.x, y: (sl.y + t.j * chunk.H) * zoom + cam.y, w: sl.w * zoom, h: sl.h * zoom };
+  };
+  /** Les cases visibles (avec une marge). */
+  const visible = (margin = 40) => {
+    const out: Tile[] = [];
+    const cw = chunk.W * zoom;
+    const ch = chunk.H * zoom;
+    const i0 = Math.floor((-margin - cam.x) / cw);
+    const i1 = Math.floor((W() + margin - cam.x) / cw);
+    const j0 = Math.floor((-margin - cam.y) / ch);
+    const j1 = Math.floor((H() + margin - cam.y) / ch);
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        for (let k = 0; k < chunk.slots.length; k++) {
+          const r = tileRect({ s: k, i, j });
+          if (r.x + r.w < -margin || r.y + r.h < -margin || r.x > W() + margin || r.y > H() + margin) continue;
+          out.push({ s: k, i, j });
+        }
+      }
+    }
+    return out;
+  };
+  /** Zoom vers une cible, en gardant fixe le point du mur sous l'ancre. */
+  const zoomTo = (z: number, ax = W() / 2, ay = H() / 2) => {
+    zoomT = Math.max(0.3, Math.min(3, z));
+    anchor.x = ax;
+    anchor.y = ay;
+  };
+  build();
+  // Le motif commence centré sur sa première rangée.
+  const initCam = () => ({ x: (W() - chunk.W) / 2, y: 40 });
 
   const cam = { x: 0, y: 0, vx: 0, vy: 0 };
+  Object.assign(cam, initCam());
   let drag: { id: number; sx: number; sy: number; lx: number; ly: number; lt: number; moved: number } | null = null;
   const ptr = { x: -1, y: -1, in: false };
 
   /* ───── Navigation : vraies URL, sans rechargement ───── */
 
-  type Fly = { photo: Photo; from: Rect; t0: number; dir: 1 | -1; col: number; row: number };
-  let open: { photo: Photo; col: number; row: number } | null = null;
+  type Fly = { photo: Photo; from: Rect; t0: number; dir: 1 | -1; tile: Tile };
+  let open: { photo: Photo; tile: Tile } | null = null;
   let fly: Fly | null = null;
   const FLY_MS = 950;
   const heroRect = (): Rect => {
@@ -181,6 +292,8 @@ export function mount(root: HTMLElement) {
   const showDetail = (p: Photo) => {
     detail.hidden = false;
     root.classList.add("gr-detail-open");
+    // La page montre la photo entière, dans sa proportion naturelle.
+    detail.style.setProperty("--a", String(p.aspect));
     // Relancer les animations CSS : on remplace le contenu à chaque ouverture.
     const fresh = detail.cloneNode(true) as HTMLElement;
     detail.replaceChildren(...fresh.childNodes);
@@ -214,16 +327,16 @@ export function mount(root: HTMLElement) {
     root.classList.remove("gr-detail-open");
   };
 
-  /** Ouvre une photo depuis sa case (col, row) : la case vole vers la page. */
-  const openPhoto = (p: Photo, col: number, row: number, push = true) => {
+  /** Ouvre une photo depuis sa case : la case vole vers la page. */
+  const openPhoto = (p: Photo, tile: Tile, push = true) => {
     if (push) history.pushState({ [param]: p.id }, "", urlWith(p.id));
-    open = { photo: p, col, row };
-    fly = { photo: p, from: cellRect(col, row, cam.x, cam.y), t0: clockNow(), dir: 1, col, row };
+    open = { photo: p, tile };
+    fly = { photo: p, from: tileRect(tile), t0: clockNow(), dir: 1, tile };
     showDetail(p);
   };
   const closePhoto = () => {
     if (!open) return;
-    fly = { photo: open.photo, from: heroRect(), t0: clockNow(), dir: -1, col: open.col, row: open.row };
+    fly = { photo: open.photo, from: heroRect(), t0: clockNow(), dir: -1, tile: open.tile };
     open = null;
     hideDetail();
     say("Retour au mur.");
@@ -231,27 +344,31 @@ export function mount(root: HTMLElement) {
   };
 
   /** La case la plus proche du centre qui montre cette photo. */
-  const nearestCell = (p: Photo) => {
-    const c = cell();
-    const col0 = Math.round((W() / 2 - cam.x) / (c.w + c.gap));
-    const row0 = Math.round((H() / 2 - cam.y) / (c.h + c.gap));
-    let best = { col: col0, row: row0, d: Infinity };
-    for (let dc = -4; dc <= 4; dc++) {
-      for (let dr = -4; dr <= 4; dr++) {
-        if (photoAt(col0 + dc, row0 + dr) !== p) continue;
-        const d = dc * dc + dr * dr;
-        if (d < best.d) best = { col: col0 + dc, row: row0 + dr, d };
+  const nearestTile = (p: Photo): Tile => {
+    const cw = chunk.W * zoom;
+    const ch = chunk.H * zoom;
+    const ic = Math.floor((W() / 2 - cam.x) / cw);
+    const jc = Math.floor((H() / 2 - cam.y) / ch);
+    let best: { t: Tile; d: number } = { t: { s: 0, i: ic, j: jc }, d: Infinity };
+    for (let j = jc - 1; j <= jc + 1; j++) {
+      for (let i = ic - 1; i <= ic + 1; i++) {
+        for (let k = 0; k < chunk.slots.length; k++) {
+          const t = { s: k, i, j };
+          if (photoOf(t) !== p) continue;
+          const r = tileRect(t);
+          const d = Math.hypot(r.x + r.w / 2 - W() / 2, r.y + r.h / 2 - H() / 2);
+          if (d < best.d) best = { t, d };
+        }
       }
     }
-    return best;
+    return best.t;
   };
 
   const route = (push: boolean) => {
     const id = new URLSearchParams(location.search).get(param);
     const p = id ? byId.get(id) : undefined;
     if (p && !open) {
-      const n = nearestCell(p);
-      openPhoto(p, n.col, n.row, push);
+      openPhoto(p, nearestTile(p), push);
     } else if (!p && open) {
       closePhoto();
     }
@@ -263,15 +380,24 @@ export function mount(root: HTMLElement) {
       e.preventDefault();
       const p = byId.get(a.dataset.photo!);
       if (!p) return;
-      const n = nearestCell(p);
-      openPhoto(p, n.col, n.row);
+      openPhoto(p, nearestTile(p));
     });
   }
 
   /* ───── Tirer le mur ───── */
 
+  // Pincer à deux doigts : zoom autour du milieu des doigts.
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinch: { d: number; z: number } | null = null;
   canvas.addEventListener("pointerdown", (e) => {
     if (open || e.button !== 0) return;
+    touches.set(e.pointerId, local(e));
+    if (touches.size === 2) {
+      const [a, b] = [...touches.values()];
+      pinch = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), z: zoomT };
+      drag = null;
+      return;
+    }
     drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), moved: 0 };
     canvas.setPointerCapture(e.pointerId);
     cam.vx = cam.vy = 0;
@@ -282,6 +408,13 @@ export function mount(root: HTMLElement) {
     ptr.x = l.x;
     ptr.y = l.y;
     ptr.in = true;
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, l);
+    if (pinch && touches.size === 2) {
+      const [a, b] = [...touches.values()];
+      zoomTo((pinch.z * Math.hypot(a!.x - b!.x, a!.y - b!.y)) / Math.max(1, pinch.d), (a!.x + b!.x) / 2, (a!.y + b!.y) / 2);
+      zoom = zoomT;
+      return;
+    }
     if (!drag || drag.id !== e.pointerId) return;
     const now = performance.now();
     const dt = Math.max(1, now - drag.lt) / 1000;
@@ -299,6 +432,8 @@ export function mount(root: HTMLElement) {
   });
   canvas.addEventListener("pointerleave", () => (ptr.in = false));
   const endDrag = (e: PointerEvent) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch = null;
     if (!drag || drag.id !== e.pointerId) return;
     const click = drag.moved < 6 && e.type === "pointerup";
     drag = null;
@@ -308,7 +443,7 @@ export function mount(root: HTMLElement) {
     const hit = hitTest(l.x, l.y);
     if (hit) {
       cam.vx = cam.vy = 0;
-      openPhoto(hit.photo, hit.col, hit.row);
+      openPhoto(hit.photo, hit.tile);
     }
   };
   canvas.addEventListener("pointerup", endDrag);
@@ -316,6 +451,13 @@ export function mount(root: HTMLElement) {
   // Plein écran, la molette tire le mur ; intégré, seulement l'horizontale (la verticale fait défiler la page).
   const onWheel = (e: WheelEvent) => {
     if (open) return;
+    // Ctrl + molette (et le pincement des pavés tactiles) : zoom sous le pointeur.
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const l = local(e);
+      zoomTo(zoomT * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0025)), l.x, l.y);
+      return;
+    }
     if (!full && Math.abs(e.deltaX) <= Math.abs(e.deltaY) && !e.shiftKey) return;
     e.preventDefault();
     const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
@@ -329,6 +471,9 @@ export function mount(root: HTMLElement) {
       return;
     }
     if (!full && e.target !== root) return;
+    if (e.key === "+" || e.key === "=") return zoomTo(zoomT * 1.25);
+    if (e.key === "-" || e.key === "_") return zoomTo(zoomT / 1.25);
+    if (e.key === "0") return zoomTo(1);
     const k = 900;
     if (e.key === "ArrowLeft") cam.vx += k;
     else if (e.key === "ArrowRight") cam.vx -= k;
@@ -340,17 +485,14 @@ export function mount(root: HTMLElement) {
   (full ? window : root).addEventListener("keydown", onKey as EventListener);
 
   function hitTest(x: number, y: number) {
-    const c = cell();
-    const col = Math.floor((x - cam.x) / (c.w + c.gap));
-    for (const cc of [col, col + 1, col - 1]) {
-      const r0 = cellRect(cc, 0, cam.x, cam.y);
-      const row = Math.floor((y - r0.y) / (c.h + c.gap));
-      for (const rr of [row, row + 1, row - 1]) {
-        const r = cellRect(cc, rr, cam.x, cam.y);
-        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return { col: cc, row: rr, photo: photoAt(cc, rr) };
-      }
+    for (const t of visible(0)) {
+      const r = tileRect(t);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return { tile: t, photo: photoOf(t) };
     }
     return null;
+  }
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-gr-zoom]")) {
+    b.addEventListener("click", () => zoomTo(Number(b.dataset.grZoom) > 0 ? zoomT * 1.4 : zoomT / 1.4));
   }
 
   /* ───── Rendu ───── */
@@ -423,6 +565,15 @@ export function mount(root: HTMLElement) {
         canvas.height = PH;
       }
       const m = reduced.matches ? 0 : motionScale();
+      // Nouvelle largeur d'écran : on refait le motif (la position reste la même à l'écran).
+      if (Math.abs(vw - chunk.vw) > chunk.vw * 0.15) build();
+      // Zoom amorti autour de l'ancre.
+      if (Math.abs(zoomT - zoom) > 1e-4) {
+        const nz = reduced.matches ? zoomT : zoom + (zoomT - zoom) * (1 - Math.exp(-dt * 12));
+        cam.x = anchor.x - ((anchor.x - cam.x) / zoom) * nz;
+        cam.y = anchor.y - ((anchor.y - cam.y) / zoom) * nz;
+        zoom = nz;
+      }
 
       // Inertie : la vitesse s'éteint en exponentielle.
       if (!drag) {
@@ -447,22 +598,19 @@ export function mount(root: HTMLElement) {
       }
       const detailK = open ? ease(flyT) : fly && fly.dir === -1 ? 1 - ease(flyT) : 0;
 
-      const c = cell();
-      const col0 = Math.floor(-cam.x / (c.w + c.gap)) - 1;
-      const col1 = Math.ceil((vw - cam.x) / (c.w + c.gap)) + 1;
       let n = 0;
-      const flying = fly ?? (open ? { col: open.col, row: open.row, photo: open.photo } : null);
+      const flying = fly ?? (open ? { tile: open.tile, photo: open.photo } : null);
       const put = (x: number, y: number, w: number, h: number, p: Photo, alpha: number, radius: number, extra = 0) => {
         if (n >= MAX_TILES) return;
         // Parallaxe : l'image glisse dans son cadre selon sa place à l'écran.
         const px = ((x + w / 2) / vw - 0.5) * 0.08 * m + slideX;
         const py = ((y + h / 2) / vh - 0.5) * 0.08 * m + slideY;
-        // Recadrage « cover » d'une photo 3:2 dans la case, plus une marge pour la parallaxe.
+        // Recadrage « cover » de la photo dans la case, plus une marge pour la parallaxe.
         const aspect = w / h;
         let uw = 1;
         let uh = 1;
-        if (aspect < 1.5) uw = aspect / 1.5;
-        else uh = 1.5 / aspect;
+        if (aspect < p.aspect) uw = aspect / p.aspect;
+        else uh = p.aspect / aspect;
         uw *= 0.88;
         uh *= 0.88;
         const cx = 0.5 + px * 0.5;
@@ -475,29 +623,24 @@ export function mount(root: HTMLElement) {
         tdata.set([split * dpr + extra, 0, 0, 0], o + 12);
         n++;
       };
-      for (let col = col0; col <= col1; col++) {
-        const top = cellRect(col, 0, cam.x, cam.y).y;
-        const row0 = Math.floor(-top / (c.h + c.gap)) - 1;
-        const row1 = Math.ceil((vh - top) / (c.h + c.gap)) + 1;
-        for (let row = row0; row <= row1; row++) {
-          const p = photoAt(col, row);
-          if (flying && flying.col === col && flying.row === row) continue;
-          const r = cellRect(col, row, cam.x, cam.y);
-          const key = `${col},${row}`;
-          const over = !open && !drag && ptr.in && ptr.x >= r.x && ptr.x <= r.x + r.w && ptr.y >= r.y && ptr.y <= r.y + r.h;
-          const hv = (hover.get(key) ?? 0) + ((over ? 1 : 0) - (hover.get(key) ?? 0)) * (1 - Math.exp(-dt * 10));
-          if (hv > 0.001) hover.set(key, hv);
-          else hover.delete(key);
-          // Les autres cases s'effacent derrière la page ouverte.
-          const s = squeeze * (1 + 0.03 * hv * m) * (1 - 0.06 * detailK);
-          const w = r.w * s;
-          const h = r.h * s;
-          put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, p, 1 - 0.88 * detailK, 10);
-        }
+      for (const t of visible()) {
+        if (flying && sameTile(flying.tile, t)) continue;
+        const p = photoOf(t);
+        const r = tileRect(t);
+        const key = `${t.s},${t.i},${t.j}`;
+        const over = !open && !drag && ptr.in && ptr.x >= r.x && ptr.x <= r.x + r.w && ptr.y >= r.y && ptr.y <= r.y + r.h;
+        const hv = (hover.get(key) ?? 0) + ((over ? 1 : 0) - (hover.get(key) ?? 0)) * (1 - Math.exp(-dt * 10));
+        if (hv > 0.001) hover.set(key, hv);
+        else hover.delete(key);
+        // Les autres cases s'effacent derrière la page ouverte.
+        const s = squeeze * (1 + 0.03 * hv * m) * (1 - 0.06 * detailK);
+        const w = r.w * s;
+        const h = r.h * s;
+        put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, p, 1 - 0.88 * detailK, Math.min(10, 4 + 6 * zoom));
       }
       // La case qui vole, par-dessus.
       if (flying) {
-        const cr = cellRect(flying.col, flying.row, cam.x, cam.y);
+        const cr = tileRect(flying.tile);
         const heroR = heroRect();
         let r = open ? heroR : cr;
         if (fly) {

@@ -74,6 +74,29 @@
   text-transform: uppercase;
   color: var(--spot, #c8321c);
 }
+.x-grille .gr-zoom {
+  display: inline-flex;
+  gap: 4px;
+  pointer-events: auto;
+}
+.x-grille .gr-zoom button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--ink, #121212);
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: 500 14px/1 var(--f-mono, monospace);
+  cursor: pointer;
+}
+.x-grille .gr-zoom button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper, #efeee8), 0 0 0 4px var(--spot, #c8321c);
+}
+.x-grille.gr-detail-open .gr-zoom {
+  pointer-events: none;
+}
 .x-grille .gr-hint {
   font: 12px/1.4 var(--f-mono, monospace);
   color: var(--ink-soft, #55534d);
@@ -142,9 +165,11 @@
 .x-grille .gr-detail[hidden] {
   display: none;
 }
+/* La page d'une photo la montre entière : la proportion vient de la photo (--a). */
 .x-grille .gr-hero {
-  aspect-ratio: 3 / 2;
-  width: 100%;
+  aspect-ratio: var(--a, 1.5);
+  width: min(100%, calc(72vh * var(--a, 1.5)));
+  justify-self: center;
 }
 .x-grille .gr-text {
   pointer-events: auto;

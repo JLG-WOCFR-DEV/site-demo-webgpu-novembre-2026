@@ -12,21 +12,33 @@
     <!-- Un composant : déroulé en HTML statique à la construction (presse/build).
          La liste des photos qu'il produit est ce que lisent le clavier et les
          lecteurs d'écran ; chaque photo a sa vraie URL (?photo=…). -->
-    <x-grille full kicker="WebGPU-demo-UBS · Grille infinie" label="Mur de photos">
+    <x-grille full kicker="WebGPU-demo-UBS · Grille infinie" label="Mur de photos, portraits et paysages">
       <img src="./plates/pont.jpg" data-id="pont" data-title="Le pont" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte."
         data-body="Le Golden Gate depuis la côte, à marée montante. Le rouge du pont, le vert de la falaise, l'écume : trois couleurs, une seule lumière de fin de matinée." />
-      <img src="./plates/jardin.jpg" data-id="jardin" data-title="Le jardin" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé."
+      <img src="./plates/jardin.jpg" data-id="jardin" data-title="Le jardin" data-aspect="4:5" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé."
         data-body="Un jardin japonais au printemps. Les azalées rouges tiennent le premier plan, la maison de thé se cache sous les pins." />
-      <img src="./plates/alcatraz.jpg" data-id="alcatraz" data-title="L'île" alt="L'île d'Alcatraz et son phare au milieu de la baie."
+      <img src="./plates/alcatraz.jpg" data-id="alcatraz" data-title="L'île" data-aspect="16:9" alt="L'île d'Alcatraz et son phare au milieu de la baie."
         data-body="Alcatraz au milieu de la baie : le phare, les bâtiments clairs, et tout autour une eau d'un seul bleu." />
-      <img src="./plates/yosemite.jpg" data-id="yosemite" data-title="La vallée" alt="La vallée de Yosemite : parois de granit, une cascade, la brume."
+      <img src="./plates/yosemite.jpg" data-id="yosemite" data-title="La vallée" data-aspect="2:3" alt="La vallée de Yosemite : parois de granit, une cascade, la brume."
         data-body="La vallée de Yosemite vue d'en haut : des parois de granit, une cascade minuscule, et la brume qui efface les plans du fond." />
       <img src="./plates/lac.jpg" data-id="lac" data-title="Le lac" alt="Un lac entre des collines dorées, sous un ciel strié."
         data-body="Un lac de barrage entre des collines dorées. Le ciel est strié de traînées d'avion, l'eau les reprend à peine." />
       <img src="./plates/dunes.jpg" data-id="dunes" data-title="Les dunes" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort."
         data-body="Les dunes de la Vallée de la Mort : un sable presque blanc, des buissons ronds, et un bois mort tordu comme une lettre." />
-      <img src="./plates/cerf.jpg" data-id="cerf" data-title="Le cerf" alt="Un jeune cerf dans un jardin en pente, en lumière rasante."
+      <img src="./plates/cerf.jpg" data-id="cerf" data-title="Le cerf" data-aspect="3:4" alt="Un jeune cerf dans un jardin en pente, en lumière rasante."
         data-body="Un jeune cerf dans un jardin en pente. Il s'est arrêté dans la seule tache d'ombre, le temps de la photo." />
+      <img src="./plates/bowl.jpg" data-id="bol" data-title="Le bol" alt="Un bol de grès blanc sur une table claire."
+        data-body="Un bol de grès, presque blanc, posé sur une table du même ton. Toute la photo tient dans trois gris chauds." />
+      <img src="./plates/fig.jpg" data-id="figue" data-title="La figue" alt="Une figue ouverte sur une pierre calcaire, près d'une fenêtre."
+        data-body="Une figue ouverte sur une pierre calcaire, dans la lumière d'une fenêtre. Photo carrée : elle garde sa proportion dans le mur." />
+      <img src="./plates/flower.jpg" data-id="renoncule" data-title="La renoncule" alt="Une renoncule blanche sur fond gris."
+        data-body="Une renoncule blanche, seule, sur un fond gris uni. Carrée, elle aussi." />
+      <img src="./plates/glass.jpg" data-id="verre" data-title="Le verre" alt="Un cylindre de verre épais couché sur une surface claire."
+        data-body="Un cylindre de verre épais, couché : les reflets font tout le dessin." />
+      <img src="./plates/steel.jpg" data-id="acier" data-title="L'acier" alt="Un cylindre d'acier brossé sur une ardoise sombre."
+        data-body="Un cylindre d'acier brossé sur une ardoise : la seule photo sombre du mur." />
+      <img src="./plates/vanilla.jpg" data-id="vanille" data-title="La vanille" alt="Deux gousses de vanille sur un papier crème."
+        data-body="Deux gousses de vanille sur un papier crème, en diagonale." />
     </x-grille>
   </body>
 </html>
