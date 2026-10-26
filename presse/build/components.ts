@@ -85,7 +85,7 @@ ${cards}
 };
 
 /**
- * <x-grille label="Photos">
+ * <x-grille label="Photos" view="grille|canevas" canvas="false" drop="false">
  *   <img src="…" alt="…" data-title="Le pont" data-body="…">
  * </x-grille>
  */
@@ -97,9 +97,12 @@ const grille: Render = (a, children) => {
   const param = a.param ?? "photo";
   // Plein écran, la page d'une photo est la page : son titre est un h1.
   const hTag = a.full !== undefined ? "h1" : "h2";
-  return `<section class="x-grille" data-presse-component="grille" data-param="${esc(param)}"${a.variety !== undefined ? ` data-variety="${esc(a.variety)}"` : ""}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-label="${esc(a.label ?? "Mur de photos : flèches pour le parcourir")}">
+  // Vue de départ : le mur infini, ou le canevas (les photos posées en piles).
+  const view = a.view === "canevas" ? "canevas" : "grille";
+  return `<section class="x-grille" data-presse-component="grille" data-param="${esc(param)}" data-view="${view}"${a.variety !== undefined ? ` data-variety="${esc(a.variety)}"` : ""}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-label="${esc(a.label ?? "Mur de photos : flèches pour le parcourir")}">
   <canvas class="gr-gl" aria-hidden="true"></canvas>
-  <p class="gr-head">${a.kicker ? `<span class="gr-kicker">${esc(a.kicker)}</span>` : ""}<span class="gr-hint" data-gr-hint>${esc(a.hint ?? (a.full !== undefined ? "Tirez le mur, Ctrl + molette ou pincez pour zoomer. Cliquez une photo pour l'ouvrir." : "Tirez le mur de côté ; Ctrl + molette pour zoomer. Cliquez une photo pour l'ouvrir."))}</span><span class="gr-zoom"><button type="button" data-gr-zoom="-1" aria-label="Dézoomer">−</button><button type="button" data-gr-zoom="1" aria-label="Zoomer">+</button></span></p>
+  <p class="gr-head">${a.kicker ? `<span class="gr-kicker">${esc(a.kicker)}</span>` : ""}<span class="gr-hint" data-gr-hint>${esc(a.hint ?? (a.full !== undefined ? "Tirez le mur, Ctrl + molette ou pincez pour zoomer. Cliquez une photo pour l'ouvrir." : "Tirez le mur de côté ; Ctrl + molette pour zoomer. Cliquez une photo pour l'ouvrir."))}</span><span class="gr-tools"><span class="gr-zoom"><button type="button" data-gr-zoom="-1" aria-label="Dézoomer">−</button><button type="button" data-gr-zoom="1" aria-label="Zoomer">+</button></span>${a.canvas === "false" ? "" : `<span class="gr-views" role="group" aria-label="Vue"><button type="button" data-gr-view="grille" aria-pressed="${view === "grille"}">Grille</button><button type="button" data-gr-view="canevas" aria-pressed="${view === "canevas"}">Canevas</button></span><button type="button" class="gr-tidy" data-gr-tidy>Ranger</button>`}${a.drop === "false" ? "" : `<label class="gr-add">Ajouter<span class="gr-long"> des photos</span><input type="file" accept="image/*" multiple data-gr-add /></label>`}</span></p>
+  <div class="gr-drop" aria-hidden="true"><span>Déposez vos photos sur le mur</span></div>
   <nav class="gr-index" aria-label="Photos"><ol>
 ${items.map((p) => `    <li><a href="?${esc(param)}=${esc(p.id)}" data-photo="${esc(p.id)}">${esc(p.title)}</a></li>`).join("\n")}
   </ol></nav>

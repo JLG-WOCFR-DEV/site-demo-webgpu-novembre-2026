@@ -26,7 +26,8 @@ async function fromStrip(device: GPUDevice, tex: GPUTexture, url: string, layer:
   return true;
 }
 
-async function fromImage(device: GPUDevice, tex: GPUTexture, img: HTMLImageElement, layer: number, width: number, height: number, mips: number) {
+/** Une image (déjà dans la page ou déposée) dans une couche du tableau. */
+export async function fromImage(device: GPUDevice, tex: GPUTexture, img: HTMLImageElement, layer: number, width: number, height: number, mips: number) {
   // Une image paresseuse cachée ne se charge jamais d'elle-même.
   if (img.loading === "lazy") img.loading = "eager";
   await img.decode().catch(() => undefined);
@@ -39,12 +40,30 @@ async function fromImage(device: GPUDevice, tex: GPUTexture, img: HTMLImageEleme
   }
 }
 
-export async function loadPhotoArray(device: GPUDevice, imgs: HTMLImageElement[], width = 768, height = 512, mips = 4) {
+const USAGE = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT;
+
+/**
+ * Agrandit un tableau de photos (des photos ajoutées en cours de route) :
+ * un nouveau tableau, où l'on recopie les couches déjà là, sur le GPU.
+ */
+export function growPhotoArray(device: GPUDevice, tex: GPUTexture, layers: number) {
+  if (layers <= tex.depthOrArrayLayers) return tex;
+  const next = device.createTexture({ size: [tex.width, tex.height, layers], mipLevelCount: tex.mipLevelCount, format: tex.format, usage: USAGE });
+  const enc = device.createCommandEncoder();
+  for (let m = 0; m < tex.mipLevelCount; m++) {
+    enc.copyTextureToTexture({ texture: tex, mipLevel: m }, { texture: next, mipLevel: m }, [tex.width >> m, tex.height >> m, tex.depthOrArrayLayers]);
+  }
+  device.queue.submit([enc.finish()]);
+  tex.destroy();
+  return next;
+}
+
+export async function loadPhotoArray(device: GPUDevice, imgs: HTMLImageElement[], width = 768, height = 512, mips = 4, capacity = imgs.length) {
   const tex = device.createTexture({
-    size: [width, height, Math.max(1, imgs.length)],
+    size: [width, height, Math.max(1, capacity, imgs.length)],
     mipLevelCount: mips,
     format: "rgba8unorm",
-    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+    usage: USAGE,
   });
   let fast = 0;
   await Promise.all(

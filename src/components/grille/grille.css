@@ -54,7 +54,7 @@
   max-width: calc(100% - 32px);
   margin: 0;
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: 22px;
   background: color-mix(in srgb, var(--paper, #efeee8) 94%, transparent);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   display: flex;
@@ -96,6 +96,102 @@
 }
 .x-grille.gr-detail-open .gr-zoom {
   pointer-events: none;
+}
+/* Grille ou canevas ; ranger ; ajouter ses photos. */
+.x-grille .gr-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.x-grille .gr-views {
+  display: inline-flex;
+  pointer-events: auto;
+  border: 1px solid var(--ink, #121212);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.x-grille .gr-views button,
+.x-grille .gr-tidy,
+.x-grille .gr-add {
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 500 11px/26px var(--f-mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.x-grille .gr-views button[aria-pressed="true"] {
+  background: var(--ink, #121212);
+  color: var(--paper, #efeee8);
+}
+.x-grille .gr-tidy,
+.x-grille .gr-add {
+  border: 1px solid var(--ink, #121212);
+  border-radius: 999px;
+}
+.x-grille:not([data-view="canevas"]) .gr-tidy {
+  display: none;
+}
+.x-grille .gr-add {
+  position: relative;
+  display: inline-block;
+}
+.x-grille .gr-add input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+}
+.x-grille .gr-views button:focus-visible,
+.x-grille .gr-tidy:focus-visible,
+.x-grille .gr-add:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper, #efeee8), 0 0 0 4px var(--spot, #c8321c);
+}
+.x-grille.gr-detail-open .gr-views,
+.x-grille.gr-detail-open .gr-tidy,
+.x-grille.gr-detail-open .gr-add {
+  pointer-events: none;
+}
+/* Petit écran : la pastille se réduit à ses boutons. */
+@media (max-width: 600px) {
+  .x-grille .gr-hint,
+  .x-grille .gr-long {
+    display: none;
+  }
+  .x-grille .gr-head {
+    gap: 6px 10px;
+  }
+}
+/* Le voile quand on survole le mur avec des fichiers. */
+.x-grille .gr-drop {
+  position: absolute;
+  z-index: 3;
+  inset: 12px;
+  border: 2px dashed var(--spot, #c8321c);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper, #efeee8) 55%, transparent);
+  display: grid;
+  place-items: center;
+  font: 500 13px/1.4 var(--f-mono, monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--spot, #c8321c);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.x-grille[data-full] .gr-drop {
+  position: fixed;
+}
+.x-grille.gr-dropping .gr-drop {
+  opacity: 1;
 }
 .x-grille .gr-hint {
   font: 12px/1.4 var(--f-mono, monospace);

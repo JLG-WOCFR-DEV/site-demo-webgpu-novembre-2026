@@ -11,7 +11,7 @@
  * verticale fait défiler la page et seuls les gestes horizontaux tirent le mur.
  */
 import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
-import { loadPhotoArray } from "../../gpu/photos.ts";
+import { fromImage, growPhotoArray, loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { getDevice } from "../device.ts";
@@ -22,7 +22,7 @@ struct Tile {
   rect: vec4f,   // x, y, l, h (px écran)
   uv: vec4f,     // fenêtre de lecture dans la photo
   p: vec4f,      // couche, opacité, rayon (px), niveau de mipmap
-  q: vec4f,      // décalage des couleurs (px), 0, 0, 0
+  q: vec4f,      // décalage des couleurs (px), rotation (rad), liseré blanc (px), 0
 };
 struct U { res: vec4f, misc: vec4f }; // largeur, hauteur, dpr, temps ; fil de fer
 
@@ -41,7 +41,11 @@ struct VsOut {
 fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut {
   let t = tiles[ii];
   let c = vec2f(f32(vi & 1u), f32((vi >> 1u) & 1u));
-  let p = t.rect.xy + c * t.rect.zw;
+  // Rotation autour du centre (les tirages posés sur le canevas sont de travers).
+  let lp = (c - 0.5) * t.rect.zw;
+  let cr = cos(t.q.y);
+  let sr = sin(t.q.y);
+  let p = t.rect.xy + 0.5 * t.rect.zw + vec2f(lp.x * cr - lp.y * sr, lp.x * sr + lp.y * cr);
   var o: VsOut;
   o.clip = vec4f(p.x / u.res.x * 2.0 - 1.0, 1.0 - p.y / u.res.y * 2.0, 0.0, 1.0);
   o.local = c;
@@ -75,8 +79,11 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     textureSampleLevel(photos, samp, uv, layer, t.p.w).g,
     textureSampleLevel(photos, samp, uv - du, layer, t.p.w).b,
   );
+  // Liseré blanc d'un tirage : la photo s'arrête à quelques pixels du bord.
+  let img = 1.0 - smoothstep(-t.q.z - 0.75, -t.q.z + 0.75, d);
+  let printed = mix(vec3f(0.985, 0.98, 0.965), col, select(1.0, img, t.q.z > 0.0));
   let a = cover * t.p.y;
-  return vec4f(col * a, a);
+  return vec4f(printed * a, a);
 }
 `;
 
@@ -151,7 +158,6 @@ export function mount(root: HTMLElement) {
    * les photos de même proportion permutent, pour que la répétition ne se
    * voie pas.
    */
-  const N = photos.length;
   const variety = root.dataset.variety === undefined ? 1 : Number(root.dataset.variety);
   const classes = new Map<string, number[]>();
   for (const p of photos) classes.set(p.cls, [...(classes.get(p.cls) ?? []), p.layer]);
@@ -184,7 +190,7 @@ export function mount(root: HTMLElement) {
     const slots: Slot[] = [];
     let y = 0;
     let placed = 0;
-    while (y < Math.max(vh * 1.6, base * 7) || placed < 2 * N) {
+    while (y < Math.max(vh * 1.6, base * 7) || placed < 2 * photos.length) {
       const f = FACTORS[Math.floor(rnd() * FACTORS.length)]!;
       const target = base * (1 + (f - 1) * variety);
       const row: number[] = [];
@@ -257,6 +263,12 @@ export function mount(root: HTMLElement) {
   };
   /** Zoom vers une cible, en gardant fixe le point du mur sous l'ancre. */
   const zoomTo = (z: number, ax = W() / 2, ay = H() / 2) => {
+    if (mode === "canevas") {
+      czT = Math.max(0.2, Math.min(3, z));
+      canchor.x = ax;
+      canchor.y = ay;
+      return;
+    }
     zoomT = Math.max(0.3, Math.min(3, z));
     anchor.x = ax;
     anchor.y = ay;
@@ -267,13 +279,185 @@ export function mount(root: HTMLElement) {
 
   const cam = { x: 0, y: 0, vx: 0, vy: 0 };
   Object.assign(cam, initCam());
+
+  /* ───── Le canevas : les photos posées librement, en piles ───── */
+
+  /*
+   * D'après la vue « Canvas » d'Atlas : chaque photo existe une fois, comme
+   * un tirage posé sur une table ; on la glisse, on la pose sur une autre
+   * pour faire une pile, on laisse de la place. Le canevas a sa propre caméra
+   * (déplacement, zoom) ; la disposition est gardée dans ce navigateur.
+   */
+  type Item = { x: number; y: number; w: number; h: number; rot: number; pile: number; z: number; ax: number; ay: number; arot: number };
+  type View = "grille" | "canevas";
+  let mode: View = root.dataset.view === "canevas" ? "canevas" : "grille";
+  const cc = { x: 0, y: 0, vx: 0, vy: 0 };
+  let cz = 0.8;
+  let czT = 0.8;
+  const canchor = { x: 0, y: 0 };
+  const items: Item[] = [];
+  let zTop = 0;
+  let pileNext = 1;
+  const STORE = `grille-canevas:${location.pathname}:${param}`;
+  const save = () => {
+    try {
+      const o: Record<string, [number, number, number, number, number, number]> = {};
+      photos.forEach((p, i) => {
+        const it = items[i];
+        if (it && !p.id.startsWith("local-")) o[p.id] = [Math.round(it.x), Math.round(it.y), Math.round(it.h), +it.rot.toFixed(3), it.pile, it.z];
+      });
+      localStorage.setItem(STORE, JSON.stringify(o));
+    } catch {
+      /* stockage indisponible : la disposition ne sera pas gardée */
+    }
+  };
+  /** Un tirage pour une photo : hauteur variée, légèrement de travers. */
+  const newItem = (p: Photo, x: number, y: number, h: number, rot: number): Item => ({ x, y, w: h * p.frame, h, rot, pile: -1, z: ++zTop, ax: x, ay: y, arot: rot });
+  /** Disposition de départ : un semis lâche, et une pile pour montrer le geste. */
+  const scatter = () => {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    // Des rangées d'environ la largeur de la vue, chaque tirage à sa largeur, avec du jeu.
+    const B = 230;
+    const rowW = Math.max(B * 4, W() / 0.8);
+    let x = 0;
+    let y = 0;
+    photos.forEach((p, i) => {
+      const h = B * (0.8 + 0.4 * rnd());
+      const w = h * p.frame;
+      if (x > 0 && x + w > rowW) {
+        x = 0;
+        y += B * 1.45;
+      }
+      items[i] = newItem(p, x + (rnd() - 0.5) * 30, y + (B * 1.2 - h) / 2 + (rnd() - 0.5) * 40, h, (rnd() - 0.5) * 0.14);
+      x += w + B * (0.25 + 0.3 * rnd());
+    });
+    // Les trois dernières photos en pile sur la quatrième avant la fin.
+    const n = photos.length;
+    if (n >= 5) {
+      const base = items[n - 4]!;
+      const id = pileNext++;
+      base.pile = id;
+      for (let k = n - 3; k < n; k++) {
+        const it = items[k]!;
+        it.pile = id;
+        it.x = it.ax = base.x + (k - n + 4) * 10;
+        it.y = it.ay = base.y + (k - n + 4) * 8;
+        it.rot = it.arot = (rnd() - 0.5) * 0.24;
+        it.z = ++zTop;
+      }
+    }
+  };
+  const restore = () => {
+    scatter();
+    try {
+      const o = JSON.parse(localStorage.getItem(STORE) ?? "null") as Record<string, number[]> | null;
+      if (!o) return;
+      photos.forEach((p, i) => {
+        const v = o[p.id];
+        const it = items[i];
+        if (!v || !it) return;
+        [it.x, it.y, it.h, it.rot, it.pile, it.z] = v as [number, number, number, number, number, number];
+        it.w = it.h * p.frame;
+        it.ax = it.x;
+        it.ay = it.y;
+        it.arot = it.rot;
+        zTop = Math.max(zTop, it.z);
+        pileNext = Math.max(pileNext, it.pile + 1);
+      });
+    } catch {
+      /* disposition illisible : on garde le semis */
+    }
+  };
+  /** Cadre la caméra du canevas sur tous les tirages. */
+  const fitCanvas = () => {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const it of items) {
+      x0 = Math.min(x0, it.x);
+      y0 = Math.min(y0, it.y);
+      x1 = Math.max(x1, it.x + it.w);
+      y1 = Math.max(y1, it.y + it.h);
+    }
+    const z = Math.max(0.3, Math.min(1, Math.min((W() - 80) / (x1 - x0), (H() - 140) / (y1 - y0))));
+    cz = czT = z;
+    cc.x = W() / 2 - ((x0 + x1) / 2) * z;
+    cc.y = H() / 2 - ((y0 + y1) / 2) * z - 20;
+    cc.vx = cc.vy = 0;
+  };
+  restore();
+  fitCanvas();
+  /** Rectangle à l'écran d'un tirage (avant rotation), position affichée. */
+  const itemRect = (i: number): Rect => {
+    const it = items[i]!;
+    return { x: it.ax * cz + cc.x, y: it.ay * cz + cc.y, w: it.w * cz, h: it.h * cz };
+  };
+  /** Le tirage sous le point (le plus haut), en tenant compte de sa rotation. */
+  const itemAt = (x: number, y: number) => {
+    let best = -1;
+    let bz = -Infinity;
+    items.forEach((it, i) => {
+      const r = itemRect(i);
+      const cx = r.x + r.w / 2;
+      const cy = r.y + r.h / 2;
+      const c = Math.cos(-it.arot);
+      const sn = Math.sin(-it.arot);
+      const lx = (x - cx) * c - (y - cy) * sn;
+      const ly = (x - cx) * sn + (y - cy) * c;
+      if (Math.abs(lx) <= r.w / 2 && Math.abs(ly) <= r.h / 2 && it.z > bz) {
+        bz = it.z;
+        best = i;
+      }
+    });
+    return best;
+  };
+  const gridHint = root.querySelector("[data-gr-hint]")?.textContent ?? "";
+  const syncUi = () => {
+    root.dataset.view = mode;
+    for (const b of root.querySelectorAll<HTMLButtonElement>("[data-gr-view]")) b.setAttribute("aria-pressed", String(b.dataset.grView === mode));
+    const hint = root.querySelector("[data-gr-hint]");
+    if (hint) hint.textContent = mode === "canevas" ? "Glissez une photo ; posez-la sur une autre pour faire une pile." : gridHint;
+  };
+  syncUi();
+  /** Bascule grille ↔ canevas : chaque photo vole d'une vue à l'autre. */
+  let morph: { t0: number; from: number; to: number; tiles: Map<number, Tile> } | null = null;
+  const MORPH_MS = 1100;
+  const setMode = (m: View) => {
+    if (m === mode && !morph) return;
+    const tiles = new Map<number, Tile>();
+    for (const p of photos) tiles.set(p.layer, nearestTile(p));
+    const cur = morph ? morphValue(clockNow()) : mode === "canevas" ? 1 : 0;
+    morph = { t0: clockNow(), from: cur, to: m === "canevas" ? 1 : 0, tiles };
+    mode = m;
+    syncUi();
+    say(m === "canevas" ? "Vue canevas : les photos posées librement." : "Vue grille : le mur infini.");
+  };
+  const morphValue = (now: number) => {
+    if (!morph) return mode === "canevas" ? 1 : 0;
+    const t = reduced.matches ? 1 : Math.min(1, (now - morph.t0) / MORPH_MS);
+    return morph.from + (morph.to - morph.from) * ease(t);
+  };
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-gr-view]")) b.addEventListener("click", () => setMode(b.dataset.grView === "canevas" ? "canevas" : "grille"));
+  root.querySelector<HTMLButtonElement>("[data-gr-tidy]")?.addEventListener("click", () => {
+    // Ranger : le semis de départ, en douceur.
+    const old = items.map((it) => ({ ax: it.ax, ay: it.ay, arot: it.arot }));
+    scatter();
+    items.forEach((it, i) => Object.assign(it, old[i]));
+    save();
+    fitCanvas();
+  });
   let drag: { id: number; sx: number; sy: number; lx: number; ly: number; lt: number; moved: number } | null = null;
   const ptr = { x: -1, y: -1, in: false };
 
   /* ───── Navigation : vraies URL, sans rechargement ───── */
 
-  type Fly = { photo: Photo; from: Rect; t0: number; dir: 1 | -1; tile: Tile };
-  let open: { photo: Photo; tile: Tile } | null = null;
+  /** D'où part une photo qu'on ouvre : une case de la grille, ou un tirage du canevas. */
+  type Ref = { tile: Tile; item?: undefined } | { item: number; tile?: undefined };
+  const refRect = (r: Ref): Rect & { rot: number } => (r.tile ? { ...tileRect(r.tile), rot: 0 } : { ...itemRect(r.item!), rot: items[r.item!]!.arot });
+  type Fly = { photo: Photo; from: Rect & { rot: number }; t0: number; dir: 1 | -1; ref: Ref };
+  let open: { photo: Photo; ref: Ref } | null = null;
   let fly: Fly | null = null;
   const FLY_MS = 950;
   const heroRect = (): Rect => {
@@ -327,16 +511,18 @@ export function mount(root: HTMLElement) {
     root.classList.remove("gr-detail-open");
   };
 
-  /** Ouvre une photo depuis sa case : la case vole vers la page. */
-  const openPhoto = (p: Photo, tile: Tile, push = true) => {
+  /** Ouvre une photo depuis sa case ou son tirage : elle vole vers la page. */
+  const openPhoto = (p: Photo, ref: Ref, push = true) => {
     if (push) history.pushState({ [param]: p.id }, "", urlWith(p.id));
-    open = { photo: p, tile };
-    fly = { photo: p, from: tileRect(tile), t0: clockNow(), dir: 1, tile };
+    open = { photo: p, ref };
+    fly = { photo: p, from: refRect(ref), t0: clockNow(), dir: 1, ref };
     showDetail(p);
   };
+  /** La référence d'une photo dans la vue courante. */
+  const refOf = (p: Photo): Ref => (mode === "canevas" ? { item: p.layer } : { tile: nearestTile(p) });
   const closePhoto = () => {
     if (!open) return;
-    fly = { photo: open.photo, from: heroRect(), t0: clockNow(), dir: -1, tile: open.tile };
+    fly = { photo: open.photo, from: { ...heroRect(), rot: 0 }, t0: clockNow(), dir: -1, ref: open.ref };
     open = null;
     hideDetail();
     say("Retour au mur.");
@@ -368,26 +554,130 @@ export function mount(root: HTMLElement) {
     const id = new URLSearchParams(location.search).get(param);
     const p = id ? byId.get(id) : undefined;
     if (p && !open) {
-      openPhoto(p, nearestTile(p), push);
+      openPhoto(p, refOf(p), push);
     } else if (!p && open) {
       closePhoto();
     }
   };
   const onPop = () => route(false);
   addEventListener("popstate", onPop);
-  for (const a of root.querySelectorAll<HTMLAnchorElement>(".gr-index a")) {
+  const wireLink = (a: HTMLAnchorElement) =>
     a.addEventListener("click", (e) => {
       e.preventDefault();
       const p = byId.get(a.dataset.photo!);
       if (!p) return;
-      openPhoto(p, nearestTile(p));
+      openPhoto(p, refOf(p));
     });
+  root.querySelectorAll<HTMLAnchorElement>(".gr-index a").forEach(wireLink);
+
+  /* ───── Déposer ses photos ───── */
+
+  /*
+   * Glisser des fichiers sur le mur (ou « Ajouter des photos ») : chaque
+   * image entre dans la grille et sur le canevas, où le lot arrive en pile
+   * sous le point de dépôt. Les fichiers restent dans cet onglet : rien
+   * n'est envoyé nulle part, et ils ne sont pas gardés au rechargement.
+   */
+  /** Envoi d'une photo au GPU (prêt une fois le rendu démarré). */
+  let gpuAdd: ((ps: Photo[]) => Promise<void>) | null = null;
+  const urls: string[] = [];
+  const addFiles = async (files: File[], at?: { x: number; y: number }) => {
+    const imgs = files.filter((f) => f.type.startsWith("image/"));
+    if (!imgs.length || open) return;
+    const added: Photo[] = [];
+    for (const f of imgs) {
+      const url = URL.createObjectURL(f);
+      const img = new Image();
+      img.src = url;
+      try {
+        await img.decode();
+      } catch {
+        URL.revokeObjectURL(url);
+        continue;
+      }
+      urls.push(url);
+      img.alt = f.name;
+      img.width = img.naturalWidth;
+      img.height = img.naturalHeight;
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const id = `local-${Date.now().toString(36)}-${photos.length}`;
+      const title = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Sans titre";
+      const p: Photo = { id, img, layer: photos.length, title, body: "Déposée depuis votre ordinateur : elle reste dans cet onglet, rien n'est envoyé.", aspect, frame: aspect, cls: aspect.toFixed(2) };
+      photos.push(p);
+      byId.set(id, p);
+      classes.set(p.cls, [...(classes.get(p.cls) ?? []), p.layer]);
+      added.push(p);
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = `?${param}=${id}`;
+      a.dataset.photo = id;
+      a.textContent = title;
+      wireLink(a);
+      li.append(a);
+      root.querySelector(".gr-index ol")?.append(li);
+    }
+    if (!added.length) return;
+    // Sur le canevas : le lot en pile, sous le point de dépôt (ou au milieu de la vue).
+    const c = at ?? { x: W() / 2, y: H() / 2 };
+    const wx = (c.x - cc.x) / cz;
+    const wy = (c.y - cc.y) / cz;
+    const pile = added.length > 1 ? pileNext++ : -1;
+    added.forEach((p, k) => {
+      const h = 230;
+      const it = newItem(p, wx - (h * p.frame) / 2 + k * 12, wy - h / 2 + k * 9, h, (Math.sin(p.layer * 12.9898) * 0.5) * 0.2);
+      it.pile = pile;
+      // Elles tombent d'un peu plus haut.
+      it.ay -= 60;
+      items[p.layer] = it;
+    });
+    // La grille se refait avec les nouvelles venues.
+    morph = null;
+    build();
+    await gpuAdd?.(added);
+    say(added.length > 1 ? `${added.length} photos ajoutées, en pile sur le canevas.` : `« ${added[0]!.title} » ajoutée au mur.`);
+  };
+  let dragDepth = 0;
+  const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes("Files");
+  const onDragEnter = (e: DragEvent) => {
+    if (!hasFiles(e) || open) return;
+    e.preventDefault();
+    dragDepth++;
+    root.classList.add("gr-dropping");
+  };
+  const onDragOver = (e: DragEvent) => {
+    if (!hasFiles(e) || open) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = "copy";
+  };
+  const onDragLeave = () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) root.classList.remove("gr-dropping");
+  };
+  const onDrop = (e: DragEvent) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    root.classList.remove("gr-dropping");
+    void addFiles([...e.dataTransfer!.files], mode === "canevas" ? local(e) : undefined);
+  };
+  const dropTarget = full ? window : root;
+  if (root.querySelector("[data-gr-add]") || root.dataset.drop !== undefined) {
+    dropTarget.addEventListener("dragenter", onDragEnter as EventListener);
+    dropTarget.addEventListener("dragover", onDragOver as EventListener);
+    dropTarget.addEventListener("dragleave", onDragLeave as EventListener);
+    dropTarget.addEventListener("drop", onDrop as EventListener);
   }
+  root.querySelector<HTMLInputElement>("[data-gr-add]")?.addEventListener("change", (e) => {
+    const input = e.currentTarget as HTMLInputElement;
+    void addFiles([...(input.files ?? [])]).then(() => (input.value = ""));
+  });
 
   /* ───── Tirer le mur ───── */
 
   // Pincer à deux doigts : zoom autour du milieu des doigts.
   const touches = new Map<number, { x: number; y: number }>();
+  /** Tirage tenu sur le canevas (−1 : on déplace la table). */
+  let held = -1;
   let pinch: { d: number; z: number } | null = null;
   canvas.addEventListener("pointerdown", (e) => {
     if (open || e.button !== 0) return;
@@ -401,6 +691,14 @@ export function mount(root: HTMLElement) {
     drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), moved: 0 };
     canvas.setPointerCapture(e.pointerId);
     cam.vx = cam.vy = 0;
+    cc.vx = cc.vy = 0;
+    held = -1;
+    if (mode === "canevas" && !morph) {
+      const l = local(e);
+      held = itemAt(l.x, l.y);
+      // Le tirage saisi passe au-dessus de tout.
+      if (held >= 0) items[held]!.z = ++zTop;
+    }
     root.classList.add("gr-dragging");
   });
   canvas.addEventListener("pointermove", (e) => {
@@ -420,11 +718,27 @@ export function mount(root: HTMLElement) {
     const dt = Math.max(1, now - drag.lt) / 1000;
     const dx = e.clientX - drag.lx;
     const dy = e.clientY - drag.ly;
-    cam.x += dx;
-    cam.y += dy;
-    // Vitesse lissée, pour l'élan au lâcher.
-    cam.vx = cam.vx * 0.6 + (dx / dt) * 0.4;
-    cam.vy = cam.vy * 0.6 + (dy / dt) * 0.4;
+    if (mode === "canevas") {
+      if (held >= 0) {
+        // Le tirage suit le pointeur, directement.
+        const it = items[held]!;
+        it.x += dx / cz;
+        it.y += dy / cz;
+        it.ax = it.x;
+        it.ay = it.y;
+      } else {
+        cc.x += dx;
+        cc.y += dy;
+        cc.vx = cc.vx * 0.6 + (dx / dt) * 0.4;
+        cc.vy = cc.vy * 0.6 + (dy / dt) * 0.4;
+      }
+    } else {
+      cam.x += dx;
+      cam.y += dy;
+      // Vitesse lissée, pour l'élan au lâcher.
+      cam.vx = cam.vx * 0.6 + (dx / dt) * 0.4;
+      cam.vy = cam.vy * 0.6 + (dy / dt) * 0.4;
+    }
     drag.lx = e.clientX;
     drag.ly = e.clientY;
     drag.lt = now;
@@ -438,12 +752,20 @@ export function mount(root: HTMLElement) {
     const click = drag.moved < 6 && e.type === "pointerup";
     drag = null;
     root.classList.remove("gr-dragging");
+    const h = held;
+    held = -1;
+    if (mode === "canevas") {
+      if (h < 0) return;
+      if (click) return openPhoto(photos[h]!, { item: h });
+      dropOn(h);
+      return;
+    }
     if (!click) return;
     const l = local(e);
     const hit = hitTest(l.x, l.y);
     if (hit) {
       cam.vx = cam.vy = 0;
-      openPhoto(hit.photo, hit.tile);
+      openPhoto(hit.photo, { tile: hit.tile });
     }
   };
   canvas.addEventListener("pointerup", endDrag);
@@ -455,14 +777,15 @@ export function mount(root: HTMLElement) {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const l = local(e);
-      zoomTo(zoomT * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0025)), l.x, l.y);
+      zoomTo((mode === "canevas" ? czT : zoomT) * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0025)), l.x, l.y);
       return;
     }
     if (!full && Math.abs(e.deltaX) <= Math.abs(e.deltaY) && !e.shiftKey) return;
     e.preventDefault();
     const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
-    cam.vx -= dx * 6;
-    if (full) cam.vy -= e.deltaY * 6;
+    const c = mode === "canevas" ? cc : cam;
+    c.vx -= dx * 6;
+    if (full) c.vy -= e.deltaY * 6;
   };
   (full ? window : root).addEventListener("wheel", onWheel as EventListener, { passive: false });
   const onKey = (e: KeyboardEvent) => {
@@ -471,19 +794,53 @@ export function mount(root: HTMLElement) {
       return;
     }
     if (!full && e.target !== root) return;
-    if (e.key === "+" || e.key === "=") return zoomTo(zoomT * 1.25);
-    if (e.key === "-" || e.key === "_") return zoomTo(zoomT / 1.25);
-    if (e.key === "0") return zoomTo(1);
+    const zt = mode === "canevas" ? czT : zoomT;
+    if (e.key === "+" || e.key === "=") return zoomTo(zt * 1.25);
+    if (e.key === "-" || e.key === "_") return zoomTo(zt / 1.25);
+    if (e.key === "0") return mode === "canevas" ? fitCanvas() : zoomTo(1);
+    const c = mode === "canevas" ? cc : cam;
     const k = 900;
-    if (e.key === "ArrowLeft") cam.vx += k;
-    else if (e.key === "ArrowRight") cam.vx -= k;
-    else if (e.key === "ArrowUp") cam.vy += k;
-    else if (e.key === "ArrowDown") cam.vy -= k;
+    if (e.key === "ArrowLeft") c.vx += k;
+    else if (e.key === "ArrowRight") c.vx -= k;
+    else if (e.key === "ArrowUp") c.vy += k;
+    else if (e.key === "ArrowDown") c.vy -= k;
     else return;
     if (!full) e.preventDefault();
   };
   (full ? window : root).addEventListener("keydown", onKey as EventListener);
 
+  /** Un tirage lâché : posé sur un autre, il rejoint (ou commence) une pile ; ailleurs, il la quitte. */
+  function dropOn(i: number) {
+    const it = items[i]!;
+    const r = itemRect(i);
+    const under = (() => {
+      let best = -1;
+      let bz = -Infinity;
+      items.forEach((o, k) => {
+        if (k === i) return;
+        const q = itemRect(k);
+        const cx = r.x + r.w / 2;
+        const cy = r.y + r.h / 2;
+        if (cx > q.x && cx < q.x + q.w && cy > q.y && cy < q.y + q.h && o.z > bz) ((bz = o.z), (best = k));
+      });
+      return best;
+    })();
+    if (under >= 0) {
+      const o = items[under]!;
+      const id = o.pile >= 0 ? o.pile : pileNext++;
+      o.pile = id;
+      const n = items.filter((x) => x.pile === id).length;
+      it.pile = id;
+      // Il se pose sur la pile, un peu décalé, un peu de travers.
+      it.x = o.x + (o.w - it.w) / 2 + ((n % 3) - 1) * 9;
+      it.y = o.y + (o.h - it.h) / 2 + n * 4;
+      it.rot = ((n * 37) % 11 - 5) * 0.025;
+      say(`${photos[i]!.title} posée sur la pile de ${photos[under]!.title} (${n + 1} photos).`);
+    } else {
+      it.pile = -1;
+    }
+    save();
+  }
   function hitTest(x: number, y: number) {
     for (const t of visible(0)) {
       const r = tileRect(t);
@@ -492,7 +849,10 @@ export function mount(root: HTMLElement) {
     return null;
   }
   for (const b of root.querySelectorAll<HTMLButtonElement>("[data-gr-zoom]")) {
-    b.addEventListener("click", () => zoomTo(Number(b.dataset.grZoom) > 0 ? zoomT * 1.4 : zoomT / 1.4));
+    b.addEventListener("click", () => {
+      const zt = mode === "canevas" ? czT : zoomT;
+      zoomTo(Number(b.dataset.grZoom) > 0 ? zt * 1.4 : zt / 1.4);
+    });
   }
 
   /* ───── Rendu ───── */
@@ -513,7 +873,10 @@ export function mount(root: HTMLElement) {
     unwire = addDebugWire((on) => (wire = on));
     if (full) setDebugCaps({ ...rec.caps, fileName: () => `webgpu-demo-ubs-grille${open ? `-${open.photo.id}` : ""}` });
 
-    const { tex, width: TW, mips: MIPS } = await loadPhotoArray(device, photos.map((p) => p.img));
+    const loaded = photos.length;
+    const arr = await loadPhotoArray(device, photos.map((p) => p.img), 768, 512, 4);
+    let tex = arr.tex;
+    const { width: TW, height: TH, mips: MIPS } = arr;
     const mod = device.createShaderModule({ code: SHADER });
     const errs = (await mod.getCompilationInfo()).messages.filter((m) => m.type === "error");
     if (errs.length) throw new Error(errs.map((m) => `${m.lineNum}:${m.message}`).join("\n"));
@@ -531,15 +894,33 @@ export function mount(root: HTMLElement) {
     const tbuf = device.createBuffer({ size: MAX_TILES * 64, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
     const tdata = new Float32Array(MAX_TILES * 16);
     const udata = new Float32Array(8);
-    const bind = device.createBindGroup({
-      layout: pipe.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: ubuf } },
-        { binding: 1, resource: { buffer: tbuf } },
-        { binding: 2, resource: device.createSampler({ magFilter: "linear", minFilter: "linear", mipmapFilter: "linear" }) },
-        { binding: 3, resource: tex.createView({ dimension: "2d-array" }) },
-      ],
-    });
+    const sampler = device.createSampler({ magFilter: "linear", minFilter: "linear", mipmapFilter: "linear" });
+    const makeBind = () =>
+      device.createBindGroup({
+        layout: pipe.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: { buffer: ubuf } },
+          { binding: 1, resource: { buffer: tbuf } },
+          { binding: 2, resource: sampler },
+          { binding: 3, resource: tex.createView({ dimension: "2d-array" }) },
+        ],
+      });
+    let bind = makeBind();
+    // Une photo déposée : le tableau grandit par paquets de 8 couches, puis on y copie l'image.
+    // (On agrandit d'abord, en une fois : une copie en cours ne doit pas viser l'ancien tableau.)
+    let queue = Promise.resolve();
+    gpuAdd = (ps) => (queue = queue.then(() => upload(ps)));
+    const upload = async (ps: Photo[]) => {
+      const need = Math.max(...ps.map((p) => p.layer)) + 1;
+      if (need > tex.depthOrArrayLayers) {
+        tex = growPhotoArray(device, tex, Math.ceil(need / 8) * 8);
+        bind = makeBind();
+      }
+      const into = tex;
+      await Promise.all(ps.map((p) => fromImage(device, into, p.img, p.layer, TW, TH, MIPS)));
+    };
+    // Des photos déposées pendant le chargement.
+    if (photos.length > loaded) await gpuAdd(photos.slice(loaded));
 
     root.classList.add("gr-gl");
     route(false);
@@ -575,15 +956,33 @@ export function mount(root: HTMLElement) {
         zoom = nz;
       }
 
-      // Inertie : la vitesse s'éteint en exponentielle.
-      if (!drag) {
-        cam.x += cam.vx * dt;
-        cam.y += cam.vy * dt;
-        const f = Math.exp(-dt * (reduced.matches ? 30 : 3.2));
-        cam.vx *= f;
-        cam.vy *= f;
+      if (Math.abs(czT - cz) > 1e-4) {
+        const nz = reduced.matches ? czT : cz + (czT - cz) * (1 - Math.exp(-dt * 12));
+        cc.x = canchor.x - ((canchor.x - cc.x) / cz) * nz;
+        cc.y = canchor.y - ((canchor.y - cc.y) / cz) * nz;
+        cz = nz;
       }
-      const speed = Math.hypot(cam.vx, cam.vy);
+
+      // Inertie : la vitesse s'éteint en exponentielle (la vue qu'on tient ne glisse pas).
+      const fr = Math.exp(-dt * (reduced.matches ? 30 : 3.2));
+      for (const [c, held_] of [[cam, mode === "grille" && !!drag], [cc, mode === "canevas" && !!drag && held < 0]] as const) {
+        if (held_) continue;
+        c.x += c.vx * dt;
+        c.y += c.vy * dt;
+        c.vx *= fr;
+        c.vy *= fr;
+      }
+      // Tirages : la position affichée rejoint la position voulue (pile, rangement).
+      const kk = reduced.matches ? 1 : 1 - Math.exp(-dt * 14);
+      items.forEach((it, i) => {
+        if (i === held) return;
+        it.ax += (it.x - it.ax) * kk;
+        it.ay += (it.y - it.ay) * kk;
+        it.arot += (it.rot - it.arot) * kk;
+      });
+      const mt = morphValue(now);
+      if (morph && (reduced.matches || now - morph.t0 >= MORPH_MS)) morph = null;
+      const speed = mode === "grille" ? Math.hypot(cam.vx, cam.vy) : 0;
       // Réaction à la vitesse : les cases se resserrent, l'image glisse, les couleurs se décalent.
       const squeeze = 1 - Math.min(0.14, speed / 9000) * m;
       const slideX = Math.max(-1, Math.min(1, cam.vx / 4000)) * 0.06 * m;
@@ -599,20 +998,23 @@ export function mount(root: HTMLElement) {
       const detailK = open ? ease(flyT) : fly && fly.dir === -1 ? 1 - ease(flyT) : 0;
 
       let n = 0;
-      const flying = fly ?? (open ? { tile: open.tile, photo: open.photo } : null);
-      const put = (x: number, y: number, w: number, h: number, p: Photo, alpha: number, radius: number, extra = 0) => {
+      const flying = fly ?? (open ? { ref: open.ref, photo: open.photo } : null);
+      const flyItem = flying?.ref.item;
+      const flyTile = flying?.ref.tile;
+      const morphTiles = morph ? new Set([...morph.tiles.entries()].map(([, t]) => `${t.s},${t.i},${t.j}`)) : null;
+      const put = (x: number, y: number, w: number, h: number, p: Photo, alpha: number, radius: number, extra = 0, rot = 0, border = 0, still = 0) => {
         if (n >= MAX_TILES) return;
-        // Parallaxe : l'image glisse dans son cadre selon sa place à l'écran.
-        const px = ((x + w / 2) / vw - 0.5) * 0.08 * m + slideX;
-        const py = ((y + h / 2) / vh - 0.5) * 0.08 * m + slideY;
+        // Parallaxe : l'image glisse dans son cadre selon sa place à l'écran (pas un tirage posé).
+        const px = (((x + w / 2) / vw - 0.5) * 0.08 * m + slideX) * (1 - still);
+        const py = (((y + h / 2) / vh - 0.5) * 0.08 * m + slideY) * (1 - still);
         // Recadrage « cover » de la photo dans la case, plus une marge pour la parallaxe.
         const aspect = w / h;
         let uw = 1;
         let uh = 1;
         if (aspect < p.aspect) uw = aspect / p.aspect;
         else uh = p.aspect / aspect;
-        uw *= 0.88;
-        uh *= 0.88;
+        uw *= 0.88 + 0.12 * still;
+        uh *= 0.88 + 0.12 * still;
         const cx = 0.5 + px * 0.5;
         const cy = 0.5 + py * 0.5;
         const o = n * 16;
@@ -620,38 +1022,66 @@ export function mount(root: HTMLElement) {
         tdata.set([cx - uw / 2, cy - uh / 2, cx + uw / 2, cy + uh / 2], o + 4);
         const lod = Math.max(0, Math.min(MIPS - 1, Math.log2(TW / Math.max(1, (w * dpr) / uw))));
         tdata.set([p.layer, alpha, radius * dpr, lod], o + 8);
-        tdata.set([split * dpr + extra, 0, 0, 0], o + 12);
+        tdata.set([split * dpr + extra, rot, border * dpr, 0], o + 12);
         n++;
       };
-      for (const t of visible()) {
-        if (flying && sameTile(flying.tile, t)) continue;
-        const p = photoOf(t);
-        const r = tileRect(t);
-        const key = `${t.s},${t.i},${t.j}`;
-        const over = !open && !drag && ptr.in && ptr.x >= r.x && ptr.x <= r.x + r.w && ptr.y >= r.y && ptr.y <= r.y + r.h;
-        const hv = (hover.get(key) ?? 0) + ((over ? 1 : 0) - (hover.get(key) ?? 0)) * (1 - Math.exp(-dt * 10));
-        if (hv > 0.001) hover.set(key, hv);
-        else hover.delete(key);
-        // Les autres cases s'effacent derrière la page ouverte.
-        const s = squeeze * (1 + 0.03 * hv * m) * (1 - 0.06 * detailK);
-        const w = r.w * s;
-        const h = r.h * s;
-        put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, p, 1 - 0.88 * detailK, Math.min(10, 4 + 6 * zoom));
+      // La grille (elle s'efface quand on bascule vers le canevas).
+      if (mt < 0.999) {
+        for (const t of visible()) {
+          if (flyTile && sameTile(flyTile, t)) continue;
+          const key = `${t.s},${t.i},${t.j}`;
+          // Les cases qui deviennent des tirages sont dessinées avec le canevas.
+          if (morphTiles?.has(key)) continue;
+          const p = photoOf(t);
+          const r = tileRect(t);
+          const over = mode === "grille" && !open && !drag && ptr.in && ptr.x >= r.x && ptr.x <= r.x + r.w && ptr.y >= r.y && ptr.y <= r.y + r.h;
+          const hv = (hover.get(key) ?? 0) + ((over ? 1 : 0) - (hover.get(key) ?? 0)) * (1 - Math.exp(-dt * 10));
+          if (hv > 0.001) hover.set(key, hv);
+          else hover.delete(key);
+          // Les autres cases s'effacent derrière la page ouverte.
+          const s = squeeze * (1 + 0.03 * hv * m) * (1 - 0.06 * detailK);
+          const w = r.w * s;
+          const h = r.h * s;
+          put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, p, (1 - 0.88 * detailK) * (1 - mt), Math.min(10, 4 + 6 * zoom));
+        }
       }
-      // La case qui vole, par-dessus.
+      // Le canevas : les tirages, du dessous vers le dessus ; pendant la bascule, chacun vole de sa case à sa place.
+      if (mt > 0.001) {
+        const order = items.map((_, i) => i).sort((a, b) => items[a]!.z - items[b]!.z);
+        for (const i of order) {
+          if (flyItem === i) continue;
+          const it = items[i]!;
+          let r = itemRect(i);
+          let rot = it.arot;
+          const t = morph?.tiles.get(i);
+          if (t && mt < 0.999) {
+            const g = tileRect(t);
+            r = { x: lerp(g.x, r.x, mt), y: lerp(g.y, r.y, mt) - Math.sin(Math.PI * mt) * 30 * m, w: lerp(g.w, r.w, mt), h: lerp(g.h, r.h, mt) };
+            rot *= mt;
+          } else if (mode === "grille") continue;
+          const lifted = i === held ? 1.03 : 1;
+          const w = r.w * lifted;
+          const h = r.h * lifted;
+          put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, photos[i]!, 1 - 0.88 * detailK, lerp(Math.min(10, 4 + 6 * zoom), 2, mt), 0, rot, Math.min(9, 0.04 * Math.min(w, h)) * mt, mt);
+        }
+      }
+      // La photo qui vole vers sa page, par-dessus.
       if (flying) {
-        const cr = tileRect(flying.tile);
+        const cr = refRect(flying.ref);
         const heroR = heroRect();
-        let r = open ? heroR : cr;
+        let r: Rect = open ? heroR : cr;
+        let rot = open ? 0 : cr.rot;
         if (fly) {
           const t = ease(flyT);
-          const to = fly.dir === 1 ? heroR : cr;
+          const to = fly.dir === 1 ? { ...heroR, rot: 0 } : cr;
           const from = fly.from;
           // Un arc léger : la photo se soulève en traversant.
           const lift = Math.sin(Math.PI * t) * 40 * m;
           r = { x: lerp(from.x, to.x, t), y: lerp(from.y, to.y, t) - lift, w: lerp(from.w, to.w, t), h: lerp(from.h, to.h, t) };
+          rot = lerp(from.rot, to.rot, t);
         }
-        put(r.x, r.y, r.w, r.h, flying.photo, 1, lerp(10, 18, detailK), fly ? Math.sin(Math.PI * flyT) * 5 * m * dpr : 0);
+        const fromItem = flying.ref.item !== undefined;
+        put(r.x, r.y, r.w, r.h, flying.photo, 1, lerp(fromItem ? 2 : 10, 18, detailK), fly ? Math.sin(Math.PI * flyT) * 5 * m * dpr : 0, rot, fromItem ? Math.min(9, 0.04 * Math.min(r.w, r.h)) * (1 - detailK) : 0, fromItem ? 1 : 0);
         if (fly && fly.dir === 1 && flyT >= 1) fly = null;
       }
 
@@ -687,6 +1117,11 @@ export function mount(root: HTMLElement) {
     io.disconnect();
     unwire();
     removeEventListener("popstate", onPop);
+    dropTarget.removeEventListener("dragenter", onDragEnter as EventListener);
+    dropTarget.removeEventListener("dragover", onDragOver as EventListener);
+    dropTarget.removeEventListener("dragleave", onDragLeave as EventListener);
+    dropTarget.removeEventListener("drop", onDrop as EventListener);
+    for (const u of urls) URL.revokeObjectURL(u);
     (full ? window : root).removeEventListener("wheel", onWheel as EventListener);
     (full ? window : root).removeEventListener("keydown", onKey as EventListener);
   };
