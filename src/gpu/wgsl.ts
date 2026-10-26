@@ -190,6 +190,7 @@ struct Body {
 @group(1) @binding(2) var samp: sampler;
 @group(1) @binding(3) var atlas: texture_2d<f32>;
 @group(1) @binding(4) var<storage, read> bodies: array<Body>;
+@group(1) @binding(5) var msdf: texture_2d<f32>;
 
 struct VsOut {
   @builtin(position) clip: vec4f,
@@ -198,6 +199,7 @@ struct VsOut {
   @location(2) local: vec2f,
   @location(3) @interpolate(flat) edge: f32,
   @location(4) @interpolate(flat) size: vec2f,
+  @location(5) @interpolate(flat) multi: f32,
 };
 
 fn rot(a: f32) -> mat2x2f {
@@ -253,14 +255,23 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
   if (e.fx > 1.5) { ink = frame.glyph.y; }
   out.edge = 0.75 - ink * 0.14 + (1.0 - reveal) * 0.65;
   out.size = g.size;
+  out.multi = select(0.0, 1.0, g.px < 0.0);
   return out;
 }
 
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4f {
-  let d = textureSample(atlas, samp, in.uv).r;
+  // Les deux atlas sont lus sans condition (contrôle uniforme pour les
+  // dérivées), puis on garde le bon. MTSDF : médiane des trois canaux, bord
+  // à 0,5 ; ses angles restent vifs à toutes les tailles.
+  let single = textureSample(atlas, samp, in.uv).r;
+  let m = textureSample(msdf, samp, in.uv).rgb;
+  let med = max(min(m.r, m.g), min(max(m.r, m.g), m.b));
+  let isMulti = in.multi > 0.5;
+  let d = select(single, med, isMulti);
+  let edge = select(in.edge, 0.5 + (in.edge - 0.75) * 0.85, isMulti);
   let w = max(fwidth(d) * 0.75, 0.002);
-  var a = smoothstep(in.edge - w, in.edge + w, d) * in.color.a;
+  var a = smoothstep(edge - w, edge + w, d) * in.color.a;
   var col = in.color.rgb;
 
   if (frame.glyph.w > 0.5) {
@@ -614,6 +625,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 /* ───────────────────────── Composite ───────────────────────── */
 
 export const MAX_STAGES = 8;
+export const MAX_CHAPTERS = 12;
 
 export const COMPOSITE = /* wgsl */ `
 ${FULLSCREEN_VS}
@@ -628,6 +640,8 @@ struct Post {
   filt: vec4f,     // filtre (0…4), taille (css), intensité, 0
   stages: array<vec4f, ${MAX_STAGES}>, // x, y, w, h en px
   kinds: array<vec4f, ${MAX_STAGES / 4}>,
+  print: vec4f,    // nombre de chapitres, largeur du front (px), actif, 0
+  chapters: array<vec4f, ${MAX_CHAPTERS}>, // haut, bas, profondeur imprimée (px), 0
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -712,6 +726,28 @@ fn halftone(px: vec2f, lens: vec2f, cellCss: f32, gain: f32, misreg: f32) -> vec
     out *= mix(vec3f(1.0), inks[i], cov);
   }
   return out;
+}
+
+// Transition : chaque chapitre s'imprime en montant dans l'écran. La
+// profondeur imprimée ne fait que croître ; un front d'encre irrégulier,
+// plus sombre là où l'encre est encore humide, la sépare du papier vierge.
+fn printed(px: vec2f) -> vec2f {
+  if (u.print.z < 0.5) { return vec2f(1.0, 0.0); }
+  let n = i32(u.print.x);
+  for (var i = 0; i < ${MAX_CHAPTERS}; i++) {
+    if (i >= n) { break; }
+    let c = u.chapters[i];
+    if (px.y >= c.x && px.y < c.y) {
+      let front = u.print.y;
+      let rel = px.y - c.x;
+      let grain = vnoise(px / (34.0 * u.res.z)) * 0.65 + vnoise(px / (7.0 * u.res.z)) * 0.35;
+      let t = (c.z - rel) / front + (grain - 0.5) * 1.6;
+      let m = smoothstep(-0.08, 0.08, t);
+      let wet = (1.0 - smoothstep(0.0, 0.9, t)) * m;
+      return vec2f(m, wet);
+    }
+  }
+  return vec2f(1.0, 0.0);
 }
 
 // Étape 5 : grain et fibre du papier.
@@ -906,6 +942,14 @@ fn fs(in: VsOut) -> @location(0) vec4f {
       let ht = halftone(px, vec2f(0.0), u.trame.x, u.trame.y, u.trame.z);
       col = mix(col, ht, u.trame.w);
     }
+  }
+
+  let pr = printed(px);
+  if (pr.x < 0.999) {
+    // Bord humide : l'encre fraîche est plus dense. On renforce l'écart au
+    // papier, pas la couleur : le papier vierge reste vierge.
+    let wetCol = u.paper.rgb - (u.paper.rgb - col) * (1.0 + 0.6 * pr.y);
+    col = mix(u.paper.rgb, wetCol, pr.x);
   }
 
   if (u.chain2.x > 0.5) {
