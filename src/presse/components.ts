@@ -13,6 +13,7 @@ const REGISTRY: Record<string, () => Promise<{ mount: Mount }>> = {
   liquide: () => import("../components/liquide/liquide.ts"),
   grille: () => import("../components/grille/grille.ts"),
   galerie: () => import("../components/galerie/galerie.ts"),
+  objet: () => import("../components/objet/objet.ts"),
 };
 
 const mounted = new WeakMap<HTMLElement, () => void>();

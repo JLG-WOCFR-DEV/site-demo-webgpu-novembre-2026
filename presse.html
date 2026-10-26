@@ -114,6 +114,10 @@
           <img src="./plates/dunes.jpg" data-title="Les dunes" data-cat="terre" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." />
         </x-galerie>
 
+        <h3 class="pd-h3" data-gl-text>Objet</h3>
+        <p class="pd-p" data-gl-text>Un modèle GLB, un SVG ou une image posés dans un studio et rendus en ASCII, tramé, à l'encre, en verre, en particules ou en liquide. Glissez pour le tourner ; déposez votre fichier dessus. Tous les rendus sont sur la page Atelier.</p>
+        <x-objet style="encre" model="./models/vase.glb" label="Un vase en 3D, rendu à l'encre : glisser pour le tourner"></x-objet>
+
         <h3 class="pd-h3" data-gl-text>Sommaire en lettres</h3>
         <p class="pd-p" data-gl-text>Sans une ligne de JavaScript : les lettres sont découpées à la construction, le reste est du CSS.</p>
         <x-lettres label="Sommaire de cette page">
@@ -158,6 +162,7 @@
               <tr><td><code>&lt;x-liquide&gt;</code></td><td>page</td><td>Grille de photos réordonnable rendue en verre. Attributs : filters, label, full.</td></tr>
               <tr><td><code>&lt;x-grille&gt;</code></td><td>page</td><td>Mur infini, routeur à vraies URL. Attributs : param, label, hint, kicker, full.</td></tr>
               <tr><td><code>&lt;x-galerie&gt;</code></td><td>page</td><td>Galerie 3D : list, grid, barrel, coverflow, helix, ring, sphere, stack, carousel ; ouverture en place, en boîte ou en fiche. Attributs : arrange, options, item, gap, tilt, ripple, selection, backdrop…</td></tr>
+              <tr><td><code>&lt;x-objet&gt;</code></td><td>page</td><td>Objet 3D en studio : style (ascii, tramage, encre, verre, particules, liquide), model (texte:…, noeud, galet, vase, ou un GLB, un SVG, une image), cell, amount, frost, spin.</td></tr>
               <tr><td><code>&lt;x-lettres&gt;</code></td><td>page</td><td>Sommaire aux titres découpés en lettres, sans JavaScript. Attribut : label.</td></tr>
               <tr><td><code>&lt;x-include&gt;</code></td><td>page</td><td>Fragment HTML partagé : src, {{attributs}} remplacés, &lt;slot&gt; pour le contenu.</td></tr>
             </tbody>

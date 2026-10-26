@@ -1,0 +1,160 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #efeee8;
+  --ink: #121212;
+  --ink-soft: #55534d;
+  --rule: #c8c5ba;
+  --spot: #c8321c;
+  --f-text: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body.at {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.5 var(--f-text);
+}
+.at-head {
+  position: fixed;
+  z-index: 4;
+  left: 8px;
+  top: 52px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 14px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  pointer-events: none;
+}
+.at-kicker {
+  margin: 0 0 4px;
+  font: 500 11px/1.4 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.at-title {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 52px);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.95;
+}
+.at-lede {
+  margin: 8px 0 0;
+  font-size: 13px;
+  opacity: 0.8;
+}
+.at-panel {
+  position: fixed;
+  z-index: 5;
+  right: 16px;
+  top: 60px;
+  width: min(320px, calc(100vw - 32px));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  font-size: 13px;
+  display: grid;
+  gap: 10px;
+}
+.at-choice {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.at-choice legend {
+  width: 100%;
+  margin-bottom: 4px;
+  font: 500 11px/1.6 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.at-choice label,
+.at-file {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.at-choice input,
+.at-file input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.at-choice label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.at-choice label:has(input:focus-visible),
+.at-file:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--spot);
+}
+.at-file {
+  justify-self: start;
+  border-style: dashed;
+  border-color: var(--ink);
+}
+.at-range {
+  display: grid;
+  grid-template-columns: 6em 1fr 3em;
+  align-items: center;
+  gap: 8px;
+}
+.at-range[hidden] {
+  display: none;
+}
+.at-range input {
+  width: 100%;
+  accent-color: var(--spot);
+}
+.at-range output {
+  font: 12px/1 var(--f-mono);
+  text-align: right;
+}
+.at-code {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font: 11px/1.5 var(--f-mono);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+@media (max-width: 760px) {
+  .at-lede {
+    display: none;
+  }
+  .at-panel {
+    top: auto;
+    bottom: 12px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 42vh;
+  }
+}

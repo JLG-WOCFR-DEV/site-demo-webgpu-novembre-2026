@@ -1,0 +1,53 @@
+/* Composant <x-objet> : le canvas occupe la figure ; la légende dit ce qui est chargé. */
+.x-objet {
+  position: relative;
+  margin: 0;
+  height: min(70vh, 640px);
+  overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  outline: none;
+  background: var(--paper, #efeee8);
+}
+.x-objet[data-full] {
+  position: fixed;
+  inset: 0;
+  height: auto;
+  touch-action: none;
+}
+.x-objet.ob-dragging {
+  cursor: grabbing;
+}
+.x-objet:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--spot, #c8321c);
+}
+.x-objet .ob-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.x-objet .ob-status {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  margin: 0;
+  font: 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  color: var(--ink-soft, #55534d);
+  pointer-events: none;
+}
+.x-objet.ob-drop::after {
+  content: "Déposez un GLB, un SVG ou une image";
+  position: absolute;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--spot, #c8321c);
+  border-radius: 12px;
+  font: 500 14px/1 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--spot, #c8321c);
+  background: color-mix(in srgb, var(--paper, #efeee8) 80%, transparent);
+}

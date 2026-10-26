@@ -153,6 +153,11 @@ var y = [
 		text: "Neuf arrangements 3D : tonneau, cartes, film, fond dégradé…"
 	},
 	{
+		href: "atelier.html",
+		name: "Atelier",
+		text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide"
+	},
+	{
 		href: "presse.html",
 		name: "Presse",
 		text: "Le framework : un Webflow WebGPU, en attributs HTML"

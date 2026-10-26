@@ -216,7 +216,22 @@ ${li}
 </section>`;
 };
 
-export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie };
+/**
+ * <x-objet style="verre" model="texte:UBS" label="Les lettres UBS en verre">
+ * Styles : ascii, tramage, encre, verre, particules, liquide. Modèle : texte:…,
+ * noeud, galet, vase, ou l'URL d'un GLB, d'un SVG, d'une image.
+ */
+const OB_ATTRS = ["style", "model", "cell", "amount", "frost", "spin"];
+const objet: Render = (a) => {
+  const data = OB_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k]!)}"`).join("");
+  const label = a.label ?? "Objet en 3D : glisser pour le tourner, flèches au clavier ; déposez un fichier GLB, SVG ou une image pour le remplacer";
+  return `<figure class="x-objet" data-presse-component="objet"${data}${a.full !== undefined ? " data-full" : ""} tabindex="0" role="img" aria-label="${esc(label)}">
+  <canvas class="ob-gl" aria-hidden="true"></canvas>
+  <figcaption class="ob-status" data-ob-status aria-live="polite">${esc(a.caption ?? "")}</figcaption>
+</figure>`;
+};
+
+export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie, objet };
 
 /** Feuille de style de chaque composant, ajoutée au <head> des pages qui l'emploient. */
 export const STYLES: Record<string, string> = {
@@ -224,4 +239,5 @@ export const STYLES: Record<string, string> = {
   grille: "/src/components/grille/grille.css",
   lettres: "/src/components/lettres/lettres.css",
   galerie: "/src/components/galerie/galerie.css",
+  objet: "/src/components/objet/objet.css",
 };
