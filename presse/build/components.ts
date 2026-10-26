@@ -245,6 +245,44 @@ ${li}
 };
 
 /**
+ * <x-orbite full particles="42000" aperture="34" label="…">
+ *   <a href="./liquide.html" data-id="liquide" data-title="Liquide" data-tag="…" data-color="#4aa3ff"><img src="…" alt="…"></a>
+ *   …
+ * </x-orbite>
+ *
+ * Un lanceur : chaque lien est une application, une carte de l'anneau 3D.
+ * Sans WebGPU, la liste des liens est le lanceur.
+ */
+const OR_ATTRS = ["particles", "aperture", "radius"];
+const orbite: Render = (a, children) => {
+  const links = children.flatMap((c) => (c.tagName === "A" ? [c] : c.querySelectorAll("a")));
+  const items = links.map((l) => {
+    const im = l.querySelector("img");
+    const title = l.getAttribute("data-title") ?? im?.getAttribute("alt") ?? "";
+    return { id: l.getAttribute("data-id") ?? slug(title), title, tag: l.getAttribute("data-tag") ?? "", color: l.getAttribute("data-color") ?? "", href: l.getAttribute("href") ?? "#", src: im?.getAttribute("src") ?? "", alt: im?.getAttribute("alt") ?? "" };
+  });
+  const data = OR_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k]!)}"`).join("");
+  const first = items[0];
+  const hTag = a.full !== undefined ? "h1" : "h2";
+  return `<section class="x-orbite" data-presse-component="orbite"${data}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-roledescription="carrousel" aria-label="${esc(a.label ?? "Applications : flèches pour tourner, Entrée pour ouvrir")}">
+  <canvas class="or-gl" aria-hidden="true"></canvas>
+  <ol class="or-list" aria-label="Applications">
+${items.map((it) => `    <li class="or-item" data-id="${esc(it.id)}" data-title="${esc(it.title)}" data-tag="${esc(it.tag)}"${it.color ? ` data-color="${esc(it.color)}"` : ""}><a href="${esc(it.href)}" data-flight="${esc(it.id)}"><img src="${esc(it.src)}" alt="${esc(it.alt)}" loading="lazy" sizes="(max-width: 760px) 90vw, 50vw" /><span class="or-name">${esc(it.title)}</span><span class="or-tagline">${esc(it.tag)}</span></a></li>`).join("\n")}
+  </ol>
+  <div class="or-caption">
+    ${a.kicker ? `<p class="or-kicker">${esc(a.kicker)}</p>` : ""}
+    <p class="or-num" data-or-num>01 / ${String(items.length).padStart(2, "0")}</p>
+    <${hTag} class="or-title" data-or-title>${esc(first?.title ?? "")}</${hTag}>
+    <p class="or-tag" data-or-tag>${esc(first?.tag ?? "")}</p>
+    <a class="or-open" data-or-open href="${esc(first?.href ?? "#")}" data-flight="${esc(first?.id ?? "")}">${esc(a.open ?? "Entrer")} <span aria-hidden="true">↗</span></a>
+  </div>
+  <div class="or-nav"><button type="button" data-or-prev aria-label="Application précédente">←</button><button type="button" data-or-next aria-label="Application suivante">→</button></div>
+  <p class="or-hint" aria-hidden="true">${esc(a.hint ?? "Glissez, ou ← →. La carte de face est au point ; cliquez-la pour entrer.")}</p>
+  <p class="sr-only" aria-live="polite" data-or-live></p>
+</section>`;
+};
+
+/**
  * <x-objet style="verre" model="texte:UBS" label="Les lettres UBS en verre">
  * Styles : ascii, tramage, encre, verre, particules, liquide. Modèle : texte:…,
  * noeud, galet, vase, ou l'URL d'un GLB, d'un SVG, d'une image.
@@ -259,7 +297,7 @@ const objet: Render = (a) => {
 </figure>`;
 };
 
-export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie, objet };
+export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie, objet, orbite };
 
 /** Feuille de style de chaque composant, ajoutée au <head> des pages qui l'emploient. */
 export const STYLES: Record<string, string> = {
@@ -268,4 +306,5 @@ export const STYLES: Record<string, string> = {
   lettres: "/src/components/lettres/lettres.css",
   galerie: "/src/components/galerie/galerie.css",
   objet: "/src/components/objet/objet.css",
+  orbite: "/src/components/orbite/orbite.css",
 };

@@ -1,0 +1,239 @@
+/* <x-orbite> : un lanceur en anneau, sur fond de nuit. */
+.x-orbite {
+  --or-color: #d9d6cc;
+  position: relative;
+  min-height: 560px;
+  height: 80vh;
+  overflow: hidden;
+  background: #05060a;
+  color: #f1efe8;
+  isolation: isolate;
+  outline: none;
+  touch-action: pan-y;
+}
+.x-orbite[data-full] {
+  height: 100vh;
+  height: 100svh;
+}
+.x-orbite .or-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+.x-orbite.or-dragging .or-gl {
+  cursor: grabbing;
+}
+.x-orbite.or-hovering .or-gl {
+  cursor: pointer;
+}
+
+/* La liste : invisible à l'œil quand le GPU met en scène, présente au clavier et aux lecteurs d'écran. */
+.x-orbite .or-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.x-orbite.or-gl .or-list a {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.x-orbite.or-gl .or-list a:focus-visible {
+  clip-path: none;
+  width: auto;
+  height: auto;
+  left: 50%;
+  top: 18px;
+  translate: -50% 0;
+  z-index: 3;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f1efe8;
+  color: #05060a;
+  font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", monospace);
+}
+/* En attendant le GPU : la nuit et la légende. Sans WebGPU : la liste est le lanceur. */
+.x-orbite:not(.or-gl):not(.or-nogl) .or-list {
+  display: none;
+}
+.x-orbite.or-nogl {
+  height: auto;
+  min-height: 100vh;
+  padding: 96px clamp(16px, 5vw, 72px) 48px;
+  box-sizing: border-box;
+}
+.x-orbite.or-nogl .or-gl,
+.x-orbite.or-nogl .or-caption,
+.x-orbite.or-nogl .or-nav,
+.x-orbite.or-nogl .or-hint {
+  display: none;
+}
+.x-orbite.or-nogl .or-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+.x-orbite.or-nogl .or-list a {
+  display: grid;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+.x-orbite.or-nogl .or-list img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.x-orbite .or-name {
+  font-weight: 800;
+}
+.x-orbite .or-tagline {
+  font-size: 14px;
+  color: #a9a69d;
+}
+.x-orbite.or-gl .or-name,
+.x-orbite.or-gl .or-tagline {
+  display: none;
+}
+
+/* La légende : l'application de face. */
+.x-orbite .or-caption {
+  position: absolute;
+  z-index: 2;
+  left: clamp(16px, 5vw, 72px);
+  bottom: clamp(20px, 7vh, 72px);
+  max-width: min(520px, 80vw);
+  pointer-events: none;
+}
+.x-orbite .or-kicker,
+.x-orbite .or-num {
+  margin: 0 0 8px;
+  font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", monospace);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.x-orbite .or-num {
+  color: var(--or-color);
+  transition: color 0.4s;
+}
+.x-orbite .or-title {
+  margin: 0;
+  font-size: clamp(44px, 7.5vw, 112px);
+  font-weight: 900;
+  font-variation-settings: "wdth" 125;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+}
+.x-orbite .or-tag {
+  margin: 14px 0 22px;
+  max-width: 40ch;
+  color: #bdbab1;
+}
+.x-orbite.or-swap .or-title,
+.x-orbite.or-swap .or-tag {
+  animation: or-in 0.6s cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+.x-orbite.or-swap .or-tag {
+  animation-delay: 0.06s;
+}
+@keyframes or-in {
+  from {
+    opacity: 0;
+    translate: 0 0.35em;
+    filter: blur(6px);
+  }
+}
+.x-orbite .or-open,
+.x-orbite .or-nav button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--or-color) 70%, #fff);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--or-color) 16%, transparent);
+  color: inherit;
+  font: 500 12px/1 var(--f-mono, "IBM Plex Mono", monospace);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.3s,
+    border-color 0.4s;
+}
+.x-orbite .or-open:hover {
+  background: color-mix(in srgb, var(--or-color) 34%, transparent);
+}
+.x-orbite .or-open:focus-visible,
+.x-orbite .or-nav button:focus-visible {
+  outline: 2px solid var(--or-color);
+  outline-offset: 3px;
+}
+.x-orbite .or-nav {
+  position: absolute;
+  z-index: 2;
+  right: clamp(16px, 5vw, 72px);
+  bottom: clamp(20px, 7vh, 72px);
+  display: flex;
+  gap: 8px;
+}
+.x-orbite .or-nav button {
+  width: 46px;
+  padding: 0;
+  justify-content: center;
+  font-size: 16px;
+  border-color: rgba(241, 239, 232, 0.4);
+  background: rgba(241, 239, 232, 0.06);
+}
+.x-orbite .or-hint {
+  position: absolute;
+  z-index: 2;
+  top: 18px;
+  right: clamp(16px, 5vw, 72px);
+  margin: 0;
+  font: 12px/1.4 var(--f-mono, "IBM Plex Mono", monospace);
+  color: #8d8a82;
+}
+.x-orbite.or-opening .or-caption,
+.x-orbite.or-opening .or-nav,
+.x-orbite.or-opening .or-hint {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.x-orbite .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .x-orbite .or-hint {
+    display: none;
+  }
+  /* Les flèches sur la ligne du bouton « Entrer », à droite. */
+  .x-orbite .or-nav {
+    right: 16px;
+  }
+  .x-orbite .or-caption {
+    max-width: calc(100% - 140px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .x-orbite.or-swap .or-title,
+  .x-orbite.or-swap .or-tag {
+    animation: none;
+  }
+}

@@ -1,0 +1,16 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #05060a;
+  --ink: #f1efe8;
+  color-scheme: dark;
+}
+html,
+body.ob {
+  margin: 0;
+  background: #05060a;
+  color: #f1efe8;
+  font: 17px/1.55 "Archivo Variable", Arial, sans-serif;
+}

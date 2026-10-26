@@ -204,13 +204,13 @@ async function start() {
     alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
   };
   const SCENE_FORMAT: GPUTextureFormat = "rgba16float";
-  const decorPipe = device.createRenderPipeline({
+  const decorPipe = await device.createRenderPipelineAsync({
     layout: device.createPipelineLayout({ bindGroupLayouts: [gLayout, fLayout] }),
     vertex: { module: decorMod, entryPoint: "vs" },
     fragment: { module: decorMod, entryPoint: "fs", targets: [{ format: SCENE_FORMAT, blend: premul }] },
     primitive: { topology: "triangle-strip" },
   });
-  const postPipe = device.createRenderPipeline({
+  const postPipe = await device.createRenderPipelineAsync({
     layout: "auto",
     vertex: { module: postMod, entryPoint: "vs" },
     fragment: { module: postMod, entryPoint: "fs", targets: [{ format }] },

@@ -20,6 +20,7 @@ import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { claimFlight, type Flight, onArrive, onLeave, onSource, type Source } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
+import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
 import { ARRANGEMENTS, apply, type ArrangeName, type Ctx, DEG, type Inst, mod, OPTIONS, type Pose, pose, rotation, stackDir } from "./arrange.ts";
 import { BACKDROP, GALERIE, MAX_ITEMS, STRIDE } from "./shader.ts";
@@ -1032,7 +1033,7 @@ export function mount(root: HTMLElement) {
       color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
       alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
     };
-    const pipe = device.createRenderPipeline({
+    const pipe = await device.createRenderPipelineAsync({
       layout: "auto",
       vertex: { module: mod_, entryPoint: "vs" },
       fragment: { module: mod_, entryPoint: "fs", targets: [{ format, blend }] },
@@ -1040,7 +1041,7 @@ export function mount(root: HTMLElement) {
       primitive: { topology: "triangle-strip", frontFace: "cw" },
     });
     const bgMod = device.createShaderModule({ code: BACKDROP });
-    const bgPipe = device.createRenderPipeline({
+    const bgPipe = await device.createRenderPipelineAsync({
       layout: "auto",
       vertex: { module: bgMod, entryPoint: "vs" },
       fragment: { module: bgMod, entryPoint: "fs", targets: [{ format, blend }] },
@@ -1092,7 +1093,8 @@ export function mount(root: HTMLElement) {
         }
       }
       const b = box();
-      const dpr = Math.min(devicePixelRatio || 1, 2);
+      // Échelle du rendu tenue par le gouverneur (D2) : la cadence d'abord, la netteté ensuite.
+      const dpr = Math.min(devicePixelRatio || 1, 2) * renderScale();
       const PW = Math.round(b.W * dpr);
       const PH = Math.round(b.H * dpr);
       if (canvas.width !== PW || canvas.height !== PH) {

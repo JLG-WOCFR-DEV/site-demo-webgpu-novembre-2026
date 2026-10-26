@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Orbite</title>
+    <meta name="description" content="Un lanceur WebGPU : quatre applications en anneau 3D, un disque de particules en bokeh, et la mise au point qui se pose sur la carte de face." />
+    <meta name="theme-color" content="#05060a" />
+    <script type="module" src="/src/orbite/main.ts"></script>
+  </head>
+  <body class="ob">
+    <main>
+      <!-- Un composant : déroulé en HTML statique à la construction (presse/build). -->
+      <x-orbite full kicker="WebGPU-demo-UBS · Orbite" label="Quatre applications : flèches pour tourner, Entrée pour ouvrir">
+        <a href="./liquide.html" data-id="liquide" data-title="Liquide" data-tag="Des cartes HTML qu'on glisse, mélange et filtre ; le GPU les rend en verre qui fusionne." data-color="#4fa8ff"><img src="./plates/app-liquide.jpg" alt="La page Liquide : sept photos en cartes de verre." /></a>
+        <a href="./grille.html" data-id="grille" data-title="Grille" data-tag="Un mur de photos sans fin, en mosaïque ; la vue canevas pour les ranger en piles." data-color="#ff5b3d" ><img src="./plates/app-grille.jpg" alt="La page Grille : un mur de photos en mosaïque." /></a>
+        <a href="./galerie.html" data-id="galerie" data-title="Galerie" data-tag="Neuf arrangements 3D, des transitions qui partent de la pose courante." data-color="#ffb84a"><img src="./plates/app-galerie.jpg" alt="La page Galerie : des photos en tonneau 3D." /></a>
+        <a href="./atelier.html" data-id="atelier" data-title="Atelier" data-tag="Un objet 3D rendu en ASCII, en tramage, à l'encre, en verre ou en particules." data-color="#b57dff"><img src="./plates/app-atelier.jpg" alt="La page Atelier : un objet 3D rendu en caractères." /></a>
+      </x-orbite>
+    </main>
+  </body>
+</html>

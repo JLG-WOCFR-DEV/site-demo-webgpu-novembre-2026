@@ -197,6 +197,16 @@ async function landAnywhere(p: Pending) {
       return;
     }
   }
+  // La page entière est cette image (une capture d'application, un lanceur) :
+  // <html data-flight-fill="liquide"> — elle grandit jusqu'à l'écran et s'efface sur la vraie page.
+  if ((document.documentElement.dataset.flightFill ?? "").split(/\s+/).includes(p.d.id)) {
+    await fly(p.el, { x: 0, y: 0, w: innerWidth, h: innerHeight }, 0);
+    // Sous le papier du balayage (src/presse/sweep.ts) : on attend qu'il se lève, l'image s'efface sur la page révélée.
+    const t0 = performance.now();
+    while (document.querySelector(".presse-sweep-cover") && performance.now() - t0 < 3000) await new Promise((r) => setTimeout(r, 50));
+    fadeOut(p.el, 520);
+    return;
+  }
   fadeOut(p.el, 300);
 }
 

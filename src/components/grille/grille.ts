@@ -17,6 +17,7 @@ import * as stock from "./stock.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
+import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
 
 const MAX_TILES = 1400;
@@ -1079,7 +1080,7 @@ export function mount(root: HTMLElement) {
       color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
       alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
     };
-    const pipe = device.createRenderPipeline({
+    const pipe = await device.createRenderPipelineAsync({
       layout: "auto",
       vertex: { module: mod, entryPoint: "vs" },
       fragment: { module: mod, entryPoint: "fs", targets: [{ format, blend }] },
@@ -1130,7 +1131,8 @@ export function mount(root: HTMLElement) {
       last = now;
       if (!full && !onScreen) return;
       box = root.getBoundingClientRect();
-      const dpr = Math.min(devicePixelRatio || 1, 2);
+      // Échelle du rendu tenue par le gouverneur (D2) : la cadence d'abord, la netteté ensuite.
+      const dpr = Math.min(devicePixelRatio || 1, 2) * renderScale();
       const vw = W();
       const vh = H();
       const PW = Math.round(vw * dpr);

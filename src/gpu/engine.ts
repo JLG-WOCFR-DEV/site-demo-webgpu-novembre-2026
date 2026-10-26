@@ -7,6 +7,7 @@ import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
+import { renderScale } from "./governor.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -217,14 +218,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
   const planePipeLayout = device.createPipelineLayout({ bindGroupLayouts: [frameLayout, planeLayout, texLayout] });
   const strip: GPUPrimitiveState = { topology: "triangle-strip" };
-  const shadowPipe = device.createRenderPipeline({
+  const shadowPipe$ = device.createRenderPipelineAsync({
     label: "shadow",
     layout: planePipeLayout,
     vertex: { module: planeMod, entryPoint: "vs_shadow" },
     fragment: { module: planeMod, entryPoint: "fs_shadow", targets: [{ format: SCENE_FORMAT, blend: premul }] },
     primitive: strip,
   });
-  const planePipe = device.createRenderPipeline({
+  const planePipe$ = device.createRenderPipelineAsync({
     label: "plane",
     layout: planePipeLayout,
     vertex: { module: planeMod, entryPoint: "vs_plane" },
@@ -232,23 +233,23 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: strip,
   });
   const peelPipe = (entry: string) =>
-    device.createRenderPipeline({
+    device.createRenderPipelineAsync({
       label: entry,
       layout: planePipeLayout,
       vertex: { module: planeMod, entryPoint: entry === "fs_peel_flat" ? "vs_peel_flat" : "vs_peel" },
       fragment: { module: planeMod, entryPoint: entry, targets: [{ format: SCENE_FORMAT, blend: premul }] },
       primitive: { topology: "triangle-list" },
     });
-  const peelFlatPipe = peelPipe("fs_peel_flat");
-  const peelCurlPipe = peelPipe("fs_peel_curl");
-  const glyphPipe = device.createRenderPipeline({
+  const peelFlatPipe$ = peelPipe("fs_peel_flat");
+  const peelCurlPipe$ = peelPipe("fs_peel_curl");
+  const glyphPipe$ = device.createRenderPipelineAsync({
     label: "glyphs",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, glyphLayout] }),
     vertex: { module: glyphMod, entryPoint: "vs" },
     fragment: { module: glyphMod, entryPoint: "fs", targets: [{ format: SCENE_FORMAT, blend: premul }] },
     primitive: strip,
   });
-  const boxPipe = device.createRenderPipeline({
+  const boxPipe$ = device.createRenderPipelineAsync({
     label: "boxes",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, boxLayout] }),
     vertex: { module: boxMod, entryPoint: "vs" },
@@ -257,17 +258,17 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   });
   const bloomPipeLayout = device.createPipelineLayout({ bindGroupLayouts: [bloomLayout] });
   const bloomPipe = (entry: string, blend?: GPUBlendState) =>
-    device.createRenderPipeline({
+    device.createRenderPipelineAsync({
       label: entry,
       layout: bloomPipeLayout,
       vertex: { module: bloomMod, entryPoint: "vs" },
       fragment: { module: bloomMod, entryPoint: entry, targets: [{ format: SCENE_FORMAT, blend }] },
       primitive: { topology: "triangle-list" },
     });
-  const prePipe = bloomPipe("fs_prefilter");
-  const downPipe = bloomPipe("fs_down");
-  const upPipe = bloomPipe("fs_up", additive);
-  const postPipe = device.createRenderPipeline({
+  const prePipe$ = bloomPipe("fs_prefilter");
+  const downPipe$ = bloomPipe("fs_down");
+  const upPipe$ = bloomPipe("fs_up", additive);
+  const postPipe$ = device.createRenderPipelineAsync({
     label: "composite",
     layout: device.createPipelineLayout({ bindGroupLayouts: [postLayout] }),
     vertex: { module: postMod, entryPoint: "vs" },
@@ -275,17 +276,17 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: { topology: "triangle-list" },
   });
 
-  const simPipe = device.createComputePipeline({
+  const simPipe$ = device.createComputePipelineAsync({
     label: "sim",
     layout: device.createPipelineLayout({ bindGroupLayouts: [simLayout] }),
     compute: { module: simMod, entryPoint: "main" },
   });
-  const inkSimPipe = device.createComputePipeline({
+  const inkSimPipe$ = device.createComputePipelineAsync({
     label: "ink-sim",
     layout: device.createPipelineLayout({ bindGroupLayouts: [inkSimLayout] }),
     compute: { module: inkMod, entryPoint: "sim" },
   });
-  const inkDrawPipe = device.createRenderPipeline({
+  const inkDrawPipe$ = device.createRenderPipelineAsync({
     label: "ink-draw",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, inkDrawLayout] }),
     vertex: { module: inkMod, entryPoint: "vs" },
@@ -293,7 +294,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: strip,
   });
 
-  const layersPipe = device.createRenderPipeline({
+  const layersPipe$ = device.createRenderPipelineAsync({
     label: "layers",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, layersLayout] }),
     vertex: { module: layersMod, entryPoint: "vs" },
@@ -319,7 +320,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       { binding: 2, visibility: GPUShaderStage.COMPUTE, storageTexture: { access: "write-only", format: "rgba16float", viewDimension: "2d-array" } },
     ],
   });
-  const tracePipe = device.createComputePipeline({
+  const tracePipe$ = device.createComputePipelineAsync({
     label: "trace",
     layout: device.createPipelineLayout({ bindGroupLayouts: [traceLayout] }),
     compute: { module: traceMod, entryPoint: "trace" },
@@ -343,7 +344,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const fireLayout = device.createBindGroupLayout({
     entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: 48 } }],
   });
-  const firePipe = device.createRenderPipeline({
+  const firePipe$ = device.createRenderPipelineAsync({
     label: "fire",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, fireLayout] }),
     vertex: { module: fireMod, entryPoint: "vs_fire" },
@@ -354,7 +355,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const procLayout = device.createBindGroupLayout({
     entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform", hasDynamicOffset: true } }],
   });
-  const procPipe = device.createRenderPipeline({
+  const procPipe$ = device.createRenderPipelineAsync({
     label: "proc",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, procLayout] }),
     vertex: { module: procMod, entryPoint: "vs_proc" },
@@ -373,7 +374,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const fireBind = device.createBindGroup({ layout: fireLayout, entries: [{ binding: 0, resource: { buffer: fireBuf, size: 48 } }] });
   const fireData = new Float32Array((PLANE_STRIDE * MAX_FIRES) / 4);
 
-  const sheetPipe = device.createRenderPipeline({
+  const sheetPipe$ = device.createRenderPipelineAsync({
     label: "sheet",
     layout: device.createPipelineLayout({ bindGroupLayouts: [frameLayout, sheetLayout, texLayout] }),
     vertex: { module: sheetMod, entryPoint: "vs_sheet" },
@@ -381,6 +382,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     primitive: strip,
   });
 
+  // Compilés ensemble, hors du fil principal : la page reste vive pendant que le pilote travaille (D2).
+  const [shadowPipe, planePipe, peelFlatPipe, peelCurlPipe, glyphPipe, boxPipe, prePipe, downPipe, upPipe, postPipe, simPipe, inkSimPipe, inkDrawPipe, layersPipe, tracePipe, firePipe, procPipe, sheetPipe] = await Promise.all([shadowPipe$, planePipe$, peelFlatPipe$, peelCurlPipe$, glyphPipe$, boxPipe$, prePipe$, downPipe$, upPipe$, postPipe$, simPipe$, inkSimPipe$, inkDrawPipe$, layersPipe$, tracePipe$, firePipe$, procPipe$, sheetPipe$]);
   const validation = await device.popErrorScope();
   if (validation) throw new Error(`Validation : ${validation.message}`);
 
@@ -511,7 +514,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const simData = new Float32Array(12);
   let inkTime = 0;
   /* Chapitre 08.2 : encre fraîche, fluides stables */
-  const fluid = createFluid(device, linear);
+  const fluid = await createFluid(device, linear);
   /* Chapitre 04.2 : calques */
   const layersBuf = device.createBuffer({ size: 144, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const layersData = new Float32Array(36);
@@ -769,7 +772,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const cssW = canvas.clientWidth;
     const cssH = canvas.clientHeight;
     if (cssW < 2 || cssH < 2) return;
-    const nextDpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Échelle tenue par le gouverneur (D2) : on perd un peu de netteté plutôt que des images.
+    const nextDpr = Math.min(window.devicePixelRatio || 1, 2) * renderScale();
     const w = Math.round(cssW * nextDpr);
     const h = Math.round(cssH * nextDpr);
     if (canvas.width !== w || canvas.height !== h || nextDpr !== dpr) {
@@ -1555,7 +1559,7 @@ type FluidStep = {
   dry: number;
 };
 
-function createFluid(device: GPUDevice, sampler: GPUSampler) {
+async function createFluid(device: GPUDevice, sampler: GPUSampler) {
   const C = GPUShaderStage.COMPUTE;
   const tex = (w: number, h: number, format: GPUTextureFormat, label: string) =>
     device.createTexture({
@@ -1600,16 +1604,16 @@ function createFluid(device: GPUDevice, sampler: GPUSampler) {
 
   const mod = device.createShaderModule({ label: "fluid", code: FLUID });
   const pipe = (entryPoint: string, l: GPUBindGroupLayout) =>
-    device.createComputePipeline({
+    device.createComputePipelineAsync({
       label: entryPoint,
       layout: device.createPipelineLayout({ bindGroupLayouts: [g0Layout, l] }),
       compute: { module: mod, entryPoint },
     });
-  const advPipe = pipe("advect_vel", advLayout);
-  const divPipe = pipe("divergence", divLayout);
-  const jacPipe = pipe("jacobi", jacLayout);
-  const projPipe = pipe("project", projLayout);
-  const dyePipe = pipe("advect_dye", dyeLayout);
+  const advPipe = await pipe("advect_vel", advLayout);
+  const divPipe = await pipe("divergence", divLayout);
+  const jacPipe = await pipe("jacobi", jacLayout);
+  const projPipe = await pipe("project", projLayout);
+  const dyePipe = await pipe("advect_dye", dyeLayout);
 
   const bg = (l: GPUBindGroupLayout, ...res: GPUTexture[]) =>
     device.createBindGroup({ layout: l, entries: res.map((r, i) => ({ binding: i, resource: r.createView() })) });

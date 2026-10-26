@@ -13,6 +13,7 @@ import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { painted } from "../../presse/sweep.ts";
+import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
 import { parseGLB, writeGLB } from "./gltf.ts";
 import { inflate, maskFromSource, type Mesh, pebble, relief, torusKnot, vase } from "./meshes.ts";
@@ -288,7 +289,7 @@ export function mount(root: HTMLElement) {
     const psMod = await check(device.createShaderModule({ code: PARTICLES_SIM }));
     const pdMod = await check(device.createShaderModule({ code: PARTICLES_DRAW }));
 
-    const gPipe = device.createRenderPipeline({
+    const gPipe = await device.createRenderPipelineAsync({
       layout: "auto",
       vertex: {
         module: gMod,
@@ -302,10 +303,10 @@ export function mount(root: HTMLElement) {
       primitive: { topology: "triangle-list", cullMode: "none" },
       depthStencil: { format: "depth24plus", depthWriteEnabled: true, depthCompare: "less" },
     });
-    const sPipe = device.createRenderPipeline({ layout: "auto", vertex: { module: sMod, entryPoint: "vs" }, fragment: { module: sMod, entryPoint: "fs", targets: [{ format }] }, primitive: { topology: "triangle-list" } });
-    const simPipe = device.createComputePipeline({ layout: "auto", compute: { module: psMod, entryPoint: "sim" } });
+    const sPipe = await device.createRenderPipelineAsync({ layout: "auto", vertex: { module: sMod, entryPoint: "vs" }, fragment: { module: sMod, entryPoint: "fs", targets: [{ format }] }, primitive: { topology: "triangle-list" } });
+    const simPipe = await device.createComputePipelineAsync({ layout: "auto", compute: { module: psMod, entryPoint: "sim" } });
     const blend: GPUBlendState = { color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" }, alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" } };
-    const drawPipe = device.createRenderPipeline({ layout: "auto", vertex: { module: pdMod, entryPoint: "vs" }, fragment: { module: pdMod, entryPoint: "fs", targets: [{ format, blend }] }, primitive: { topology: "triangle-strip" } });
+    const drawPipe = await device.createRenderPipelineAsync({ layout: "auto", vertex: { module: pdMod, entryPoint: "vs" }, fragment: { module: pdMod, entryPoint: "fs", targets: [{ format, blend }] }, primitive: { topology: "triangle-strip" } });
 
     const gU = device.createBuffer({ size: 160, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const sU = device.createBuffer({ size: (8 + MAX_TRAIL) * 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
@@ -445,7 +446,8 @@ export function mount(root: HTMLElement) {
       if (seen !== meshVersion) upload();
       if (!mesh || !vb) return;
       const b = box();
-      const dpr = Math.min(devicePixelRatio || 1, 2);
+      // Échelle du rendu tenue par le gouverneur (D2) : la cadence d'abord, la netteté ensuite.
+      const dpr = Math.min(devicePixelRatio || 1, 2) * renderScale();
       const W = Math.max(2, Math.round(b.width * dpr));
       const H = Math.max(2, Math.round(b.height * dpr));
       if (canvas.width !== W || canvas.height !== H || !G0) {

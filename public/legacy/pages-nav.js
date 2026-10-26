@@ -238,10 +238,20 @@ async function re(e) {
 			return;
 		}
 	}
-	N(e.el, 300);
+	if ((document.documentElement.dataset.flightFill ?? "").split(/\s+/).includes(e.d.id)) {
+		await M(e.el, {
+			x: 0,
+			y: 0,
+			w: innerWidth,
+			h: innerHeight
+		}, 0);
+		let t = performance.now();
+		for (; document.querySelector(".presse-sweep-cover") && performance.now() - t < 3e3;) await new Promise((e) => setTimeout(e, 50));
+		N(e.el, 520);
+	} else N(e.el, 300);
 }
-var P = new Promise((e) => e);
-function F(e, t) {
+var ie = new Promise((e) => e);
+function P(e, t) {
 	if (C(null), !e || !w(e)) {
 		t?.remove();
 		return;
@@ -253,12 +263,12 @@ function F(e, t) {
 	};
 	j = n;
 	for (let t of te) n.claimed || t(e.id);
-	Promise.race([P.then(() => new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e)))), new Promise((e) => setTimeout(e, 1500))]).then(() => re(n));
+	Promise.race([ie.then(() => new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e)))), new Promise((e) => setTimeout(e, 1500))]).then(() => re(n));
 }
-var I = !1;
-function ie() {
-	if (I || typeof window > "u") return;
-	I = !0, document.addEventListener("click", (e) => {
+var F = !1;
+function ae() {
+	if (F || typeof window > "u") return;
+	F = !0, document.addEventListener("click", (e) => {
 		if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 		let t = e.target?.closest?.("a[data-flight]");
 		if (!t || t.target && t.target !== "_self" || t.origin !== location.origin) return;
@@ -274,19 +284,19 @@ function ie() {
 	addEventListener("pageswap", ((t) => {
 		t.activation?.navigationType === "traverse" && e(t.activation.entry.url);
 	})), addEventListener("pageshow", (e) => {
-		A = 0, e.persisted && F(S(), null);
+		A = 0, e.persisted && P(S(), null);
 	});
 	let t = window;
-	t.__presseFlight ? (F(t.__presseFlight.f, t.__presseFlight.el), delete t.__presseFlight) : F(S(), null);
+	t.__presseFlight ? (P(t.__presseFlight.f, t.__presseFlight.el), delete t.__presseFlight) : P(S(), null);
 }
 //#endregion
 //#region src/presse/scroll.ts
-var ae = () => matchMedia("(prefers-reduced-motion: reduce)").matches, oe = 9, se = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", ce = /* @__PURE__ */ new Set(), L = !1;
-function le() {
-	if (L || typeof window > "u") return;
-	L = !0;
+var oe = () => matchMedia("(prefers-reduced-motion: reduce)").matches, se = 9, ce = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", le = /* @__PURE__ */ new Set(), I = !1;
+function L() {
+	if (I || typeof window > "u") return;
+	I = !0;
 	let e = document.documentElement, t = document.createElement("style");
-	t.dataset.presseScroll = "", t.textContent = se, document.head.append(t);
+	t.dataset.presseScroll = "", t.textContent = ce, document.head.append(t);
 	let n = 0, r = performance.now(), i = scrollY, a = 0, o = 0, s = (t) => {
 		n = 0;
 		let c = Math.min(.1, Math.max(.001, (t - r) / 1e3));
@@ -295,16 +305,16 @@ function le() {
 		i = u;
 		let f = Math.abs(d) > innerHeight * .9 ? 0 : d / c;
 		a += (f - a) * (1 - Math.exp(-c * 10)), Math.abs(a) < 2 ? a = 0 : l = !0, e.style.setProperty("--v", Math.max(-1, Math.min(1, a / 3e3)).toFixed(3)), b();
-		for (let e of ce) e({
+		for (let e of le) e({
 			y: u,
 			v: a
 		});
 		(l || t < o) && (n = requestAnimationFrame(s));
 	}, c = (e = 120) => {
 		o = Math.max(o, performance.now() + e), n ||= (r = performance.now(), requestAnimationFrame(s));
-	}, l = () => e.dataset.presseScroll === "doux" && !ae(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
+	}, l = () => e.dataset.presseScroll === "doux" && !oe(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
 	function m(e) {
-		return f ? (d += (u - d) * (1 - Math.exp(-e * oe)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
+		return f ? (d += (u - d) * (1 - Math.exp(-e * se)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
 	}
 	let h = (t, n, r) => {
 		for (let i = t; i && i !== document.body && i !== e; i = i.parentElement) {
@@ -482,7 +492,7 @@ async function X(e, t, n, r, i) {
 			texture: t,
 			premultipliedAlpha: !0
 		}, [e.width, e.height]), t;
-	}, h = m(u.img), g = m(u.txt), _ = m(ye()), v = a.createShaderModule({ code: ve }), y = a.createRenderPipeline({
+	}, h = m(u.img), g = m(u.txt), _ = m(ye()), v = a.createShaderModule({ code: ve }), y = await a.createRenderPipelineAsync({
 		layout: "auto",
 		vertex: {
 			module: v,
@@ -616,7 +626,8 @@ var Z = (e) => {
 	"liquide",
 	"grille",
 	"galerie",
-	"objet"
+	"objet",
+	"orbite"
 ];
 async function Se() {
 	document.readyState === "loading" && await new Promise((e) => document.addEventListener("DOMContentLoaded", e, { once: !0 }));
@@ -706,6 +717,11 @@ var we = [
 		text: "Neuf arrangements 3D : tonneau, cartes, film, fond dégradé…"
 	},
 	{
+		href: "orbite.html",
+		name: "Orbite",
+		text: "Un lanceur : quatre applications en anneau, des particules, la mise au point"
+	},
+	{
 		href: "atelier.html",
 		name: "Atelier",
 		text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide"
@@ -732,7 +748,7 @@ var we = [
 	}
 ], Te = "\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  background: var(--paper, #f6f1e4);\n  color: var(--ink, #16110d);\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.72);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
 function Ee(e = "./") {
-	ie(), Ce(), le();
+	ae(), Ce(), L();
 	let t = document.createElement("style");
 	t.textContent = Te, document.head.append(t);
 	let n = document.querySelector("[data-pages-trigger]");

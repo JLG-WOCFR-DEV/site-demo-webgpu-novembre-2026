@@ -414,5 +414,133 @@
    "#3a443b",
    "#bcd5f0"
   ]
+ },
+ "plates/app-atelier.jpg": {
+  "hash": "618dd487ce67",
+  "w": 1200,
+  "h": 800,
+  "widths": [
+   480,
+   960,
+   1200
+  ],
+  "base": "img/app-atelier",
+  "mips": "img/app-atelier.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#eae8e3",
+  "palette": [
+   "#efeee9",
+   "#e2e1dc",
+   "#c7c4bf"
+  ],
+  "files": [
+   "img/app-atelier-480.avif",
+   "img/app-atelier-480.webp",
+   "img/app-atelier-960.avif",
+   "img/app-atelier-960.webp",
+   "img/app-atelier-1200.avif",
+   "img/app-atelier-1200.webp",
+   "img/app-atelier.mips.avif"
+  ]
+ },
+ "plates/app-galerie.jpg": {
+  "hash": "f4c1a82dd821",
+  "w": 1200,
+  "h": 800,
+  "widths": [
+   480,
+   960,
+   1200
+  ],
+  "base": "img/app-galerie",
+  "mips": "img/app-galerie.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#d2d3cf",
+  "palette": [
+   "#efeee9",
+   "#d2d6d4",
+   "#626763"
+  ],
+  "files": [
+   "img/app-galerie-480.avif",
+   "img/app-galerie-480.webp",
+   "img/app-galerie-960.avif",
+   "img/app-galerie-960.webp",
+   "img/app-galerie-1200.avif",
+   "img/app-galerie-1200.webp",
+   "img/app-galerie.mips.avif"
+  ]
+ },
+ "plates/app-grille.jpg": {
+  "hash": "ae42a7f35e49",
+  "w": 1200,
+  "h": 800,
+  "widths": [
+   480,
+   960,
+   1200
+  ],
+  "base": "img/app-grille",
+  "mips": "img/app-grille.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#9ba3a2",
+  "palette": [
+   "#4f4f45",
+   "#b2bfc6",
+   "#ebe9e2"
+  ],
+  "files": [
+   "img/app-grille-480.avif",
+   "img/app-grille-480.webp",
+   "img/app-grille-960.avif",
+   "img/app-grille-960.webp",
+   "img/app-grille-1200.avif",
+   "img/app-grille-1200.webp",
+   "img/app-grille.mips.avif"
+  ]
+ },
+ "plates/app-liquide.jpg": {
+  "hash": "59b5c21a96c2",
+  "w": 1200,
+  "h": 800,
+  "widths": [
+   480,
+   960,
+   1200
+  ],
+  "base": "img/app-liquide",
+  "mips": "img/app-liquide.mips.avif",
+  "mipLayout": [
+   768,
+   512,
+   4
+  ],
+  "color": "#b0b7b5",
+  "palette": [
+   "#5a635a",
+   "#e9e8e3",
+   "#dbdcd9"
+  ],
+  "files": [
+   "img/app-liquide-480.avif",
+   "img/app-liquide-480.webp",
+   "img/app-liquide-960.avif",
+   "img/app-liquide-960.webp",
+   "img/app-liquide-1200.avif",
+   "img/app-liquide-1200.webp",
+   "img/app-liquide.mips.avif"
+  ]
  }
 }

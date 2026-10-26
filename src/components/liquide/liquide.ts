@@ -14,6 +14,7 @@ import { loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { painted } from "../../presse/sweep.ts";
+import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
 import { LIQUID, MAX_CARDS } from "./shaders.ts";
 
@@ -400,7 +401,7 @@ export function mount(root: HTMLElement) {
     const mod = device.createShaderModule({ code: LIQUID });
     const errs = (await mod.getCompilationInfo()).messages.filter((m) => m.type === "error");
     if (errs.length) throw new Error(errs.map((m) => `${m.lineNum}:${m.message}`).join("\n"));
-    const pipe = device.createRenderPipeline({
+    const pipe = await device.createRenderPipelineAsync({
       layout: "auto",
       vertex: { module: mod, entryPoint: "vs" },
       fragment: { module: mod, entryPoint: "fs", targets: [{ format }] },
@@ -435,7 +436,8 @@ export function mount(root: HTMLElement) {
         for (const c of cards) c.prev = null;
         return;
       }
-      const dpr = Math.min(devicePixelRatio || 1, 2);
+      // Échelle du rendu tenue par le gouverneur (D2) : la cadence d'abord, la netteté ensuite.
+      const dpr = Math.min(devicePixelRatio || 1, 2) * renderScale();
       const box = canvas.getBoundingClientRect();
       const w = Math.min(MAX_PX, Math.round(box.width * dpr));
       const h = Math.min(MAX_PX, Math.round(box.height * dpr));

@@ -284,7 +284,7 @@ async function play(dir: 1 | -1, ms: number, paper: string, hole: Rect | null, o
   const tTxt = tex(shot.txt);
   const tAtlas = tex(atlasCanvas());
   const mod = device.createShaderModule({ code: SHADER });
-  const pipe = device.createRenderPipeline({
+  const pipe = await device.createRenderPipelineAsync({
     layout: "auto",
     vertex: { module: mod, entryPoint: "vs" },
     fragment: { module: mod, entryPoint: "fs", targets: [{ format, blend: { color: { srcFactor: "one", dstFactor: "one-minus-src-alpha" }, alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" } } }] },
@@ -372,7 +372,7 @@ let started = false;
 let leaving = false;
 
 /** Composants peints par le GPU : la page ne se révèle qu'après leur première image (au plus 1,4 s). */
-const GL = ["liquide", "grille", "galerie", "objet"];
+const GL = ["liquide", "grille", "galerie", "objet", "orbite"];
 /** Un composant le signale après sa première image peinte. */
 export function painted(root: HTMLElement) {
   if (root.dataset.painted !== undefined) return;
