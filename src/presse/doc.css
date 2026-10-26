@@ -165,3 +165,77 @@ body.pd {
   font-weight: 800;
   font-stretch: 112%;
 }
+
+/* Défilement : une section épinglée (data-scroll="pin"), pilotée par --p. */
+.pd-pin {
+  height: 280vh;
+  /* Pleine largeur : on annule la marge de la page. */
+  margin-inline: calc(-1 * clamp(16px, 5vw, 72px));
+}
+.pd-pin-stage {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 28px;
+}
+.pd-pin-fig {
+  margin: 0;
+  width: min(86vw, 1100px, 93vh);
+  aspect-ratio: 3 / 2;
+  /* La photo part petite et en retrait, et grandit jusqu'à occuper l'écran. */
+  scale: calc(0.42 + 0.58 * min(1, var(--p, 0) * 1.6));
+  translate: 0 calc((1 - min(1, var(--p, 0) * 1.6)) * 6vh - 5vh);
+}
+.pd-pin-fig img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+}
+.pd-pin-words {
+  position: absolute;
+  left: 50%;
+  bottom: 7vh;
+  translate: -50% 0;
+  margin: 0;
+  width: max-content;
+  max-width: 90vw;
+  text-align: center;
+  /* (Pas de font-stretch en pourcentage ici : la minification le fondrait dans un raccourci « font » invalide.) */
+  font-size: clamp(22px, 3.6vw, 52px);
+  font-weight: 800;
+  line-height: 1.05;
+  font-variation-settings: "wdth" 118;
+  letter-spacing: -0.02em;
+  /* Ce qui file penche un peu : --v est la vitesse de défilement. */
+  transform: skewY(calc(var(--v, 0) * -3deg));
+}
+.pd-pin-words span {
+  display: inline-block;
+  --k: clamp(0, calc(var(--p, 0) * 9 - 3.2 - var(--i) * 0.55), 1);
+  opacity: var(--k);
+  translate: 0 calc((1 - var(--k)) * 0.6em);
+}
+.pd-pin-meter {
+  position: absolute;
+  left: 50%;
+  bottom: 3.5vh;
+  translate: -50% 0;
+  width: 160px;
+  height: 2px;
+  margin: 0;
+  background: var(--rule);
+}
+.pd-pin-meter span {
+  display: block;
+  height: 100%;
+  background: var(--spot);
+  transform-origin: left;
+  scale: var(--p, 0) 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-pin-words {
+    transform: none;
+  }
+}

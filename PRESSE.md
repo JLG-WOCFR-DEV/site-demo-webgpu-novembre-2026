@@ -43,6 +43,9 @@ p.replay();                  // rejouer l'impression des sections
 | `data-presse-effects` | `html` | `loupe`, `rvb`, `trame`, `bloom`, `grain`. |
 | `data-presse-motion` | `html` | `sobre`, `normal`, `expressif`. |
 | `data-presse-canvas-ui` | `html` | Un effet sur toute la page, d'après Canvas UI : `ondes` (clic), `vhs`, `glitch`, `pli` (faces d'un cube au défilement), `tuiles`, `ascii` (loupe), `tramage` (loupe), `deplacement`, `champ` (bouclier, onde de choc au clic), `laser`, `eclats` (verre brisé qui se soulève sous le pointeur), `particules`, `sable` (la page se défait sous une ligne), `tissu`, `dechiffrer`, `pluie` (pluie de glyphes), `hexagones`. |
+| `data-presse-scroll` | `html` | `doux` : la molette glisse (inertie, ≈ 110 ms) ; le défilement reste natif (ancres, `sticky`, clavier, tactile, recherche). Une zone qui défile elle-même, ou `data-scroll-native`, garde sa molette. |
+| `data-scroll` | tout élément | Reçoit `--p` (0 → 1 pendant la traversée de l'écran) et `--in` (0 → 1 à l'entrée) ; `pin` : section haute au premier enfant épinglé, `--p` de 0 à 1 sur sa longueur ; `reveal` : classe `.is-in` une fois entré. Sur `html` : `--v`, vitesse de défilement (−1 … 1). Un plan GPU suit les transformations CSS de son élément. |
+| `data-transition` | lien | `none` : pas de balayage ASCII pour ce lien. |
 | `data-presse-debug` | `html` | Panneau de débogage : fil de fer, grille, capture vidéo, image PNG. |
 | `--paper` | `:root` (CSS) | Couleur du papier, lue par le GPU. |
 
@@ -162,11 +165,40 @@ liquide 1,6, grille 1,7, galerie 4,3 ; Performance, « presse:capture ») : les 
 décodées d'avance hors du fil principal, et les deux toiles 2D sont créées au calme — la première toile 2D d'une page
 coûtait jusqu'à 1,5 s en rendu logiciel.
 
+### D. Vers des sites très soignés
+
+Ce qui sépare un site primé (Lusion, Active Theory, Locomotive, Immersive Garden) d'une bonne démo tient moins aux effets
+qu'à leur tenue : rien ne saccade, tout répond au geste, chaque mouvement a la même signature, et la page reste un document.
+Relevé au 26 octobre 2026, classé par effet sur la qualité perçue rapporté à l'effort.
+
+| # | Chantier | Aujourd'hui | À faire | Effet | Effort |
+|---|---|---|---|---|---|
+| D1 | **Défilement maîtrisé** | **Fait (v1)** : `src/presse/scroll.ts` — inertie sur la molette (défilement natif conservé), `--p` / `--in` / `pin` / `reveal`, `--v` ; démo épinglée sur la page Presse, où la photo GPU suit la transformation CSS | Reste : vitesse donnée aux shaders des composants, ancrages (snap) doux, défilement horizontal épinglé. Prévu au départ : inertie douce sur la molette (le défilement reste natif : ancres, `position: sticky`, recherche) ; progression de chaque section en variable CSS (`--p`, `--in`) ; épinglage et défilement « scrubbé » ; vitesse (`--v`) donnée au GPU et au CSS | Très fort | Moyen |
+| D2 | **Zéro saccade** | Pipelines compilés à la première image ; résolution fixe (DPR plafonné à 2) | `createRenderPipelineAsync` et compilation au calme ; gouverneur de cadence (résolution adaptative, 120 Hz, budget par image mesuré) ; pause hors écran partout | Très fort | Moyen |
+| D3 | **Chorégraphie d'entrée** | Chaque composant apparaît quand il est prêt | Préchargement à vraie progression (images, fontes, shaders) puis une séquence d'arrivée ; jetons de mouvement partagés CSS / GPU (ressorts, courbes, durées) | Fort | Moyen |
+| D4 | **Survols et révélations d'images** | Matières `data-gl-material` (lentille, poussière), effets Canvas UI au clic | `data-gl-hover` (déplacement, séparation RVB, onde, pixels) et `data-gl-reveal` (rideau, dissolution, tri de pixels) déclenchés au défilement | Fort | Faible |
+| D5 | **Curseur** | Curseur du système | Curseur GPU optionnel : aimantation des boutons, traînée, mode différence, états (lien, glisser, lecture) ; jamais sur écran tactile | Fort | Faible |
+| D6 | **Typographie cinétique** | Texte MTSDF, morphing de titres, lettres sous masque | Graisse et largeur variables animées, contour et lueur, déformation par la vitesse de défilement, texte sur un chemin | Fort | Moyen |
+| D7 | **Direction artistique en un attribut** | Grain, bloom, loupe à la carte | `data-presse-look` : grain, étalonnage par LUT, vignette, aberration, tramage contre les bandes ; trois ou quatre préréglages cohérents | Moyen | Faible |
+| D8 | **Passage des titres** | Une photo passe d'une page à l'autre | Le titre aussi (lettres MTSDF qui se réarrangent) ; deux ou trois transitions de plus (encre, dissolution, pli) au choix par lien | Moyen | Moyen |
+| D9 | **3D d'atelier** | `<x-objet>` : six rendus stylisés, lecteur GLB | Matières PBR avec éclairage d'environnement (HDR), ombres douces, caméra guidée par le défilement, Draco ou meshopt | Moyen | Fort |
+| D10 | **Son** | Aucun | Sons d'interface discrets (WebAudio), coupés par défaut, un interrupteur visible | Faible à moyen | Faible |
+| D11 | **Fiabilité** | Recette manuelle (Playwright, SwiftShader) | Régression visuelle en CI, Safari et Firefox, perte de l'appareil GPU, fuites de mémoire entre navigations | Invisible, mais décisif | Moyen |
+| D12 | **Fabrication et édition** | Plugins Vite, documentation dans ce fichier | Paquet npm et `create-presse`, validation des attributs à la construction, rechargement à chaud du WGSL (A1), inspecteur (B), CMS et rendu serveur (A4) | Pour l'équipe | Fort |
+| D13 | **Pictos nets** | SVG en volume (`<x-objet>`) | SVG en champs de distance 2D (A5) | Faible | Faible |
+
+Ce qu'on ne fera pas : du WebGL de repli (le HTML est le repli), du défilement simulé qui remplace le natif (accessibilité,
+ancres, `sticky`), des effets qui ne survivent pas au mouvement réduit.
+
 ### Ordre proposé
 
 1. ~~**A5 + A7 + A8**~~ : fait pour les fontes et les SDF ; A8 reporté (voir le tableau). Reste les SVG.
 2. ~~**A2 + C**~~ : fait. Une balise pour poser une grille, un liquide ou un sommaire.
 3. ~~**A6**~~ : fait. Images aux bonnes tailles en AVIF/WebP, mipmaps précalculées.
 4. ~~**A3**~~ : WGSL minifié. Reste le renommage (identifiants WGSL, classes CSS).
-5. **A4** : rendu serveur, quand un CMS arrive.
-6. **B** : l'éditeur, une fois les composants stables.
+5. ~~**D1**~~ : défilement maîtrisé, première version.
+6. **D2** : zéro saccade (pipelines asynchrones, gouverneur de cadence).
+7. **D4 + D5** : survols, révélations d'images, curseur : peu d'effort, beaucoup d'effet.
+8. **D3 + D7** : chorégraphie d'entrée et direction artistique en un attribut.
+9. **D6, D8, D9, D10** : typographie cinétique, passage des titres, 3D PBR, son.
+10. **A4, B, D12** : rendu serveur, éditeur, paquet : quand un vrai projet les demande.

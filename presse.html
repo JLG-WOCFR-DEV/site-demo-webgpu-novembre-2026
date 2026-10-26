@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-presse-transition="buvard" data-presse-effects="loupe bloom grain" data-presse-debug>
+<html lang="fr" data-presse-scroll="doux" data-presse-transition="buvard" data-presse-effects="loupe bloom grain" data-presse-debug>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -67,6 +67,29 @@
         <div class="pd-card" data-gl-material="givre">
           <p class="pd-card-title" data-gl-text>Vitre gelée</p>
           <p class="pd-p" data-gl-text>Gardez le pointeur dessus : la glace fond, avec un bord d'eau.</p>
+        </div>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-scroll">
+        <h2 id="pd-scroll" class="pd-h2" data-gl-text>Le défilement</h2>
+        <p class="pd-p" data-gl-text>
+          La molette glisse au lieu de sauter, et le défilement reste natif : ancres, clavier, tactile, recherche dans la page.
+          Chaque élément marqué <code>data-scroll</code> reçoit sa progression en variable CSS ; un plan GPU suit son rectangle,
+          donc une transformation CSS le transforme aussi.
+        </p>
+        <pre class="pd-code"><code>&lt;html data-presse-scroll="doux"&gt;
+&lt;section data-scroll="pin"&gt;            &lt;!-- --p : 0 → 1 pendant la traversée --&gt;
+  &lt;div&gt;                                 &lt;!-- épinglé (sticky) --&gt;
+    &lt;img data-gl-img style="scale: calc(.55 + .45 * var(--p))" …&gt;
+  &lt;/div&gt;
+&lt;/section&gt;</code></pre>
+      </section>
+
+      <section class="pd-pin" data-scroll="pin" aria-label="Démonstration : une section épinglée, la photo grandit au défilement">
+        <div class="pd-pin-stage">
+          <figure class="pd-pin-fig"><img data-gl-img data-gl-material="lentille" src="./plates/yosemite.jpg" alt="La vallée de Yosemite : parois de granit, une cascade, la brume." /></figure>
+          <p class="pd-pin-words" aria-hidden="true"><span style="--i: 0">Une</span> <span style="--i: 1">section</span> <span style="--i: 2">épinglée,</span> <span style="--i: 3">une</span> <span style="--i: 4">photo</span> <span style="--i: 5">qui</span> <span style="--i: 6">grandit.</span></p>
+          <p class="pd-pin-meter" aria-hidden="true"><span></span></p>
         </div>
       </section>
 

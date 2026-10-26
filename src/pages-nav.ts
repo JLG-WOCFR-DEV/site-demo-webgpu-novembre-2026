@@ -6,6 +6,7 @@
 
 import { openDebugPanel } from "./debug-panel.ts";
 import { initFlights } from "./presse/flight.ts";
+import { initScroll } from "./presse/scroll.ts";
 import { initSweep } from "./presse/sweep.ts";
 
 export const PAGES = [
@@ -78,6 +79,7 @@ export function mountPagesNav(base = "./") {
   // Entre les pages : la photo qui passe, le balayage ASCII (si la page le demande).
   initFlights();
   initSweep();
+  initScroll();
   const style = document.createElement("style");
   style.textContent = CSS;
   document.head.append(style);
