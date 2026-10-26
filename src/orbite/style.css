@@ -3,14 +3,14 @@
 @import "@fontsource/ibm-plex-mono/500.css";
 
 :root {
-  --paper: #05060a;
+  --paper: #000000;
   --ink: #f1efe8;
   color-scheme: dark;
 }
 html,
 body.ob {
   margin: 0;
-  background: #05060a;
+  background: #000000;
   color: #f1efe8;
   font: 17px/1.55 "Archivo Variable", Arial, sans-serif;
 }

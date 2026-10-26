@@ -1,8 +1,10 @@
 /**
- * <x-orbite> : un lanceur d'applications en 3D. Les cartes tournent en anneau
- * dans un disque de particules ; la mise au point se pose sur la carte de
- * face (ou sur celle que le pointeur survole) ; ouvrir une carte aspire le
- * disque, puis la photo passe à la page de l'application (src/presse/flight.ts).
+ * <x-orbite> : un lanceur d'applications en 3D. Les cartes sont posées dans le
+ * disque d'accrétion d'un trou noir (« Black Hole Particles Bokeh », porté
+ * fidèlement : voir shaders.ts) ; la caméra tourne autour quand on glisse ; la
+ * mise au point se pose sur la carte de face (ou sur celle que le pointeur
+ * survole) ; ouvrir une carte y plonge la caméra, puis la photo passe à la page
+ * de l'application (src/presse/flight.ts).
  *
  * Le HTML reste la vérité : une liste de liens, un par application, lisible
  * sans WebGPU, parcourue au clavier (flèches, Entrée). Le GPU n'en est que la
@@ -14,9 +16,9 @@ import { loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { onSource } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
-import { SPRINGS, springStep } from "../../presse/tokens.ts";
+import { SPRINGS, ease, springStep } from "../../presse/tokens.ts";
 import { getDevice } from "../device.ts";
-import { DOF, DRAW, GRADE, MAX_CARDS, SCENE, SIM } from "./shaders.ts";
+import { DRAW, GRADE, MAX_CARDS, SCENE, SIM } from "./shaders.ts";
 
 type App = { id: string; title: string; tag: string; href: string; color: [number, number, number]; img: HTMLImageElement; link: HTMLAnchorElement; aspect: number };
 type V3 = [number, number, number];
@@ -87,22 +89,27 @@ export function mount(root: HTMLElement) {
   const N = apps.length;
   if (!N) return () => {};
   const step = TAU / N;
-  const R = Number(root.dataset.radius) || 2.4;
-  const aperture = root.dataset.aperture === undefined ? 34 : Number(root.dataset.aperture);
+  /** Rayon de l'anneau des cartes, en unités du trou noir (horizon ≈ 1, disque jusqu'à 30). */
+  const R = Number(root.dataset.radius) || 9;
+  /** Le flou : 1 = celui de l'original (0,743 px de référence par unité d'écart). */
+  const blur = 0.743 * (root.dataset.aperture === undefined ? 1 : Number(root.dataset.aperture));
+  const exposure = 0.369 * (Number(root.dataset.exposure) || 1);
   const coarse = matchMedia("(pointer: coarse)").matches;
-  const COUNT = Math.min(131072, Number(root.dataset.particles) || (coarse ? 14000 : 42000));
+  // 128² particules comme l'original (64² sur téléphone).
+  const COUNT = Math.min(131072, Number(root.dataset.particles) || (coarse ? 8192 : 16384));
 
   /* ───── État ───── */
 
-  let theta = 0; // angle de l'anneau ; la carte k est de face quand theta + k·step ≡ 0
+  let theta = 0; // la caméra tourne autour du trou noir ; la carte k est de face quand theta + k·step ≡ 0
   let vel = 0;
   let target: number | null = 0;
   let drag: { id: number; x: number; t: number; lx: number; moved: number } | null = null;
   let hover = -1;
-  let focusDist = 4.3;
+  let focusDist = 41;
   const highlight: number[] = apps.map((_, k) => (k === 0 ? 1 : 0));
   let opening: { k: number; t0: number } | null = null;
   const pointer = { x: 0, y: 0, in: false };
+  const tilt = { x: 0, y: 0 };
   let box = root.getBoundingClientRect();
   const W = () => (full ? innerWidth : box.width);
   const H = () => (full ? innerHeight : box.height);
@@ -116,40 +123,70 @@ export function mount(root: HTMLElement) {
     }
     return best;
   };
-  /** L'angle de l'anneau qui met la carte k de face, au plus court depuis l'angle courant. */
+  /** L'angle qui met la carte k de face, au plus court depuis l'angle courant. */
   const angleFor = (k: number) => {
     const want = -k * step;
     return theta + Math.atan2(Math.sin(want - theta), Math.cos(want - theta));
   };
-  const cardCenter = (k: number): V3 => {
-    const a = theta + k * step;
-    const lift = highlight[k]! * 0.35;
-    return [Math.sin(a) * (R + lift), 0, Math.cos(a) * (R + lift)];
-  };
+  /** Demi-taille d'une carte ; la carte choisie grandit (elle est la plus lointaine). */
   const halfSize = (k: number): [number, number] => {
-    const hw = 1.0;
-    return [hw, hw / Math.max(0.5, Math.min(2.2, apps[k]!.aspect))];
+    const hh = 3.1 * (1 + 0.4 * highlight[k]!);
+    return [hh * Math.max(0.6, Math.min(1.8, apps[k]!.aspect)), hh];
   };
 
-  /* ───── Caméra ───── */
+  /* ───── Caméra : en orbite autour du trou noir, comme l'original ───── */
 
+  /** Distance (50 × Radius + 0,5) et focale (FOV 0,8) de l'original ; élévation de sa vue d'accueil. */
+  const DIST = 50.5;
+  const ELEV = 0.56;
   let view = new Float32Array(16);
   let proj = new Float32Array(16);
   let viewProj = new Float32Array(16);
-  let eye: V3 = [0, 0.9, R + 4.2];
-  const camera = () => {
+  let eye: V3 = [0, 0, DIST];
+  let tanY = 0.4;
+  const right = (): V3 => [view[0]!, view[4]!, view[8]!];
+  const up = (): V3 => [view[1]!, view[5]!, view[9]!];
+  const depthOf = (p: V3) => -(view[2]! * p[0] + view[6]! * p[1] + view[10]! * p[2] + view[14]!);
+  /**
+   * La carte choisie est au fond de l'anneau, derrière le trou noir : la mise
+   * au point s'y pose et retrouve celle de l'original (un peu au-delà du
+   * centre) — le premier plan du disque devient une lueur floue, l'horizon un
+   * ovale noir, la carte flotte au-dessus.
+   */
+  const ringPos = (k: number): V3 => [-Math.sin(k * step) * R, 0, -Math.cos(k * step) * R];
+  const cardCenter = (k: number): V3 => {
+    const c = ringPos(k);
+    const d = norm(sub(eye, c));
+    const l = highlight[k]! * 1.6;
+    return [c[0] + d[0] * l, c[1] + d[1] * l, c[2] + d[2] * l];
+  };
+  const camera = (openK: number) => {
     const aspect = W() / Math.max(1, H());
-    // Écran étroit (téléphone en portrait) : on recule pour garder l'anneau.
-    const back = Math.max(1, 0.78 / aspect);
-    eye = [0, 1.05 * back, R + 5.4 * back];
-    // L'anneau un peu au-dessus du milieu : la légende garde le bas de l'écran.
-    view = lookAt(eye, [0, -0.62 - (back - 1) * 1.6, R * 0.3]);
-    proj = perspective((34 * Math.PI) / 180, aspect, 0.1, 60);
+    // Écran étroit : on élargit le champ pour garder les quatre cartes.
+    tanY = Math.max(0.4, 0.36 / aspect);
+    const phi = -theta + tilt.x;
+    const el = ELEV + tilt.y;
+    let e: V3 = [Math.sin(phi) * DIST * Math.cos(el), DIST * Math.sin(el), Math.cos(phi) * DIST * Math.cos(el)];
+    let at: V3 = [0, 0, 0];
+    if (opening && openK > 0) {
+      // Ouvrir : la caméra plonge vers la carte, la mise au point la suit.
+      const c = ringPos(opening.k);
+      const k = ease(openK);
+      const dir = norm(sub(e, c));
+      const to: V3 = [c[0] + dir[0] * 9, c[1] + dir[1] * 9, c[2] + dir[2] * 9];
+      e = [e[0] + (to[0] - e[0]) * k, e[1] + (to[1] - e[1]) * k, e[2] + (to[2] - e[2]) * k];
+      at = [c[0] * k, c[1] * k, c[2] * k];
+    }
+    eye = e;
+    view = lookAt(eye, at);
+    proj = perspective(2 * Math.atan(tanY), aspect, 0.5, 200);
+    // Décentrement de l'objectif : le trou noir un peu au-dessus du milieu, la légende garde le bas.
+    proj[9] = -0.1;
     viewProj = mul(proj, view);
   };
-  camera();
+  camera(0);
 
-  /** Le rayon du pointeur, contre les cartes (la plus proche) et contre le plan du disque. */
+  /** Le rayon du pointeur contre les cartes (face à la caméra) : la plus proche. */
   const pick = (sx: number, sy: number) => {
     const inv = invert(viewProj);
     const nx = (sx / W()) * 2 - 1;
@@ -157,25 +194,22 @@ export function mount(root: HTMLElement) {
     const a = unproject(inv, nx, ny, 0);
     const b = unproject(inv, nx, ny, 1);
     const dir = norm(sub(b, a));
+    const rx = right();
+    const uy = up();
+    const n = cross(rx, uy);
     let hit = -1;
     let ht = Infinity;
     for (let k = 0; k < N; k++) {
       const c = cardCenter(k);
-      const ang = theta + k * step;
-      const n: V3 = [Math.sin(ang), 0, Math.cos(ang)];
       const den = dot(dir, n);
       if (Math.abs(den) < 1e-4) continue;
       const t = dot(sub(c, a), n) / den;
       if (t <= 0 || t >= ht) continue;
       const p = sub([a[0] + dir[0] * t, a[1] + dir[1] * t, a[2] + dir[2] * t], c);
-      const right: V3 = [Math.cos(ang), 0, -Math.sin(ang)];
       const [hw, hh] = halfSize(k);
-      if (Math.abs(dot(p, right)) <= hw && Math.abs(p[1]) <= hh) ((hit = k), (ht = t));
+      if (Math.abs(dot(p, rx)) <= hw && Math.abs(dot(p, uy)) <= hh) ((hit = k), (ht = t));
     }
-    // Le plan du disque (y = 0) : où les particules s'écartent.
-    const tp = Math.abs(dir[1]) > 1e-4 ? -a[1] / dir[1] : -1;
-    const ground: V3 | null = tp > 0 ? [a[0] + dir[0] * tp, 0, a[2] + dir[2] * tp] : null;
-    return { hit, dist: ht, ground };
+    return { hit };
   };
 
   /* ───── Le texte (HTML) : la carte de face ───── */
@@ -218,7 +252,7 @@ export function mount(root: HTMLElement) {
     if (frontIndex() !== k) return goTo(k);
     opening = { k, t0: clockNow() };
     root.classList.add("or-opening");
-    // Le disque s'engouffre, puis on part (lien réel : passage de la photo, balayage).
+    // La caméra plonge vers la carte, puis on part (lien réel : passage de la photo, balayage).
     window.setTimeout(() => apps[k]!.link.click(), reduced.matches ? 0 : 650);
   };
 
@@ -241,6 +275,7 @@ export function mount(root: HTMLElement) {
     if (!drag || drag.id !== e.pointerId) return;
     const dx = e.clientX - drag.lx;
     const now = performance.now();
+    // Glisser fait tourner la caméra autour du trou noir (le geste de compute.toys).
     const k = step / Math.max(240, W() * 0.32);
     theta += dx * k;
     vel = vel * 0.6 + ((dx * k) / Math.max(1, now - drag.t)) * 1000 * 0.4;
@@ -305,10 +340,12 @@ export function mount(root: HTMLElement) {
 
   const cardRect = (k: number) => {
     const c = cardCenter(k);
-    const ang = theta + k * step;
-    const right: V3 = [Math.cos(ang), 0, -Math.sin(ang)];
+    const rx = right();
+    const uy = up();
     const [hw, hh] = halfSize(k);
-    const pts = [-1, 1].flatMap((sx) => [-1, 1].map((sy) => project(viewProj, [c[0] + right[0] * hw * sx, c[1] + hh * sy, c[2] + right[2] * hw * sx], W(), H())));
+    const pts = [-1, 1].flatMap((sx) =>
+      [-1, 1].map((sy) => project(viewProj, [c[0] + rx[0] * hw * sx + uy[0] * hh * sy, c[1] + rx[1] * hw * sx + uy[1] * hh * sy, c[2] + rx[2] * hw * sx + uy[2] * hh * sy], W(), H())),
+    );
     const xs = pts.map((p) => p.x);
     const ys = pts.map((p) => p.y);
     const ox = full ? 0 : box.left;
@@ -319,12 +356,12 @@ export function mount(root: HTMLElement) {
     const k = apps.findIndex((a) => a.id === id);
     if (k < 0) return null;
     const img = apps[k]!.img;
-    return { rect: cardRect(k), src: img.currentSrc || img.dataset.glTex || img.src, radius: 10 };
+    return { rect: cardRect(k), src: img.currentSrc || img.dataset.glTex || img.src, radius: 8 };
   });
   const unsnap = onSnapshot((g) => {
-    g.fillStyle = "#05060a";
+    g.fillStyle = "#000";
     g.fillRect(full ? 0 : box.left, full ? 0 : box.top, W(), H());
-    const order = apps.map((_, k) => k).sort((a, b) => Math.cos(theta + a * step) - Math.cos(theta + b * step));
+    const order = apps.map((_, k) => k).sort((a, b) => depthOf(cardCenter(b)) - depthOf(cardCenter(a)));
     for (const k of order) {
       const r = cardRect(k);
       drawCover(g, apps[k]!.img, r.x, r.y, r.w, r.h);
@@ -354,19 +391,20 @@ export function mount(root: HTMLElement) {
     const HDR: GPUTextureFormat = "rgba16float";
     const mods = Object.fromEntries(
       await Promise.all(
-        Object.entries({ SIM, DRAW, SCENE, DOF, GRADE }).map(async ([k, code]) => {
+        Object.entries({ SIM, DRAW, SCENE, GRADE }).map(async ([k, code]) => {
           const m = device.createShaderModule({ label: `orbite-${k}`, code });
           const errs = (await m.getCompilationInfo()).messages.filter((x) => x.type === "error");
           if (errs.length) throw new Error(`orbite ${k}: ${errs.map((x) => `${x.lineNum}:${x.message}`).join(" | ")}`);
           return [k, m] as const;
         }),
       ),
-    ) as Record<"SIM" | "DRAW" | "SCENE" | "DOF" | "GRADE", GPUShaderModule>;
+    ) as Record<"SIM" | "DRAW" | "SCENE" | "GRADE", GPUShaderModule>;
     const additive: GPUBlendState = { color: { srcFactor: "one", dstFactor: "one" }, alpha: { srcFactor: "one", dstFactor: "one" } };
     const depthFmt: GPUTextureFormat = "depth24plus";
     const full3: GPUPrimitiveState = { topology: "triangle-list" };
+    const strip: GPUPrimitiveState = { topology: "triangle-strip", cullMode: "none" };
     // Compilés ensemble, hors du fil principal (D2).
-    const [simPipe, drawPipe, bgPipe, cardPipe, dofPipe, gradePipe] = await Promise.all([
+    const [simPipe, drawPipe, cardPipe, cardDepthPipe, gradePipe] = await Promise.all([
       device.createComputePipelineAsync({ layout: "auto", compute: { module: mods.SIM, entryPoint: "sim" } }),
       device.createRenderPipelineAsync({
         layout: "auto",
@@ -377,72 +415,74 @@ export function mount(root: HTMLElement) {
       }),
       device.createRenderPipelineAsync({
         layout: "auto",
-        vertex: { module: mods.SCENE, entryPoint: "vs_bg" },
-        fragment: { module: mods.SCENE, entryPoint: "fs_bg", targets: [{ format: HDR }] },
-        primitive: full3,
-        depthStencil: { format: depthFmt, depthWriteEnabled: false, depthCompare: "always" },
+        vertex: { module: mods.SCENE, entryPoint: "vs_card" },
+        // Prémultiplié, de la plus lointaine à la plus proche : les bords flous se fondent.
+        fragment: { module: mods.SCENE, entryPoint: "fs_card", targets: [{ format: HDR, blend: { color: { srcFactor: "one", dstFactor: "one-minus-src-alpha" }, alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" } } }] },
+        primitive: strip,
       }),
       device.createRenderPipelineAsync({
         layout: "auto",
         vertex: { module: mods.SCENE, entryPoint: "vs_card" },
-        fragment: { module: mods.SCENE, entryPoint: "fs_card", targets: [{ format: HDR }] },
-        primitive: { topology: "triangle-strip", cullMode: "none" },
+        fragment: { module: mods.SCENE, entryPoint: "fs_card_depth", targets: [{ format: HDR, writeMask: 0 }] },
+        primitive: strip,
         depthStencil: { format: depthFmt, depthWriteEnabled: true, depthCompare: "less" },
       }),
-      device.createRenderPipelineAsync({ layout: "auto", vertex: { module: mods.DOF, entryPoint: "vs" }, fragment: { module: mods.DOF, entryPoint: "fs", targets: [{ format: HDR }] }, primitive: full3 }),
       device.createRenderPipelineAsync({ layout: "auto", vertex: { module: mods.GRADE, entryPoint: "vs" }, fragment: { module: mods.GRADE, entryPoint: "fs", targets: [{ format }] }, primitive: full3 }),
     ]);
 
-    const ubuf = device.createBuffer({ size: 528, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-    const udata = new Float32Array(528 / 4);
-    // Particules : position (vie), vitesse (graine) ; un disque autour de l'anneau.
-    const pdata = new Float32Array(COUNT * 8);
-    for (let i = 0; i < COUNT; i++) {
-      const a = Math.random() * TAU;
-      const r = R * (0.55 + 1.5 * Math.random() ** 0.8);
-      const y = (Math.random() + Math.random() + Math.random() - 1.5) * 0.18 * (r / R);
-      const w = 0.32 * (R / r) ** 1.5 * r;
-      pdata.set([Math.cos(a) * r, y, Math.sin(a) * r, Math.random(), (-Math.sin(a) * w), 0, Math.cos(a) * w, Math.random() * 1000], i * 8);
-    }
-    const pbuf = device.createBuffer({ size: pdata.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
-    device.queue.writeBuffer(pbuf, 0, pdata);
+    const UBYTES = 512;
+    const ubuf = device.createBuffer({ size: UBYTES, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const udata = new Float32Array(UBYTES / 4);
+    // Particules : position et impulsion (4 + 4). À zéro, toutes sont « sous l'horizon » :
+    // elles naissent à la première image, comme dans l'original.
+    const pbuf = device.createBuffer({ size: COUNT * 32, usage: GPUBufferUsage.STORAGE });
     const samp = device.createSampler({ magFilter: "linear", minFilter: "linear", mipmapFilter: "linear" });
     const simBind = device.createBindGroup({ layout: simPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: pbuf } }] });
     const drawBind = device.createBindGroup({ layout: drawPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: pbuf } }] });
-    const bgBind = device.createBindGroup({ layout: bgPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }] });
-    const cardBind = device.createBindGroup({
-      layout: cardPipe.getBindGroupLayout(0),
-      entries: [
-        { binding: 0, resource: { buffer: ubuf } },
-        { binding: 1, resource: samp },
-        { binding: 2, resource: tex.createView({ dimension: "2d-array" }) },
-      ],
-    });
+    const cardEntries = (p: GPURenderPipeline) =>
+      device.createBindGroup({
+        layout: p.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: { buffer: ubuf } },
+          { binding: 1, resource: samp },
+          { binding: 2, resource: tex.createView({ dimension: "2d-array" }) },
+        ],
+      });
+    const cardBind = cardEntries(cardPipe);
+    // Le passe profondeur seule n'utilise que les uniformes : sa disposition « auto » n'a que l'entrée 0.
+    const cardDepthBind = device.createBindGroup({ layout: cardDepthPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }] });
 
-    // Cibles : scène (HDR + profondeur), résultat du flou (où se posent les particules).
-    let targets: { w: number; h: number; scene: GPUTexture; depth: GPUTexture; dof: GPUTexture; dofBind: GPUBindGroup; gradeBind: GPUBindGroup } | null = null;
+    // Cibles : cartes (pleine résolution) ;
+    // particules (plafonnées vers 1280 px, comme l'original rend à 900 px puis agrandit).
+    type Targets = { w: number; h: number; pw: number; ph: number; scene: GPUTexture; pacc: GPUTexture; pdepth: GPUTexture; gradeBind: GPUBindGroup };
+    let targets: Targets | null = null;
     const sizeTargets = (w: number, h: number) => {
       if (targets && targets.w === w && targets.h === h) return targets;
-      if (targets) for (const t of [targets.scene, targets.depth, targets.dof]) t.destroy();
-      const mk = (format: GPUTextureFormat) => device.createTexture({ size: [w, h], format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+      if (targets) for (const t of [targets.scene, targets.pacc, targets.pdepth]) t.destroy();
+      const ps = Math.min(1, 1280 / Math.max(w, h));
+      const pw = Math.max(2, Math.round(w * ps));
+      const ph = Math.max(2, Math.round(h * ps));
+      const mk = (format: GPUTextureFormat, sw = w, sh = h) => device.createTexture({ size: [sw, sh], format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
       const scene = mk(HDR);
-      const depth = mk(depthFmt);
-      const dof = mk(HDR);
+      const pacc = mk(HDR, pw, ph);
+      const pdepth = mk(depthFmt, pw, ph);
       targets = {
         w,
         h,
+        pw,
+        ph,
         scene,
-        depth,
-        dof,
-        dofBind: device.createBindGroup({
-          layout: dofPipe.getBindGroupLayout(0),
+        pacc,
+        pdepth,
+        gradeBind: device.createBindGroup({
+          layout: gradePipe.getBindGroupLayout(0),
           entries: [
             { binding: 0, resource: { buffer: ubuf } },
             { binding: 1, resource: scene.createView() },
-            { binding: 2, resource: depth.createView() },
+            { binding: 2, resource: pacc.createView() },
+            { binding: 3, resource: samp },
           ],
         }),
-        gradeBind: device.createBindGroup({ layout: gradePipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: dof.createView() }] }),
       };
       return targets;
     };
@@ -450,6 +490,7 @@ export function mount(root: HTMLElement) {
     root.classList.add("or-gl");
     let last = clockNow();
     let first = true;
+    let simFrame = 0;
 
     const frame = () => {
       if (stopped) return;
@@ -466,11 +507,9 @@ export function mount(root: HTMLElement) {
         canvas.width = PW;
         canvas.height = PH;
       }
-      camera();
       const calm = reduced.matches;
 
-      // L'anneau : ressort vers la carte visée, ou élan après un lancer.
-      const before = theta;
+      // La caméra : ressort vers la carte visée, ou élan après un lancer.
       if (!drag) {
         if (target !== null) {
           if (calm) theta = target;
@@ -484,78 +523,83 @@ export function mount(root: HTMLElement) {
           vel *= Math.exp(-dt * 2.5);
         }
       }
-      const spin = (theta - before) / dt;
+      // Un rien de parallaxe au pointeur.
+      const want = pointer.in && !calm && !drag ? [((pointer.x / W()) - 0.5) * 0.07, ((pointer.y / H()) - 0.5) * 0.05] : [0, 0];
+      const kt = 1 - Math.exp(-dt * 3);
+      tilt.x += (want[0]! - tilt.x) * kt;
+      tilt.y += (want[1]! - tilt.y) * kt;
+      const openK = opening ? Math.min(1, (now - opening.t0) / 650) : 0;
+      camera(openK);
       const front = frontIndex();
       caption(front);
 
       // Survol : la mise au point suit la carte sous le pointeur, sinon la carte de face.
-      const pk = pointer.in && !drag ? pick(pointer.x, pointer.y) : { hit: -1, dist: Infinity, ground: null };
+      const pk = pointer.in && !drag && !opening ? pick(pointer.x, pointer.y) : { hit: -1 };
       hover = pk.hit;
       root.classList.toggle("or-hovering", hover >= 0);
-      const focusOn = hover >= 0 ? hover : front;
-      const fc = cardCenter(focusOn);
-      const wantFocus = Math.hypot(...sub(fc, eye));
-      focusDist = calm ? wantFocus : focusDist + (wantFocus - focusDist) * (1 - Math.exp(-dt * 5));
+      const focusOn = opening ? opening.k : hover >= 0 ? hover : front;
+      const wantFocus = depthOf(cardCenter(focusOn));
+      focusDist = calm || first ? wantFocus : focusDist + (wantFocus - focusDist) * (1 - Math.exp(-dt * (opening ? 12 : 4)));
       for (let k = 0; k < N; k++) {
-        const want = k === front ? 1 : 0;
-        highlight[k] = calm ? want : highlight[k]! + (want - highlight[k]!) * (1 - Math.exp(-dt * 6));
+        const on = k === front ? 1 : 0;
+        highlight[k] = calm ? on : highlight[k]! + (on - highlight[k]!) * (1 - Math.exp(-dt * 6));
       }
-      const openK = opening ? Math.min(1, (now - opening.t0) / 650) : 0;
+
+      const t = sizeTargets(PW, PH);
+      // Px de référence : ceux d'un rendu de 896 × 504 à la focale de l'original (504 / 0,8).
+      const kFull = PH / 2 / tanY / 630;
+      const kP = kFull * (t.ph / PH);
+      const expo = (exposure * ((t.pw / kP) * (t.ph / kP))) / (896 * 504);
+      // Le pas de l'original (0,072 × 7 sous-pas par image à 60 Hz) ne grandit jamais : une
+      // image lente simule plusieurs images (jusqu'à 3), un écran à 120 Hz des demi-pas.
+      // Préchauffage : 150 images d'un coup à la première, pour ouvrir sur le disque formé.
+      const frames = first ? 150 : calm ? 1 : Math.min(3, Math.max(1, Math.round(dt * 60)));
+      const timeStep = 0.072 * (first ? 1 : Math.min(1, dt * 60)) * (calm ? 0.15 : 1);
 
       // Uniformes.
       udata.set(viewProj, 0);
       udata.set(view, 16);
       udata.set([...eye, now / 1000], 32);
-      udata.set([dt, spin, focusDist, aperture], 36);
-      udata.set([PW, PH, dpr, Math.min(24, aperture * 0.7) * dpr], 40);
-      udata.set(pk.ground ? [...pk.ground, 1] : [0, 0, 0, 0], 44);
-      const oc = opening ? cardCenter(opening.k) : ([0, 0, 0] as V3);
-      udata.set([...oc, openK], 48);
-      udata.set([R, theta, N, front], 52);
-      udata.set([0.1, 60, calm ? 0 : 1, 0.9], 56);
+      udata.set([timeStep, frames, focusDist, blur], 36);
+      udata.set([PW, PH, kFull, 28 * dpr], 40);
+      udata.set([t.pw, t.ph, kP, expo], 44);
+      udata.set([simFrame, 0.876, 0.719, 0.22], 48);
+      udata.set([R, 0, N, front], 52);
+      udata.set([0.5, 200, 3 * 0.827, calm ? 0 : 1], 56);
       for (let k = 0; k < MAX_CARDS; k++) {
         const a = apps[k % N]!;
         udata.set([...a.color, 1], 60 + k * 4);
         const [hw, hh] = halfSize(k % N);
-        udata.set([hw, hh, Math.max(0.5, Math.min(2.2, a.aspect)), (highlight[k % N] ?? 0) + (opening && opening.k === k ? openK * 0.6 : 0)], 60 + MAX_CARDS * 4 + k * 4);
+        udata.set([hw, hh, Math.max(0.5, Math.min(2.2, a.aspect)), highlight[k % N] ?? 0], 60 + MAX_CARDS * 4 + k * 4);
       }
       device.queue.writeBuffer(ubuf, 0, udata);
+      simFrame += frames;
 
-      const t = sizeTargets(PW, PH);
       const enc = device.createCommandEncoder();
       const cp = enc.beginComputePass();
       cp.setPipeline(simPipe);
       cp.setBindGroup(0, simBind);
-      cp.dispatchWorkgroups(Math.ceil(COUNT / 256));
+      cp.dispatchWorkgroups(Math.ceil(COUNT / 64));
       cp.end();
-      // Scène : fond, puis cartes (profondeur écrite).
-      const sp = enc.beginRenderPass({
-        colorAttachments: [{ view: t.scene.createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 1] }],
-        depthStencilAttachment: { view: t.depth.createView(), depthLoadOp: "clear", depthStoreOp: "store", depthClearValue: 1 },
-      });
-      sp.setPipeline(bgPipe);
-      sp.setBindGroup(0, bgBind);
-      sp.draw(3);
+      // Les cartes, sur le noir, de la plus lointaine à la plus proche.
+      const sp = enc.beginRenderPass({ colorAttachments: [{ view: t.scene.createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 1] }] });
       sp.setPipeline(cardPipe);
       sp.setBindGroup(0, cardBind);
-      sp.draw(4, N);
+      for (const k of apps.map((_, k) => k).sort((a, b) => depthOf(cardCenter(b)) - depthOf(cardCenter(a)))) sp.draw(4, 1, 0, k);
       sp.end();
-      // Profondeur de champ.
-      const dp = enc.beginRenderPass({ colorAttachments: [{ view: t.dof.createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 1] }] });
-      dp.setPipeline(dofPipe);
-      dp.setBindGroup(0, t.dofBind);
-      dp.draw(3);
-      dp.end();
-      // Particules, par-dessus, cachées par les cartes.
+      // Les particules, dans leur tampon, cachées par les cartes.
       const pp = enc.beginRenderPass({
-        colorAttachments: [{ view: t.dof.createView(), loadOp: "load", storeOp: "store" }],
-        depthStencilAttachment: { view: t.depth.createView(), depthLoadOp: "load", depthStoreOp: "store" },
+        colorAttachments: [{ view: t.pacc.createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }],
+        depthStencilAttachment: { view: t.pdepth.createView(), depthLoadOp: "clear", depthStoreOp: "store", depthClearValue: 1 },
       });
+      pp.setPipeline(cardDepthPipe);
+      pp.setBindGroup(0, cardDepthBind);
+      pp.draw(4, N);
       pp.setPipeline(drawPipe);
       pp.setBindGroup(0, drawBind);
       pp.draw(4, COUNT);
       pp.end();
-      // Étalonnage dans le canvas.
+      // Exposition et composition dans le canvas.
       const out = ctx.getCurrentTexture();
       const gp = enc.beginRenderPass({ colorAttachments: [{ view: out.createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 1] }] });
       gp.setPipeline(gradePipe);

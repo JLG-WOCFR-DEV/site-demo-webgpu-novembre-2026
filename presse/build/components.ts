@@ -253,7 +253,7 @@ ${li}
  * Un lanceur : chaque lien est une application, une carte de l'anneau 3D.
  * Sans WebGPU, la liste des liens est le lanceur.
  */
-const OR_ATTRS = ["particles", "aperture", "radius"];
+const OR_ATTRS = ["particles", "aperture", "radius", "exposure"];
 const orbite: Render = (a, children) => {
   const links = children.flatMap((c) => (c.tagName === "A" ? [c] : c.querySelectorAll("a")));
   const items = links.map((l) => {
@@ -277,7 +277,7 @@ ${items.map((it) => `    <li class="or-item" data-id="${esc(it.id)}" data-title=
     <a class="or-open" data-intro data-magnet="0.25" data-or-open href="${esc(first?.href ?? "#")}" data-flight="${esc(first?.id ?? "")}">${esc(a.open ?? "Entrer")} <span aria-hidden="true">↗</span></a>
   </div>
   <div class="or-nav" data-intro><button type="button" data-magnet="0.35" data-or-prev aria-label="Application précédente">←</button><button type="button" data-magnet="0.35" data-or-next aria-label="Application suivante">→</button></div>
-  <p class="or-hint" aria-hidden="true">${esc(a.hint ?? "Glissez, ou ← →. La carte de face est au point ; cliquez-la pour entrer.")}</p>
+  <p class="or-hint" aria-hidden="true">${esc(a.hint ?? "Glissez pour tourner autour du trou noir, ou ← →. La carte au point s’ouvre d’un clic.")}</p>
   <p class="sr-only" aria-live="polite" data-or-live></p>
 </section>`;
 };
