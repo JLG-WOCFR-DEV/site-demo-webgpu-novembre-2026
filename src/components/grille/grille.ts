@@ -12,7 +12,7 @@
  */
 import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { fromImage, growPhotoArray, loadPhotoArray } from "../../gpu/photos.ts";
-import { claimFlight, onLeave, type Flight } from "../../presse/flight.ts";
+import { claimFlight, onArrive, onLeave, type Flight } from "../../presse/flight.ts";
 import * as stock from "./stock.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
@@ -523,8 +523,8 @@ export function mount(root: HTMLElement) {
     q("[data-gr-num]").textContent = `${String(rank).padStart(2, "0")} / ${String(ps.length).padStart(2, "0")}`;
     // La boîte de la photo : départ et arrivée du passage d'une page à l'autre.
     q("[data-gr-hero]").dataset.flightId = p.id;
-    const wide = detail.querySelector<HTMLAnchorElement>("[data-gr-wide]");
-    if (wide) {
+    // Vers la même photo sur d'autres pages (le mur entier, la galerie) : elle y passe.
+    for (const wide of detail.querySelectorAll<HTMLAnchorElement>("[data-gr-wide]")) {
       wide.hidden = !!p.local;
       wide.href = `${wide.dataset.page}${wide.dataset.page!.includes("?") ? "&" : "?"}photo=${encodeURIComponent(p.id)}`;
       wide.dataset.flight = p.id;
@@ -989,23 +989,44 @@ export function mount(root: HTMLElement) {
   /* ───── Le passage : une photo qui arrive d'une autre page ───── */
 
   let flight: Flight | null = null;
+  /** Photo arrivée d'une autre page : le GPU attend qu'elle ait atterri pour la peindre (une seule image à l'écran). */
+  let landing: { id: string; landed: boolean } | null = null;
+  const finishLanding = () => {
+    flight?.release();
+    flight = null;
+    landing = null;
+    root.classList.remove("gr-arriving");
+  };
+  const receive = (p: Photo, f: Flight) => {
+    const r = heroSlot().getBoundingClientRect();
+    if (!(r.bottom > 0 && r.top < innerHeight)) return f.release();
+    flight = f;
+    landing = { id: p.id, landed: false };
+    // Sa photo HTML s'efface le temps du vol ; posée, elle (ou le GPU) prend le relais.
+    root.classList.add("gr-arriving");
+    void f.land({ x: r.left, y: r.top, w: r.width, h: r.height }, 18).then(() => {
+      if (landing?.id === p.id) landing.landed = true;
+      finishLanding();
+    });
+  };
   {
     const id = new URLSearchParams(location.search).get(param);
     const p = id ? byId.get(id) : undefined;
-    flight = p ? claimFlight(p.id) : null;
-    if (p && flight) {
+    const f = p ? claimFlight(p.id) : null;
+    if (p && f) {
       // Sa page s'ouvre tout de suite, sans vol depuis le mur : l'image arrive de l'autre page.
       open = { photo: p, ref: refOf(p) };
       pushed = false;
       showDetail(p);
-      const r = heroSlot().getBoundingClientRect();
-      if (r.bottom > 0 && r.top < innerHeight) {
-        // Sa photo HTML s'efface le temps du vol : une seule image à l'écran.
-        root.classList.add("gr-arriving");
-        void flight.land({ x: r.left, y: r.top, w: r.width, h: r.height }, 18);
-      } else (flight.release(), (flight = null));
+      receive(p, f);
     }
   }
+  // Page restaurée du cache arrière, sa photo ouverte : l'image revient s'y poser.
+  const unarrive = onArrive((id) => {
+    if (!open || fly || open.photo.id !== id) return;
+    const f = claimFlight(id);
+    if (f) receive(open.photo, f);
+  });
   // Retour arrière depuis la page d'une photo : elle repart vers la page d'avant.
   const unleave = onLeave(() => (open && !fly ? { box: heroSlot(), id: open.photo.id } : null));
   void restoreLocal();
@@ -1219,7 +1240,8 @@ export function mount(root: HTMLElement) {
         }
       }
       // La photo qui vole vers sa page, par-dessus.
-      if (flying) {
+      // (Pas pendant qu'elle arrive d'une autre page : l'image de passage la tient.)
+      if (flying && !(landing && !landing.landed && landing.id === flying.photo.id)) {
         const cr = refRect(flying.ref);
         const heroR = heroRect();
         let r: Rect = open ? heroR : cr;
@@ -1251,12 +1273,6 @@ export function mount(root: HTMLElement) {
       pass.end();
       if (full) rec.copy(enc, out);
       device.queue.submit([enc.finish()]);
-      // Le GPU peint la photo arrivée d'une autre page : l'image de passage peut s'effacer.
-      if (flight) {
-        flight.release();
-        flight = null;
-        root.classList.remove("gr-arriving");
-      }
       if (full) rec.after();
     };
     requestAnimationFrame(frame);
@@ -1266,9 +1282,6 @@ export function mount(root: HTMLElement) {
     console.warn("[grille]", e);
     // Sans WebGPU : la liste des photos devient visible, chaque lien ouvre sa page.
     root.classList.add("gr-nogl");
-    flight?.release();
-    flight = null;
-    root.classList.remove("gr-arriving");
     const hint = root.querySelector("[data-gr-hint]");
     if (hint) hint.textContent = "Sans WebGPU : la liste des photos reste disponible au clavier.";
     route(false);
@@ -1278,7 +1291,8 @@ export function mount(root: HTMLElement) {
     stopped = true;
     io.disconnect();
     unleave();
-    flight?.release();
+    unarrive();
+    finishLanding();
     unwire();
     removeEventListener("popstate", onPop);
     dropTarget.removeEventListener("dragenter", onDragEnter as EventListener);

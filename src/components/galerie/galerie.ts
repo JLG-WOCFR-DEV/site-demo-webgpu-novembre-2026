@@ -18,6 +18,7 @@ import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { loadPhotoArray } from "../../gpu/photos.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
+import { claimFlight, type Flight, onArrive, onLeave, onSource, type Source } from "../../presse/flight.ts";
 import { getDevice } from "../device.ts";
 import { ARRANGEMENTS, apply, type ArrangeName, type Ctx, DEG, type Inst, mod, OPTIONS, type Pose, pose, rotation, stackDir } from "./arrange.ts";
 import { BACKDROP, GALERIE, MAX_ITEMS, STRIDE } from "./shader.ts";
@@ -57,7 +58,7 @@ export type Config = {
   backdropSize: number;
   backdropBlur: number;
 };
-export type ItemInfo = { title: string; cat: string; spec: [string, string][]; aspect: number; palette: number[][]; el: HTMLElement; img: HTMLImageElement };
+export type ItemInfo = { id: string; title: string; cat: string; spec: [string, string][]; aspect: number; palette: number[][]; el: HTMLElement; img: HTMLImageElement };
 export type FrameState = { focus: number; item: ItemInfo | undefined; speed: number; dir: number; open: number | null; count: number };
 export type GalerieApi = {
   readonly config: Config;
@@ -168,6 +169,8 @@ export function mount(root: HTMLElement) {
     if (live) live.textContent = s;
   };
 
+  let items0 = 0;
+  const param = root.dataset.param;
   const items: ItemInfo[] = [...root.querySelectorAll<HTMLElement>(".gx-item")].map((el) => {
     const img = el.querySelector("img")!;
     const w = Number(img.getAttribute("width")) || img.naturalWidth || 3;
@@ -178,7 +181,7 @@ export function mount(root: HTMLElement) {
       .filter((s) => s[0] && s[1] !== undefined);
     const hex = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16) / 255);
     const palette = (img.dataset.palette ?? "#888888,#666666,#aaaaaa").split(",").map(hex);
-    return { title: el.dataset.title ?? img.alt, cat: el.dataset.cat ?? "", spec, aspect: w / h, palette, el, img };
+    return { id: el.dataset.id ?? String(items0++), title: el.dataset.title ?? img.alt, cat: el.dataset.cat ?? "", spec, aspect: w / h, palette, el, img };
   });
   const N = Math.min(items.length, MAX_ITEMS / 4);
   if (!N) return () => {};
@@ -396,12 +399,28 @@ export function mount(root: HTMLElement) {
       const dl = reveal.querySelector("dl");
       if (dl) dl.innerHTML = it.spec.map(([k, v], i) => `<div style="--i:${i}"><dt>${k}</dt><dd>${v}</dd></div>`).join("");
     }
+    // La même photo sur d'autres pages : elle y passe (src/presse/flight.ts).
+    for (const a of root.querySelectorAll<HTMLAnchorElement>("[data-gx-page]")) {
+      a.href = `${a.dataset.page}${a.dataset.page!.includes("?") ? "&" : "?"}photo=${encodeURIComponent(it.id)}`;
+      a.dataset.flight = it.id;
+    }
+    setUrl(it.id);
     say(`${it.title} ouverte, ${kOf(idx) + 1} sur ${n()}. Échap pour fermer.`);
     (detail?.querySelector<HTMLElement>(".gx-close") ?? reveal?.querySelector<HTMLElement>(".gx-close"))?.focus({ preventScroll: true });
   };
+  /** Avec param : la photo ouverte est dans l'adresse (remplacée, pas empilée : le retour arrière quitte la galerie). */
+  function setUrl(id: string | null) {
+    if (!param) return;
+    const q = new URLSearchParams(location.search);
+    if (id) q.set(param, id);
+    else q.delete(param);
+    const str = q.toString();
+    history.replaceState(history.state, "", `${location.pathname}${str ? `?${str}` : ""}${location.hash}`);
+  }
   function close() {
     if (sel.idx === null) return;
     sel.idx = null;
+    setUrl(null);
     sel.target = 0;
     root.classList.remove("gx-open");
     delete root.dataset.open;
@@ -839,7 +858,7 @@ export function mount(root: HTMLElement) {
       }
     }
     // L'image en grand se pose quand le vol est fini.
-    if (detailMedia && cfg.selection === "detail" && sel.target === 1 && sel.a > 0.96) {
+    if (detailMedia && cfg.selection === "detail" && sel.target === 1 && sel.a > 0.96 && !arrival) {
       const im = detailMedia.querySelector("img");
       if (im && (im.complete || im.naturalWidth)) detailMedia.classList.add("is-ready");
       else im?.addEventListener("load", () => sel.target === 1 && detailMedia.classList.add("is-ready"), { once: true });
@@ -922,10 +941,66 @@ export function mount(root: HTMLElement) {
   measure();
   refilter(clockNow(), true);
 
+  /* ───── Le passage : d'une page à l'autre ───── */
+
+  /** Où est, à l'écran, l'image ouverte (le GPU la peint : pas de boîte HTML). */
+  const openSource = (idx: number): Source | null => {
+    measure();
+    const d = drawn.find((x) => x.idx === idx && !x.key.includes("@"));
+    if (!d) return null;
+    const bb = bounds(d);
+    const b = box();
+    const img = items[idx]!.img;
+    const radius = Number.parseFloat(getComputedStyle(root).getPropertyValue("--gallery-radius")) || 10;
+    return { rect: { x: b.left + b.W / 2 + bb.l, y: b.top + b.H / 2 + bb.t, w: bb.r - bb.l, h: bb.b - bb.t }, src: img.currentSrc || img.dataset.glTex || img.src, radius };
+  };
+  const idxOf = (id: string) => items.findIndex((it) => it.id === id);
+  const unsource = onSource(root, (id) => (sel.idx !== null && items[sel.idx]!.id === id ? openSource(sel.idx) : null));
+  const unleave = onLeave(() => {
+    if (sel.idx === null || sel.a < 0.9) return null;
+    const s_ = openSource(sel.idx);
+    return s_ ? { id: items[sel.idx]!.id, source: s_ } : null;
+  });
+  /** Une photo arrivée d'une autre page : la galerie s'ouvre sur elle, et le GPU attend qu'elle ait atterri pour la peindre. */
+  let arrival: { idx: number; f: Flight; flying: boolean; landed: boolean } | null = null;
+  const receive = (idx: number, f: Flight) => {
+    arrival = { idx, f, flying: false, landed: false };
+  };
+  const finishArrival = () => {
+    arrival?.f.release();
+    arrival = null;
+  };
+  if (param) {
+    const id = new URLSearchParams(location.search).get(param);
+    const idx = id ? idxOf(id) : -1;
+    if (idx >= 0 && presentIdx.includes(idx)) {
+      // Sur elle, ouverte, sans animation : c'est l'image de l'autre page qui fait le chemin.
+      goTo(kOf(idx));
+      const tg = target as { x: number; y: number } | null;
+      if (tg) {
+        off.x = tg.x;
+        off.y = tg.y;
+        target = null;
+      }
+      presence[idx]!.p = 1;
+      open(idx);
+      sel.a = 1;
+      sel.av = 0;
+      const f = claimFlight(id!);
+      if (f) receive(idx, f);
+    }
+  }
+  const unarrive = onArrive((id) => {
+    if (sel.idx === null || items[sel.idx]!.id !== id) return;
+    const f = claimFlight(id);
+    if (f) receive(sel.idx, f);
+  });
+
   /* ───── WebGPU ───── */
 
   const fallback = (e: unknown) => {
     console.warn("[galerie]", e);
+    finishArrival();
     root.classList.add("no-gl");
   };
 
@@ -993,6 +1068,18 @@ export function mount(root: HTMLElement) {
       if (!full && !onScreen) return;
       step(now, dt);
       if (now - radAt > 500) ((rad = radius()), (radAt = now));
+      // L'image arrivée d'une autre page vole jusqu'à sa place dans la galerie.
+      if (arrival && !arrival.flying) {
+        const src = openSource(arrival.idx);
+        if (src) {
+          arrival.flying = true;
+          const a_ = arrival;
+          void a_.f.land(src.rect, src.radius).then(() => {
+            a_.landed = true;
+            if (arrival === a_) finishArrival();
+          });
+        }
+      }
       const b = box();
       const dpr = Math.min(devicePixelRatio || 1, 2);
       const PW = Math.round(b.W * dpr);
@@ -1027,7 +1114,8 @@ export function mount(root: HTMLElement) {
           v1 = 0.5 + h / 2;
         }
         idata.set([u0, v0, u1, v1], o + 16);
-        idata.set([clamp(d.p.o, 0, 1), d.p.shade, d.chroma, d.hl], o + 20);
+        const held = arrival && !arrival.landed && d.idx === arrival.idx && !d.key.includes("@");
+        idata.set([held ? 0 : clamp(d.p.o, 0, 1), d.p.shade, d.chroma, d.hl], o + 20);
       }
       device.queue.writeBuffer(ibuf, 0, idata, 0, count * STRIDE);
       udata.set([b.W, b.H, dpr, cfg.perspective, count, wire ? 1 : 0, now / 1000, cfg.shadow]);
@@ -1064,6 +1152,10 @@ export function mount(root: HTMLElement) {
     stopped = true;
     io.disconnect();
     unwire();
+    unsource();
+    unleave();
+    unarrive();
+    finishArrival();
     apis.delete(root);
     root.classList.remove("is-gl");
   };

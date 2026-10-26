@@ -59,15 +59,31 @@ function imageOf(box: HTMLElement) {
   return { img, el, rect: el.getBoundingClientRect() };
 }
 
+/** Une photo à l'écran : rectangle (fenêtre), image, arrondi. Une photo peinte par le GPU n'a pas de boîte HTML. */
+export type Source = { rect: Rect; src: string; radius: number };
+
+/** Note un départ depuis une photo à l'écran. */
+export function launchFrom(s: Source, id: string, to: string | null) {
+  const r = s.rect;
+  // Hors de l'écran, il n'y a rien à faire voler.
+  if (!s.src || r.w < 8 || r.h < 8 || r.y + r.h < 0 || r.y > innerHeight || r.x + r.w < 0 || r.x > innerWidth) return false;
+  write({ id, src: s.src, x: r.x, y: r.y, w: r.w, h: r.h, r: s.radius, t: Date.now(), to });
+  return true;
+}
+
 /** Note un départ depuis une boîte [data-flight-id] (ou toute boîte qui contient l'image). */
 export function launch(box: HTMLElement, id: string, to: string | null) {
   const { img, el, rect: r } = imageOf(box);
-  const src = box.dataset.flightSrc || img?.currentSrc || img?.src;
-  // Hors de l'écran, il n'y a rien à faire voler.
-  if (!src || r.width < 8 || r.height < 8 || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return false;
+  const src = box.dataset.flightSrc || img?.currentSrc || img?.src || "";
   const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || parseFloat(getComputedStyle(box).borderTopLeftRadius) || 0;
-  write({ id, src, x: r.left, y: r.top, w: r.width, h: r.height, r: radius, t: Date.now(), to });
-  return true;
+  return launchFrom({ rect: { x: r.left, y: r.top, w: r.width, h: r.height }, src, radius }, id, to);
+}
+
+/** Composants dont les photos sont peintes par le GPU : ils disent où est une photo. */
+const sources = new Map<Element, (id: string) => Source | null>();
+export function onSource(root: Element, fn: (id: string) => Source | null) {
+  sources.set(root, fn);
+  return () => void sources.delete(root);
 }
 
 const boxFor = (id: string, near?: Element | null) => {
@@ -77,7 +93,7 @@ const boxFor = (id: string, near?: Element | null) => {
 
 /* ───── Départ ───── */
 
-type Leaving = () => { box: HTMLElement; id: string } | null;
+type Leaving = () => ({ id: string } & ({ box: HTMLElement } | { source: Source })) | null;
 const leaving = new Set<Leaving>();
 /** Un composant qui montre une photo en grand la donne au retour arrière. */
 export function onLeave(fn: Leaving) {
@@ -88,6 +104,13 @@ export function onLeave(fn: Leaving) {
 let clicked = 0;
 
 /* ───── Arrivée ───── */
+
+/** Une page restaurée du cache arrière : ses composants, déjà montés, peuvent réclamer l'image. */
+const arrivals = new Set<(id: string) => void>();
+export function onArrive(fn: (id: string) => void) {
+  arrivals.add(fn);
+  return () => void arrivals.delete(fn);
+}
 
 type Pending = { d: FlightData; el: HTMLImageElement; claimed: boolean };
 let pending: Pending | null = null;
@@ -192,6 +215,7 @@ function arrive(d: FlightData | null, el: HTMLImageElement | null) {
   }
   const p: Pending = { d, el: el ?? overlay(d), claimed: false };
   pending = p;
+  for (const fn of arrivals) if (!p.claimed) fn(d.id);
   // Un composant a jusqu'à la fin du montage (ou 1,5 s) pour la réclamer.
   void Promise.race([settled.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))), new Promise((r) => setTimeout(r, 1500))]).then(() => landAnywhere(p));
 }
@@ -208,15 +232,16 @@ export function initFlights() {
     const a = (e.target as Element | null)?.closest?.<HTMLAnchorElement>("a[data-flight]");
     if (!a || (a.target && a.target !== "_self") || a.origin !== location.origin) return;
     const id = a.dataset.flight!;
-    const box = boxFor(id, a);
-    if (box && launch(box, id, a.href)) clicked = Date.now();
+    const src = sources.get(a.closest("[data-presse-component]") as Element)?.(id);
+    const box = src ? null : boxFor(id, a);
+    if ((src && launchFrom(src, id, a.href)) || (box && launch(box, id, a.href))) clicked = Date.now();
   });
   // Départ, en revenant en arrière : la photo affichée en grand repart vers la page d'avant.
   const leave = (to: string | null) => {
     if (Date.now() - clicked < 3000) return;
     for (const fn of leaving) {
       const f = fn();
-      if (f && launch(f.box, f.id, to)) return;
+      if (f && ("box" in f ? launch(f.box, f.id, to) : launchFrom(f.source, f.id, to))) return;
     }
   };
   addEventListener("pageswap", ((e: Event & { activation?: { navigationType: string; entry: { url: string } } | null }) => {

@@ -344,7 +344,8 @@ function writeCode() {
   code.textContent = `<x-galerie ${attrs.join(" ")}>\n  <img src="pont.jpg" alt="…" data-title="Le pont" data-cat="eau">\n  …\n</x-galerie>`;
 }
 
-function applyPreset(name: string) {
+/** first : au chargement, une photo ouverte par l'adresse (?photo=…, arrivée d'une autre page) le reste. */
+function applyPreset(name: string, first = false) {
   const p = PRESETS[name] ?? PRESETS.tonneau!;
   if (!api) return;
   undress();
@@ -353,7 +354,7 @@ function applyPreset(name: string) {
   dress.className = "gp-dress";
   root.dataset.preset = name;
   document.body.dataset.preset = name;
-  api.open(null);
+  if (!first) api.open(null);
   api.set({ ...BASE, ...p.config, arrange: p.arrange, options: { ...defaults(p.arrange), ...(p.options ?? {}) }, axis: p.config.axis ?? (p.arrange === "helix" ? "y" : "x") });
   document.querySelector("[data-gp-title]")!.textContent = p.title;
   document.querySelector("[data-gp-lede]")!.textContent = p.lede;
@@ -374,5 +375,5 @@ await mountComponents();
 api = galerieOf(root);
 if (api) {
   const start = new URLSearchParams(location.search).get("exemple");
-  applyPreset(start && start in PRESETS ? start : "tonneau");
+  applyPreset(start && start in PRESETS ? start : "tonneau", true);
 }

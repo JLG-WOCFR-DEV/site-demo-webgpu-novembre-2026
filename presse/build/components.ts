@@ -44,6 +44,19 @@ export function letters(text: string, row = 0) {
 }
 
 /**
+ * Liens vers la même photo sur d'autres pages : pages="Le mur=./grille.html|La galerie=./galerie.html"
+ * (ou, pour un seul lien, page="./grille.html" page-label="…"). La photo y passe (src/presse/flight.ts).
+ */
+const pages = (a: Record<string, string>, label: string): [string, string][] => {
+  const out: [string, string][] = a.page ? [[a["page-label"] ?? label, a.page]] : [];
+  for (const p of (a.pages ?? "").split("|")) {
+    const i = p.indexOf("=");
+    if (i > 0) out.push([p.slice(0, i).trim(), p.slice(i + 1).trim()]);
+  }
+  return out;
+};
+
+/**
  * <x-liquide filters="eau:L'eau|terre:La terre" link="./grille.html?photo={id}">
  *   <img src="…" alt="…" data-cat="eau" data-caption="Le pont" data-id="pont">
  *
@@ -125,7 +138,7 @@ ${items.map((p) => `    <img src="${esc(p.src)}" data-photo="${esc(p.id)}" data-
       <${hTag} class="gr-title" data-gr-title></${hTag}>
       <p class="gr-body" data-gr-body></p>
       <p class="gr-alt" data-gr-alt></p>
-      <p class="gr-actions"><a class="gr-back" href="?" data-gr-back>← ${esc(a.back ?? "Le mur")}</a>${a.page ? `<a class="gr-wide" href="${esc(a.page)}" data-gr-wide data-page="${esc(a.page)}">${esc(a["page-label"] ?? "Sur le mur entier")} ↗</a>` : ""}<button type="button" class="gr-remove" data-gr-remove hidden>Retirer du mur</button></p>
+      <p class="gr-actions"><a class="gr-back" href="?" data-gr-back>← ${esc(a.back ?? "Le mur")}</a>${pages(a, "Sur le mur entier").map(([l, u]) => `<a class="gr-wide" href="${esc(u)}" data-gr-wide data-page="${esc(u)}">${esc(l)} ↗</a>`).join("")}<button type="button" class="gr-remove" data-gr-remove hidden>Retirer du mur</button></p>
     </div>
   </article>
   <p class="sr-only" aria-live="polite" data-gr-live></p>
@@ -185,7 +198,9 @@ const kb = (f: string) => {
 };
 const galerie: Render = (a, children) => {
   const items = imgs(children);
-  const data = GX_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k] === "" ? "true" : a[k]!)}"`).join("");
+  // Liens de la photo ouverte vers d'autres pages ; param : la photo ouverte dans l'adresse (?photo=pont).
+  const links = pages(a, "Sur le mur").map(([l, u]) => `<a class="gx-page" href="${esc(u)}" data-gx-page data-page="${esc(u)}">${esc(l)} ↗</a>`).join("");
+  const data = (a.param ? ` data-param="${esc(a.param)}"` : "") + GX_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k] === "" ? "true" : a[k]!)}"`).join("");
   const li = items
     .map((im, i) => {
       const src = (im.getAttribute("src") ?? "").replace(/^\.?\//, "");
@@ -205,7 +220,8 @@ const galerie: Render = (a, children) => {
         ]
           .filter(Boolean)
           .join("|");
-      return `    <li class="gx-item" data-title="${esc(title)}" data-cat="${esc(cat)}" data-spec="${esc(spec)}"><button type="button" class="gx-btn" aria-label="${esc(title)}"><img src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} alt="${esc(im.getAttribute("alt") ?? "")}" loading="lazy" sizes="(max-width: 760px) 60vw, 320px" /><span class="gx-cap" aria-hidden="true">${esc(title)}</span></button></li>`;
+      const id = im.getAttribute("data-id") ?? slug(title);
+      return `    <li class="gx-item" data-id="${esc(id)}" data-title="${esc(title)}" data-cat="${esc(cat)}" data-spec="${esc(spec)}"><button type="button" class="gx-btn" aria-label="${esc(title)}"><img src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} alt="${esc(im.getAttribute("alt") ?? "")}" loading="lazy" sizes="(max-width: 760px) 60vw, 320px" /><span class="gx-cap" aria-hidden="true">${esc(title)}</span></button></li>`;
     })
     .join("\n");
   return `<section class="x-galerie" data-presse-component="galerie"${data}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-roledescription="galerie" aria-label="${esc(a.label ?? "Galerie : flèches pour parcourir, Entrée pour ouvrir")}">
@@ -216,13 +232,13 @@ ${li}
   <div class="gx-detail" data-gx-detail hidden>
     <div class="gx-detail-frame"><div class="gx-detail-media"></div></div>
     <p class="gx-detail-cap"></p>
-    <button type="button" class="gx-close">Fermer</button>
+    <p class="gx-actions">${links}<button type="button" class="gx-close">Fermer</button></p>
   </div>
   <div class="gx-strip" data-gx-strip hidden></div>
   <aside class="gx-reveal" data-gx-reveal hidden aria-label="Fiche">
     <h3 class="gx-reveal-title" data-gx-reveal-title></h3>
     <dl></dl>
-    <button type="button" class="gx-close">Fermer</button>
+    <p class="gx-actions">${links}<button type="button" class="gx-close">Fermer</button></p>
   </aside>
   <p class="sr-only" aria-live="polite" data-gx-live></p>
 </section>`;
