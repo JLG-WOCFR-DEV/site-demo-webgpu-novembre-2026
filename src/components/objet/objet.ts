@@ -6,14 +6,14 @@
  * tourbillonne sous le pointeur et sépare la lumière.
  *
  * Source : data-model = « texte:UBS » (lettres gonflées), « noeud », « galet »,
- * « vase », ou l'URL d'un fichier GLB, SVG ou image. On peut aussi déposer un
+ * « vase », « vase-glb » (le vase d'exemple lu par le lecteur GLB), ou l'URL d'un fichier GLB, SVG ou image. On peut aussi déposer un
  * fichier sur l'objet. Le HTML vient de <x-objet> (presse/build/components.ts).
  */
 import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { getDevice } from "../device.ts";
-import { parseGLB } from "./gltf.ts";
+import { parseGLB, writeGLB } from "./gltf.ts";
 import { inflate, maskFromSource, type Mesh, pebble, relief, torusKnot, vase } from "./meshes.ts";
 import { GBUF, MAX_TRAIL, PARTICLES_DRAW, PARTICLES_SIM, STYLE } from "./shaders.ts";
 
@@ -59,6 +59,14 @@ export async function meshFrom(src: string | File): Promise<Mesh> {
     if (src === "noeud") return torusKnot();
     if (src === "galet") return pebble();
     if (src === "vase") return vase();
+    if (src === "vase-glb") {
+      // Le vase d'exemple, lu par le lecteur GLB : le fichier s'il est servi
+      // (public/models/vase.glb), sinon le même GLB écrit dans le navigateur
+      // (certains hébergeurs, dont les artifacts, ne servent pas le type .glb).
+      const res = await fetch("./models/vase.glb").catch(() => null);
+      const buf = res?.ok ? await res.arrayBuffer() : writeGLB(vase());
+      return parseGLB(buf);
+    }
   }
   const name = typeof src === "string" ? src : src.name;
   if (/\.glb(\?|$)/i.test(name)) {
