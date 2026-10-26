@@ -53,18 +53,40 @@ export function onSnapshot(fn: Painter) {
 
 /** Une photo en « cover » dans un rectangle de la capture ; sa couleur si elle n'est pas encore décodée. */
 export function drawCover(g: OffscreenCanvasRenderingContext2D, im: HTMLImageElement, x: number, y: number, w: number, h: number) {
-  if (im.complete && im.naturalWidth) {
-    const ar = im.naturalWidth / im.naturalHeight;
-    let [sw, sh] = [im.naturalWidth, im.naturalHeight];
+  // Jamais la photo en grand : la décoder ici coûterait des dizaines de ms. Sa vignette, préparée d'avance (warm).
+  const t = thumbs.get(im);
+  if (t) {
+    const ar = t.width / t.height;
+    let [sw, sh] = [t.width, t.height];
     if (ar > w / h) sw = sh * (w / h);
     else sh = sw / (w / h);
-    g.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
+    g.drawImage(t, (t.width - sw) / 2, (t.height - sh) / 2, sw, sh, x, y, w, h);
   } else {
     const c = getComputedStyle(im).backgroundColor;
     g.fillStyle = c && c !== "rgba(0, 0, 0, 0)" ? c : "#8a877c";
     g.fillRect(x, y, w, h);
   }
 }
+
+/** Vignettes (96 px) des images de la page, décodées hors du fil principal, avant qu'on en ait besoin. */
+const thumbs = new WeakMap<HTMLImageElement, ImageBitmap>();
+const warming = new WeakSet<HTMLImageElement>();
+function warm() {
+  boardsFor(Math.ceil(innerWidth / CW), Math.ceil(innerHeight / CH));
+  for (const im of document.images) {
+    if (thumbs.has(im) || warming.has(im) || !im.complete || !im.naturalWidth || im.classList.contains("presse-flight")) continue;
+    const r = im.getBoundingClientRect();
+    // Les images visibles, et à une page de distance (les cachées, de taille nulle, aussi).
+    if (r.width > 0 && (r.bottom < -innerHeight || r.top > innerHeight * 2)) continue;
+    warming.add(im);
+    const w = 96;
+    createImageBitmap(im, { resizeWidth: w, resizeHeight: Math.max(1, Math.round((w * im.naturalHeight) / im.naturalWidth)), resizeQuality: "medium" })
+      .then((b) => thumbs.set(im, b))
+      .catch(() => undefined)
+      .finally(() => warming.delete(im));
+  }
+}
+const idle = (fn: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 300));
 
 const paperOf = () => {
   for (const el of [document.body, document.documentElement]) {
@@ -74,12 +96,34 @@ const paperOf = () => {
   return "#efeee8";
 };
 
+/**
+ * Les deux toiles de la capture, créées une fois et réutilisées : le premier
+ * contexte 2D d'une page peut coûter cher (initialisation du rendu), on le
+ * paie au calme (warm), pas au clic.
+ */
+let boards: { img: OffscreenCanvas; txt: OffscreenCanvas; gi: OffscreenCanvasRenderingContext2D; gt: OffscreenCanvasRenderingContext2D } | null = null;
+function boardsFor(cols: number, rows: number) {
+  if (!boards) {
+    const img = new OffscreenCanvas(cols, rows);
+    const txt = new OffscreenCanvas(cols, rows);
+    boards = { img, txt, gi: img.getContext("2d")!, gt: txt.getContext("2d")! };
+  }
+  for (const c of [boards.img, boards.txt]) {
+    // Changer la taille remet la toile à zéro (et son état) ; sinon on l'efface.
+    if (c.width !== cols || c.height !== rows) ((c.width = cols), (c.height = rows));
+  }
+  for (const g of [boards.gi, boards.gt]) {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cols, rows);
+  }
+  return boards;
+}
+
 function snapshot(cols: number, rows: number) {
+  const { img, txt, gi, gt } = boardsFor(cols, rows);
   const sx = cols / innerWidth;
   const sy = rows / innerHeight;
   // Images : chaque <img> visible, et ce que les composants donnent.
-  const img = new OffscreenCanvas(cols, rows);
-  const gi = img.getContext("2d")!;
   gi.imageSmoothingQuality = "high";
   gi.setTransform(sx, 0, 0, sy, 0, 0);
   for (const im of document.images) {
@@ -105,8 +149,6 @@ function snapshot(cols: number, rows: number) {
     }
   }
   // Texte : chaque ligne d'un nœud texte visible, en bande d'encre à sa couleur.
-  const txt = new OffscreenCanvas(cols, rows);
-  const gt = txt.getContext("2d")!;
   gt.setTransform(sx, 0, 0, sy, 0, 0);
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => (n.nodeValue && n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
@@ -371,6 +413,15 @@ export function initSweep() {
       })();
     }
   } else write(null);
+
+  // Les vignettes se préparent au calme : après le chargement, après un défilement, au survol d'un lien.
+  if (enabled()) {
+    addEventListener("load", () => idle(() => warm()), { once: true });
+    if (document.readyState === "complete") idle(() => warm());
+    let st = 0;
+    addEventListener("scroll", () => (clearTimeout(st), (st = window.setTimeout(() => idle(() => warm()), 250))), { passive: true });
+    document.addEventListener("pointerover", (e) => (e.target as Element | null)?.closest?.("a[href]") && warm(), { passive: true });
+  }
 
   // Départ : un lien vers une autre page du site.
   document.addEventListener("click", (e) => {

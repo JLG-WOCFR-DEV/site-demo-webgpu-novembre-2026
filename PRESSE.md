@@ -156,8 +156,11 @@ caractère (rampe de densité pour une image, lettre pour du texte, qui scintill
 
 Activé par `presseFlight({ transition: "ascii" })` dans `vite.config.ts` (une balise `<meta name="presse-transition">`
 dans chaque page). Un lien peut s'en passer : `data-transition="none"`. Sans WebGPU, avec le mouvement réduit, en nouvel
-onglet ou pour une ancre de la même page, les liens restent des liens. Coût : 520 ms avant de partir, 720 ms à l'arrivée,
-en partie couverts par le chargement de la page suivante.
+onglet ou pour une ancre de la même page, les liens restent des liens. Coût : 520 ms avant de partir (la page suivante est
+préchargée pendant ce temps), 720 ms à l'arrivée, sous le papier. La capture elle-même coûte 2 à 4 ms (mesurée : Presse 2,5 ms,
+liquide 1,6, grille 1,7, galerie 4,3 ; Performance, « presse:capture ») : les photos y entrent par des vignettes de 96 px
+décodées d'avance hors du fil principal, et les deux toiles 2D sont créées au calme — la première toile 2D d'une page
+coûtait jusqu'à 1,5 s en rendu logiciel.
 
 ### Ordre proposé
 
