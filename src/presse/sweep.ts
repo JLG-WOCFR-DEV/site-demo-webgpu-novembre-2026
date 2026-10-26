@@ -219,7 +219,10 @@ async function play(dir: 1 | -1, ms: number, paper: string, hole: Rect | null, o
   const dpr = Math.min(devicePixelRatio || 1, 2);
   const cols = Math.ceil(innerWidth / CW);
   const rows = Math.ceil(innerHeight / CH);
+  // Mesurée (Performance, « presse:capture ») : c'est le seul coût avant le premier dessin.
+  const m0 = performance.now();
   const shot = snapshot(cols, rows);
+  performance.measure("presse:capture", { start: m0, end: performance.now() });
   const canvas = document.createElement("canvas");
   canvas.className = "presse-sweep";
   canvas.setAttribute("aria-hidden", "true");

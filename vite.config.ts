@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { presseImages } from "./presse/build/images.ts";
 import { presseComponents } from "./presse/build/plugin.ts";
 import { presseFlight } from "./presse/build/flight.ts";
+import { presseWgsl } from "./presse/build/wgsl.ts";
 
 // Chemins relatifs : le build tourne tel quel sur n'importe quel hébergeur
 // statique, y compris un artifact claude.ai.
@@ -9,7 +10,7 @@ export default defineConfig({
   base: "./",
   // Presse : les balises <x-…> sont déroulées en HTML statique, puis les
   // images préparées (tools/images.py) passent en AVIF/WebP aux bonnes tailles.
-  plugins: [presseComponents(), presseImages(import.meta.dirname), presseFlight({ transition: "ascii" })],
+  plugins: [presseComponents(), presseImages(import.meta.dirname), presseFlight({ transition: "ascii" }), presseWgsl()],
   build: {
     target: "es2022",
     assetsInlineLimit: 0,

@@ -354,15 +354,20 @@ function se() {
 	return t.fillStyle = "#fff", t.textAlign = "center", t.textBaseline = "middle", t.font = "500 40px \"IBM Plex Mono\", ui-monospace, monospace", [...q].forEach((e, n) => t.fillText(e, n * 32 + 16, 56 * .54)), e;
 }
 async function X(e, t, n, r, i) {
-	let a = await V(), o = Math.min(devicePixelRatio || 1, 2), s = ae(Math.ceil(innerWidth / U), Math.ceil(innerHeight / W)), c = document.createElement("canvas");
-	c.className = "presse-sweep", c.setAttribute("aria-hidden", "true"), c.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;z-index:2147482999;pointer-events:none", c.width = Math.round(innerWidth * o), c.height = Math.round(innerHeight * o), document.documentElement.append(c);
-	let l = c.getContext("webgpu"), u = navigator.gpu.getPreferredCanvasFormat();
-	l.configure({
+	let a = await V(), o = Math.min(devicePixelRatio || 1, 2), s = Math.ceil(innerWidth / U), c = Math.ceil(innerHeight / W), l = performance.now(), u = ae(s, c);
+	performance.measure("presse:capture", {
+		start: l,
+		end: performance.now()
+	});
+	let d = document.createElement("canvas");
+	d.className = "presse-sweep", d.setAttribute("aria-hidden", "true"), d.style.cssText = "position:fixed;inset:0;width:100vw;height:100vh;z-index:2147482999;pointer-events:none", d.width = Math.round(innerWidth * o), d.height = Math.round(innerHeight * o), document.documentElement.append(d);
+	let f = d.getContext("webgpu"), p = navigator.gpu.getPreferredCanvasFormat();
+	f.configure({
 		device: a,
-		format: u,
+		format: p,
 		alphaMode: "premultiplied"
 	});
-	let d = (e) => {
+	let m = (e) => {
 		let t = a.createTexture({
 			size: [e.width, e.height],
 			format: "rgba8unorm",
@@ -372,17 +377,17 @@ async function X(e, t, n, r, i) {
 			texture: t,
 			premultipliedAlpha: !0
 		}, [e.width, e.height]), t;
-	}, f = d(s.img), p = d(s.txt), m = d(se()), h = a.createShaderModule({ code: oe }), g = a.createRenderPipeline({
+	}, h = m(u.img), g = m(u.txt), _ = m(se()), v = a.createShaderModule({ code: oe }), y = a.createRenderPipeline({
 		layout: "auto",
 		vertex: {
-			module: h,
+			module: v,
 			entryPoint: "vs"
 		},
 		fragment: {
-			module: h,
+			module: v,
 			entryPoint: "fs",
 			targets: [{
-				format: u,
+				format: p,
 				blend: {
 					color: {
 						srcFactor: "one",
@@ -396,27 +401,27 @@ async function X(e, t, n, r, i) {
 			}]
 		},
 		primitive: { topology: "triangle-list" }
-	}), _ = a.createBuffer({
+	}), b = a.createBuffer({
 		size: 64,
 		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-	}), v = a.createBindGroup({
-		layout: g.getBindGroupLayout(0),
+	}), x = a.createBindGroup({
+		layout: y.getBindGroupLayout(0),
 		entries: [
 			{
 				binding: 0,
-				resource: { buffer: _ }
+				resource: { buffer: b }
 			},
 			{
 				binding: 1,
-				resource: f.createView()
+				resource: h.createView()
 			},
 			{
 				binding: 2,
-				resource: p.createView()
+				resource: g.createView()
 			},
 			{
 				binding: 3,
-				resource: m.createView()
+				resource: _.createView()
 			},
 			{
 				binding: 4,
@@ -426,10 +431,10 @@ async function X(e, t, n, r, i) {
 				})
 			}
 		]
-	}), y = (() => {
+	}), S = (() => {
 		let e = new OffscreenCanvas(1, 1).getContext("2d");
 		return e.fillStyle = n, e.fillRect(0, 0, 1, 1), [...e.getImageData(0, 0, 1, 1).data].map((e) => e / 255);
-	})(), b = /* @__PURE__ */ new Float32Array(16), x = r ? [
+	})(), C = /* @__PURE__ */ new Float32Array(16), w = r ? [
 		r.x * o,
 		r.y * o,
 		r.w * o,
@@ -439,24 +444,24 @@ async function X(e, t, n, r, i) {
 		0,
 		0,
 		0
-	], S = (t, n) => {
-		b.set([
-			c.width,
-			c.height,
+	], T = (t, n) => {
+		C.set([
+			d.width,
+			d.height,
 			U * o,
 			W * o,
 			t,
 			e,
 			n,
 			38,
-			...x,
-			y[0],
-			y[1],
-			y[2],
+			...w,
+			S[0],
+			S[1],
+			S[2],
 			1
-		]), a.queue.writeBuffer(_, 0, b);
+		]), a.queue.writeBuffer(b, 0, C);
 		let r = a.createCommandEncoder(), i = r.beginRenderPass({ colorAttachments: [{
-			view: l.getCurrentTexture().createView(),
+			view: f.getCurrentTexture().createView(),
 			loadOp: "clear",
 			storeOp: "store",
 			clearValue: [
@@ -466,23 +471,23 @@ async function X(e, t, n, r, i) {
 				0
 			]
 		}] });
-		i.setPipeline(g), i.setBindGroup(0, v), i.draw(3), i.end(), a.queue.submit([r.finish()]);
+		i.setPipeline(y), i.setBindGroup(0, x), i.draw(3), i.end(), a.queue.submit([r.finish()]);
 	};
-	S(0, 0), await a.queue.onSubmittedWorkDone(), i?.();
-	let C = performance.now();
+	T(0, 0), await a.queue.onSubmittedWorkDone(), i?.();
+	let E = performance.now();
 	return await new Promise((e) => {
 		let n = () => {
-			let r = (performance.now() - C) / t;
-			if (S(Math.min(1, r), (performance.now() - C) / 1e3), r >= 1) return e();
+			let r = (performance.now() - E) / t;
+			if (T(Math.min(1, r), (performance.now() - E) / 1e3), r >= 1) return e();
 			requestAnimationFrame(n);
 		};
 		requestAnimationFrame(n);
 	}), () => {
-		c.remove();
+		d.remove();
 		for (let e of [
-			f,
-			p,
-			m
+			h,
+			g,
+			_
 		]) e.destroy();
 	};
 }
