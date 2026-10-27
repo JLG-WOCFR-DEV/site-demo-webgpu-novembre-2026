@@ -123,7 +123,7 @@ const grille: Render = (a, children) => {
   const view = a.view === "canevas" ? "canevas" : "grille";
   return `<section class="x-grille" data-presse-component="grille" data-param="${esc(param)}" data-view="${view}"${a.variety !== undefined ? ` data-variety="${esc(a.variety)}"` : ""}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-label="${esc(a.label ?? "Mur de photos : flèches pour le parcourir")}">
   <canvas class="gr-gl" aria-hidden="true"></canvas>
-  <p class="gr-head">${a.kicker ? `<span class="gr-kicker">${esc(a.kicker)}</span>` : ""}<span class="gr-hint" data-gr-hint>${esc(a.hint ?? (a.full !== undefined ? "Tirez le mur, Ctrl + molette ou pincez pour zoomer. Cliquez une photo pour l'ouvrir." : "Tirez le mur de côté ; Ctrl + molette pour zoomer. Cliquez une photo pour l'ouvrir."))}</span><span class="gr-tools"><span class="gr-zoom"><button type="button" data-gr-zoom="-1" aria-label="Dézoomer">−</button><button type="button" data-gr-zoom="1" aria-label="Zoomer">+</button></span>${a.canvas === "false" ? "" : `<span class="gr-views" role="group" aria-label="Vue"><button type="button" data-gr-view="grille" aria-pressed="${view === "grille"}">Grille</button><button type="button" data-gr-view="canevas" aria-pressed="${view === "canevas"}">Canevas</button></span><button type="button" class="gr-tidy" data-gr-tidy>Ranger</button>`}${a.drop === "false" ? "" : `<label class="gr-add">Ajouter<span class="gr-long"> des photos</span><input type="file" accept="image/*" multiple data-gr-add /></label>`}</span></p>
+  <p class="gr-head">${a.kicker ? `<span class="gr-kicker">${esc(a.kicker)}</span>` : ""}<span class="gr-hint" data-gr-hint>${esc(a.hint ?? (a.full !== undefined ? "Tirez le mur, pincez pour zoomer. Cliquez une photo pour l'ouvrir." : "Tirez le mur de côté. Cliquez une photo pour l'ouvrir."))}</span><span class="gr-tools"><span class="gr-zoom"><button type="button" data-gr-zoom="-1" aria-label="Dézoomer">−</button><button type="button" data-gr-zoom="1" aria-label="Zoomer">+</button></span>${a.canvas === "false" ? "" : `<span class="gr-views" role="group" aria-label="Vue"><button type="button" data-gr-view="grille" aria-pressed="${view === "grille"}">Grille</button><button type="button" data-gr-view="canevas" aria-pressed="${view === "canevas"}">Canevas</button></span><button type="button" class="gr-tidy" data-gr-tidy>Ranger</button>`}${a.drop === "false" ? "" : `<label class="gr-add">Ajouter<span class="gr-long"> des photos</span><input type="file" accept="image/*" multiple data-gr-add /></label>`}</span>${grilleKeys(a.full !== undefined, a.canvas !== "false")}</p>
   <div class="gr-drop" aria-hidden="true"><span>Déposez vos photos sur le mur</span></div>
   <nav class="gr-index" aria-label="Photos"><ol>
 ${items.map((p) => `    <li><a href="?${esc(param)}=${esc(p.id)}" data-photo="${esc(p.id)}">${esc(p.title)}</a></li>`).join("\n")}
@@ -240,6 +240,7 @@ ${li}
     <dl></dl>
     <p class="gx-actions">${links}<button type="button" class="gx-close">Fermer</button></p>
   </aside>
+  <p class="gx-zoom" data-gx-zoom><button type="button" data-gx-zoom-step="-1" aria-label="Dézoomer">−</button><button type="button" class="gx-zoom-val" data-gx-zoom-reset aria-label="Taille d'origine (0)"><span data-gx-zoom-val>100 %</span></button><button type="button" data-gx-zoom-step="1" aria-label="Zoomer">+</button><span class="gx-zoom-keys" aria-hidden="true"><kbd data-gx-mod>Ctrl</kbd>+<kbd>molette</kbd><kbd>+</kbd><kbd>−</kbd><kbd>0</kbd></span></p>
   <p class="sr-only" aria-live="polite" data-gx-live></p>
 </section>`;
 };
@@ -254,6 +255,20 @@ ${li}
  * Sans WebGPU, la liste des liens est le lanceur.
  */
 const OR_ATTRS = ["particles", "aperture", "radius", "exposure"];
+/** La légende des raccourcis de la grille (cachée au doigt : rien à y apprendre). */
+const grilleKeys = (full: boolean, canvas: boolean) => {
+  const k = (...keys: string[]) => keys.map((x) => `<kbd>${x}</kbd>`).join("");
+  const item = (keys: string, what: string, only = "") => `<span class="gr-key"${only ? ` data-gr-only="${only}"` : ""}>${keys}<span class="gr-key-what">${what}</span></span>`;
+  return `<span class="gr-keys" aria-label="Raccourcis">${[
+    item(`<kbd data-gr-mod>Ctrl</kbd>+${k("molette")}`, "zoomer sous le pointeur"),
+    item(k("+", "−"), "zoomer"),
+    item(k("0"), canvas ? `<span data-gr-only="grille">taille d'origine</span><span data-gr-only="canevas">tout voir</span>` : "taille d'origine"),
+    item(full ? k("molette") : `${k("Maj")}+${k("molette")}`, "déplacer"),
+    item(k("←", "↑", "→", "↓"), canvas ? `<span data-gr-only="grille">lancer le mur</span><span data-gr-only="canevas">lancer la table</span>` : "lancer le mur"),
+    item(k("Échap"), "fermer la photo"),
+  ].join("")}</span>`;
+};
+
 const orbite: Render = (a, children) => {
   const links = children.flatMap((c) => (c.tagName === "A" ? [c] : c.querySelectorAll("a")));
   const items = links.map((l) => {

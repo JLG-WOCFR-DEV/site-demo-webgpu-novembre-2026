@@ -159,9 +159,52 @@
 .x-grille.gr-detail-open .gr-add {
   pointer-events: none;
 }
+/* Les raccourcis : une ligne de touches sous la pastille. */
+.x-grille .gr-keys {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin-top: 2px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--ink, #121212) 10%, transparent);
+  font: 11px/1.4 var(--f-mono, monospace);
+  color: var(--ink-soft, #55534d);
+}
+.x-grille .gr-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.x-grille .gr-key-what {
+  margin-left: 4px;
+}
+.x-grille .gr-keys kbd {
+  min-width: 1.6em;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--ink, #121212) 30%, transparent);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--paper, #efeee8);
+  color: var(--ink, #121212);
+  font: 500 11px/1.3 var(--f-mono, monospace);
+  text-align: center;
+}
+.x-grille[data-view="grille"] [data-gr-only="canevas"],
+.x-grille[data-view="canevas"] [data-gr-only="grille"] {
+  display: none;
+}
+@media (pointer: coarse) {
+  .x-grille .gr-keys {
+    display: none;
+  }
+}
 /* Petit écran : la pastille se réduit à ses boutons. */
 @media (max-width: 600px) {
   .x-grille .gr-hint,
+  .x-grille .gr-keys,
   .x-grille .gr-long {
     display: none;
   }

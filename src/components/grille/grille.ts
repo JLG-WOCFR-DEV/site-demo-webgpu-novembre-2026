@@ -441,6 +441,8 @@ export function mount(root: HTMLElement) {
     return best;
   };
   const gridHint = root.querySelector("[data-gr-hint]")?.textContent ?? "";
+  // Sur Mac, la touche du zoom se lit ⌘ (Ctrl marche aussi).
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) for (const m of root.querySelectorAll("[data-gr-mod]")) m.textContent = "⌘";
   const syncUi = () => {
     root.dataset.view = mode;
     for (const b of root.querySelectorAll<HTMLButtonElement>("[data-gr-view]")) b.setAttribute("aria-pressed", String(b.dataset.grView === mode));
@@ -475,7 +477,24 @@ export function mount(root: HTMLElement) {
     save();
     fitCanvas();
   });
-  let drag: { id: number; sx: number; sy: number; lx: number; ly: number; lt: number; moved: number } | null = null;
+  /** Le tirage en cours ; `trail` : les dernières positions du pointeur (horodatées), pour l'élan au lâcher. */
+  let drag: { id: number; sx: number; sy: number; lx: number; ly: number; lt: number; moved: number; trail: { x: number; y: number; t: number }[] } | null = null;
+  /**
+   * L'élan au lâcher : le chemin parcouru pendant les 80 dernières ms, pas la
+   * dernière paire d'événements. Les événements du pointeur arrivent par
+   * paquets (1 ms d'écart, puis 16) : une vitesse calculée d'un événement à
+   * l'autre saute d'un facteur 10 et fait trembler tout ce qui en dépend.
+   */
+  const releaseVelocity = (trail: { x: number; y: number; t: number }[], at: number) => {
+    const last = trail[trail.length - 1];
+    // Pointeur immobile avant le lâcher : pas d'élan.
+    if (!last || at - last.t > 60) return { vx: 0, vy: 0 };
+    let first = last;
+    for (let i = trail.length - 1; i >= 0 && last.t - trail[i]!.t <= 80; i--) first = trail[i]!;
+    const dt = (last.t - first.t) / 1000;
+    if (dt < 0.008) return { vx: 0, vy: 0 };
+    return { vx: (last.x - first.x) / dt, vy: (last.y - first.y) / dt };
+  };
   const ptr = { x: -1, y: -1, in: false };
 
   /* ───── Navigation : vraies URL, sans rechargement ───── */
@@ -815,7 +834,7 @@ export function mount(root: HTMLElement) {
       drag = null;
       return;
     }
-    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), moved: 0 };
+    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), moved: 0, trail: [{ x: e.clientX, y: e.clientY, t: e.timeStamp }] };
     canvas.setPointerCapture(e.pointerId);
     cam.vx = cam.vy = 0;
     cc.vx = cc.vy = 0;
@@ -842,7 +861,6 @@ export function mount(root: HTMLElement) {
     }
     if (!drag || drag.id !== e.pointerId) return;
     const now = performance.now();
-    const dt = Math.max(1, now - drag.lt) / 1000;
     const dx = e.clientX - drag.lx;
     const dy = e.clientY - drag.ly;
     if (mode === "canevas") {
@@ -856,16 +874,14 @@ export function mount(root: HTMLElement) {
       } else {
         cc.x += dx;
         cc.y += dy;
-        cc.vx = cc.vx * 0.6 + (dx / dt) * 0.4;
-        cc.vy = cc.vy * 0.6 + (dy / dt) * 0.4;
       }
     } else {
       cam.x += dx;
       cam.y += dy;
-      // Vitesse lissée, pour l'élan au lâcher.
-      cam.vx = cam.vx * 0.6 + (dx / dt) * 0.4;
-      cam.vy = cam.vy * 0.6 + (dy / dt) * 0.4;
     }
+    // Le chemin récent, pour l'élan au lâcher (voir releaseVelocity).
+    drag.trail.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
+    while (drag.trail.length > 2 && e.timeStamp - drag.trail[0]!.t > 120) drag.trail.shift();
     drag.lx = e.clientX;
     drag.ly = e.clientY;
     drag.lt = now;
@@ -877,7 +893,10 @@ export function mount(root: HTMLElement) {
     if (touches.size < 2) pinch = null;
     if (!drag || drag.id !== e.pointerId) return;
     const click = drag.moved < 6 && e.type === "pointerup";
+    const rv = click || e.type !== "pointerup" ? { vx: 0, vy: 0 } : releaseVelocity(drag.trail, e.timeStamp);
     drag = null;
+    const c = mode === "canevas" ? (held < 0 ? cc : null) : cam;
+    if (c) ((c.vx = rv.vx), (c.vy = rv.vy));
     root.classList.remove("gr-dragging");
     const h = held;
     held = -1;
@@ -1124,6 +1143,8 @@ export function mount(root: HTMLElement) {
     route(false);
     let last = clockNow();
     const hover = new Map<string, number>();
+    /** Ce que l'œil voit bouger : position du mur à l'image précédente, vitesse lissée. */
+    const seen = { x: cam.x, y: cam.y, vx: 0, vy: 0 };
 
     const frame = () => {
       if (stopped) return;
@@ -1181,11 +1202,21 @@ export function mount(root: HTMLElement) {
       });
       const mt = morphValue(now);
       if (morph && (reduced.matches || now - morph.t0 >= MORPH_MS)) morph = null;
-      const speed = mode === "grille" ? Math.hypot(cam.vx, cam.vy) : 0;
+      // La vitesse vue à l'écran : le déplacement réel du mur dans cette image (tiré ou lancé),
+      // lissé sur ~100 ms. Ni la vitesse d'un événement du pointeur, ni celle d'un zoom.
+      const zooming = Math.abs(zoomT - zoom) > 1e-4;
+      const ex = zooming ? 0 : Math.max(-2e4, Math.min(2e4, (cam.x - seen.x) / dt));
+      const ey = zooming ? 0 : Math.max(-2e4, Math.min(2e4, (cam.y - seen.y) / dt));
+      seen.x = cam.x;
+      seen.y = cam.y;
+      const ks = 1 - Math.exp(-dt * 10);
+      seen.vx += (ex - seen.vx) * ks;
+      seen.vy += (ey - seen.vy) * ks;
+      const speed = mode === "grille" ? Math.hypot(seen.vx, seen.vy) : 0;
       // Réaction à la vitesse : les cases se resserrent, l'image glisse, les couleurs se décalent.
       const squeeze = 1 - Math.min(0.14, speed / 9000) * m;
-      const slideX = Math.max(-1, Math.min(1, cam.vx / 4000)) * 0.06 * m;
-      const slideY = Math.max(-1, Math.min(1, cam.vy / 4000)) * 0.06 * m;
+      const slideX = Math.max(-1, Math.min(1, seen.vx / 4000)) * 0.06 * m;
+      const slideY = Math.max(-1, Math.min(1, seen.vy / 4000)) * 0.06 * m;
       const split = Math.min(1, speed / 5000) * 6 * m;
 
       // Vol entre le mur et la page.

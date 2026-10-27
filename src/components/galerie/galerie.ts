@@ -197,7 +197,33 @@ export function mount(root: HTMLElement) {
   const off = { x: 0, y: 0 };
   const vel = { x: 0, y: 0 };
   let target: { x: number; y: number } | null = null;
-  let drag: { id: number; sx: number; sy: number; lx: number; ly: number; lt: number; moved: number } | null = null;
+  /** Le tirage en cours ; `trail` : le décalage récent (horodaté), pour l'élan au lâcher. */
+  let drag: { id: number; sx: number; sy: number; lx: number; ly: number; lt: number; moved: number; trail: { x: number; y: number; t: number }[] } | null = null;
+  /**
+   * L'élan au lâcher : le chemin des 80 dernières ms. Les événements du
+   * pointeur arrivent par paquets (1 ms d'écart, puis 16) : une vitesse
+   * calculée d'un événement à l'autre saute d'un facteur 10, et l'inclinaison
+   * qui en dépend fait vibrer les images.
+   */
+  const releaseVelocity = (trail: { x: number; y: number; t: number }[], at: number) => {
+    const last = trail[trail.length - 1];
+    if (!last || at - last.t > 60) return { x: 0, y: 0 };
+    let first = last;
+    for (let i = trail.length - 1; i >= 0 && last.t - trail[i]!.t <= 80; i--) first = trail[i]!;
+    const dt = (last.t - first.t) / 1000;
+    if (dt < 0.008) return { x: 0, y: 0 };
+    return { x: (last.x - first.x) / dt, y: (last.y - first.y) / dt };
+  };
+  /** Ce que l'œil voit bouger : le décalage à l'image précédente, et sa vitesse lissée. */
+  const seen = { x: 0, y: 0, vx: 0, vy: 0, init: false };
+  /**
+   * Le zoom : la caméra avance dans l'axe (un vrai travelling, la perspective
+   * change), et se décale pour garder fixe le point sous le pointeur.
+   * z : grossissement du plan de la scène ; px, py : décalage (px de ce plan).
+   */
+  const zoom = { z: 1, zT: 1, px: 0, py: 0, ax: 0, ay: 0, home: false };
+  const ZMIN = 0.5;
+  const ZMAX = 4;
   let wheelTimer = 0;
   let lastInput = 0;
   const pointer = { x: 0, y: 0, sx: 0, sy: 0, inside: false };
@@ -442,6 +468,28 @@ export function mount(root: HTMLElement) {
 
   /* ───── Entrées ───── */
 
+  /** Pose le grossissement nz, en gardant fixe le point (ax, ay) de l'écran (centré). */
+  const applyZoom = (nz: number, ax: number, ay: number) => {
+    zoom.px += ax / nz - ax / zoom.z;
+    zoom.py += ay / nz - ay / zoom.z;
+    zoom.z = nz;
+  };
+  const zoomVal = root.querySelector<HTMLElement>("[data-gx-zoom-val]");
+  const zoomTo = (z: number, ax = 0, ay = 0) => {
+    zoom.zT = clamp(z, ZMIN, ZMAX);
+    zoom.ax = ax;
+    zoom.ay = ay;
+    zoom.home = false;
+    if (zoomVal) zoomVal.textContent = `${Math.round(zoom.zT * 100)} %`;
+  };
+  /** Retour au plan d'origine : grossissement 1, sans décalage. */
+  const zoomHome = () => {
+    zoomTo(1);
+    zoom.home = true;
+  };
+  for (const b of root.querySelectorAll<HTMLButtonElement>("[data-gx-zoom-step]")) b.addEventListener("click", () => zoomTo(zoom.zT * (Number(b.dataset.gxZoomStep) > 0 ? 1.25 : 0.8)));
+  root.querySelector("[data-gx-zoom-reset]")?.addEventListener("click", zoomHome);
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) for (const m of root.querySelectorAll("[data-gx-mod]")) m.textContent = "⌘";
   const local = (e: { clientX: number; clientY: number }) => {
     // La page a pu défiler depuis la dernière image : on remesure.
     measure();
@@ -460,9 +508,22 @@ export function mount(root: HTMLElement) {
     return { x: dx / R, y: dy / R };
   };
 
+  // Pincer à deux doigts : zoom autour du milieu des doigts.
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinch: { d: number; z: number } | null = null;
   const onDown = (e: PointerEvent) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest(".gx-detail, .gx-reveal, button, a, input")) return;
-    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), moved: 0 };
+    if (e.button !== 0 || (e.target as HTMLElement).closest(".gx-detail, .gx-reveal, .gx-zoom, button, a, input")) return;
+    if (e.pointerType === "touch") {
+      touches.set(e.pointerId, local(e));
+      if (touches.size === 2 && sel.idx === null) {
+        const [a, b] = [...touches.values()];
+        pinch = { d: Math.max(1, Math.hypot(a!.x - b!.x, a!.y - b!.y)), z: zoom.z };
+        drag = null;
+        root.classList.remove("gx-dragging");
+        return;
+      }
+    }
+    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), moved: 0, trail: [{ x: off.x, y: off.y, t: e.timeStamp }] };
     root.setPointerCapture(e.pointerId);
     target = null;
     vel.x = vel.y = 0;
@@ -473,9 +534,17 @@ export function mount(root: HTMLElement) {
     pointer.x = l.x;
     pointer.y = l.y;
     pointer.inside = true;
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, l);
+    if (pinch && touches.size === 2) {
+      const [a, b] = [...touches.values()];
+      const nz = clamp((pinch.z * Math.hypot(a!.x - b!.x, a!.y - b!.y)) / pinch.d, ZMIN, ZMAX);
+      // Le pincement suit les doigts, sans ressort.
+      applyZoom(nz, (a!.x + b!.x) / 2, (a!.y + b!.y) / 2);
+      zoomTo(nz, (a!.x + b!.x) / 2, (a!.y + b!.y) / 2);
+      return;
+    }
     if (!drag || drag.id !== e.pointerId) return;
     const now = performance.now();
-    const dt = Math.max(1, now - drag.lt) / 1000;
     const dx = e.clientX - drag.lx;
     const dy = e.clientY - drag.ly;
     drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy));
@@ -485,8 +554,8 @@ export function mount(root: HTMLElement) {
     off.x += u.x;
     off.y += u.y;
     if (arr().space === "sphere") off.y = clamp(off.y, -1.3, 1.3);
-    vel.x = vel.x * 0.55 + (u.x / dt) * 0.45;
-    vel.y = vel.y * 0.55 + (u.y / dt) * 0.45;
+    drag.trail.push({ x: off.x, y: off.y, t: e.timeStamp });
+    while (drag.trail.length > 2 && e.timeStamp - drag.trail[0]!.t > 120) drag.trail.shift();
     if (cfg.arrange === "stack" && Math.abs(dx) > 0.5) stackDir(dx);
     drag.lx = e.clientX;
     drag.ly = e.clientY;
@@ -510,8 +579,15 @@ export function mount(root: HTMLElement) {
     }
   };
   const onUp = (e: PointerEvent) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch = null;
     if (!drag || drag.id !== e.pointerId) return;
     const click = drag.moved < 5 && e.type === "pointerup";
+    if (!click && e.type === "pointerup") {
+      const v = releaseVelocity(drag.trail, e.timeStamp);
+      vel.x = v.x;
+      vel.y = v.y;
+    }
     drag = null;
     root.classList.remove("gx-dragging");
     if (click) {
@@ -536,6 +612,14 @@ export function mount(root: HTMLElement) {
   root.addEventListener("pointerleave", () => (pointer.inside = false));
 
   const onWheel = (e: WheelEvent) => {
+    // Ctrl / ⌘ + molette (et le pincement des pavés tactiles) : zoom sous le pointeur.
+    if ((e.ctrlKey || e.metaKey) && sel.idx === null) {
+      e.preventDefault();
+      const l = local(e);
+      zoomTo(zoom.zT * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0025)), l.x, l.y);
+      lastInput = clockNow();
+      return;
+    }
     const a = arr();
     const horiz = Math.abs(e.deltaX) > Math.abs(e.deltaY);
     // Intégrée dans une page, la molette verticale fait défiler la page (sauf galerie verticale).
@@ -575,6 +659,9 @@ export function mount(root: HTMLElement) {
     else if (e.key === back || (a.space === "1d" && (e.key === "ArrowUp" || e.key === "ArrowLeft"))) next = k - 1;
     else if (a.space === "plane" && e.key === "ArrowDown") next = k + cols;
     else if (a.space === "plane" && e.key === "ArrowUp") next = k - cols;
+    else if ((e.key === "+" || e.key === "=") && sel.idx === null) return void (e.preventDefault(), zoomTo(zoom.zT * 1.25));
+    else if ((e.key === "-" || e.key === "_") && sel.idx === null) return void (e.preventDefault(), zoomTo(zoom.zT / 1.25));
+    else if (e.key === "0" && sel.idx === null) return void (e.preventDefault(), zoomHome());
     else if (e.key === "Home") next = 0;
     else if (e.key === "End") next = n() - 1;
     else if (e.key === "Enter" || e.key === " ") {
@@ -730,10 +817,30 @@ export function mount(root: HTMLElement) {
         if (cfg.drift && !calm && now - lastInput > 1500 && sel.idx === null) off.x += dt * 0.12 * cfg.drift * (a.space === "1d" ? 2 : 1);
       }
     }
+    // La vitesse vue : le déplacement réel de cette image (tiré, lancé, ressort), lissé sur ~100 ms.
+    if (!seen.init) ((seen.x = off.x), (seen.y = off.y), (seen.init = true));
+    // Un saut (changement d'arrangement, aller direct) n'est pas une vitesse.
+    const jump = a.space === "plane" ? 600 : 1.5;
+    const jumped = Math.abs(off.x - seen.x) > jump || Math.abs(off.y - seen.y) > jump;
+    const ex = jumped ? 0 : (off.x - seen.x) / dt;
+    const ey = jumped ? 0 : (off.y - seen.y) / dt;
+    seen.x = off.x;
+    seen.y = off.y;
+    const ks = 1 - Math.exp(-dt * 10);
+    seen.vx += (ex - seen.vx) * ks;
+    seen.vy += (ey - seen.vy) * ks;
     const unit = a.space === "1d" ? 1 : a.space === "plane" ? c.iw + c.gap : 1 / Math.max(1, a.unit(c) / (c.iw + c.gap));
-    const v = Math.hypot(vel.x, vel.y) / unit;
+    const v = Math.hypot(seen.vx, seen.vy) / unit;
     speed += (v - speed) * (1 - Math.exp(-dt * 8));
-    if (Math.abs(vel.x) > 1e-3) dir = Math.sign(vel.x);
+    if (Math.abs(seen.vx) > 1e-3) dir = Math.sign(seen.vx);
+    // Le zoom : amorti vers la cible, autour de l'ancre (le pincement le pose directement).
+    if (Math.abs(zoom.zT - zoom.z) > 1e-4) applyZoom(calm ? zoom.zT : zoom.z + (zoom.zT - zoom.z) * (1 - Math.exp(-dt * 12)), zoom.ax, zoom.ay);
+    if (zoom.home) {
+      const kh = calm ? 1 : 1 - Math.exp(-dt * 12);
+      zoom.px -= zoom.px * kh;
+      zoom.py -= zoom.py * kh;
+      if (Math.abs(zoom.px) + Math.abs(zoom.py) < 0.05 && Math.abs(zoom.z - 1) < 1e-4) ((zoom.px = zoom.py = 0), (zoom.home = false));
+    }
 
     // Ouverture : ressort.
     if (calm) sel.a = sel.target;
@@ -779,8 +886,8 @@ export function mount(root: HTMLElement) {
       let p = inst.pose;
       // Modificateurs liés à la vitesse.
       if (cfg.tilt && ms) {
-        const tv = clamp(vel.x * (a.space === "1d" ? 0.06 : a.space === "plane" ? 0.00035 : 0.05), -0.5, 0.5) * cfg.tilt * ms;
-        const tvy = clamp(vel.y * (a.space === "plane" ? 0.00035 : 0.05), -0.5, 0.5) * cfg.tilt * ms;
+        const tv = clamp(seen.vx * (a.space === "1d" ? 0.06 : a.space === "plane" ? 0.00035 : 0.05), -0.5, 0.5) * cfg.tilt * ms;
+        const tvy = clamp(seen.vy * (a.space === "plane" ? 0.00035 : 0.05), -0.5, 0.5) * cfg.tilt * ms;
         p = { ...p, ry: p.ry + (cfg.axis === "x" || a.space !== "1d" ? -tv : 0), rx: p.rx + (cfg.axis === "y" && a.space === "1d" ? tv : tvy) };
         if (cfg.arrange === "stack" && inst.rel >= 0 && inst.rel < 1) p = { ...p, rz: p.rz - tv * 0.6 };
       }
@@ -832,14 +939,20 @@ export function mount(root: HTMLElement) {
     for (const [k, p] of next) shown.set(k, p);
     for (const k of trans.keys()) if (!next.has(k)) trans.delete(k);
 
-    // Matrices finales (avec la scène), tri de l'arrière vers l'avant.
+    // Le zoom s'efface quand une photo s'ouvre (la boîte de détail est en px d'écran).
+    const zk = 1 - clamp(sel.a, 0, 1);
+    const zeff = 1 + (zoom.z - 1) * zk;
+    const dolly = cfg.perspective * (1 - 1 / zeff);
+    const zpx = zoom.px * zk;
+    const zpy = zoom.py * zk;
+    // Matrices finales (avec la scène, et le travelling du zoom), tri de l'arrière vers l'avant.
     const focusVisible = root.matches(":focus-visible") || root.contains(document.activeElement) && document.activeElement !== root && root.querySelector(".gx-list")?.contains(document.activeElement);
     const chroma = Math.min(1, speed / 6) * 5 * ms;
     for (const d of out) {
       const R0 = rotation(d.p.rx, d.p.ry, d.p.rz);
       d.R = [0, 1, 2].map((i) => [0, 1, 2].map((j) => scene[i]![0]! * R0[0]![j]! + scene[i]![1]! * R0[1]![j]! + scene[i]![2]! * R0[2]![j]!));
       const q = apply(scene, [d.p.x, d.p.y, d.p.z - PIVOT]);
-      d.t = [q[0], q[1], q[2] + PIVOT];
+      d.t = [q[0] + zpx, q[1] + zpy, q[2] + PIVOT + dolly];
       d.hl = focusVisible && d.idx === focusIdx() && !d.key.includes("@") ? 1 : 0;
       d.chroma = d.key.includes("@") || d.idx !== sel.last ? chroma : 0;
     }
