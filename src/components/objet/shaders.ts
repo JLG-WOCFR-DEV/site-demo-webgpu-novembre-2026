@@ -46,6 +46,12 @@ fn fs(in: VsOut, @builtin(front_facing) ff: bool) -> GOut {
   o.g1 = vec4f(lum, in.z, 0.0, 1.0);
   return o;
 }
+
+/** Verre : les faces arrière (la sortie de la lumière), normale sortante et profondeur. */
+@fragment
+fn fs_back(in: VsOut) -> @location(0) vec4f {
+  return vec4f(normalize(in.n), in.z);
+}
 `;
 
 export const STYLE = /* wgsl */ `
@@ -58,6 +64,8 @@ struct S {
   accent: vec4f,
   shadow: vec4f,  // centre x, y, rayons x, y (px) de l'ombre au sol
   misc: vec4f,    // hauteur de l'objet au-dessus du sol (0..1), nombre de glyphes, 0, 0
+  cam: vec4f,     // tan(demi-champ vertical), proportion, profondeur du fond, 0
+  glass: vec4f,   // indice de réfraction, dispersion, absorption, épaisseur par défaut
   trail: array<vec4f, ${MAX_TRAIL}>, // liquide : x, y, vx, vy (px, px/s)
 };
 @group(0) @binding(0) var<uniform> s: S;
@@ -66,6 +74,7 @@ struct S {
 @group(0) @binding(3) var back: texture_2d<f32>;
 @group(0) @binding(4) var glyphs: texture_2d<f32>;
 @group(0) @binding(5) var samp: sampler;
+@group(0) @binding(6) var gb: texture_2d<f32>;
 
 struct VsOut { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
 @vertex
@@ -127,6 +136,88 @@ fn glyph(local: vec2f, idx: f32) -> f32 {
   return textureSampleLevel(glyphs, samp, uv, 0.0).a;
 }
 
+/* ───── Verre : deux surfaces, réfraction à l'entrée et à la sortie ───── */
+
+/** La composition derrière le verre, à un point de l'écran (uv), floutée d'un niveau de mipmap (givre). */
+fn behind(uv: vec2f, lod: f32) -> vec3f {
+  return textureSampleLevel(back, samp, uv, lod).rgb * studio(clamp(uv, vec2f(0.0), vec2f(1.0)) * s.res.xy);
+}
+/** Point de la vue → écran (uv). La caméra regarde vers −z, à l'origine. */
+fn toUv(p: vec3f) -> vec2f {
+  let q = p.xy / max(-p.z, 1e-3) / (s.cam.x * vec2f(s.cam.y, 1.0));
+  return vec2f(q.x * 0.5 + 0.5, 0.5 - q.y * 0.5);
+}
+/** Le studio vu en reflet : un mur clair, un sol plus sombre, deux boîtes à lumière nettes. */
+fn studioEnv(r: vec3f) -> vec3f {
+  let paper = s.paper.rgb;
+  var c = mix(paper * 0.55, paper * 1.02, smoothstep(-0.4, 0.5, r.y));
+  // Grande boîte à lumière en haut à gauche (un rectangle, bords francs : le reflet « produit »).
+  let k = normalize(vec3f(-0.55, 0.62, 0.56));
+  let kx = normalize(cross(vec3f(0.0, 1.0, 0.0), k));
+  let ky = cross(k, kx);
+  let d = dot(r, k);
+  if (d > 0.0) {
+    let q = vec2f(dot(r, kx), dot(r, ky)) / d;
+    let box = (1.0 - smoothstep(0.42, 0.47, abs(q.x))) * (1.0 - smoothstep(0.26, 0.31, abs(q.y)));
+    c += vec3f(2.4) * box;
+  }
+  // Bandeau vertical à droite (le liseré).
+  let strip = (1.0 - smoothstep(0.04, 0.07, abs(r.x - 0.82))) * (1.0 - smoothstep(0.55, 0.75, abs(r.y)));
+  c += vec3f(1.4) * strip * step(0.0, r.z + 0.3);
+  return c;
+}
+fn glass(px: vec2f) -> vec3f {
+  let uv = px / s.res.xy;
+  // Givre : un niveau de mipmap ; un rien de flou dans l'épaisseur, même sans givre.
+  let a = G0(px);
+  if (a.a < 0.5) { return behind(uv, 0.0); }
+  let nF = normalize(a.rgb * 2.0 - 1.0);
+  let wF = G1(px).g;
+  let ndc = vec2f(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+  let D = vec3f(ndc * s.cam.x * vec2f(s.cam.y, 1.0), -1.0);
+  let I = normalize(D);
+  let PF = D * wF;
+  let bk = textureLoad(gb, clamp(vec2i(px), vec2i(0), vec2i(s.res.xy) - 1), 0);
+  let hasBack = bk.w > wF + 1e-3;
+  let thick = select(s.glass.w, bk.w - wF, hasBack);
+  let lod = s.st.w * 5.0 + 0.6 + thick * 0.8;
+  let zbg = -s.cam.z;
+  // Six longueurs d'onde : chacune son indice (le bleu dévie plus), pondérées vers R, V, B.
+  var acc = vec3f(0.0);
+  var wsum = vec3f(0.0);
+  const NW = 6;
+  for (var k = 0; k < NW; k++) {
+    let t = (f32(k) + 0.5) / f32(NW);   // 0 : bleu … 1 : rouge
+    let ior = s.glass.x + s.glass.y * (0.5 - t) * 2.0;
+    let T1 = refract(I, nF, 1.0 / ior);
+    // Traversée jusqu'à la face arrière, à la profondeur lue sous le point d'entrée.
+    let PE = PF + T1 * (thick / max(-T1.z, 0.3));
+    let ep = clamp(vec2i(toUv(PE) * s.res.xy), vec2i(0), vec2i(s.res.xy) - 1);
+    let bE = textureLoad(gb, ep, 0);
+    var nB = select(-nF, normalize(bE.xyz), bE.w > 0.0);
+    // Sortie : la normale tournée vers le rayon ; réflexion totale si la sortie est impossible.
+    var T2 = refract(T1, -nB, ior);
+    if (dot(T2, T2) < 1e-4) { T2 = reflect(T1, -nB); }
+    if (T2.z > -0.05) { T2 = normalize(vec3f(T2.xy, -0.05)); }
+    let H = PE + T2 * ((zbg - PE.z) / T2.z);
+    let c = behind(toUv(H), lod);
+    let w = vec3f(max(0.0, 1.0 - abs(t - 0.88) * 2.4), max(0.0, 1.0 - abs(t - 0.5) * 2.4), max(0.0, 1.0 - abs(t - 0.12) * 2.4));
+    acc += c * w;
+    wsum += w;
+  }
+  var refr = acc / max(wsum, vec3f(1e-3));
+  // Absorption (Beer-Lambert) : un verre à peine teinté, plus dense là où il est épais.
+  refr *= exp(-thick * s.glass.z * vec3f(0.55, 0.22, 0.12));
+  // Fresnel (Schlick) et reflet du studio.
+  let cosI = clamp(dot(-I, nF), 0.0, 1.0);
+  let F = 0.04 + 0.96 * pow(1.0 - cosI, 5.0);
+  let R = reflect(I, nF);
+  var col = mix(refr, studioEnv(R), F);
+  // Le bord du verre accroche un peu d'encre (épaisseur vue par la tranche).
+  col = mix(col, s.ink.rgb, smoothstep(0.25, 0.0, cosI) * 0.12);
+  return col;
+}
+
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4f {
   let px = in.uv * s.res.xy;
@@ -185,32 +276,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     let paperGrain = 1.0 - 0.04 * vnoise(px / (2.0 * dpr));
     col = mix(paper * paperGrain, ink, m * press * s.st.z);
   } else if (style < 3.5) {
-    // Verre : la composition derrière, déviée par la normale, dispersée, givrée.
-    let uv = px / s.res.xy;
-    var bg = textureSampleLevel(back, samp, uv, 0.0).rgb * studio(px);
-    col = bg;
-    if (mask > 0.5) {
-      let th = 0.09 * s.st.z;
-      let off = n.xy * vec2f(1.0, -1.0) * th;
-      let fr = s.st.w * 14.0 * dpr / s.res.xy;
-      var acc = vec3f(0.0);
-      for (var k = 0; k < 8; k++) {
-        let a8 = f32(k) * 0.785 + h21(px) * 6.28;
-        let j = vec2f(cos(a8), sin(a8)) * fr * (0.4 + 0.6 * h21(px + f32(k)));
-        acc += vec3f(
-          textureSampleLevel(back, samp, uv + off * 1.0 + j, 0.0).r,
-          textureSampleLevel(back, samp, uv + off * 1.06 + j, 0.0).g,
-          textureSampleLevel(back, samp, uv + off * 1.12 + j, 0.0).b,
-        );
-      }
-      var gl = acc / 8.0;
-      gl = mix(gl, gl * vec3f(0.94, 0.98, 1.0), 0.6);
-      let fres = pow(1.0 - clamp(n.z, 0.0, 1.0), 3.0);
-      let r = reflect(vec3f(0.0, 0.0, -1.0), n);
-      let spec = pow(max(dot(r, normalize(vec3f(-0.5, 0.65, 0.6))), 0.0), 60.0);
-      col = mix(gl, vec3f(1.0), fres * 0.55) + vec3f(spec * 0.9);
-      col = mix(col, ink, fres * 0.08);
-    }
+    col = glass(px);
   } else if (style < 4.5) {
     // Particules : le fond seul, l'objet devient des points (passe suivante).
     col = paper * studio(px);

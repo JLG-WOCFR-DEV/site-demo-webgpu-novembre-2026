@@ -1,0 +1,50 @@
+[
+  {
+    "id": "dragon",
+    "name": "Dragon",
+    "credit": "Stanford Computer Graphics Laboratory (Stanford 3D Scanning Repository) ; glTF : Khronos Group, CC BY 4.0",
+    "triangles": 59996
+  },
+  {
+    "id": "lapin",
+    "name": "Lapin",
+    "credit": "Stanford Computer Graphics Laboratory (Stanford 3D Scanning Repository)",
+    "triangles": 29999
+  },
+  {
+    "id": "armadillo",
+    "name": "Armadillo",
+    "credit": "Stanford Computer Graphics Laboratory (Stanford 3D Scanning Repository)",
+    "triangles": 50000
+  },
+  {
+    "id": "bouddha",
+    "name": "Bouddha",
+    "credit": "Stanford Computer Graphics Laboratory (Stanford 3D Scanning Repository), « Happy Buddha »",
+    "triangles": 59981
+  },
+  {
+    "id": "lucy",
+    "name": "Lucy",
+    "credit": "Stanford Computer Graphics Laboratory (Stanford 3D Scanning Repository)",
+    "triangles": 59998
+  },
+  {
+    "id": "dragon-xyz",
+    "name": "Dragon asiatique",
+    "credit": "XYZ RGB Inc. / Stanford 3D Scanning Repository",
+    "triangles": 69996
+  },
+  {
+    "id": "nefertiti",
+    "name": "Néfertiti",
+    "credit": "Nora Al-Badri et Jan Nikolai Nelles, « The Other Nefertiti » (scan libre)",
+    "triangles": 49998
+  },
+  {
+    "id": "spot",
+    "name": "Spot",
+    "credit": "Keenan Crane, CC0",
+    "triangles": 5856
+  }
+]

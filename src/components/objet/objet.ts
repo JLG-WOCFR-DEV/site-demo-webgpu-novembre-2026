@@ -5,7 +5,9 @@
  * givre), particules qui fuient le pointeur et se reforment, liquide qui
  * tourbillonne sous le pointeur et sépare la lumière.
  *
- * Source : data-model = « texte:UBS » (lettres gonflées), « noeud », « galet »,
+ * Source : data-model = « texte:UBS » (lettres gonflées), un modèle fourni
+ * (« dragon », « dragon-xyz », « lapin », « armadillo », « bouddha », « lucy »,
+ * « nefertiti », « spot » : voir meshfile.ts), « noeud », « galet »,
  * « vase », « vase-glb » (le vase d'exemple lu par le lecteur GLB), ou l'URL d'un fichier GLB, SVG ou image. On peut aussi déposer un
  * fichier sur l'objet. Le HTML vient de <x-objet> (presse/build/components.ts).
  */
@@ -16,6 +18,7 @@ import { painted } from "../../presse/sweep.ts";
 import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
 import { parseGLB, writeGLB } from "./gltf.ts";
+import { MODELS, loadModel } from "./meshfile.ts";
 import { inflate, maskFromSource, type Mesh, pebble, relief, torusKnot, vase } from "./meshes.ts";
 import { GBUF, MAX_TRAIL, PARTICLES_DRAW, PARTICLES_SIM, STYLE } from "./shaders.ts";
 
@@ -58,6 +61,7 @@ export async function meshFrom(src: string | File): Promise<Mesh> {
       const m = await maskFromSource({ text: src.slice(6) || "UBS" }, 320);
       return inflate(m.mask, m.W, m.H);
     }
+    if (src in MODELS) return loadModel(src);
     if (src === "noeud") return torusKnot();
     if (src === "galet") return pebble();
     if (src === "vase") return vase();
@@ -303,18 +307,33 @@ export function mount(root: HTMLElement) {
       primitive: { topology: "triangle-list", cullMode: "none" },
       depthStencil: { format: "depth24plus", depthWriteEnabled: true, depthCompare: "less" },
     });
+    // Verre : les faces arrière seules (normale de sortie, épaisseur).
+    const bPipe = await device.createRenderPipelineAsync({
+      layout: "auto",
+      vertex: {
+        module: gMod,
+        entryPoint: "vs",
+        buffers: [
+          { arrayStride: 12, attributes: [{ shaderLocation: 0, offset: 0, format: "float32x3" }] },
+          { arrayStride: 12, attributes: [{ shaderLocation: 1, offset: 0, format: "float32x3" }] },
+        ],
+      },
+      fragment: { module: gMod, entryPoint: "fs_back", targets: [{ format: "rgba16float" }] },
+      primitive: { topology: "triangle-list", cullMode: "front" },
+      depthStencil: { format: "depth24plus", depthWriteEnabled: true, depthCompare: "less" },
+    });
     const sPipe = await device.createRenderPipelineAsync({ layout: "auto", vertex: { module: sMod, entryPoint: "vs" }, fragment: { module: sMod, entryPoint: "fs", targets: [{ format }] }, primitive: { topology: "triangle-list" } });
     const simPipe = await device.createComputePipelineAsync({ layout: "auto", compute: { module: psMod, entryPoint: "sim" } });
     const blend: GPUBlendState = { color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" }, alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" } };
     const drawPipe = await device.createRenderPipelineAsync({ layout: "auto", vertex: { module: pdMod, entryPoint: "vs" }, fragment: { module: pdMod, entryPoint: "fs", targets: [{ format, blend }] }, primitive: { topology: "triangle-strip" } });
 
     const gU = device.createBuffer({ size: 160, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-    const sU = device.createBuffer({ size: (8 + MAX_TRAIL) * 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const sU = device.createBuffer({ size: (10 + MAX_TRAIL) * 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const pU = device.createBuffer({ size: 192, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const gData = new Float32Array(40);
-    const sData = new Float32Array((8 + MAX_TRAIL) * 4);
+    const sData = new Float32Array((10 + MAX_TRAIL) * 4);
     const pData = new Float32Array(48);
-    const samp = device.createSampler({ magFilter: "linear", minFilter: "linear" });
+    const samp = device.createSampler({ magFilter: "linear", minFilter: "linear", mipmapFilter: "linear" });
 
     // Glyphes de l'ASCII : une rangée, du plus clair au plus dense.
     const RAMP = " .:-=+*#%@";
@@ -351,21 +370,38 @@ export function mount(root: HTMLElement) {
       g.globalAlpha = 0.25;
       for (let x = 0; x < c.width; x += 24) g.fillRect(x, 0, 1, c.height);
       backTex?.destroy();
-      backTex = device.createTexture({ size: [c.width, c.height], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
+      // Avec sa chaîne de mipmaps : le givre et l'épaisseur du verre lisent un niveau plus flou.
+      const levels = Math.floor(Math.log2(Math.max(c.width, c.height))) + 1;
+      backTex = device.createTexture({ size: [c.width, c.height], mipLevelCount: levels, format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
       device.queue.copyExternalImageToTexture({ source: c }, { texture: backTex }, [c.width, c.height]);
+      let src: OffscreenCanvas = c;
+      for (let m = 1; m < levels; m++) {
+        const w = Math.max(1, c.width >> m);
+        const h = Math.max(1, c.height >> m);
+        const d = new OffscreenCanvas(w, h);
+        const dg = d.getContext("2d")!;
+        dg.imageSmoothingQuality = "high";
+        dg.drawImage(src, 0, 0, w, h);
+        device.queue.copyExternalImageToTexture({ source: d }, { texture: backTex, mipLevel: m }, [w, h]);
+        src = d;
+      }
     };
 
     // Cibles (taille du canvas).
     let G0: GPUTexture | null = null;
     let G1: GPUTexture | null = null;
     let DZ: GPUTexture | null = null;
+    let GB: GPUTexture | null = null;
+    let DZB: GPUTexture | null = null;
     let sBind: GPUBindGroup | null = null;
     const resize = (W: number, H: number) => {
-      for (const t of [G0, G1, DZ]) t?.destroy();
+      for (const t of [G0, G1, DZ, GB, DZB]) t?.destroy();
       const usage = GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING;
       G0 = device.createTexture({ size: [W, H], format: "rgba16float", usage });
       G1 = device.createTexture({ size: [W, H], format: "rgba16float", usage });
       DZ = device.createTexture({ size: [W, H], format: "depth24plus", usage: GPUTextureUsage.RENDER_ATTACHMENT });
+      GB = device.createTexture({ size: [W, H], format: "rgba16float", usage });
+      DZB = device.createTexture({ size: [W, H], format: "depth24plus", usage: GPUTextureUsage.RENDER_ATTACHMENT });
       makeBack(W, H);
       sBind = device.createBindGroup({
         layout: sPipe.getBindGroupLayout(0),
@@ -376,6 +412,7 @@ export function mount(root: HTMLElement) {
           { binding: 3, resource: backTex!.createView() },
           { binding: 4, resource: glyphTex.createView() },
           { binding: 5, resource: samp },
+          { binding: 6, resource: GB.createView() },
         ],
       });
     };
@@ -390,6 +427,7 @@ export function mount(root: HTMLElement) {
     let simBind: GPUBindGroup | null = null;
     let drawBind: GPUBindGroup | null = null;
     const gBind = device.createBindGroup({ layout: gPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: gU } }] });
+    const bBind = device.createBindGroup({ layout: bPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: gU } }] });
     const upload = () => {
       if (!mesh) return;
       for (const b of [vb, nb, ib]) b?.destroy();
@@ -517,9 +555,13 @@ export function mount(root: HTMLElement) {
       sData.set([...accent, 1], 20);
       sData.set([sx, sy, rx, rx * 0.22], 24);
       sData.set([Math.max(0, bob / 0.06) * 0.5, RAMP.length, 0, 0], 28);
+      // Verre : la caméra (champ de 30°), le fond 1,3 unité derrière l'objet (plus loin,
+      // la composition se brouille) ; l'intensité règle l'indice (1,5 à 1) et la dispersion, le givre le flou.
+      sData.set([Math.tan((15 * Math.PI) / 180), aspect, dist + 1.3, 0], 32);
+      sData.set([1 + 0.5 * cfg.amount, 0.03 * cfg.amount, 0.35, 0.35], 36);
       for (let i = 0; i < MAX_TRAIL; i++) {
         const p = trail[i];
-        sData.set(p ? [p.x, p.y, p.vx, p.vy] : [0, 0, 0, 0], 32 + i * 4);
+        sData.set(p ? [p.x, p.y, p.vx, p.vy] : [0, 0, 0, 0], 40 + i * 4);
       }
       device.queue.writeBuffer(sU, 0, sData);
 
@@ -541,6 +583,20 @@ export function mount(root: HTMLElement) {
         gp.drawIndexed(icount);
       }
       gp.end();
+      // 1 bis. Verre : les faces arrière.
+      if (si === 3) {
+        const bp = enc.beginRenderPass({
+          colorAttachments: [{ view: GB!.createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }],
+          depthStencilAttachment: { view: DZB!.createView(), depthClearValue: 1, depthLoadOp: "clear", depthStoreOp: "store" },
+        });
+        bp.setPipeline(bPipe);
+        bp.setBindGroup(0, bBind);
+        bp.setVertexBuffer(0, vb);
+        bp.setVertexBuffer(1, nb);
+        bp.setIndexBuffer(ib!, "uint32");
+        bp.drawIndexed(icount);
+        bp.end();
+      }
       // 2. Particules : simulation.
       if (si === 4 && simBind) {
         pData.set(mvp, 0);
