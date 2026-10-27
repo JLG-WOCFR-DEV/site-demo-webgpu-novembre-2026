@@ -14,6 +14,7 @@
 import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import type { HTMLElement as Node } from "node-html-parser";
+import { ATTRS } from "../../src/components/orbite/params.ts";
 
 export type Render = (attrs: Record<string, string>, children: Node[], ctx: { read: (path: string) => string }) => string;
 
@@ -254,7 +255,8 @@ ${li}
  * Un lanceur : chaque lien est une application, une carte de l'anneau 3D.
  * Sans WebGPU, la liste des liens est le lanceur.
  */
-const OR_ATTRS = ["particles", "aperture", "radius", "exposure"];
+// Tous les réglages de l'orbite (src/components/orbite/params.ts), plus l'ancien « aperture ».
+const OR_ATTRS = [...ATTRS, "aperture"];
 /** La légende des raccourcis de la grille (cachée au doigt : rien à y apprendre). */
 const grilleKeys = (full: boolean, canvas: boolean) => {
   const k = (...keys: string[]) => keys.map((x) => `<kbd>${x}</kbd>`).join("");

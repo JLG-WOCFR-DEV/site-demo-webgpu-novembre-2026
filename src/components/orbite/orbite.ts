@@ -1,10 +1,15 @@
 /**
  * <x-orbite> : un lanceur d'applications en 3D. Les cartes sont posées dans le
  * disque d'accrétion d'un trou noir (« Black Hole Particles Bokeh », porté
- * fidèlement : voir shaders.ts) ; la caméra tourne autour quand on glisse ; la
- * mise au point se pose sur la carte de face (ou sur celle que le pointeur
- * survole) ; ouvrir une carte y plonge la caméra, puis la photo passe à la page
- * de l'application (src/presse/flight.ts).
+ * fidèlement : voir shaders.ts) : en tonneau autour de lui, en anneau face à
+ * vous, ou la carte choisie au fond. La caméra tourne autour quand on glisse
+ * (de côté : l'anneau ; de haut en bas : l'élévation) ; la mise au point se
+ * pose sur la carte choisie (ou sur celle que le pointeur survole) ; ouvrir
+ * une carte y plonge la caméra, puis la photo passe à la page de
+ * l'application (src/presse/flight.ts).
+ *
+ * Tous les réglages sont dans params.ts (attributs data-…) ; orbiteOf(root)
+ * les lit et les change à chaud (le panneau de la page Orbite s'en sert).
  *
  * Le HTML reste la vérité : une liste de liens, un par application, lisible
  * sans WebGPU, parcourue au clavier (flèches, Entrée). Le GPU n'en est que la
@@ -18,13 +23,26 @@ import { onSource } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { SPRINGS, ease, springStep } from "../../presse/tokens.ts";
 import { getDevice } from "../device.ts";
-import { DRAW, GRADE, MAX_CARDS, SCENE, SIM } from "./shaders.ts";
+import { type OrbiteConfig, PARAMS, coerce, defaults, fromDataset } from "./params.ts";
+import { DRAW, GRADE, MAX_CARDS, MAX_SLOTS, SCENE, SIM, UBYTES } from "./shaders.ts";
 
 type App = { id: string; title: string; tag: string; href: string; color: [number, number, number]; img: HTMLImageElement; link: HTMLAnchorElement; aspect: number };
 type V3 = [number, number, number];
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const TAU = Math.PI * 2;
+const DEG = Math.PI / 180;
+
+export type OrbiteApi = {
+  readonly config: OrbiteConfig;
+  set(p: Partial<OrbiteConfig>): void;
+  reset(): void;
+  /** Prévenu à chaque changement (glisser l'élévation compris). */
+  onChange(fn: (c: OrbiteConfig) => void): () => void;
+};
+const apis = new WeakMap<HTMLElement, OrbiteApi>();
+/** L'API d'une orbite montée (réglages à chaud). */
+export const orbiteOf = (root: HTMLElement) => apis.get(root);
 
 /* ───── Un peu d'algèbre (colonnes, comme WGSL) ───── */
 
@@ -88,89 +106,127 @@ export function mount(root: HTMLElement) {
   });
   const N = apps.length;
   if (!N) return () => {};
-  const step = TAU / N;
-  /** Rayon de l'anneau des cartes, en unités du trou noir (horizon ≈ 1, disque jusqu'à 30). */
-  const R = Number(root.dataset.radius) || 9;
-  /** Le flou : 1 = celui de l'original (0,743 px de référence par unité d'écart). */
-  const blur = 0.743 * (root.dataset.aperture === undefined ? 1 : Number(root.dataset.aperture));
-  const exposure = 0.369 * (Number(root.dataset.exposure) || 1);
   const coarse = matchMedia("(pointer: coarse)").matches;
-  // 128² particules comme l'original (64² sur téléphone).
-  const COUNT = Math.min(131072, Number(root.dataset.particles) || (coarse ? 8192 : 16384));
+
+  /* ───── Réglages ───── */
+
+  const cfg: OrbiteConfig = fromDataset(root.dataset as Record<string, string | undefined>);
+  // Au tactile, moitié moins de particules par défaut (comme l'original sur téléphone : 64²).
+  if (coarse && root.dataset.particles === undefined) cfg.particles = 8192;
+  const num = (k: string) => Number(cfg[k]);
+  const listeners = new Set<(c: OrbiteConfig) => void>();
+  const changed = () => listeners.forEach((fn) => fn(cfg));
+  /** Emplacements de cartes : chaque app revient `repeat` fois (tonneau). */
+  let M = N;
+  let step = TAU / M;
+  const slots = () => Math.max(N, Math.min(MAX_SLOTS - (MAX_SLOTS % N), N * Math.round(num("repeat"))));
+  const layoutId = () => (cfg.layout === "tonneau" ? 0 : cfg.layout === "anneau" ? 1 : 2);
 
   /* ───── État ───── */
 
-  let theta = 0; // la caméra tourne autour du trou noir ; la carte k est de face quand theta + k·step ≡ 0
+  let theta = 0; // la caméra tourne autour du trou noir ; l'emplacement k est choisi quand theta + k·step ≡ 0
   let vel = 0;
   let target: number | null = 0;
-  let drag: { id: number; x: number; t: number; lx: number; moved: number } | null = null;
+  let elev = num("elevation") * DEG;
+  let drag: { id: number; x: number; t: number; lx: number; ly: number; moved: number } | null = null;
   let hover = -1;
   let focusDist = 41;
-  const highlight: number[] = apps.map((_, k) => (k === 0 ? 1 : 0));
+  let lastInput = 0;
+  const highlight = new Array<number>(MAX_SLOTS).fill(0);
+  highlight[0] = 1;
   let opening: { k: number; t0: number } | null = null;
   const pointer = { x: 0, y: 0, in: false };
   const tilt = { x: 0, y: 0 };
   let box = root.getBoundingClientRect();
   const W = () => (full ? innerWidth : box.width);
   const H = () => (full ? innerHeight : box.height);
+  const appOf = (k: number) => ((k % N) + N) % N;
 
   const frontIndex = () => {
     let best = 0;
     let bd = Infinity;
-    for (let k = 0; k < N; k++) {
+    for (let k = 0; k < M; k++) {
       const a = Math.atan2(Math.sin(theta + k * step), Math.cos(theta + k * step));
       if (Math.abs(a) < bd) ((bd = Math.abs(a)), (best = k));
     }
     return best;
   };
-  /** L'angle qui met la carte k de face, au plus court depuis l'angle courant. */
+  /** L'angle qui amène l'emplacement k devant, au plus court depuis l'angle courant. */
   const angleFor = (k: number) => {
     const want = -k * step;
     return theta + Math.atan2(Math.sin(want - theta), Math.cos(want - theta));
   };
-  /** Demi-taille d'une carte ; la carte choisie grandit (elle est la plus lointaine). */
+  /** L'emplacement le plus proche qui montre l'app a. */
+  const slotOfApp = (a: number) => {
+    let best = a;
+    let bd = Infinity;
+    for (let k = appOf(a); k < M; k += N) {
+      const d = Math.abs(angleFor(k) - theta);
+      if (d < bd) ((bd = d), (best = k));
+    }
+    return best;
+  };
+  /** Change le nombre d'emplacements en gardant l'app choisie devant. */
+  const reslot = () => {
+    const app = appOf(frontIndex());
+    const nm = slots();
+    if (nm === M) return;
+    M = nm;
+    step = TAU / M;
+    highlight.fill(0);
+    const k = slotOfApp(app);
+    theta = -k * step;
+    target = theta;
+    vel = 0;
+    highlight[k] = 1;
+  };
+  reslot();
+
+  /** Demi-taille d'une carte ; la carte choisie grandit. */
   const halfSize = (k: number): [number, number] => {
-    const hh = 3.1 * (1 + 0.4 * highlight[k]!);
-    return [hh * Math.max(0.6, Math.min(1.8, apps[k]!.aspect)), hh];
+    const hh = num("cardHeight") * (1 + (num("selectedScale") - 1) * highlight[k]!);
+    return [hh * Math.max(0.6, Math.min(1.8, apps[appOf(k)]!.aspect)), hh];
   };
 
-  /* ───── Caméra : en orbite autour du trou noir, comme l'original ───── */
+  /* ───── Caméra ───── */
 
-  /** Distance (50 × Radius + 0,5) et focale (FOV 0,8) de l'original ; élévation de sa vue d'accueil. */
-  const DIST = 50.5;
-  const ELEV = 0.56;
   let view = new Float32Array(16);
   let proj = new Float32Array(16);
   let viewProj = new Float32Array(16);
-  let eye: V3 = [0, 0, DIST];
+  let eye: V3 = [0, 0, 50];
   let tanY = 0.4;
-  const right = (): V3 => [view[0]!, view[4]!, view[8]!];
-  const up = (): V3 => [view[1]!, view[5]!, view[9]!];
+  const camRight = (): V3 => [view[0]!, view[4]!, view[8]!];
+  const camUp = (): V3 => [view[1]!, view[5]!, view[9]!];
   const depthOf = (p: V3) => -(view[2]! * p[0] + view[6]! * p[1] + view[10]! * p[2] + view[14]!);
-  /**
-   * La carte choisie est au fond de l'anneau, derrière le trou noir : la mise
-   * au point s'y pose et retrouve celle de l'original (un peu au-delà du
-   * centre) — le premier plan du disque devient une lueur floue, l'horizon un
-   * ovale noir, la carte flotte au-dessus.
-   */
-  const ringPos = (k: number): V3 => [-Math.sin(k * step) * R, 0, -Math.cos(k * step) * R];
-  const cardCenter = (k: number): V3 => {
-    const c = ringPos(k);
-    const d = norm(sub(eye, c));
-    const l = highlight[k]! * 1.6;
-    return [c[0] + d[0] * l, c[1] + d[1] * l, c[2] + d[2] * l];
+  const slotAngle = (k: number) => (k / M) * TAU + (layoutId() === 2 ? Math.PI : 0);
+  /** Le repère d'une carte (même calcul que cardFrame dans shaders.ts). */
+  const cardFrame = (k: number) => {
+    const a = slotAngle(k);
+    const R = num("radius");
+    const base: V3 = [Math.sin(a) * R, num("cardY"), Math.cos(a) * R];
+    const l = highlight[k]! * num("lift");
+    if (layoutId() === 0) {
+      const n: V3 = [Math.sin(a), 0, Math.cos(a)];
+      return { c: [base[0] + n[0] * l, base[1], base[2] + n[2] * l] as V3, r: [Math.cos(a), 0, -Math.sin(a)] as V3, up: [0, 1, 0] as V3, n };
+    }
+    const r = camRight();
+    const up = camUp();
+    const d = norm(sub(eye, base));
+    return { c: [base[0] + d[0] * l, base[1] + d[1] * l, base[2] + d[2] * l] as V3, r, up, n: cross(r, up) };
   };
   const camera = (openK: number) => {
     const aspect = W() / Math.max(1, H());
-    // Écran étroit : on élargit le champ pour garder les quatre cartes.
-    tanY = Math.max(0.4, 0.36 / aspect);
+    // Écran étroit : on élargit le champ pour garder les cartes.
+    const tf = Math.tan((num("fov") * DEG) / 2);
+    tanY = Math.max(tf, (tf * 0.9) / aspect);
+    const D = num("distance");
     const phi = -theta + tilt.x;
-    const el = ELEV + tilt.y;
-    let e: V3 = [Math.sin(phi) * DIST * Math.cos(el), DIST * Math.sin(el), Math.cos(phi) * DIST * Math.cos(el)];
+    const el = Math.max(-1.45, Math.min(1.45, elev + tilt.y));
+    let e: V3 = [Math.sin(phi) * D * Math.cos(el), D * Math.sin(el), Math.cos(phi) * D * Math.cos(el)];
     let at: V3 = [0, 0, 0];
-    if (opening && openK > 0) {
+    if (opening && openK > 0 && cfg.dive) {
       // Ouvrir : la caméra plonge vers la carte, la mise au point la suit.
-      const c = ringPos(opening.k);
+      const c = cardFrame(opening.k).c;
       const k = ease(openK);
       const dir = norm(sub(e, c));
       const to: V3 = [c[0] + dir[0] * 9, c[1] + dir[1] * 9, c[2] + dir[2] * 9];
@@ -179,14 +235,15 @@ export function mount(root: HTMLElement) {
     }
     eye = e;
     view = lookAt(eye, at);
-    proj = perspective(2 * Math.atan(tanY), aspect, 0.5, 200);
+    proj = perspective(2 * Math.atan(tanY), aspect, 0.5, 400);
     // Décentrement de l'objectif : le trou noir un peu au-dessus du milieu, la légende garde le bas.
-    proj[9] = -0.1;
+    // Écran en portrait : la scène monte encore, la légende prend le bas.
+    proj[9] = -(num("lensShift") + (aspect < 0.8 ? 0.2 : 0));
     viewProj = mul(proj, view);
   };
   camera(0);
 
-  /** Le rayon du pointeur contre les cartes (face à la caméra) : la plus proche. */
+  /** Le rayon du pointeur contre les cartes : la plus proche. */
   const pick = (sx: number, sy: number) => {
     const inv = invert(viewProj);
     const nx = (sx / W()) * 2 - 1;
@@ -194,25 +251,24 @@ export function mount(root: HTMLElement) {
     const a = unproject(inv, nx, ny, 0);
     const b = unproject(inv, nx, ny, 1);
     const dir = norm(sub(b, a));
-    const rx = right();
-    const uy = up();
-    const n = cross(rx, uy);
     let hit = -1;
     let ht = Infinity;
-    for (let k = 0; k < N; k++) {
-      const c = cardCenter(k);
-      const den = dot(dir, n);
+    for (let k = 0; k < M; k++) {
+      const f = cardFrame(k);
+      // Dos caché : on ne le touche pas.
+      if (cfg.backFace === "cache" && dot(f.n, sub(eye, f.c)) < 0) continue;
+      const den = dot(dir, f.n);
       if (Math.abs(den) < 1e-4) continue;
-      const t = dot(sub(c, a), n) / den;
+      const t = dot(sub(f.c, a), f.n) / den;
       if (t <= 0 || t >= ht) continue;
-      const p = sub([a[0] + dir[0] * t, a[1] + dir[1] * t, a[2] + dir[2] * t], c);
+      const p = sub([a[0] + dir[0] * t, a[1] + dir[1] * t, a[2] + dir[2] * t], f.c);
       const [hw, hh] = halfSize(k);
-      if (Math.abs(dot(p, rx)) <= hw && Math.abs(dot(p, uy)) <= hh) ((hit = k), (ht = t));
+      if (Math.abs(dot(p, f.r)) <= hw && Math.abs(dot(p, f.up)) <= hh) ((hit = k), (ht = t));
     }
     return { hit };
   };
 
-  /* ───── Le texte (HTML) : la carte de face ───── */
+  /* ───── Le texte (HTML) : l'app choisie ───── */
 
   const cap = {
     num: root.querySelector<HTMLElement>("[data-or-num]"),
@@ -243,17 +299,19 @@ export function mount(root: HTMLElement) {
   };
   caption(0);
 
-  const goTo = (k: number) => {
-    target = angleFor(((k % N) + N) % N);
+  /** Va à l'emplacement k (voisin : ±1 depuis celui de devant). */
+  const goSlot = (k: number) => {
+    target = angleFor(((k % M) + M) % M);
     vel = 0;
+    lastInput = clockNow();
   };
   const open = (k: number) => {
     if (opening) return;
-    if (frontIndex() !== k) return goTo(k);
+    if (frontIndex() !== k) return goSlot(k);
     opening = { k, t0: clockNow() };
     root.classList.add("or-opening");
     // La caméra plonge vers la carte, puis on part (lien réel : passage de la photo, balayage).
-    window.setTimeout(() => apps[k]!.link.click(), reduced.matches ? 0 : 650);
+    window.setTimeout(() => apps[appOf(k)]!.link.click(), reduced.matches ? 0 : cfg.dive ? 650 : 250);
   };
 
   /* ───── Entrées ───── */
@@ -261,10 +319,11 @@ export function mount(root: HTMLElement) {
   const local = (e: { clientX: number; clientY: number }) => ({ x: e.clientX - (full ? 0 : box.left), y: e.clientY - (full ? 0 : box.top) });
   canvas.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || opening) return;
-    drag = { id: e.pointerId, x: e.clientX, t: performance.now(), lx: e.clientX, moved: 0 };
+    drag = { id: e.pointerId, x: e.clientX, t: performance.now(), lx: e.clientX, ly: e.clientY, moved: 0 };
     canvas.setPointerCapture(e.pointerId);
     target = null;
     vel = 0;
+    lastInput = clockNow();
     root.classList.add("or-dragging");
   });
   canvas.addEventListener("pointermove", (e) => {
@@ -274,30 +333,39 @@ export function mount(root: HTMLElement) {
     pointer.in = true;
     if (!drag || drag.id !== e.pointerId) return;
     const dx = e.clientX - drag.lx;
+    const dy = e.clientY - drag.ly;
     const now = performance.now();
-    // Glisser fait tourner la caméra autour du trou noir (le geste de compute.toys).
-    const k = step / Math.max(240, W() * 0.32);
-    theta += dx * k;
-    vel = vel * 0.6 + ((dx * k) / Math.max(1, now - drag.t)) * 1000 * 0.4;
+    // Glisser de côté : la caméra tourne autour du trou noir ; de haut en bas : son élévation.
+    // Un tour complet pour 1,2 largeur d'écran, quel que soit le nombre de cartes.
+    const da = dx * (TAU / Math.max(900, W() * 1.2));
+    theta += da;
+    vel = vel * 0.6 + (da / Math.max(1, now - drag.t)) * 1000 * 0.4;
+    if (cfg.dragVertical) {
+      elev = Math.max(-80 * DEG, Math.min(80 * DEG, elev + dy * (Math.PI / Math.max(700, H() * 1.4))));
+      cfg.elevation = Math.round(elev / DEG);
+    }
     drag.lx = e.clientX;
+    drag.ly = e.clientY;
     drag.t = now;
-    drag.moved += Math.abs(dx);
+    drag.moved += Math.hypot(dx, dy);
+    lastInput = clockNow();
   });
   const end = (e: PointerEvent) => {
     if (!drag || drag.id !== e.pointerId) return;
     const moved = drag.moved;
     drag = null;
     root.classList.remove("or-dragging");
+    if (cfg.dragVertical && moved >= 6) changed();
     if (moved < 6) {
       const l = local(e);
       const { hit } = pick(l.x, l.y);
       if (hit >= 0) open(hit);
       target = target ?? angleFor(frontIndex());
     } else {
-      // Lancer : la carte où l'élan mène.
+      // Lancer : l'emplacement où l'élan mène.
       const ahead = theta + vel * 0.35;
       const k = Math.round(-ahead / step);
-      target = angleFor(((k % N) + N) % N);
+      target = angleFor(((k % M) + M) % M);
     }
   };
   canvas.addEventListener("pointerup", end);
@@ -311,24 +379,28 @@ export function mount(root: HTMLElement) {
     e.preventDefault();
     wheelAcc += d;
     if (Math.abs(wheelAcc) > 60) {
-      goTo(frontIndex() + Math.sign(wheelAcc));
+      goSlot(frontIndex() + Math.sign(wheelAcc));
       wheelAcc = 0;
     }
   };
   root.addEventListener("wheel", onWheel, { passive: false });
   const onKey = (e: KeyboardEvent) => {
-    if ((e.target as Element).closest?.("input, textarea")) return;
-    if (e.key === "ArrowRight") goTo(frontIndex() + 1);
-    else if (e.key === "ArrowLeft") goTo(frontIndex() - 1);
-    else if (e.key === "Enter" && (e.target === root || e.target === document.body)) open(frontIndex());
+    if ((e.target as Element).closest?.("input, textarea, select, .op-panel")) return;
+    if (e.key === "ArrowRight") goSlot(frontIndex() + 1);
+    else if (e.key === "ArrowLeft") goSlot(frontIndex() - 1);
+    else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && cfg.dragVertical) {
+      elev = Math.max(-80 * DEG, Math.min(80 * DEG, elev + (e.key === "ArrowUp" ? 5 : -5) * DEG));
+      cfg.elevation = Math.round(elev / DEG);
+      changed();
+    } else if (e.key === "Enter" && (e.target === root || e.target === document.body)) open(frontIndex());
     else return;
     e.preventDefault();
   };
   (full ? window : root).addEventListener("keydown", onKey as EventListener);
-  root.querySelector("[data-or-prev]")?.addEventListener("click", () => goTo(frontIndex() - 1));
-  root.querySelector("[data-or-next]")?.addEventListener("click", () => goTo(frontIndex() + 1));
-  // Un lien de la liste reçoit le focus (Tab) : sa carte vient de face.
-  apps.forEach((a, k) => a.link.addEventListener("focus", () => goTo(k)));
+  root.querySelector("[data-or-prev]")?.addEventListener("click", () => goSlot(frontIndex() - 1));
+  root.querySelector("[data-or-next]")?.addEventListener("click", () => goSlot(frontIndex() + 1));
+  // Un lien de la liste reçoit le focus (Tab) : son app vient devant.
+  apps.forEach((a, k) => a.link.addEventListener("focus", () => goSlot(slotOfApp(k))));
   cap.open?.addEventListener("click", (e) => {
     if (e.defaultPrevented) return;
     // L'ouverture mise en scène, puis le vrai lien (passage et balayage compris).
@@ -336,15 +408,13 @@ export function mount(root: HTMLElement) {
     open(frontIndex());
   });
 
-  /* ───── Le passage : la carte de face est une photo à l'écran ───── */
+  /* ───── Le passage : la carte choisie est une photo à l'écran ───── */
 
   const cardRect = (k: number) => {
-    const c = cardCenter(k);
-    const rx = right();
-    const uy = up();
+    const f = cardFrame(k);
     const [hw, hh] = halfSize(k);
     const pts = [-1, 1].flatMap((sx) =>
-      [-1, 1].map((sy) => project(viewProj, [c[0] + rx[0] * hw * sx + uy[0] * hh * sy, c[1] + rx[1] * hw * sx + uy[1] * hh * sy, c[2] + rx[2] * hw * sx + uy[2] * hh * sy], W(), H())),
+      [-1, 1].map((sy) => project(viewProj, [f.c[0] + f.r[0] * hw * sx + f.up[0] * hh * sy, f.c[1] + f.r[1] * hw * sx + f.up[1] * hh * sy, f.c[2] + f.r[2] * hw * sx + f.up[2] * hh * sy], W(), H())),
     );
     const xs = pts.map((p) => p.x);
     const ys = pts.map((p) => p.y);
@@ -353,18 +423,20 @@ export function mount(root: HTMLElement) {
     return { x: Math.min(...xs) + ox, y: Math.min(...ys) + oy, w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
   };
   const unsource = onSource(root, (id) => {
-    const k = apps.findIndex((a) => a.id === id);
-    if (k < 0) return null;
-    const img = apps[k]!.img;
+    const a = apps.findIndex((x) => x.id === id);
+    if (a < 0) return null;
+    // L'emplacement de cette app le plus près de devant.
+    const k = appOf(frontIndex()) === a ? frontIndex() : slotOfApp(a);
+    const img = apps[a]!.img;
     return { rect: cardRect(k), src: img.currentSrc || img.dataset.glTex || img.src, radius: 8 };
   });
   const unsnap = onSnapshot((g) => {
     g.fillStyle = "#000";
     g.fillRect(full ? 0 : box.left, full ? 0 : box.top, W(), H());
-    const order = apps.map((_, k) => k).sort((a, b) => depthOf(cardCenter(b)) - depthOf(cardCenter(a)));
+    const order = Array.from({ length: M }, (_, k) => k).sort((a, b) => depthOf(cardFrame(b).c) - depthOf(cardFrame(a).c));
     for (const k of order) {
       const r = cardRect(k);
-      drawCover(g, apps[k]!.img, r.x, r.y, r.w, r.h);
+      drawCover(g, apps[appOf(k)]!.img, r.x, r.y, r.w, r.h);
     }
   });
 
@@ -375,6 +447,37 @@ export function mount(root: HTMLElement) {
   io.observe(root);
   let stopped = false;
   let unwire = () => {};
+  /** Refaire les particules (nombre changé) : posé ici, fait par le rendu. */
+  let rebuild: (() => void) | null = null;
+
+  /* ───── L'API (réglages à chaud) ───── */
+
+  apis.set(root, {
+    get config() {
+      return cfg;
+    },
+    set(p) {
+      let slotsChanged = false;
+      for (const def of PARAMS) {
+        if (!(def.key in p)) continue;
+        const v = coerce(def, p[def.key]);
+        if (v === cfg[def.key]) continue;
+        cfg[def.key] = v;
+        if (def.key === "repeat" || def.key === "layout") slotsChanged = true;
+        if (def.key === "elevation") elev = num("elevation") * DEG;
+        if (def.rebuild) rebuild?.();
+      }
+      if (slotsChanged) reslot();
+      changed();
+    },
+    reset() {
+      this.set({ ...defaults(), ...(coarse ? { particles: 8192 } : {}) });
+    },
+    onChange(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  });
 
   const start = async () => {
     const device = await getDevice();
@@ -430,30 +533,38 @@ export function mount(root: HTMLElement) {
       device.createRenderPipelineAsync({ layout: "auto", vertex: { module: mods.GRADE, entryPoint: "vs" }, fragment: { module: mods.GRADE, entryPoint: "fs", targets: [{ format }] }, primitive: full3 }),
     ]);
 
-    const UBYTES = 512;
     const ubuf = device.createBuffer({ size: UBYTES, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const udata = new Float32Array(UBYTES / 4);
+    const samp = device.createSampler({ magFilter: "linear", minFilter: "linear", mipmapFilter: "linear" });
     // Particules : position et impulsion (4 + 4). À zéro, toutes sont « sous l'horizon » :
     // elles naissent à la première image, comme dans l'original.
-    const pbuf = device.createBuffer({ size: COUNT * 32, usage: GPUBufferUsage.STORAGE });
-    const samp = device.createSampler({ magFilter: "linear", minFilter: "linear", mipmapFilter: "linear" });
-    const simBind = device.createBindGroup({ layout: simPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: pbuf } }] });
-    const drawBind = device.createBindGroup({ layout: drawPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: pbuf } }] });
-    const cardEntries = (p: GPURenderPipeline) =>
-      device.createBindGroup({
-        layout: p.getBindGroupLayout(0),
-        entries: [
-          { binding: 0, resource: { buffer: ubuf } },
-          { binding: 1, resource: samp },
-          { binding: 2, resource: tex.createView({ dimension: "2d-array" }) },
-        ],
-      });
-    const cardBind = cardEntries(cardPipe);
-    // Le passe profondeur seule n'utilise que les uniformes : sa disposition « auto » n'a que l'entrée 0.
+    let count = 0;
+    let pbuf: GPUBuffer | null = null;
+    let simBind: GPUBindGroup;
+    let drawBind: GPUBindGroup;
+    let prewarm = true;
+    const makeParticles = () => {
+      pbuf?.destroy();
+      count = Math.round(num("particles"));
+      pbuf = device.createBuffer({ size: count * 32, usage: GPUBufferUsage.STORAGE });
+      simBind = device.createBindGroup({ layout: simPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: pbuf } }] });
+      drawBind = device.createBindGroup({ layout: drawPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: pbuf } }] });
+      prewarm = true;
+    };
+    makeParticles();
+    rebuild = makeParticles;
+    const cardBind = device.createBindGroup({
+      layout: cardPipe.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: ubuf } },
+        { binding: 1, resource: samp },
+        { binding: 2, resource: tex.createView({ dimension: "2d-array" }) },
+      ],
+    });
+    // La passe profondeur seule n'utilise que les uniformes : sa disposition « auto » n'a que l'entrée 0.
     const cardDepthBind = device.createBindGroup({ layout: cardDepthPipe.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: ubuf } }] });
 
-    // Cibles : cartes (pleine résolution) ;
-    // particules (plafonnées vers 1280 px, comme l'original rend à 900 px puis agrandit).
+    // Cibles : cartes (pleine résolution) ; particules (plafonnées vers 1280 px, comme l'original rend à 900 px puis agrandit).
     type Targets = { w: number; h: number; pw: number; ph: number; scene: GPUTexture; pacc: GPUTexture; pdepth: GPUTexture; gradeBind: GPUBindGroup };
     let targets: Targets | null = null;
     const sizeTargets = (w: number, h: number) => {
@@ -509,9 +620,14 @@ export function mount(root: HTMLElement) {
       }
       const calm = reduced.matches;
 
-      // La caméra : ressort vers la carte visée, ou élan après un lancer.
+      // La caméra : ressort vers l'emplacement visé, élan après un lancer, ou rotation seule au repos.
+      const spin = num("autoRotate");
       if (!drag) {
-        if (target !== null) {
+        if (spin && !calm && !opening && now - lastInput > 2500) {
+          target = null;
+          theta += spin * DEG * dt;
+          vel *= Math.exp(-dt * 2.5);
+        } else if (target !== null) {
           if (calm) theta = target;
           else {
             // Le ressort « ample » des jetons de Presse : un gros objet qui tourne, posément.
@@ -524,23 +640,24 @@ export function mount(root: HTMLElement) {
         }
       }
       // Un rien de parallaxe au pointeur.
-      const want = pointer.in && !calm && !drag ? [((pointer.x / W()) - 0.5) * 0.07, ((pointer.y / H()) - 0.5) * 0.05] : [0, 0];
+      const px = num("parallax");
+      const want = pointer.in && !calm && !drag ? [(pointer.x / W() - 0.5) * 0.07 * px, (pointer.y / H() - 0.5) * 0.05 * px] : [0, 0];
       const kt = 1 - Math.exp(-dt * 3);
       tilt.x += (want[0]! - tilt.x) * kt;
       tilt.y += (want[1]! - tilt.y) * kt;
       const openK = opening ? Math.min(1, (now - opening.t0) / 650) : 0;
       camera(openK);
       const front = frontIndex();
-      caption(front);
+      caption(appOf(front));
 
-      // Survol : la mise au point suit la carte sous le pointeur, sinon la carte de face.
+      // Survol : la mise au point suit la carte sous le pointeur, sinon la carte choisie.
       const pk = pointer.in && !drag && !opening ? pick(pointer.x, pointer.y) : { hit: -1 };
       hover = pk.hit;
       root.classList.toggle("or-hovering", hover >= 0);
       const focusOn = opening ? opening.k : hover >= 0 ? hover : front;
-      const wantFocus = depthOf(cardCenter(focusOn));
-      focusDist = calm || first ? wantFocus : focusDist + (wantFocus - focusDist) * (1 - Math.exp(-dt * (opening ? 12 : 4)));
-      for (let k = 0; k < N; k++) {
+      const wantFocus = (cfg.focus === "fixe" && !opening ? num("focusDist") : depthOf(cardFrame(focusOn).c)) + num("focusOffset");
+      focusDist = calm || first ? wantFocus : focusDist + (wantFocus - focusDist) * (1 - Math.exp(-dt * (opening ? 12 : num("focusSpeed"))));
+      for (let k = 0; k < M; k++) {
         const on = k === front ? 1 : 0;
         highlight[k] = calm ? on : highlight[k]! + (on - highlight[k]!) * (1 - Math.exp(-dt * 6));
       }
@@ -549,43 +666,52 @@ export function mount(root: HTMLElement) {
       // Px de référence : ceux d'un rendu de 896 × 504 à la focale de l'original (504 / 0,8).
       const kFull = PH / 2 / tanY / 630;
       const kP = kFull * (t.ph / PH);
-      const expo = (exposure * ((t.pw / kP) * (t.ph / kP))) / (896 * 504);
-      // Le pas de l'original (0,072 × 7 sous-pas par image à 60 Hz) ne grandit jamais : une
-      // image lente simule plusieurs images (jusqu'à 3), un écran à 120 Hz des demi-pas.
-      // Préchauffage : 150 images d'un coup à la première, pour ouvrir sur le disque formé.
-      const frames = first ? 150 : calm ? 1 : Math.min(3, Math.max(1, Math.round(dt * 60)));
-      const timeStep = 0.072 * (first ? 1 : Math.min(1, dt * 60)) * (calm ? 0.15 : 1);
+      const expo = (num("exposure") * ((t.pw / kP) * (t.ph / kP))) / (896 * 504);
+      // Le pas de l'original (× 7 sous-pas) ne grandit jamais : plus vite, c'est plus d'images
+      // simulées (jusqu'à 4) ; plus lent, ce sont des pas plus courts. Préchauffage : 150 images.
+      const fr = calm ? 0.15 : dt * 60 * num("simSpeed");
+      const frames = prewarm ? 150 : fr <= 0 ? 0 : fr < 1 ? 1 : Math.min(4, Math.round(fr));
+      const timeStep = num("timeStep") * (prewarm ? 1 : Math.min(1, fr));
+      prewarm = false;
 
       // Uniformes.
+      const lay = layoutId();
       udata.set(viewProj, 0);
       udata.set(view, 16);
       udata.set([...eye, now / 1000], 32);
-      udata.set([timeStep, frames, focusDist, blur], 36);
+      udata.set([timeStep, frames, focusDist, num("blur")], 36);
       udata.set([PW, PH, kFull, 28 * dpr], 40);
       udata.set([t.pw, t.ph, kP, expo], 44);
-      udata.set([simFrame, 0.876, 0.719, 0.22], 48);
-      udata.set([R, 0, N, front], 52);
-      udata.set([0.5, 200, 3 * 0.827, calm ? 0 : 1], 56);
-      for (let k = 0; k < MAX_CARDS; k++) {
-        const a = apps[k % N]!;
-        udata.set([...a.color, 1], 60 + k * 4);
-        const [hw, hh] = halfSize(k % N);
-        udata.set([hw, hh, Math.max(0.5, Math.min(2.2, a.aspect)), highlight[k % N] ?? 0], 60 + MAX_CARDS * 4 + k * 4);
+      udata.set([simFrame, num("kerrA"), num("initSpeed"), num("initThick")], 48);
+      udata.set([num("radius"), num("cardY"), M, front], 52);
+      udata.set([0.5, 400, 3 * num("gamma"), calm ? 0 : 1], 56);
+      udata.set([num("energy"), num("minSize"), num("maxBlur"), num("hueShift")], 60);
+      udata.set([num("hueSpread"), num("saturation"), num("ghost"), num("brightness")], 64);
+      udata.set([lay, cfg.backFace === "sombre" ? 0 : cfg.backFace === "miroir" ? 1 : 2, N, cfg.occlude === "choisie" ? 0 : cfg.occlude === "toutes" ? 1 : 2], 68);
+      udata.set([num("lift"), num("fade"), num("cardBlur"), 0], 72);
+      for (let k = 0; k < MAX_CARDS; k++) udata.set([...apps[k % N]!.color, 1], 76 + k * 4);
+      for (let k = 0; k < M; k++) {
+        const a = apps[appOf(k)]!;
+        const [hw, hh] = halfSize(k);
+        udata.set([hw, hh, Math.max(0.5, Math.min(2.2, a.aspect)), highlight[k]!], 76 + MAX_CARDS * 4 + k * 4);
       }
       device.queue.writeBuffer(ubuf, 0, udata);
       simFrame += frames;
 
       const enc = device.createCommandEncoder();
-      const cp = enc.beginComputePass();
-      cp.setPipeline(simPipe);
-      cp.setBindGroup(0, simBind);
-      cp.dispatchWorkgroups(Math.ceil(COUNT / 64));
-      cp.end();
+      if (frames > 0) {
+        const cp = enc.beginComputePass();
+        cp.setPipeline(simPipe);
+        cp.setBindGroup(0, simBind);
+        cp.dispatchWorkgroups(Math.ceil(count / 64));
+        cp.end();
+      }
       // Les cartes, sur le noir, de la plus lointaine à la plus proche.
       const sp = enc.beginRenderPass({ colorAttachments: [{ view: t.scene.createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 1] }] });
       sp.setPipeline(cardPipe);
       sp.setBindGroup(0, cardBind);
-      for (const k of apps.map((_, k) => k).sort((a, b) => depthOf(cardCenter(b)) - depthOf(cardCenter(a)))) sp.draw(4, 1, 0, k);
+      const order = Array.from({ length: M }, (_, k) => k).sort((a, b) => depthOf(cardFrame(b).c) - depthOf(cardFrame(a).c));
+      for (const k of order) sp.draw(4, 1, 0, k);
       sp.end();
       // Les particules, dans leur tampon, cachées par les cartes.
       const pp = enc.beginRenderPass({
@@ -594,10 +720,10 @@ export function mount(root: HTMLElement) {
       });
       pp.setPipeline(cardDepthPipe);
       pp.setBindGroup(0, cardDepthBind);
-      pp.draw(4, N);
+      pp.draw(4, M);
       pp.setPipeline(drawPipe);
       pp.setBindGroup(0, drawBind);
-      pp.draw(4, COUNT);
+      pp.draw(4, count);
       pp.end();
       // Exposition et composition dans le canvas.
       const out = ctx.getCurrentTexture();
@@ -624,6 +750,7 @@ export function mount(root: HTMLElement) {
 
   return () => {
     stopped = true;
+    apis.delete(root);
     io.disconnect();
     unwire();
     unsource();

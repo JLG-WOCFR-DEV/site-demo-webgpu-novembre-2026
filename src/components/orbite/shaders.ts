@@ -33,7 +33,11 @@
  * → exposition et composition dans le canvas.
  */
 
+/** Applications (couleurs, couches de texture) ; emplacements de cartes (une app peut revenir plusieurs fois). */
 export const MAX_CARDS = 8;
+export const MAX_SLOTS = 48;
+/** Taille du tampon d'uniformes (octets). */
+export const UBYTES = 128 + 12 * 16 + MAX_CARDS * 16 + MAX_SLOTS * 16;
 
 const COMMON = /* wgsl */ `
 struct U {
@@ -44,10 +48,14 @@ struct U {
   screen: vec4f,   // largeur, hauteur (px), px par px de référence, flou maximal des cartes (px)
   pscreen: vec4f,  // largeur, hauteur du tampon des particules, px par px de référence, exposition
   kerr: vec4f,     // image n°, spin a, vitesse initiale, épaisseur initiale
-  ring: vec4f,     // rayon de l'anneau, hauteur, nombre de cartes, carte de face
+  ring: vec4f,     // rayon de l'anneau, hauteur, nombre d'emplacements, emplacement choisi
   clip: vec4f,     // near, far, gamma, mouvement (0 : réduit)
+  look: vec4f,     // énergie d'une particule, taille nette (px réf.), flou maximal (px réf.), décalage de teinte
+  look2: vec4f,    // dispersion de teinte, saturation, opacité des autres cartes, luminosité des cartes
+  arr: vec4f,   // disposition (0 tonneau, 1 anneau, 2 au fond), dos (0 sombre, 1 miroir, 2 caché), nombre d'apps, occultation (0 choisie, 1 toutes, 2 aucune)
+  card2: vec4f,    // avancée de la carte choisie, effacement des cartes floues, part du flou des cartes, 0
   colors: array<vec4f, ${MAX_CARDS}>,
-  cards: array<vec4f, ${MAX_CARDS}>, // demi-largeur, demi-hauteur, proportion de l'image, mise en avant
+  cards: array<vec4f, ${MAX_SLOTS}>, // par emplacement : demi-largeur, demi-hauteur, proportion de l'image, mise en avant
 };
 @group(0) @binding(0) var<uniform> u: U;
 
@@ -184,18 +192,20 @@ fn hue(v: f32) -> vec3f { return 0.6 + 0.6 * cos(6.3 * v + vec3f(0.0, 23.0, 21.0
   let z = -(u.view * world).z;
   if (z < 0.5) { o.clip = vec4f(0.0, 0.0, 2.0, 1.0); return o; }
   let k = u.pscreen.z;
-  let Rref = clamp(blurRef(z), 1.5, 32.0);
+  let Rref = clamp(blurRef(z), u.look.y, max(u.look.y, u.look.z));
   let R = Rref * k;
   let aa = max(k, 0.75);
   let ext = R + aa;
-  var ang = atan2(vel.x, vel.z + 0.000001) / 6.28;
-  ang += (rand4s(vec4u(ii, 0u, 0u, 0u)).x - 0.5) * 0.33;
+  var ang = atan2(vel.x, vel.z + 0.000001) / 6.28 + u.look.w;
+  ang += (rand4s(vec4u(ii, 0u, 0u, 0u)).x - 0.5) * u.look2.x;
   let corner = vec2f(f32(vi & 1u), f32(vi >> 1u)) * 2.0 - 1.0;
   var c = u.viewProj * world;
   c = vec4f(c.xy + corner * ext / u.pscreen.xy * 2.0 * c.w, c.zw);
   o.clip = c;
   o.px = corner * ext;
-  o.col = hue(ang) * 20.0 / (Rref * Rref);
+  var col = hue(ang);
+  col = mix(vec3f(dot(col, vec3f(0.299, 0.587, 0.114))), col, u.look2.y);
+  o.col = max(col, vec3f(0.0)) * u.look.x / (Rref * Rref);
   o.disc = vec2f(R, aa);
   return o;
 }
@@ -224,37 +234,59 @@ ${COMMON}
 struct CO {
   @builtin(position) clip: vec4f,
   @location(0) local: vec2f,   // position dans la carte (unités du monde, centre 0)
-  @location(1) @interpolate(flat) k: u32,
-  @location(2) @interpolate(flat) blur: vec2f,  // flou en px, en unités du monde
+  @location(1) @interpolate(flat) k: u32,      // emplacement
+  @location(2) blur: vec2f,    // flou en px, en unités du monde (par sommet : une carte vue de biais a un bord plus flou)
+  @location(3) @interpolate(flat) back: f32,   // vue de dos (1)
+  @location(4) @interpolate(flat) facing: f32, // 1 : de face ; 0 : par la tranche
 };
 
-fn cardCenter(k: u32) -> vec3f {
-  // Au fond de l'anneau quand elle est choisie (en face de la caméra, de l'autre côté du trou noir).
-  let a = f32(k) / u.ring.z * TAU;
-  let c = vec3f(-sin(a) * u.ring.x, u.ring.y, -cos(a) * u.ring.x);
-  // La carte mise en avant s'avance vers l'objectif.
-  return c + normalize(u.cam.xyz - c) * u.cards[k].w * 1.6;
+/** L'axe d'un emplacement : angle autour du trou noir (au fond : de l'autre côté). */
+fn slotAngle(k: u32) -> f32 {
+  return f32(k) / u.ring.z * TAU + select(0.0, TAU * 0.5, u.arr.x > 1.5);
 }
+/** Le repère d'une carte : centre, droite, haut, normale. */
+struct Frame { c: vec3f, r: vec3f, up: vec3f, n: vec3f };
+fn cardFrame(k: u32) -> Frame {
+  let a = slotAngle(k);
+  var f: Frame;
+  let base = vec3f(sin(a) * u.ring.x, u.ring.y, cos(a) * u.ring.x);
+  if (u.arr.x < 0.5) {
+    // Tonneau : les cartes posées sur le cylindre, face vers l'extérieur.
+    f.n = vec3f(sin(a), 0.0, cos(a));
+    f.r = vec3f(cos(a), 0.0, -sin(a));
+    f.up = vec3f(0.0, 1.0, 0.0);
+    f.c = base + f.n * u.cards[k].w * u.card2.x;
+  } else {
+    // Face à la caméra : les axes de l'image, lus dans la vue.
+    f.r = vec3f(u.view[0][0], u.view[1][0], u.view[2][0]);
+    f.up = vec3f(u.view[0][1], u.view[1][1], u.view[2][1]);
+    f.n = cross(f.r, f.up);
+    f.c = base + normalize(u.cam.xyz - base) * u.cards[k].w * u.card2.x;
+  }
+  return f;
+}
+fn appOf(k: u32) -> u32 { return k % u32(max(1.0, u.arr.z)); }
 
 @vertex fn vs_card(@builtin(vertex_index) vi: u32, @builtin(instance_index) k: u32) -> CO {
-  // Face à la caméra : les axes de l'image, lus dans la vue.
-  let right = vec3f(u.view[0][0], u.view[1][0], u.view[2][0]);
-  let up = vec3f(u.view[0][1], u.view[1][1], u.view[2][1]);
+  let f = cardFrame(k);
   let card = u.cards[k];
-  let c = cardCenter(k);
-  let z = max(0.5, -(u.view * vec4f(c, 1.0)).z);
-  let coc = min(u.screen.w, blurRef(z) * u.screen.z);
+  let corner = vec2f(f32(vi & 1u), f32(vi >> 1u)) * 2.0 - 1.0;
+  // Le flou au sommet (sans débord), puis le débord qui le contient.
+  let w0 = f.c + f.r * corner.x * card.x + f.up * corner.y * card.y;
+  let z = max(0.5, -(u.view * vec4f(w0, 1.0)).z);
+  let coc = min(u.screen.w, blurRef(z) * u.screen.z * u.card2.z);
   // Unités du monde par px à cette profondeur (focale en px : 630 px de référence).
   let wpp = z / (u.screen.z * 630.0);
-  // Le quadrilatère déborde du flou, pour que le bord adouci y tienne.
   let half = card.xy + (coc + 2.0) * wpp;
-  let corner = vec2f(f32(vi & 1u), f32(vi >> 1u)) * 2.0 - 1.0;
-  let w = c + right * corner.x * half.x + up * corner.y * half.y;
+  let w = f.c + f.r * corner.x * half.x + f.up * corner.y * half.y;
   var o: CO;
   o.clip = u.viewProj * vec4f(w, 1.0);
   o.local = corner * half;
   o.k = k;
   o.blur = vec2f(coc, max(coc, 0.75) * wpp);
+  let toCam = normalize(u.cam.xyz - f.c);
+  o.back = select(0.0, 1.0, dot(f.n, toCam) < 0.0);
+  o.facing = abs(dot(f.n, toCam));
   return o;
 }
 
@@ -265,29 +297,38 @@ fn rbox(p: vec2f, b: vec2f, r: f32) -> f32 {
 
 @fragment fn fs_card(i: CO) -> @location(0) vec4f {
   let card = u.cards[i.k];
-  // Recadrage « cover » de la capture dans la carte.
+  let app = appOf(i.k);
+  let back = i.back > 0.5;
+  // Recadrage « cover » de la capture dans la carte ; vue de dos, l'image en miroir.
   var uv = clamp(i.local / (card.xy * 2.0) * vec2f(1.0, -1.0) + 0.5, vec2f(0.0), vec2f(1.0));
+  if (back) { uv.x = 1.0 - uv.x; }
   let box = card.x / card.y;
   if (card.z > box) { uv.x = 0.5 + (uv.x - 0.5) * box / card.z; } else { uv.y = 0.5 + (uv.y - 0.5) * card.z / box; }
   // Le flou de l'image : le niveau de mipmap monte avec le cercle de confusion.
-  var col = textureSampleBias(photos, samp, uv, i.k, log2(max(1.0, i.blur.x * 1.3))).rgb;
-  // La carte de face s'allume ; les autres restent dans la pénombre du disque.
-  col *= 0.55 + 0.45 * card.w;
+  var col = textureSampleBias(photos, samp, uv, app, log2(max(1.0, i.blur.x * 1.3))).rgb;
+  // La carte choisie s'allume ; les autres restent dans la pénombre du disque.
+  col *= (0.55 + 0.45 * card.w) * u.look2.w;
+  if (back) { col *= select(0.28, 0.7, u.arr.y > 0.5 && u.arr.y < 1.5); }
   let d = rbox(i.local, card.xy, 0.22);
   // Un liseré de la couleur de l'app, aussi flou que la carte.
   let line = max(0.05, i.blur.y);
   let edge = smoothstep(-line * 2.0, 0.0, d);
-  col = mix(col, u.colors[i.k].rgb, edge * (0.45 + 0.55 * card.w));
+  col = mix(col, u.colors[app].rgb, edge * (0.45 + 0.55 * card.w));
   // Le bord : une rampe sur la largeur du flou. Les cartes non choisies sont des fantômes,
   // d'autant plus pâles qu'elles sont floues : l'horizon du trou noir reste noir.
-  let ghost = 0.5 * (1.0 - 0.7 * smoothstep(4.0, 24.0, i.blur.x / u.screen.z));
-  let a = (1.0 - smoothstep(-i.blur.y, i.blur.y, d)) * mix(ghost, 1.0, card.w);
+  let ghost = u.look2.z * (1.0 - u.card2.y * smoothstep(4.0, 24.0, i.blur.x / u.screen.z));
+  var a = (1.0 - smoothstep(-i.blur.y, i.blur.y, d)) * mix(ghost, 1.0, card.w);
+  if (back && u.arr.y > 1.5) { a = 0.0; }
+  // Vue par la tranche, une carte n'est plus qu'un trait : elle s'efface (pas de rai de lumière).
+  a *= smoothstep(0.06, 0.3, i.facing);
   return vec4f(col * a, a);
 }
 /** Les mêmes cartes, en profondeur seule (forme nette), pour cacher les particules derrière elles. */
 @fragment fn fs_card_depth(i: CO) -> @location(0) vec4f {
-  // Seule la carte choisie, opaque, cache ce qui passe derrière elle.
-  if (u.cards[i.k].w < 0.5 || rbox(i.local, u.cards[i.k].xy, 0.22) > 0.0) { discard; }
+  // La carte choisie (ou toutes, ou aucune) cache ce qui passe derrière elle.
+  let mode = u.arr.w;
+  let hidden = mode > 1.5 || (mode < 0.5 && u.cards[i.k].w < 0.5) || (i.back > 0.5 && u.arr.y > 1.5);
+  if (hidden || rbox(i.local, u.cards[i.k].xy, 0.22) > 0.0) { discard; }
   return vec4f(0.0);
 }
 `;

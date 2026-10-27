@@ -14,3 +14,203 @@ body.ob {
   color: #f1efe8;
   font: 17px/1.55 "Archivo Variable", Arial, sans-serif;
 }
+
+/* ───── Panneau de réglages (src/orbite/panel.ts) ───── */
+body.ob .x-orbite .or-hint {
+  right: 132px;
+}
+.op-toggle {
+  position: fixed;
+  z-index: 20;
+  top: 12px;
+  right: 16px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid rgba(241, 239, 232, 0.45);
+  border-radius: 999px;
+  background: rgba(10, 10, 12, 0.6);
+  backdrop-filter: blur(10px);
+  color: #f1efe8;
+  font: 500 11px/1 "IBM Plex Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.op-toggle[aria-expanded="true"] {
+  background: #f1efe8;
+  color: #000;
+}
+.op-panel {
+  position: fixed;
+  z-index: 19;
+  top: 58px;
+  right: 16px;
+  bottom: 16px;
+  width: min(360px, calc(100vw - 32px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px 16px 16px;
+  border: 1px solid rgba(241, 239, 232, 0.16);
+  border-radius: 14px;
+  background: rgba(12, 12, 14, 0.78);
+  backdrop-filter: blur(18px) saturate(1.2);
+  color: #e9e6dd;
+  font: 13px/1.4 "Archivo Variable", Arial, sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(241, 239, 232, 0.25) transparent;
+}
+.op-panel[hidden] {
+  display: none;
+}
+/* Panneau ouvert : la légende et les flèches laissent la place. */
+body.op-open .x-orbite .or-nav,
+body.op-open .x-orbite .or-hint {
+  opacity: 0;
+  pointer-events: none;
+}
+.op-h,
+.op-sec summary {
+  margin: 12px 0 8px;
+  font: 500 11px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9d998f;
+}
+.op-sec {
+  border-top: 1px solid rgba(241, 239, 232, 0.1);
+}
+.op-sec summary {
+  cursor: pointer;
+  padding: 2px 0;
+  color: #f1efe8;
+}
+.op-row {
+  margin: 0 0 9px;
+}
+.op-range {
+  display: grid;
+  grid-template-columns: 1fr 120px 3.8em;
+  align-items: center;
+  gap: 8px;
+}
+.op-range label {
+  cursor: default;
+  user-select: none;
+}
+.op-range input {
+  width: 100%;
+  accent-color: #f1efe8;
+}
+.op-range output {
+  font: 12px/1 "IBM Plex Mono", monospace;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #c9c5bb;
+}
+.op-select .op-label {
+  display: block;
+  margin-bottom: 5px;
+}
+.op-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.op-chips label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(241, 239, 232, 0.25);
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.op-chips input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.op-chips label:has(input:checked) {
+  background: #f1efe8;
+  border-color: #f1efe8;
+  color: #000;
+}
+.op-chips label:has(input:focus-visible),
+.op-panel button:focus-visible,
+.op-panel input:focus-visible,
+.op-panel select:focus-visible {
+  outline: 2px solid #f1efe8;
+  outline-offset: 2px;
+}
+.op-check label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+.op-check input {
+  accent-color: #f1efe8;
+}
+.op-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.op-line select,
+.op-line input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(241, 239, 232, 0.25);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  color: inherit;
+  font: inherit;
+}
+.op-panel button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(241, 239, 232, 0.4);
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: 500 11px/1 "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.op-panel button:hover {
+  background: rgba(241, 239, 232, 0.1);
+}
+.op-note {
+  font: 12px/1.3 "IBM Plex Mono", monospace;
+  color: #9d998f;
+}
+.op-code {
+  margin: 0 0 8px;
+  padding: 10px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid rgba(241, 239, 232, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  font: 11px/1.5 "IBM Plex Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #d8d4ca;
+}
+@media (max-width: 640px) {
+  .op-panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    height: 56vh;
+  }
+}
