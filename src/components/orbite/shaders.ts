@@ -37,7 +37,7 @@
 export const MAX_CARDS = 8;
 export const MAX_SLOTS = 48;
 /** Taille du tampon d'uniformes (octets). */
-export const UBYTES = 128 + 12 * 16 + MAX_CARDS * 16 + MAX_SLOTS * 16;
+export const UBYTES = 128 + 16 * 16 + MAX_CARDS * 16 + MAX_SLOTS * 16;
 
 const COMMON = /* wgsl */ `
 struct U {
@@ -54,6 +54,10 @@ struct U {
   look2: vec4f,    // dispersion de teinte, saturation, opacité des autres cartes, luminosité des cartes
   arr: vec4f,   // disposition (0 tonneau, 1 anneau, 2 au fond), dos (0 sombre, 1 miroir, 2 caché), nombre d'apps, occultation (0 choisie, 1 toutes, 2 aucune)
   card2: vec4f,    // avancée de la carte choisie, effacement des cartes floues, part du flou des cartes, 0
+  pal: vec4f,      // palette (0 arc-en-ciel, 1 apps, 2 trois couleurs, 3 corps noir, 4 deux couleurs, 5 une couleur), la couleur suit (0 direction, 1 rayon, 2 vitesse, 3 hauteur, 4 hasard), 0, 0
+  colA: vec4f,
+  colB: vec4f,
+  colC: vec4f,
   colors: array<vec4f, ${MAX_CARDS}>,
   cards: array<vec4f, ${MAX_SLOTS}>, // par emplacement : demi-largeur, demi-hauteur, proportion de l'image, mise en avant
 };
@@ -182,6 +186,39 @@ struct VO {
 };
 
 fn hue(v: f32) -> vec3f { return 0.6 + 0.6 * cos(6.3 * v + vec3f(0.0, 23.0, 21.0)); }
+/** Corps noir : rouge sombre → orange → jaune pâle → blanc bleuté. */
+fn blackbody(t: f32) -> vec3f {
+  let a = mix(vec3f(0.45, 0.04, 0.02), vec3f(1.0, 0.32, 0.04), smoothstep(0.0, 0.35, t));
+  let b = mix(a, vec3f(1.0, 0.82, 0.45), smoothstep(0.3, 0.65, t));
+  return mix(b, vec3f(0.78, 0.86, 1.0), smoothstep(0.6, 1.0, t));
+}
+/** La couleur d'une particule : t dans [0, 1] (en boucle pour la direction et le hasard). */
+fn palette(t: f32, loops: bool) -> vec3f {
+  let m = u.pal.x;
+  if (m < 0.5) { return hue(t); }
+  let f = select(clamp(t, 0.0, 1.0), fract(t), loops);
+  if (m < 1.5) {
+    // Les couleurs des apps, chacune son secteur, fondues à la frontière.
+    let n = max(1.0, u.arr.z);
+    let x = f * n;
+    let k0 = u32(floor(x)) % u32(n);
+    let k1 = (k0 + 1u) % u32(n);
+    return mix(u.colors[k0].rgb, u.colors[k1].rgb, smoothstep(0.3, 0.7, fract(x))) * 1.15;
+  }
+  if (m < 2.5) {
+    // Trois couleurs ; en boucle, la troisième revient à la première.
+    let x = select(f * 2.0, f * 3.0, loops);
+    let c0 = mix(u.colA.rgb, u.colB.rgb, smoothstep(0.0, 1.0, clamp(x, 0.0, 1.0)));
+    let c1 = mix(c0, u.colC.rgb, smoothstep(0.0, 1.0, clamp(x - 1.0, 0.0, 1.0)));
+    return mix(c1, u.colA.rgb, smoothstep(0.0, 1.0, clamp(x - 2.0, 0.0, 1.0))) * 1.15;
+  }
+  if (m < 3.5) { return blackbody(select(f, abs(f * 2.0 - 1.0), loops)) * 1.15; }
+  if (m < 4.5) {
+    let w = select(f, 0.5 - 0.5 * cos(f * TAU), loops);
+    return mix(u.colA.rgb, u.colB.rgb, w) * 1.15;
+  }
+  return u.colA.rgb * 1.15;
+}
 
 @vertex fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VO {
   let pr = parts[ii];
@@ -196,14 +233,23 @@ fn hue(v: f32) -> vec3f { return 0.6 + 0.6 * cos(6.3 * v + vec3f(0.0, 23.0, 21.0
   let R = Rref * k;
   let aa = max(k, 0.75);
   let ext = R + aa;
-  var ang = atan2(vel.x, vel.z + 0.000001) / 6.28 + u.look.w;
-  ang += (rand4s(vec4u(ii, 0u, 0u, 0u)).x - 0.5) * u.look2.x;
+  // Ce que la couleur suit : la direction (l'original), la distance au centre, la vitesse, la hauteur, le hasard.
+  let rnd = rand4s(vec4u(ii, 0u, 0u, 0u)).x;
+  let by = u.pal.y;
+  var t: f32;
+  if (by < 0.5) { t = atan2(vel.x, vel.z + 0.000001) / 6.28; }
+  else if (by < 1.5) { t = length(world.xz) / 26.0; }
+  else if (by < 2.5) { t = smoothstep(0.1, 0.9, length(vel)); }
+  else if (by < 3.5) { t = world.y / 10.0 + 0.5; }
+  else { t = rnd; }
+  t += u.look.w + (rnd - 0.5) * u.look2.x;
+  let loops = by < 0.5 || by > 3.5;
   let corner = vec2f(f32(vi & 1u), f32(vi >> 1u)) * 2.0 - 1.0;
   var c = u.viewProj * world;
   c = vec4f(c.xy + corner * ext / u.pscreen.xy * 2.0 * c.w, c.zw);
   o.clip = c;
   o.px = corner * ext;
-  var col = hue(ang);
+  var col = palette(t, loops);
   col = mix(vec3f(dot(col, vec3f(0.299, 0.587, 0.114))), col, u.look2.y);
   o.col = max(col, vec3f(0.0)) * u.look.x / (Rref * Rref);
   o.disc = vec2f(R, aa);

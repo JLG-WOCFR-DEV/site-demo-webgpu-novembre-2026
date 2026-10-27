@@ -157,6 +157,18 @@ export function mountPanel(api: OrbiteApi, opts: { slot: string; apps: string })
           api.set(p.key === "layout" ? { layout: r.value, ...(LAYOUT_DEFAULTS[r.value] ?? {}) } : { [p.key]: r.value });
         });
       sync.set(p.key, (v) => radios.forEach((r) => (r.checked = r.value === v)));
+    } else if (p.type === "color") {
+      row.innerHTML = `<label for="${id}">${p.label}</label><input id="${id}" type="color" /><output for="${id}"></output>`;
+      const input = row.querySelector("input")!;
+      const out = row.querySelector("output")!;
+      input.addEventListener("input", () => {
+        out.textContent = input.value;
+        api.set({ [p.key]: input.value });
+      });
+      sync.set(p.key, (v) => {
+        input.value = String(v);
+        out.textContent = String(v);
+      });
     } else {
       row.innerHTML = `<label><input id="${id}" type="checkbox" /> ${p.label}</label>`;
       const box = row.querySelector("input")!;

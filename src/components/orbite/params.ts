@@ -11,7 +11,7 @@ export type ParamDef = {
   key: string;
   label: string;
   group: string;
-  type: "range" | "select" | "check";
+  type: "range" | "select" | "check" | "color";
   def: number | string | boolean;
   min?: number;
   max?: number;
@@ -22,7 +22,7 @@ export type ParamDef = {
   hint?: string;
 };
 
-export const GROUPS = ["Cartes", "Caméra", "Mise au point", "Disque", "Lumière"] as const;
+export const GROUPS = ["Cartes", "Couleurs", "Caméra", "Mise au point", "Disque", "Lumière"] as const;
 
 export const PARAMS: ParamDef[] = [
   /* Cartes */
@@ -36,7 +36,7 @@ export const PARAMS: ParamDef[] = [
   { key: "ghost", label: "Autres cartes (opacité)", group: "Cartes", type: "range", def: 0.9, min: 0, max: 1, step: 0.05 },
   { key: "fade", label: "Effacer les cartes floues", group: "Cartes", type: "range", def: 0.35, min: 0, max: 1, step: 0.05, hint: "Plus une carte est floue, plus elle s'efface (0 : jamais)." },
   { key: "brightness", label: "Luminosité", group: "Cartes", type: "range", def: 1, min: 0.2, max: 1.5, step: 0.05 },
-  { key: "cardBlur", label: "Flou des cartes", group: "Cartes", type: "range", def: 0.6, min: 0, max: 2, step: 0.05, hint: "Part du flou des particules que reçoivent les cartes (1 : le même)." },
+  { key: "cardBlur", label: "Flou des cartes", group: "Cartes", type: "range", def: 0, min: 0, max: 2, step: 0.05, hint: "Part du flou des particules que reçoivent les cartes (1 : le même)." },
   { key: "backFace", label: "Dos des cartes", group: "Cartes", type: "select", def: "miroir", choices: [["sombre", "Sombre"], ["miroir", "Miroir"], ["cache", "Caché"]] },
   { key: "occlude", label: "Les cartes cachent les particules", group: "Cartes", type: "select", def: "toutes", choices: [["choisie", "La choisie"], ["toutes", "Toutes"], ["aucune", "Aucune"]] },
 
@@ -71,14 +71,41 @@ export const PARAMS: ParamDef[] = [
   { key: "gamma", label: "Gamma", group: "Lumière", type: "range", def: 0.827, min: 0.2, max: 1.6, step: 0.005 },
   { key: "energy", label: "Énergie d'une particule", group: "Lumière", type: "range", def: 20, min: 2, max: 80, step: 0.5 },
   { key: "minSize", label: "Taille nette (px)", group: "Lumière", type: "range", def: 1.5, min: 0.5, max: 6, step: 0.1 },
-  { key: "hueShift", label: "Décalage de teinte", group: "Lumière", type: "range", def: 0, min: 0, max: 1, step: 0.01 },
-  { key: "hueSpread", label: "Dispersion de teinte", group: "Lumière", type: "range", def: 0.33, min: 0, max: 1, step: 0.01 },
-  { key: "saturation", label: "Saturation", group: "Lumière", type: "range", def: 1, min: 0, max: 2, step: 0.05 },
+
+
+  /* Couleurs des particules */
+  {
+    key: "palette",
+    label: "Palette",
+    group: "Couleurs",
+    type: "select",
+    def: "arcenciel",
+    choices: [
+      ["arcenciel", "Arc-en-ciel"],
+      ["apps", "Couleurs des apps"],
+      ["feu", "Feu"],
+      ["glace", "Glace"],
+      ["aurore", "Aurore"],
+      ["nuit", "Néon"],
+      ["or", "Or"],
+      ["corps", "Corps noir"],
+      ["deux", "Deux couleurs"],
+      ["trois", "Trois couleurs"],
+      ["mono", "Une couleur"],
+    ],
+  },
+  { key: "colorBy", label: "La couleur suit", group: "Couleurs", type: "select", def: "direction", choices: [["direction", "Direction"], ["rayon", "Distance au centre"], ["vitesse", "Vitesse"], ["hauteur", "Hauteur"], ["hasard", "Hasard"]], hint: "Direction : la roue de l'original (chaque particule prend la teinte de son sens de rotation)." },
+  { key: "colorA", label: "Couleur 1", group: "Couleurs", type: "color", def: "#ff3d7f" },
+  { key: "colorB", label: "Couleur 2", group: "Couleurs", type: "color", def: "#3dd6ff" },
+  { key: "colorC", label: "Couleur 3", group: "Couleurs", type: "color", def: "#ffd23d" },
+  { key: "hueShift", label: "Décalage", group: "Couleurs", type: "range", def: 0, min: 0, max: 1, step: 0.01 },
+  { key: "hueSpread", label: "Dispersion", group: "Couleurs", type: "range", def: 0.33, min: 0, max: 1, step: 0.01 },
+  { key: "saturation", label: "Saturation", group: "Couleurs", type: "range", def: 1, min: 0, max: 2, step: 0.05 },
 ];
 
 /** Réglages conseillés par disposition (appliqués quand on en change dans le panneau). */
 export const LAYOUT_DEFAULTS: Record<string, Record<string, number | string>> = {
-  tonneau: { radius: 16, repeat: 3, cardHeight: 2.6, lift: 1.2, ghost: 0.9, fade: 0.35, selectedScale: 1.15, cardBlur: 0.6, occlude: "toutes", backFace: "miroir" },
+  tonneau: { radius: 16, repeat: 3, cardHeight: 2.6, lift: 1.2, ghost: 0.9, fade: 0.35, selectedScale: 1.15, cardBlur: 0, occlude: "toutes", backFace: "miroir" },
   anneau: { radius: 9, repeat: 1, cardHeight: 3.1, lift: 1.6, ghost: 0.5, fade: 0.7, selectedScale: 1.4, cardBlur: 1, occlude: "choisie", backFace: "sombre" },
   fond: { radius: 9, repeat: 1, cardHeight: 3.1, lift: 1.6, ghost: 0.5, fade: 0.7, selectedScale: 1.4, cardBlur: 1, occlude: "choisie", backFace: "sombre" },
 };
@@ -98,6 +125,7 @@ export function coerce(p: ParamDef, v: unknown): number | string | boolean {
   if (p.type === "check") return v === true || v === "" || v === "true" || v === "1";
   if (v === "") return p.def;
   if (p.type === "select") return p.choices!.some(([c]) => c === v) ? String(v) : p.def;
+  if (p.type === "color") return /^#[0-9a-f]{6}$/i.test(String(v)) ? String(v).toLowerCase() : p.def;
   const n = Number(v);
   if (!Number.isFinite(n)) return p.def;
   return Math.min(p.max ?? n, Math.max(p.min ?? n, n));
@@ -123,3 +151,19 @@ export function toAttributes(c: OrbiteConfig) {
   }
   return out.join(" ");
 }
+
+/** Les palettes : mode du shader (0 arc-en-ciel, 1 apps, 2 trois couleurs en boucle, 3 corps noir, 4 deux couleurs) et leurs couleurs. */
+export const PALETTES: Record<string, { mode: number; colors?: [string, string, string] }> = {
+  arcenciel: { mode: 0 },
+  apps: { mode: 1 },
+  feu: { mode: 2, colors: ["#ff2a00", "#ffae00", "#fff0c8"] },
+  glace: { mode: 2, colors: ["#eafcff", "#5ad1ff", "#2b4dff"] },
+  aurore: { mode: 2, colors: ["#22ff9a", "#00c2ff", "#a04dff"] },
+  nuit: { mode: 2, colors: ["#00e5ff", "#ff2bd6", "#5b3bff"] },
+  or: { mode: 2, colors: ["#ffd27a", "#ff9a1f", "#fff6e0"] },
+  corps: { mode: 3 },
+  deux: { mode: 4 },
+  trois: { mode: 2 },
+  mono: { mode: 5 },
+};
+export const COLOR_BY = ["direction", "rayon", "vitesse", "hauteur", "hasard"];

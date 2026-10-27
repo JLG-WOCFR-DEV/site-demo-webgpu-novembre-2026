@@ -214,3 +214,23 @@ body.op-open .x-orbite .or-hint {
     height: 56vh;
   }
 }
+.op-color {
+  display: grid;
+  grid-template-columns: 1fr 44px 5.2em;
+  align-items: center;
+  gap: 8px;
+}
+.op-color input {
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(241, 239, 232, 0.3);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.op-color output {
+  font: 12px/1 "IBM Plex Mono", monospace;
+  text-align: right;
+  color: #c9c5bb;
+}

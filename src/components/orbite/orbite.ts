@@ -23,7 +23,7 @@ import { onSource } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { SPRINGS, ease, springStep } from "../../presse/tokens.ts";
 import { getDevice } from "../device.ts";
-import { type OrbiteConfig, PARAMS, coerce, defaults, fromDataset } from "./params.ts";
+import { COLOR_BY, type OrbiteConfig, PALETTES, PARAMS, coerce, defaults, fromDataset } from "./params.ts";
 import { DRAW, GRADE, MAX_CARDS, MAX_SLOTS, SCENE, SIM, UBYTES } from "./shaders.ts";
 
 type App = { id: string; title: string; tag: string; href: string; color: [number, number, number]; img: HTMLImageElement; link: HTMLAnchorElement; aspect: number };
@@ -490,7 +490,8 @@ export function mount(root: HTMLElement) {
     void wire;
     if (full) setDebugCaps({ ...rec.caps, fileName: () => "webgpu-demo-ubs-orbite" });
 
-    const { tex } = await loadPhotoArray(device, apps.map((a) => a.img));
+    // Les captures en pleine taille (1200 × 800) : la carte choisie doit rester lisible.
+    const { tex } = await loadPhotoArray(device, apps.map((a) => a.img), 1200, 800, 6);
     const HDR: GPUTextureFormat = "rgba16float";
     const mods = Object.fromEntries(
       await Promise.all(
@@ -689,11 +690,16 @@ export function mount(root: HTMLElement) {
       udata.set([num("hueSpread"), num("saturation"), num("ghost"), num("brightness")], 64);
       udata.set([lay, cfg.backFace === "sombre" ? 0 : cfg.backFace === "miroir" ? 1 : 2, N, cfg.occlude === "choisie" ? 0 : cfg.occlude === "toutes" ? 1 : 2], 68);
       udata.set([num("lift"), num("fade"), num("cardBlur"), 0], 72);
-      for (let k = 0; k < MAX_CARDS; k++) udata.set([...apps[k % N]!.color, 1], 76 + k * 4);
+      // Couleurs des particules : la palette choisie, ou les trois couleurs du panneau.
+      const pal = PALETTES[String(cfg.palette)] ?? PALETTES.arcenciel!;
+      const cols = pal.colors ?? [String(cfg.colorA), String(cfg.colorB), String(cfg.colorC)];
+      udata.set([pal.mode, Math.max(0, COLOR_BY.indexOf(String(cfg.colorBy))), 0, 0], 76);
+      cols.forEach((c, i) => udata.set([...hex(c), 1], 80 + i * 4));
+      for (let k = 0; k < MAX_CARDS; k++) udata.set([...apps[k % N]!.color, 1], 92 + k * 4);
       for (let k = 0; k < M; k++) {
         const a = apps[appOf(k)]!;
         const [hw, hh] = halfSize(k);
-        udata.set([hw, hh, Math.max(0.5, Math.min(2.2, a.aspect)), highlight[k]!], 76 + MAX_CARDS * 4 + k * 4);
+        udata.set([hw, hh, Math.max(0.5, Math.min(2.2, a.aspect)), highlight[k]!], 92 + MAX_CARDS * 4 + k * 4);
       }
       device.queue.writeBuffer(ubuf, 0, udata);
       simFrame += frames;
