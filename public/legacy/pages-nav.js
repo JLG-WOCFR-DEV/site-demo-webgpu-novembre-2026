@@ -1053,6 +1053,11 @@ var Ze = [
 		text: "Un lanceur : quatre applications en anneau, des particules, la mise au point"
 	},
 	{
+		href: "matieres.html",
+		name: "Matières",
+		text: "Paillettes qu'on brosse, lettres en eau, éclair et feu, diagramme de phase"
+	},
+	{
 		href: "atelier.html",
 		name: "Atelier",
 		text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide"

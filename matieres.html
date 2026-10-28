@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr" data-presse-intro="#0b0b0d" data-presse-intro-label="WebGPU-demo-UBS · Matières" data-presse-cursor>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Matières</title>
+    <meta name="description" content="Des matières en WebGPU : un tissu de paillettes qu'on brosse, des lettres en eau, en éclair et en feu, un diagramme de phase en champs de distance." />
+    <meta name="theme-color" content="#0b0b0d" />
+    <script type="module" src="/src/matieres/main.ts"></script>
+  </head>
+  <body class="mt">
+    <header class="mt-head">
+      <p class="mt-kicker" data-intro>WebGPU-demo-UBS · Matières</p>
+      <h1 class="mt-title" data-intro>Matières</h1>
+      <p class="mt-lede" data-intro>Trois matières que le GPU fabrique sous le pointeur : un tissu de paillettes, des lettres faites d'eau, d'éclair et de feu, et un diagramme de phase qui respire.</p>
+    </header>
+
+    <main>
+      <section class="mt-sec mt-sequins" data-mt="paillettes" aria-labelledby="mt-h-seq">
+        <canvas class="mt-gl" aria-hidden="true"></canvas>
+        <div class="mt-cap">
+          <p class="mt-num">01</p>
+          <h2 id="mt-h-seq">Paillettes</h2>
+          <p>Brossez le tissu : chaque paillette bascule dans le sens du geste. Vers le haut, elle montre sa face cachée ; vers le bas, l'argent revient.</p>
+          <div class="mt-tools" role="group" aria-label="Réglages des paillettes">
+            <span class="mt-seg" role="radiogroup" aria-label="Face cachée"><button type="button" data-seq-img="mot" aria-pressed="true">Mot</button><button type="button" data-seq-img="photo" aria-pressed="false">Photo</button></span>
+            <span class="mt-seg" role="radiogroup" aria-label="Métal"><button type="button" data-seq-metal="argent" aria-pressed="true">Argent</button><button type="button" data-seq-metal="or" aria-pressed="false">Or</button><button type="button" data-seq-metal="noir" aria-pressed="false">Noir</button></span>
+            <button type="button" data-seq-fill="1">Tout retourner</button>
+            <button type="button" data-seq-fill="0">Tout lisser</button>
+          </div>
+          <p class="mt-credit">D'après les paillettes interactives de しゅん / LIG (three.js). Refait en WebGPU.</p>
+        </div>
+      </section>
+
+      <section class="mt-sec mt-elements" aria-labelledby="mt-h-el">
+        <div class="mt-cap mt-cap--top">
+          <p class="mt-num">02</p>
+          <h2 id="mt-h-el">Eau, éclair, feu</h2>
+          <p>Le mot est dessiné dans un canvas, le GPU en lit les pixels et en fait une matière. Passez le pointeur : l'eau se ride, le courant saute vers vous, les flammes se couchent.</p>
+          <p class="mt-credit">D'après les trois kanji (水 雷 炎) de しゅん / LIG (three.js). Refait en WebGPU.</p>
+        </div>
+        <div class="mt-trio">
+          <figure class="mt-el" data-mt="eau" data-word="Eau"><canvas class="mt-gl" aria-hidden="true"></canvas><figcaption>Eau : équation des ondes en ping-pong, le mot dévié par la pente</figcaption></figure>
+          <figure class="mt-el" data-mt="eclair" data-word="Éclair"><canvas class="mt-gl" aria-hidden="true"></canvas><figcaption>Éclair : le contour (champ de distance) parcouru de bruit fractal</figcaption></figure>
+          <figure class="mt-el" data-mt="feu" data-word="Feu"><canvas class="mt-gl" aria-hidden="true"></canvas><figcaption>Feu : un ruban par point du bord supérieur, en instances</figcaption></figure>
+        </div>
+      </section>
+
+      <section class="mt-sec mt-phase" data-mt="phase" aria-labelledby="mt-h-ph">
+        <canvas class="mt-gl" aria-hidden="true"></canvas>
+        <div class="mt-cap">
+          <p class="mt-num">03</p>
+          <h2 id="mt-h-ph">Diagramme de phase</h2>
+          <p>Des sphères en champ de distance dérivent ; là où elles se touchent, leurs champs fusionnent. On n'en dessine que les lignes de niveau, en couches, comme les frontières entre les phases d'un matériau. Le pointeur est une sphère de plus.</p>
+          <div class="mt-tools mt-ranges">
+            <label><span>Sphères</span><input type="range" min="2" max="20" step="1" value="9" data-ph="count" /></label>
+            <label><span>Fusion</span><input type="range" min="1" max="240" step="1" value="90" data-ph="fusion" /></label>
+            <label><span>Écart</span><input type="range" min="5" max="40" step="1" value="14" data-ph="gap" /></label>
+            <label><span>Couches</span><input type="range" min="1" max="16" step="1" value="7" data-ph="layers" /></label>
+          </div>
+          <p class="mt-credit">D'après « SDF Phase Diagram » de you tanaka. Refait en WebGPU.</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

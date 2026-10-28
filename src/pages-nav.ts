@@ -20,6 +20,7 @@ export const PAGES = [
   { href: "grille.html", name: "Grille infinie", text: "Un mur sans fin ; chaque photo ouvre sa page, l'image vole" },
   { href: "galerie.html", name: "Galerie", text: "Neuf arrangements 3D : tonneau, cartes, film, fond dégradé…" },
   { href: "orbite.html", name: "Orbite", text: "Un lanceur : quatre applications en anneau, des particules, la mise au point" },
+  { href: "matieres.html", name: "Matières", text: "Paillettes qu'on brosse, lettres en eau, éclair et feu, diagramme de phase" },
   { href: "atelier.html", name: "Atelier", text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide" },
   { href: "presse.html", name: "Presse", text: "Le framework : un Webflow WebGPU, en attributs HTML" },
   { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
