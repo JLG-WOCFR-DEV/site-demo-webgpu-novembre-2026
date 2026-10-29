@@ -62,6 +62,20 @@
             <label><span>Étirement</span><input type="range" min="0" max="3" step="0.01" value="0" data-ph="stretch" /></label>
             <label><span>Courant</span><input type="range" min="0" max="1" step="0.01" value="0" data-ph="flow" /></label>
             <label><span>Palette</span><select data-ph="palette"><option value="vermillon">Vermillon</option><option value="topographie">Topographie</option><option value="thermique">Thermique</option><option value="nuit">Nuit</option><option value="prusse">Bleu de Prusse</option></select></label>
+            <label><span>Rendu</span><select data-ph="render"><option value="lignes">Lignes (à plat)</option><option value="liquide">Liquide (relief réel)</option></select></label>
+          </div>
+          <div class="mt-ranges mt-group" data-ph-show="liquide" hidden>
+            <label><span>Liquide</span><select data-ph="liquid"><option value="eau">Eau</option><option value="mercure">Mercure</option><option value="miel">Miel</option><option value="huile">Huile</option><option value="encre">Encre</option><option value="couleur">Couleur de la palette</option></select></label>
+            <label><span>Hauteur</span><input type="range" min="4" max="70" step="1" value="26" data-ph="thickness" /></label>
+            <label><span>Ménisque</span><input type="range" min="0.6" max="6" step="0.05" value="2.2" data-ph="meniscus" /></label>
+            <label><span>Dessous</span><select data-ph="fond"><option value="quadrille">Papier millimétré</option><option value="papier">Papier uni</option><option value="diagramme">Le diagramme</option></select></label>
+          </div>
+          <div class="mt-trames" role="group" aria-label="Trames">
+            <span>Trames</span>
+            <label><input type="checkbox" checked data-ph="isolines" />Isolignes</label>
+            <label><input type="checkbox" checked data-ph="frontier" />Frontière</label>
+            <label><input type="checkbox" checked data-ph="grain" />Grain</label>
+            <select data-ph="flats" aria-label="Aplats"><option value="paliers">Aplats en paliers</option><option value="degrade">Aplats en dégradé</option><option value="aucun">Sans aplats</option></select>
           </div>
           <details class="mt-more">
             <summary>Plus de réglages</summary>

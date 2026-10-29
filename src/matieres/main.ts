@@ -64,7 +64,11 @@ if (ph)
     const cfg = api.cfg as unknown as Record<string, unknown>;
     // Chaque réglage [data-ph] écrit sa clé : case → booléen, liste → texte, le reste → nombre.
     ph.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-ph]").forEach((el) => {
-      const read = () => (cfg[el.dataset.ph!] = el instanceof HTMLInputElement && el.type === "checkbox" ? el.checked : el instanceof HTMLSelectElement ? el.value : Number(el.value));
+      const read = () => {
+        cfg[el.dataset.ph!] = el instanceof HTMLInputElement && el.type === "checkbox" ? el.checked : el instanceof HTMLSelectElement ? el.value : Number(el.value);
+        // Les groupes qui ne valent que pour un rendu (le liquide) n'apparaissent qu'avec lui.
+        if (el.dataset.ph === "render") ph.querySelectorAll<HTMLElement>("[data-ph-show]").forEach((g) => (g.hidden = g.dataset.phShow !== el.value));
+      };
       el.addEventListener("input", read);
       el.addEventListener("change", read);
       read();

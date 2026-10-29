@@ -235,6 +235,43 @@ body.mt {
 .mt-ranges label.mt-check {
   grid-template-columns: 6em auto 1fr;
 }
+.mt-group {
+  margin-top: 6px;
+  padding: 8px 0 2px;
+  border-top: 1px dashed rgba(18, 18, 18, 0.25);
+}
+.mt-group[hidden] {
+  display: none;
+}
+.mt-trames {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 8px;
+  font: 12px/1.3 "IBM Plex Mono", monospace;
+  pointer-events: auto;
+}
+.mt-trames > span {
+  width: 6em;
+}
+.mt-trames label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mt-trames input {
+  accent-color: var(--spot);
+  margin: 0;
+}
+.mt-trames select {
+  font: inherit;
+  padding: 3px 6px;
+  border: 1px solid rgba(18, 18, 18, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
 .mt-more {
   margin-top: 10px;
   pointer-events: auto;
