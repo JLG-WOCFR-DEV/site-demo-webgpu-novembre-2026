@@ -55,6 +55,7 @@ p.replay();                  // rejouer l'impression des sections
 | `data-flight-title` | titre, légende | Le titre passe avec sa photo : posé avant le premier dessin, il vole vers le titre de même valeur de la page d'arrivée (déplacé, mis à l'échelle de sa taille de corps) et s'efface quand le vrai apparaît. Posé par le liquide, la grille, la galerie et l'orbite. |
 | `data-transition` | lien | `none` : pas de balayage ASCII pour ce lien. |
 | `data-presse-look` | `html` | Direction artistique de toute la page (texte, images, canvas) : `neutre`, `papier`, `argentique`, `nuit`, `presse`. Réglages fins : `data-presse-grain`, `data-presse-vignette`. À chaud : `applyLook(nom)`. |
+| `data-angle` | `input type="number"` | Cadran d'angle façon Photoshop / InDesign / Illustrator (`enhanceAngles()`, `src/presse/angle.ts`) : une aiguille dans un cercle, on la tourne au pointeur (Maj : crans de 15°), molette et flèches ±1° (Maj ±15°), Origine : 0°, double-clic : valeur par défaut ; 0° à droite, sens inverse des aiguilles. L'input reste la vérité (valeur, événements `input` et `change`). Utilisé par Matières (sens du tissu des paillettes, orientation et lumière du diagramme de phase). |
 | `data-presse-debug` | `html` | Panneau de débogage : fil de fer, grille, capture vidéo, image PNG. |
 | `--paper` | `:root` (CSS) | Couleur du papier, lue par le GPU. |
 

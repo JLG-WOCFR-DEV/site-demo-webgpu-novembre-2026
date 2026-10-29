@@ -1058,6 +1058,11 @@ var Ze = [
 		text: "Paillettes qu'on brosse, lettres en eau, éclair et feu, diagramme de phase"
 	},
 	{
+		href: "defilement.html",
+		name: "Défilement",
+		text: "Roue de projets, mots qui roulent, liste qui s'ouvre, images au bruit, bento"
+	},
+	{
 		href: "atelier.html",
 		name: "Atelier",
 		text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide"

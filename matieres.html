@@ -25,6 +25,7 @@
           <div class="mt-tools" role="group" aria-label="Réglages des paillettes">
             <span class="mt-seg" role="radiogroup" aria-label="Face cachée"><button type="button" data-seq-img="mot" aria-pressed="true">Mot</button><button type="button" data-seq-img="photo" aria-pressed="false">Photo</button></span>
             <span class="mt-seg" role="radiogroup" aria-label="Métal"><button type="button" data-seq-metal="argent" aria-pressed="true">Argent</button><button type="button" data-seq-metal="or" aria-pressed="false">Or</button><button type="button" data-seq-metal="noir" aria-pressed="false">Noir</button></span>
+            <label class="mt-ang"><span>Sens du tissu</span><input type="number" min="-180" max="180" step="1" value="53" data-angle data-seq-nap aria-label="Sens du tissu (degrés)" /><i>°</i></label>
             <button type="button" data-seq-fill="1">Tout retourner</button>
             <button type="button" data-seq-fill="0">Tout lisser</button>
           </div>
@@ -51,13 +52,33 @@
         <div class="mt-cap">
           <p class="mt-num">03</p>
           <h2 id="mt-h-ph">Diagramme de phase</h2>
-          <p>Des sphères en champ de distance dérivent ; là où elles se touchent, leurs champs fusionnent. On n'en dessine que les lignes de niveau, en couches, comme les frontières entre les phases d'un matériau. Le pointeur est une sphère de plus.</p>
+          <p>Des formes en champ de distance dérivent ; là où elles se touchent, leurs champs fusionnent. On n'en dessine que les lignes de niveau, en couches, comme les frontières entre les phases d'un matériau. Le pointeur est une forme de plus (ou un creux). Tournez le cadran : le champ s'étire dans ce sens.</p>
           <div class="mt-tools mt-ranges">
             <label><span>Sphères</span><input type="range" min="2" max="20" step="1" value="9" data-ph="count" /></label>
             <label><span>Fusion</span><input type="range" min="1" max="240" step="1" value="90" data-ph="fusion" /></label>
             <label><span>Écart</span><input type="range" min="5" max="40" step="1" value="14" data-ph="gap" /></label>
             <label><span>Couches</span><input type="range" min="1" max="16" step="1" value="7" data-ph="layers" /></label>
+            <label class="mt-ang"><span>Orientation</span><input type="number" min="-180" max="180" step="1" value="30" data-angle data-ph="angle" aria-label="Orientation (degrés)" /><i>°</i></label>
+            <label><span>Étirement</span><input type="range" min="0" max="3" step="0.01" value="0" data-ph="stretch" /></label>
+            <label><span>Courant</span><input type="range" min="0" max="1" step="0.01" value="0" data-ph="flow" /></label>
+            <label><span>Palette</span><select data-ph="palette"><option value="vermillon">Vermillon</option><option value="topographie">Topographie</option><option value="thermique">Thermique</option><option value="nuit">Nuit</option><option value="prusse">Bleu de Prusse</option></select></label>
           </div>
+          <details class="mt-more">
+            <summary>Plus de réglages</summary>
+            <div class="mt-ranges">
+              <label><span>Relief</span><input type="range" min="0" max="1" step="0.01" value="0" data-ph="relief" /></label>
+              <label class="mt-ang"><span>Lumière</span><input type="number" min="-180" max="180" step="1" value="135" data-angle data-ph="light" aria-label="Lumière (degrés)" /><i>°</i></label>
+              <label><span>Forme</span><select data-ph="shape"><option value="disque">Disques</option><option value="carre">Carrés arrondis</option><option value="capsule">Capsules</option></select></label>
+              <label><span>Pointeur</span><select data-ph="pointer"><option value="ajoute">Ajoute une sphère</option><option value="creuse">Creuse le champ</option></select></label>
+              <label><span>Vitesse</span><input type="range" min="0" max="4" step="0.01" value="1" data-ph="speed" /></label>
+              <label class="mt-check"><span>Maîtresses</span><input type="checkbox" data-ph="master" /><i>une courbe sur cinq plus épaisse</i></label>
+            </div>
+            <div class="mt-tools">
+              <button type="button" data-ph-act="pause" aria-pressed="false">Pause</button>
+              <button type="button" data-ph-act="seed">Tirage</button>
+              <button type="button" data-ph-act="png">Export PNG</button>
+            </div>
+          </details>
           <p class="mt-credit">D'après « SDF Phase Diagram » de you tanaka. Refait en WebGPU.</p>
         </div>
       </section>

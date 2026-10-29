@@ -204,8 +204,14 @@ export async function mountPaillettes(root: HTMLElement, opts: Opts = {}) {
 
   /* ───── Le geste ───── */
 
-  // Le « poil » du tissu : brosser vers le haut et la droite montre la face cachée.
+  // Le « poil » du tissu : brosser dans ce sens montre la face cachée (53° : vers le haut et la droite).
+  // L'angle suit la convention d'Adobe (0° à droite, sens inverse des aiguilles) ; l'écran a y vers le bas.
   const NAP = [0.6, -0.8];
+  const setNap = (deg: number) => {
+    const a = (deg * Math.PI) / 180;
+    NAP[0] = Math.cos(a);
+    NAP[1] = -Math.sin(a);
+  };
   const brush = (x0: number, y0: number, x1: number, y1: number, radius = 24) => {
     const dx = x1 - x0;
     const dy = y1 - y0;
@@ -357,6 +363,7 @@ export async function mountPaillettes(root: HTMLElement, opts: Opts = {}) {
   return {
     setImage,
     fill,
+    setNap,
     setMetal(name: "argent" | "or" | "noir") {
       faceA = name === "or" ? [0.93, 0.72, 0.36] : name === "noir" ? [0.16, 0.16, 0.18] : [0.78, 0.78, 0.8];
       shine = name === "noir" ? 1.6 : 1;

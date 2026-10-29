@@ -1,6 +1,7 @@
 import "./style.css";
 import { mountDebugPanel } from "../debug-panel.ts";
 import { mountPagesNav } from "../pages-nav.ts";
+import { enhanceAngles } from "../presse/angle.ts";
 import { mountComponents } from "../presse/components.ts";
 import { mountElement } from "./elements.ts";
 import { mountPaillettes } from "./paillettes.ts";
@@ -13,6 +14,7 @@ import { mountPhase } from "./phase.ts";
 mountPagesNav();
 mountDebugPanel();
 await mountComponents();
+enhanceAngles();
 
 const fail = (el: HTMLElement) => (e: unknown) => {
   console.warn("[matières]", e);
@@ -47,6 +49,9 @@ if (seq)
         api.setMetal(b.dataset.seqMetal as "argent" | "or" | "noir");
       }),
     );
+    const nap = seq.querySelector<HTMLInputElement>("[data-seq-nap]");
+    nap?.addEventListener("input", () => api.setNap(Number(nap.value)));
+    if (nap) api.setNap(Number(nap.value));
     seq.querySelectorAll<HTMLButtonElement>("[data-seq-fill]").forEach((b) => b.addEventListener("click", () => api.fill(Number(b.dataset.seqFill) as 0 | 1)));
   });
 
@@ -56,5 +61,20 @@ const ph = document.querySelector<HTMLElement>("[data-mt=phase]");
 if (ph)
   lazy(ph, async () => {
     const api = await mountPhase(ph);
-    ph.querySelectorAll<HTMLInputElement>("[data-ph]").forEach((r) => r.addEventListener("input", () => ((api.cfg as Record<string, number>)[r.dataset.ph!] = Number(r.value))));
+    const cfg = api.cfg as unknown as Record<string, unknown>;
+    // Chaque réglage [data-ph] écrit sa clé : case → booléen, liste → texte, le reste → nombre.
+    ph.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-ph]").forEach((el) => {
+      const read = () => (cfg[el.dataset.ph!] = el instanceof HTMLInputElement && el.type === "checkbox" ? el.checked : el instanceof HTMLSelectElement ? el.value : Number(el.value));
+      el.addEventListener("input", read);
+      el.addEventListener("change", read);
+      read();
+    });
+    ph.querySelectorAll<HTMLButtonElement>("[data-ph-act]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const act = b.dataset.phAct;
+        if (act === "pause") b.setAttribute("aria-pressed", String((api.cfg.paused = !api.cfg.paused)));
+        if (act === "seed") api.reseed();
+        if (act === "png") api.exportPng();
+      }),
+    );
   });

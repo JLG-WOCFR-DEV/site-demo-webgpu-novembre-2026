@@ -167,6 +167,10 @@ body.mt {
   background: var(--paper);
 }
 .mt-phase .mt-cap {
+  max-height: calc(100svh - 96px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
   background: rgba(239, 238, 232, 0.82);
   color: var(--ink);
 }
@@ -188,6 +192,65 @@ body.mt {
 }
 .mt-ranges input {
   accent-color: var(--spot);
+}
+.mt-ranges select {
+  font: inherit;
+  padding: 3px 6px;
+  border: 1px solid rgba(18, 18, 18, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
+.mt-ranges label.mt-ang,
+.mt-tools label.mt-ang {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 12px/1.3 "IBM Plex Mono", monospace;
+}
+.mt-ranges label.mt-ang > span {
+  width: 6em;
+  flex: none;
+}
+.mt-ang input[type="number"] {
+  width: 4.2em;
+  padding: 3px 4px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+  opacity: 0.85;
+}
+.mt-ang i,
+.mt-check i {
+  font-style: normal;
+  margin-left: -6px;
+  opacity: 0.7;
+}
+.mt-check i {
+  margin-left: 6px;
+}
+.mt-ranges label.mt-check {
+  grid-template-columns: 6em auto 1fr;
+}
+.mt-more {
+  margin-top: 10px;
+  pointer-events: auto;
+}
+.mt-more summary {
+  cursor: pointer;
+  font: 500 12px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.mt-more .mt-tools {
+  margin-top: 10px;
+}
+.mt-ranges {
+  pointer-events: auto;
 }
 .mt-nogl .mt-gl {
   display: none !important;
