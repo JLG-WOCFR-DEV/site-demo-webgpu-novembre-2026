@@ -21,6 +21,7 @@ export const PAGES = [
   { href: "galerie.html", name: "Galerie", text: "Neuf arrangements 3D : tonneau, cartes, film, fond dégradé…" },
   { href: "orbite.html", name: "Orbite", text: "Un lanceur : quatre applications en anneau, des particules, la mise au point" },
   { href: "matieres.html", name: "Matières", text: "Paillettes qu'on brosse, lettres en eau, éclair et feu, diagramme de phase" },
+  { href: "defilement.html", name: "Défilement", text: "Roue de projets, mots qui roulent, liste qui s'ouvre, images au bruit, bento" },
   { href: "atelier.html", name: "Atelier", text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide" },
   { href: "presse.html", name: "Presse", text: "Le framework : un Webflow WebGPU, en attributs HTML" },
   { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },

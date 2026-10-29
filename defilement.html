@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="fr" data-presse-intro="#efeeea" data-presse-intro-label="WebGPU-demo-UBS · Défilement" data-presse-scroll="doux" data-presse-cursor>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Défilement</title>
+    <meta name="description" content="Huit démos de défilement et d'interface : roue de projets, rouleau de mots, mots qui tournent, liste qui se transforme, images révélées au bruit (WebGPU), rail d'étapes, équipe, bento." />
+    <meta name="theme-color" content="#efeeea" />
+    <script type="module" src="/src/defilement/main.ts"></script>
+  </head>
+  <body class="df">
+    <header class="df-head">
+      <p class="df-kicker" data-intro>WebGPU-demo-UBS · Défilement</p>
+      <h1 class="df-title" data-intro>Défilement</h1>
+      <p class="df-lede" data-intro>Huit gestes d'interface, réglés au défilement ou au pointeur : des listes qui tournent, des mots qui roulent, des images qui percent au bruit. Défilez.</p>
+      <ol class="df-toc" data-intro>
+        <li><a href="#roue">Roue de projets</a></li>
+        <li><a href="#rouleau">Rouleau de mots</a></li>
+        <li><a href="#tambour">Mots qui tournent</a></li>
+        <li><a href="#liste">Liste qui se transforme</a></li>
+        <li><a href="#bruit">Images au bruit</a></li>
+        <li><a href="#rail">Rail d'étapes</a></li>
+        <li><a href="#equipe">L'équipe</a></li>
+        <li><a href="#bento">Bento</a></li>
+      </ol>
+    </header>
+
+    <main>
+      <!-- 1. Roue de projets : les noms sur un cylindre, l'image du projet de face à droite. -->
+      <section id="roue" class="df-pin df-wheel" data-df="wheel" style="--steps: 7">
+        <div class="df-stage">
+          <p class="df-label">01 · Roue de projets</p>
+          <ul class="df-wheel-names" aria-label="Projets">
+            <li>Le pont</li>
+            <li>L'île</li>
+            <li>La vallée</li>
+            <li>Les dunes</li>
+            <li>Le jardin</li>
+            <li>Le lac</li>
+            <li>Le cerf</li>
+          </ul>
+          <div class="df-wheel-imgs" aria-hidden="true">
+            <img src="./plates/pont.jpg" alt="" />
+            <img src="./plates/alcatraz.jpg" alt="" />
+            <img src="./plates/yosemite.jpg" alt="" />
+            <img src="./plates/dunes.jpg" alt="" />
+            <img src="./plates/jardin.jpg" alt="" />
+            <img src="./plates/lac.jpg" alt="" />
+            <img src="./plates/cerf.jpg" alt="" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Rouleau de mots : une colonne de mots qui roule devant une phrase fixe. -->
+      <section id="rouleau" class="df-pin df-roller" data-df="roller" style="--steps: 10">
+        <div class="df-stage">
+          <p class="df-label">02 · Rouleau de mots</p>
+          <div class="df-roller-line">
+            <ul class="df-roller-words" aria-label="Mots">
+              <li>Lumière</li>
+              <li>Matière</li>
+              <li>Silence</li>
+              <li>Vitesse</li>
+              <li>Couleur</li>
+              <li>Mémoire</li>
+              <li>Distance</li>
+              <li>Lenteur</li>
+              <li>Texture</li>
+              <li>Horizon</li>
+            </ul>
+            <p class="df-roller-fixed">dans chaque pixel</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Mots qui tournent : un tambour de mots en perspective, un point par mot. -->
+      <section id="tambour" class="df-pin df-drum" data-df="drum" style="--steps: 9">
+        <div class="df-stage">
+          <p class="df-label">03 · Mots qui tournent</p>
+          <ul class="df-drum-words" aria-label="Mots">
+            <li>Réfraction</li>
+            <li>Dispersion</li>
+            <li>Bokeh</li>
+            <li>Caustiques</li>
+            <li>Géodésiques</li>
+            <li>Tramage</li>
+            <li>Isolignes</li>
+            <li>Paillettes</li>
+            <li>Ping-pong</li>
+          </ul>
+          <ol class="df-dots" aria-hidden="true"></ol>
+        </div>
+      </section>
+
+      <!-- 4. Liste qui se transforme : une pastille suit le survol ; un clic, la ligne devient une fiche. -->
+      <section id="liste" class="df-block df-morph" data-df="morph">
+        <p class="df-label">04 · Liste qui se transforme</p>
+        <div class="df-morph-list" role="list">
+          <button type="button" class="df-row" role="listitem" data-desc="Un pont rouge dans le brouillard du matin, posé sur la baie ; la photo a été prise au bord de l'eau, à marée basse." data-img="./plates/pont.jpg"><img src="./plates/pont.jpg" alt="" /><span class="df-row-name">Le pont</span><span class="df-row-cat">Eau</span><span class="df-row-year">2026</span></button>
+          <button type="button" class="df-row" role="listitem" data-desc="L'île au milieu de la baie, ses falaises, son phare ; un après-midi de vent, la lumière rasante." data-img="./plates/alcatraz.jpg"><img src="./plates/alcatraz.jpg" alt="" /><span class="df-row-name">L'île</span><span class="df-row-cat">Eau</span><span class="df-row-year">2026</span></button>
+          <button type="button" class="df-row" role="listitem" data-desc="Une vallée de granit, des cascades minces ; on la voit depuis le col, à la fin de l'hiver." data-img="./plates/yosemite.jpg"><img src="./plates/yosemite.jpg" alt="" /><span class="df-row-name">La vallée</span><span class="df-row-cat">Terre</span><span class="df-row-year">2025</span></button>
+          <button type="button" class="df-row" role="listitem" data-desc="Un cerf dans les herbes hautes, qui ne s'enfuit pas ; on a attendu longtemps, sans bouger." data-img="./plates/cerf.jpg"><img src="./plates/cerf.jpg" alt="" /><span class="df-row-name">Le cerf</span><span class="df-row-cat">Vivant</span><span class="df-row-year">2025</span></button>
+          <button type="button" class="df-row" role="listitem" data-desc="Un bol de céramique, mat, à la main ; la lumière vient d'une seule fenêtre." data-img="./plates/bowl.jpg"><img src="./plates/bowl.jpg" alt="" /><span class="df-row-name">Le bol</span><span class="df-row-cat">Objets</span><span class="df-row-year">2025</span></button>
+          <button type="button" class="df-row" role="listitem" data-desc="Les dunes au lever du jour : le vent a effacé les traces de la veille." data-img="./plates/dunes.jpg"><img src="./plates/dunes.jpg" alt="" /><span class="df-row-name">Les dunes</span><span class="df-row-cat">Terre</span><span class="df-row-year">2024</span></button>
+        </div>
+        <div class="df-card" data-df-card hidden role="dialog" aria-modal="true" aria-labelledby="df-card-title">
+          <div class="df-card-img"><img alt="" /></div>
+          <div class="df-card-body">
+            <h3 id="df-card-title"></h3>
+            <p class="df-card-meta"></p>
+            <p class="df-card-desc"></p>
+            <button type="button" class="df-card-close" aria-label="Fermer">×</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Images au bruit (WebGPU) : la suivante perce au centre, bord déchiré par un bruit fractal. -->
+      <section id="bruit" class="df-pin df-noise" data-df="noise" style="--steps: 5">
+        <div class="df-stage">
+          <canvas class="df-noise-gl" aria-hidden="true"></canvas>
+          <div class="df-noise-imgs" hidden>
+            <img src="./plates/dunes.jpg" alt="Les dunes au lever du jour" />
+            <img src="./plates/lac.jpg" alt="Le lac" />
+            <img src="./plates/glass.jpg" alt="Le verre" />
+            <img src="./plates/jardin.jpg" alt="Le jardin" />
+            <img src="./plates/steel.jpg" alt="L'acier" />
+          </div>
+          <p class="df-label df-label--light">05 · Images au bruit — WebGPU</p>
+          <p class="df-noise-cap" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- 6. Rail d'étapes : un trait qui avance, chaque étape s'allume à son passage. -->
+      <section id="rail" class="df-pin df-rail" data-df="rail" style="--steps: 4">
+        <div class="df-stage">
+          <p class="df-label">06 · Rail d'étapes</p>
+          <div class="df-rail-line"><span class="df-rail-fill"></span><span class="df-rail-dot"></span></div>
+          <ol class="df-rail-steps">
+            <li><span class="df-rail-n">01</span><h3>Saisir</h3><p>La photo est lue une fois, rangée en bande de mipmaps à la construction.</p><img src="./plates/vanilla.jpg" alt="" /></li>
+            <li><span class="df-rail-n">02</span><h3>Découper</h3><p>Le texte et les images deviennent des plans ; le HTML reste la vérité.</p><img src="./plates/fig.jpg" alt="" /></li>
+            <li><span class="df-rail-n">03</span><h3>Assembler</h3><p>Un seul passage de rendu, une instance par plan, un shader par effet.</p><img src="./plates/steel.jpg" alt="" /></li>
+            <li><span class="df-rail-n">04</span><h3>Livrer</h3><p>Une page légère, nette sur tous les écrans, lisible sans WebGPU.</p><img src="./plates/flower.jpg" alt="" /></li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 7. L'équipe : des filtres, un carrousel de fiches ; au survol, l'image se floute et la fiche parle. -->
+      <section id="equipe" class="df-block df-roster" data-df="roster">
+        <p class="df-label">07 · L'équipe</p>
+        <div class="df-roster-wrap">
+          <div class="df-roster-side">
+            <div class="df-chips" role="radiogroup" aria-label="Filtrer">
+              <button type="button" data-f="eau" aria-pressed="false">Eau</button>
+              <button type="button" data-f="terre" aria-pressed="false">Terre</button>
+              <button type="button" data-f="vivant" aria-pressed="false">Vivant</button>
+              <button type="button" data-f="" aria-pressed="true">Tout le monde</button>
+            </div>
+            <div class="df-arrows"><button type="button" data-dir="-1" aria-label="Précédent">‹</button><button type="button" data-dir="1" aria-label="Suivant">›</button></div>
+          </div>
+          <div class="df-roster-track">
+            <article class="df-member" data-cat="eau"><div class="df-member-img"><img src="./plates/pont.jpg" alt="" /><div class="df-member-bio"><h3>Le pont</h3><p>Relie deux rives depuis 1937. Se cache dans le brouillard trois matins sur quatre.</p></div></div><p class="df-member-name">Le pont <span>Eau · Baie</span></p></article>
+            <article class="df-member" data-cat="eau"><div class="df-member-img"><img src="./plates/lac.jpg" alt="" /><div class="df-member-bio"><h3>Le lac</h3><p>Reflète ce qu'on lui montre. Plus calme le soir, quand le vent tombe.</p></div></div><p class="df-member-name">Le lac <span>Eau · Montagne</span></p></article>
+            <article class="df-member" data-cat="terre"><div class="df-member-img"><img src="./plates/yosemite.jpg" alt="" /><div class="df-member-bio"><h3>La vallée</h3><p>Granit, cascades, pins. Change de couleur quatre fois par jour.</p></div></div><p class="df-member-name">La vallée <span>Terre · Granit</span></p></article>
+            <article class="df-member" data-cat="vivant"><div class="df-member-img"><img src="./plates/cerf.jpg" alt="" /><div class="df-member-bio"><h3>Le cerf</h3><p>Ne pose jamais deux fois. Patient, curieux, un peu farouche.</p></div></div><p class="df-member-name">Le cerf <span>Vivant · Forêt</span></p></article>
+            <article class="df-member" data-cat="terre"><div class="df-member-img"><img src="./plates/dunes.jpg" alt="" /><div class="df-member-bio"><h3>Les dunes</h3><p>Se redessinent chaque nuit. Aucune photo ne se ressemble.</p></div></div><p class="df-member-name">Les dunes <span>Terre · Sable</span></p></article>
+            <article class="df-member" data-cat="vivant"><div class="df-member-img"><img src="./plates/jardin.jpg" alt="" /><div class="df-member-bio"><h3>Le jardin</h3><p>Rhododendrons et pins taillés ; le printemps y arrive deux semaines en avance.</p></div></div><p class="df-member-name">Le jardin <span>Vivant · Japon</span></p></article>
+            <article class="df-member" data-cat="eau"><div class="df-member-img"><img src="./plates/alcatraz.jpg" alt="" /><div class="df-member-bio"><h3>L'île</h3><p>Ancienne forteresse, aujourd'hui refuge d'oiseaux de mer.</p></div></div><p class="df-member-name">L'île <span>Eau · Baie</span></p></article>
+            <article class="df-member" data-cat="vivant"><div class="df-member-img"><img src="./plates/flower.jpg" alt="" /><div class="df-member-bio"><h3>La renoncule</h3><p>Cent pétales, une seule tige. Tient une semaine dans l'eau froide.</p></div></div><p class="df-member-name">La renoncule <span>Vivant · Atelier</span></p></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Bento : un clic, la tuile prend la grande place (et la grande prend la sienne). -->
+      <section id="bento" class="df-block df-bento" data-df="bento">
+        <p class="df-label">08 · Bento</p>
+        <div class="df-bento-grid">
+          <button type="button" class="df-tile" data-title="Précision" data-desc="Une figue ouverte au couteau : l'intérieur, rouge, presque trop net."><img src="./plates/fig.jpg" alt="" /><span>Précision</span></button>
+          <button type="button" class="df-tile" data-title="Élan" data-desc="Le pont au lever du jour, avant les voitures."><img src="./plates/pont.jpg" alt="" /><span>Élan</span></button>
+          <button type="button" class="df-tile" data-title="Répétition" data-desc="L'acier brossé, mille fois le même geste."><img src="./plates/steel.jpg" alt="" /><span>Répétition</span></button>
+          <button type="button" class="df-tile" data-title="Prise" data-desc="Deux gousses de vanille, la main qui les a cueillies n'est pas loin."><img src="./plates/vanilla.jpg" alt="" /><span>Prise</span></button>
+          <button type="button" class="df-tile" data-title="Attention" data-desc="Un verre, de face : tout ce qui est derrière, retourné."><img src="./plates/glass.jpg" alt="" /><span>Attention</span></button>
+        </div>
+      </section>
+
+      <footer class="df-foot">
+        <p>D'après les composants d'Annnimate (GSAP), refaits sans bibliothèque : défilement natif de Presse, ressorts de la maison, et WebGPU pour les images au bruit.</p>
+      </footer>
+    </main>
+  </body>
+</html>

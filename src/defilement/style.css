@@ -1,0 +1,718 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #efeeea;
+  --ink: #111;
+  --mute: #8d8a83;
+  --line: #d6d3cb;
+  --spot: #c8321c;
+  --pad: clamp(16px, 6vw, 96px);
+}
+html,
+body.df {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 17px/1.55 "Archivo Variable", Arial, sans-serif;
+}
+.df img {
+  display: block;
+  max-width: 100%;
+}
+.df button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ───── En-tête ───── */
+.df-head {
+  padding: 120px var(--pad) 72px;
+  max-width: 1100px;
+}
+.df-kicker,
+.df-label {
+  margin: 0 0 10px;
+  font: 500 12px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.df-title {
+  margin: 0;
+  font-size: clamp(56px, 11vw, 168px);
+  font-weight: 900;
+  font-variation-settings: "wdth" 125;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+}
+.df-lede {
+  max-width: 46ch;
+  margin: 22px 0 28px;
+  color: #55534e;
+}
+.df-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: t;
+}
+.df-toc a {
+  display: inline-block;
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.df-toc a:hover {
+  background: #fff;
+  border-color: #fff;
+}
+
+/* ───── Sections épinglées ───── */
+.df-pin {
+  position: relative;
+  height: calc((var(--steps) + 1) * 100vh);
+  height: calc((var(--steps) + 1) * 100svh);
+}
+.df-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+.df-stage > .df-label {
+  position: absolute;
+  top: 72px;
+  left: var(--pad);
+  z-index: 3;
+}
+.df-label--light {
+  color: #fff;
+  mix-blend-mode: difference;
+}
+.df-block {
+  padding: 120px var(--pad);
+  border-top: 1px solid var(--line);
+}
+
+/* 1. Roue */
+.df-wheel .df-stage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+.df-wheel-names {
+  position: relative;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  perspective: 900px;
+  perspective-origin: 30% 50%;
+}
+.df-wheel-names li {
+  position: absolute;
+  top: 50%;
+  left: var(--pad);
+  margin-top: -0.6em;
+  font-size: clamp(34px, 5.4vw, 84px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  transform-origin: 0 50%;
+  color: #b8b5ad;
+  will-change: transform, opacity;
+}
+.df-wheel-names li.is-on {
+  color: var(--ink);
+}
+.df-wheel-imgs {
+  position: relative;
+  height: min(72vh, 62vw);
+  margin-right: var(--pad);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.df-wheel-imgs img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  will-change: clip-path, transform;
+}
+
+/* 2. Rouleau */
+.df-roller .df-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.df-roller-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3em;
+  font-size: clamp(36px, 6.6vw, 104px);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+  /* Le mot actif est sur la ligne de la phrase : la colonne part de là. */
+  height: 1.15em;
+}
+.df-roller-words {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: right;
+  will-change: transform;
+}
+.df-roller-words li {
+  color: #bdbab2;
+  transition: color 0.25s;
+}
+.df-roller-fixed {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* 3. Tambour */
+.df-drum .df-stage {
+  display: grid;
+  place-items: center;
+}
+.df-drum-words {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  perspective: 1100px;
+  transform-style: preserve-3d;
+}
+.df-drum-words li {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(40px, 8vw, 128px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+.df-dots {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateX(-50%);
+}
+.df-dots li {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: #c9c6be;
+  transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.35s;
+}
+.df-dots li.is-on {
+  width: 26px;
+  background: var(--ink);
+}
+
+/* 4. Liste qui se transforme */
+.df-morph {
+  position: relative;
+}
+.df-morph-list {
+  position: relative;
+  max-width: 1100px;
+  border-top: 1px solid var(--line);
+}
+.df-pill {
+  position: absolute;
+  top: 0;
+  left: -12px;
+  right: -12px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 30px -18px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+  will-change: transform, height;
+}
+.df-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 72px 1fr 1fr 80px;
+  gap: 24px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.df-row img {
+  width: 72px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.df-row-name {
+  font-size: clamp(20px, 2.4vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.df-row-cat,
+.df-row-year {
+  color: var(--mute);
+  font: 400 13px/1.4 "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.df-row-year {
+  text-align: right;
+}
+.df-row:focus-visible {
+  outline: 2px solid var(--spot);
+  outline-offset: 4px;
+}
+.df-card {
+  position: fixed;
+  inset: max(72px, 9vh) var(--pad);
+  z-index: 50;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.45);
+}
+.df-card[hidden] {
+  display: none;
+}
+.df-card-img {
+  overflow: hidden;
+}
+.df-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.df-card-body {
+  padding: clamp(24px, 4vw, 56px);
+  align-self: end;
+}
+.df-card-body h3 {
+  margin: 0 0 8px;
+  font-size: clamp(32px, 4.4vw, 64px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.df-card-meta {
+  margin: 0 0 22px;
+  color: var(--mute);
+  font: 400 13px/1.4 "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.df-card-desc {
+  margin: 0;
+  max-width: 38ch;
+  color: #44423e;
+}
+.df-card-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--paper);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.df-card-open .df-morph-list {
+  opacity: 0.25;
+  transition: opacity 0.4s;
+}
+.df-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  background: rgb(239 238 234 / 0.7);
+  backdrop-filter: blur(6px);
+}
+.df-scrim[hidden] {
+  display: none;
+}
+
+/* 5. Bruit */
+.df-noise .df-stage {
+  background: #000;
+}
+.df-noise-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.df-noise-cap {
+  position: absolute;
+  left: var(--pad);
+  bottom: 32px;
+  margin: 0;
+  color: #fff;
+  font: 500 13px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  mix-blend-mode: difference;
+}
+.df-nogl .df-noise-gl {
+  display: none;
+}
+.df-nogl .df-noise-imgs {
+  display: block;
+}
+.df-noise-imgs[hidden] {
+  display: none;
+}
+.df-nogl .df-noise-imgs img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 6. Rail */
+.df-rail .df-stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--pad);
+}
+.df-rail-line {
+  position: relative;
+  height: 2px;
+  margin-bottom: 40px;
+  background: var(--line);
+}
+.df-rail-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.df-rail-dot {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 99px;
+  background: var(--spot);
+  box-shadow: 0 0 0 6px rgb(200 50 28 / 0.15);
+}
+.df-rail-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(16px, 2.4vw, 36px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.df-rail-steps li {
+  --r: 0;
+  opacity: calc(0.25 + 0.75 * var(--r));
+}
+.df-rail-n {
+  font: 500 12px/1 "IBM Plex Mono", monospace;
+  color: var(--mute);
+}
+.df-rail-steps li.is-on .df-rail-n {
+  color: var(--spot);
+}
+.df-rail-steps h3 {
+  margin: 10px 0 6px;
+  font-size: clamp(22px, 2.6vw, 36px);
+  letter-spacing: -0.02em;
+}
+.df-rail-steps p {
+  margin: 0 0 18px;
+  font-size: 15px;
+  color: #55534e;
+}
+.df-rail-steps img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  clip-path: inset(calc((1 - var(--r)) * 100%) 0 0 0 round 10px);
+  transform: translateY(calc((1 - var(--r)) * 24px));
+}
+
+/* 7. Équipe */
+.df-roster-wrap {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 40px;
+}
+.df-roster-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+.df-chips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.df-chips button,
+.df-arrows button {
+  padding: 8px 15px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.df-chips button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.df-arrows {
+  display: flex;
+  gap: 8px;
+}
+.df-arrows button {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  font-size: 22px;
+}
+.df-arrows button:hover,
+.df-chips button[aria-pressed="false"]:hover {
+  background: #fff;
+}
+.df-roster-track {
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+}
+.df-member {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: clamp(220px, 22vw, 300px);
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s;
+}
+.df-member-img {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.df-member-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 0.5s, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.df-member-bio {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 20px;
+  color: #fff;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.4s, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.df-member-bio h3 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+.df-member-bio p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.df-member:hover .df-member-img img,
+.df-member:focus-within .df-member-img img {
+  filter: blur(10px) brightness(0.62);
+  transform: scale(1.08);
+}
+.df-member:hover .df-member-bio,
+.df-member:focus-within .df-member-bio {
+  opacity: 1;
+  transform: none;
+}
+.df-member-name {
+  margin: 12px 0 0;
+  font-weight: 600;
+}
+.df-member-name span {
+  display: block;
+  font: 400 12px/1.6 "IBM Plex Mono", monospace;
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* 8. Bento */
+.df-bento-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-rows: repeat(2, minmax(200px, 30vh));
+  grid-template-areas: "big a b" "big c d";
+  gap: 14px;
+}
+.df-tile {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ddd;
+  cursor: pointer;
+  text-align: left;
+}
+.df-tile[data-slot="big"] { grid-area: big; cursor: default; }
+.df-tile[data-slot="a"] { grid-area: a; }
+.df-tile[data-slot="b"] { grid-area: b; }
+.df-tile[data-slot="c"] { grid-area: c; }
+.df-tile[data-slot="d"] { grid-area: d; }
+.df-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: 0 0;
+}
+.df-tile > span:not(.df-tile-desc) {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.4);
+}
+.df-tile-desc {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 80px 28px 26px;
+  color: #fff;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.6));
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.35s, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+.df-tile-desc strong {
+  display: block;
+  font-size: clamp(28px, 3.6vw, 52px);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.df-tile[data-slot="big"] .df-tile-desc {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.25s;
+}
+.df-tile[data-slot="big"] > span:not(.df-tile-desc) {
+  opacity: 0;
+}
+.df-tile:not([data-slot="big"]):hover img {
+  transform: scale(1.05);
+  transition: transform 0.5s;
+}
+
+.df-foot {
+  padding: 64px var(--pad) 96px;
+  border-top: 1px solid var(--line);
+  color: var(--mute);
+  font-size: 14px;
+  max-width: 70ch;
+}
+
+/* ───── Petits écrans ───── */
+@media (max-width: 760px) {
+  .df-wheel .df-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .df-wheel-imgs {
+    height: 40vh;
+    margin: 0 var(--pad) 48px;
+  }
+  .df-roller-line {
+    font-size: 30px;
+  }
+  .df-row {
+    grid-template-columns: 56px 1fr 60px;
+  }
+  .df-row img {
+    width: 56px;
+  }
+  .df-row-cat {
+    display: none;
+  }
+  .df-card {
+    grid-template-columns: 1fr;
+    grid-template-rows: 40% 1fr;
+    inset: 72px 16px;
+  }
+  .df-rail-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+  .df-rail-steps img {
+    display: none;
+  }
+  .df-roster-wrap {
+    grid-template-columns: 1fr;
+  }
+  .df-chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .df-bento-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 46vh repeat(2, 24vh);
+    grid-template-areas: "big big" "a b" "c d";
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .df-member,
+  .df-member-img img,
+  .df-tile-desc {
+    transition: none;
+  }
+}
