@@ -5,7 +5,7 @@ import { enhanceAngles } from "../presse/angle.ts";
 import { mountComponents } from "../presse/components.ts";
 import { mountElement } from "./elements.ts";
 import { mountPaillettes } from "./paillettes.ts";
-import { mountPhase } from "./phase.ts";
+import { liquidPreset, mountPhase } from "./phase.ts";
 
 /**
  * Page « Matières » : trois démos GPU autonomes (src/matieres/*), montées à
@@ -68,6 +68,13 @@ if (ph)
         cfg[el.dataset.ph!] = el instanceof HTMLInputElement && el.type === "checkbox" ? el.checked : el instanceof HTMLSelectElement ? el.value : Number(el.value);
         // Les groupes qui ne valent que pour un rendu (le liquide) n'apparaissent qu'avec lui.
         if (el.dataset.ph === "render") ph.querySelectorAll<HTMLElement>("[data-ph-show]").forEach((g) => (g.hidden = g.dataset.phShow !== el.value));
+        // Un liquide pose son indice, sa dispersion, son trouble, son irisation : les curseurs suivent.
+        if (el.dataset.ph === "liquid")
+          for (const [k, v] of Object.entries(liquidPreset(el.value as Parameters<typeof liquidPreset>[0]))) {
+            cfg[k] = v;
+            const input = ph.querySelector<HTMLInputElement>(`[data-ph=${k}]`);
+            if (input) input.value = String(v);
+          }
       };
       el.addEventListener("input", read);
       el.addEventListener("change", read);

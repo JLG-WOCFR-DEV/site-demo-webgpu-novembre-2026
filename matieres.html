@@ -65,10 +65,21 @@
             <label><span>Rendu</span><select data-ph="render"><option value="lignes">Lignes (à plat)</option><option value="liquide">Liquide (relief réel)</option></select></label>
           </div>
           <div class="mt-ranges mt-group" data-ph-show="liquide" hidden>
-            <label><span>Liquide</span><select data-ph="liquid"><option value="eau">Eau</option><option value="mercure">Mercure</option><option value="miel">Miel</option><option value="huile">Huile</option><option value="encre">Encre</option><option value="couleur">Couleur de la palette</option></select></label>
+            <label><span>Liquide</span><select data-ph="liquid"><option value="eau">Eau</option><option value="verre">Verre (résine)</option><option value="diamant">Diamant</option><option value="mercure">Mercure</option><option value="miel">Miel</option><option value="huile">Huile</option><option value="lait">Lait</option><option value="encre">Encre</option><option value="couleur">Couleur de la palette</option></select></label>
             <label><span>Hauteur</span><input type="range" min="4" max="70" step="1" value="26" data-ph="thickness" /></label>
             <label><span>Ménisque</span><input type="range" min="0.6" max="6" step="0.05" value="2.2" data-ph="meniscus" /></label>
             <label><span>Dessous</span><select data-ph="fond"><option value="quadrille">Papier millimétré</option><option value="papier">Papier uni</option><option value="diagramme">Le diagramme</option></select></label>
+            <p class="mt-sub">Optique</p>
+            <label title="Indice de réfraction : 1,33 eau · 1,52 verre · 2,42 diamant"><span>Indice</span><input type="range" min="1" max="2.6" step="0.001" value="1.333" data-ph="ior" /></label>
+            <label title="Aberration chromatique : écart d'indice entre le rouge et le bleu"><span>Dispersion</span><input type="range" min="0" max="0.12" step="0.001" value="0.006" data-ph="dispersion" /></label>
+            <label title="Un dôme au cœur des flaques : c'est lui qui fait loupe"><span>Bombé</span><input type="range" min="0" max="2" step="0.01" value="0" data-ph="bombe" /></label>
+            <label title="Le liquide sur une plaque de verre, à cette hauteur au-dessus du papier : la goutte devient une loupe"><span>Distance</span><input type="range" min="0" max="160" step="1" value="0" data-ph="distance" /></label>
+            <label title="La lumière concentrée par le liquide sur le papier (rayons tracés)"><span>Caustiques</span><input type="range" min="0" max="1.5" step="0.01" value="0.8" data-ph="caustics" /></label>
+            <label><span>Reflets</span><input type="range" min="0" max="2" step="0.01" value="1" data-ph="reflets" /></label>
+            <label title="Lumière diffusée dans le liquide (lait, sirop)"><span>Trouble</span><input type="range" min="0" max="1" step="0.01" value="0" data-ph="trouble" /></label>
+            <label title="Verre dépoli : ce qu'on voit à travers se brouille"><span>Dépoli</span><input type="range" min="0" max="1" step="0.01" value="0" data-ph="depoli" /></label>
+            <label title="Film mince à la surface (huile, savon)"><span>Irisation</span><input type="range" min="0" max="1" step="0.01" value="0" data-ph="irisation" /></label>
+            <label title="Vaguelettes capillaires, animées"><span>Ondes</span><input type="range" min="0" max="1" step="0.01" value="0" data-ph="ondes" /></label>
           </div>
           <div class="mt-trames" role="group" aria-label="Trames">
             <span>Trames</span>

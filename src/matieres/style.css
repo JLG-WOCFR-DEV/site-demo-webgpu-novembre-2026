@@ -240,6 +240,13 @@ body.mt {
   padding: 8px 0 2px;
   border-top: 1px dashed rgba(18, 18, 18, 0.25);
 }
+.mt-sub {
+  margin: 8px 0 0;
+  font: 500 11px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
 .mt-group[hidden] {
   display: none;
 }
