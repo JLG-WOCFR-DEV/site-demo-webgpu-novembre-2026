@@ -84,7 +84,17 @@ function signedDistance(mask: Float32Array, w: number, h: number) {
   const out = edt(true); // distance aux lettres (pour les pixels dehors)
   const inn = edt(false); // distance au dehors (pour les pixels dedans)
   const s = new Float32Array(w * h);
-  for (let i = 0; i < s.length; i++) s[i] = Math.sqrt(out[i]!) - Math.sqrt(inn[i]!);
+  for (let i = 0; i < s.length; i++) {
+    let d = Math.sqrt(out[i]!) - Math.sqrt(inn[i]!);
+    // Correction sous-pixel : près du bord, la couverture antialiasée du masque dit où passe vraiment le contour
+    // (sans elle, le seuil à 0,5 donne un escalier d'une cellule).
+    // Distances mesurées de centre de cellule à centre de cellule : le bord est à mi-chemin (−0,5 en valeur absolue),
+    // et dans une cellule à moitié couverte, la couverture donne la distance (0,5 − couverture).
+    d -= Math.sign(d) * 0.5;
+    const a = mask[i]!;
+    if (a > 0.02 && a < 0.98) d = 0.5 - a;
+    s[i] = d;
+  }
   return s;
 }
 

@@ -285,7 +285,7 @@ fn cracks(p: vec2f) -> f32 {
   let smoke = s.g;
   let m = textureSampleLevel(word, samp, i.uv, 0.0).r;
   // Le fond : presque noir, une lueur chaude au sol.
-  var col = vec3f(0.006, 0.004, 0.003) + vec3f(0.05, 0.015, 0.0) * smoothstep(0.55, 1.0, i.uv.y);
+  var col = vec3f(0.006, 0.004, 0.003) + vec3f(0.012, 0.004, 0.0) * smoothstep(0.6, 1.0, i.uv.y);
   // Les lettres : du charbon fendu de braises ; la flamme qui passe dessus les chauffe.
   let cr = 1.0 - smoothstep(0.02, 0.1, cracks(px * 0.05) + 0.06 * (vnoise(px * 0.2) - 0.5));
   let fine = 1.0 - smoothstep(0.015, 0.05, cracks(px * 0.13 + 7.0));
@@ -501,7 +501,7 @@ export async function createFeu(device: GPUDevice, format: GPUTextureFormat, poi
 
   const writeParams = (simT: number, pv: { x: number; y: number; vx: number; vy: number; on: number }) => {
     // flottabilité, refroidissement (1/s), vorticité, turbulence ; pointeur ; rayon, présent, fumée, combustible
-    device.queue.writeBuffer(PU, 0, new Float32Array([SW, SH, 1 / 60, simT, 120, 1.9, 24, 30, pv.x, pv.y, pv.vx, pv.vy, 26, pv.on, 0.5, 1]));
+    device.queue.writeBuffer(PU, 0, new Float32Array([SW, SH, 1 / 60, simT, 165, 1.5, 26, 34, pv.x, pv.y, pv.vx, pv.vy, 26, pv.on, 0.5, 1]));
     device.queue.writeBuffer(pxU, 0, new Float32Array([cs, spawnCount, 0, 0]));
   };
 
