@@ -52,3 +52,46 @@ export async function simulateDeviceLoss() {
   for (const fn of [...lostListeners]) fn("simulée");
   return true;
 }
+
+/**
+ * Un montage GPU hors du registre des composants (une section de page montée à la main), rendu résistant à la perte
+ * de l'appareil : `start` monte, `ready` reçoit chaque instance (la première, puis celle d'après chaque reprise : c'est
+ * là qu'on rebranche l'interface sur l'instance courante). Reprise dès que la page est visible, au plus trois fois par
+ * minute, comme les composants.
+ */
+export function recoverable<T extends { stop?(): void }>(start: () => Promise<T>, ready: (inst: T) => void, fail?: (e: unknown) => void) {
+  let inst: T | null = null;
+  let stopped = false;
+  const times: number[] = [];
+  const run = () =>
+    start()
+      .then((i) => {
+        if (stopped) return i.stop?.();
+        inst = i;
+        ready(i);
+      })
+      .catch((e) => fail?.(e));
+  const off = onDeviceLost(() => {
+    inst?.stop?.();
+    inst = null;
+    const now = performance.now();
+    while (times.length && now - times[0]! > 60_000) times.shift();
+    if (stopped || times.length >= 3) return;
+    times.push(now);
+    const resume = () => {
+      if (stopped) return;
+      if (document.hidden) return void document.addEventListener("visibilitychange", resume, { once: true });
+      void run();
+    };
+    setTimeout(resume, 250);
+  });
+  void run();
+  return {
+    stop() {
+      stopped = true;
+      off();
+      inst?.stop?.();
+      inst = null;
+    },
+  };
+}

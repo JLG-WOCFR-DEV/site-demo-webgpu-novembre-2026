@@ -4,6 +4,7 @@ import { mountPagesNav } from "../pages-nav.ts";
 import { mountComponents } from "../presse/components.ts";
 import { EASE, SPRINGS, springStep } from "../presse/tokens.ts";
 import { mountNoise } from "./noise.ts";
+import { recoverable } from "../components/device.ts";
 
 /**
  * Page « Défilement » : huit gestes d'interface, d'après les composants
@@ -161,12 +162,15 @@ const progress = (el: HTMLElement) => {
       ([e]) => {
         if (!e?.isIntersecting || draw) return;
         io.disconnect();
-        mountNoise(el.querySelector(".df-stage")!, imgs)
-          .then((d) => (draw = d))
-          .catch((err) => {
+        // Résistant à la perte du GPU : un nouvel appareil, de nouvelles textures, le même défilement.
+        recoverable(
+          () => mountNoise(el.querySelector(".df-stage")!, imgs).then((d) => ({ draw: d, stop: () => (draw = null) })),
+          (x) => (draw = x.draw),
+          (err) => {
             console.warn("[défilement] bruit", err);
             el.classList.add("df-nogl");
-          });
+          },
+        );
       },
       { rootMargin: "400px" },
     );
