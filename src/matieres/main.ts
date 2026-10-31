@@ -3,7 +3,6 @@ import { mountDebugPanel } from "../debug-panel.ts";
 import { mountPagesNav } from "../pages-nav.ts";
 import { enhanceAngles } from "../presse/angle.ts";
 import { mountComponents } from "../presse/components.ts";
-import { mountElement } from "./elements.ts";
 import { mountPaillettes } from "./paillettes.ts";
 import { liquidPreset, mountPhase } from "./phase.ts";
 
@@ -55,7 +54,7 @@ if (seq)
     seq.querySelectorAll<HTMLButtonElement>("[data-seq-fill]").forEach((b) => b.addEventListener("click", () => api.fill(Number(b.dataset.seqFill) as 0 | 1)));
   });
 
-for (const el of document.querySelectorAll<HTMLElement>(".mt-el")) lazy(el, () => mountElement(el, el.dataset.mt as "eau" | "eclair" | "feu", el.dataset.word ?? ""));
+// Eau, éclair, feu : trois <x-matiere> (src/components/matiere), montés par le registre des composants.
 
 const ph = document.querySelector<HTMLElement>("[data-mt=phase]");
 if (ph)

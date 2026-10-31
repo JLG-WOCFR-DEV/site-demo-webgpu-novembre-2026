@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { parse, type HTMLElement as Node } from "node-html-parser";
 import type { Plugin } from "vite";
 import { COMPONENTS, STYLES } from "./components.ts";
+import { validate } from "./validate.ts";
 
 /**
  * Plugin Vite : déroule les balises <x-…> de chaque page, en développement
@@ -27,6 +28,11 @@ export function presseComponents(): Plugin {
             const render = COMPONENTS[name];
             if (!render) throw new Error(`Presse : composant inconnu <x-${name}> dans ${ctx.filename}`);
             used.add(name);
+            // Fautes d'attributs : prévenir avec la ligne de la page (la construction continue).
+            for (const msg of validate(name, el.attributes)) {
+              const line = html.slice(0, Math.max(0, el.range?.[0] ?? 0)).split("\n").length;
+              console.warn(`\x1b[33m[presse]\x1b[0m <x-${name}> ${ctx.filename.split("/").pop()}:${line} — ${msg}`);
+            }
             const out = render(el.attributes, el.childNodes.filter((c): c is Node => c.nodeType === 1), {
               read: (p) => readFileSync(resolve(base, p), "utf8"),
             });

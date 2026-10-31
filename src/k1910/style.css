@@ -1,3 +1,11 @@
+/* Fontes servies par le site (fontsource), plus par Google Fonts : aucune requête vers un tiers, rien à consentir. */
+@import "@fontsource-variable/bodoni-moda/opsz.css";
+@import "@fontsource-variable/bodoni-moda/opsz-italic.css";
+@import "@fontsource/cormorant-garamond/400.css";
+@import "@fontsource/cormorant-garamond/500.css";
+@import "@fontsource/cormorant-garamond/600.css";
+@import "@fontsource/cormorant-garamond/400-italic.css";
+@import "@fontsource/cormorant-garamond/500-italic.css";
 :root {
   --k-ink: #16110d;
   --k-paper: #efe6d2;
@@ -5,7 +13,7 @@
   --k-gold: #c29d55;
   --k-blood: #6b1a14;
   --k-soft: #b9ab8e;
-  --k-didone: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+  --k-didone: "Bodoni Moda Variable", "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
   --k-text: "Cormorant Garamond", Garamond, Georgia, serif;
   color-scheme: dark;
 }

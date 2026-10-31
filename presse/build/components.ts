@@ -314,7 +314,30 @@ const objet: Render = (a) => {
 </figure>`;
 };
 
-export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie, objet, orbite };
+/**
+ * <x-matiere kind="feu" word="Feu" caption="…"> — une matière de la page Matières, en composant.
+ * kind : eau (ondes, le mot vu à travers), eclair (foudre générée), feu (fluide simulé), paillettes (tissu qu'on brosse ;
+ * image="…", metal="argent|or|noir"), phase (diagramme de phase en champ de distance). Le mot est aussi écrit en HTML :
+ * c'est le repli sans WebGPU, et ce que lit un lecteur d'écran. ratio="4/5" (défaut) ou "16/9"… ; class="…" s'ajoute.
+ */
+const MX_KINDS = ["eau", "eclair", "feu", "paillettes", "phase"];
+const MX_ATTRS = ["kind", "word", "image", "metal"];
+const matiere: Render = (a) => {
+  const kind = a.kind ?? "feu";
+  if (!MX_KINDS.includes(kind)) throw new Error(`Presse : <x-matiere kind="${kind}"> inconnu (${MX_KINDS.join(", ")})`);
+  const word = a.word ?? "";
+  const data = MX_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k]!)}"`).join("");
+  const ratio = a.ratio ? ` style="--mx-ratio: ${esc(a.ratio)}"` : "";
+  const label = a.label ?? (word ? `${word}, en ${kind === "eclair" ? "éclair" : kind}` : `Matière : ${kind}`);
+  const cls = a.class ? ` ${esc(a.class)}` : "";
+  return `<figure class="x-matiere${cls}" data-presse-component="matiere"${data}${ratio} role="img" aria-label="${esc(label)}">
+  <canvas class="mx-gl" aria-hidden="true"></canvas>
+  ${word ? `<span class="mx-word" aria-hidden="true">${esc(word)}</span>` : ""}
+  ${a.caption ? `<figcaption>${esc(a.caption)}</figcaption>` : ""}
+</figure>`;
+};
+
+export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie, objet, orbite, matiere };
 
 /** Feuille de style de chaque composant, ajoutée au <head> des pages qui l'emploient. */
 export const STYLES: Record<string, string> = {
@@ -324,4 +347,5 @@ export const STYLES: Record<string, string> = {
   galerie: "/src/components/galerie/galerie.css",
   objet: "/src/components/objet/objet.css",
   orbite: "/src/components/orbite/orbite.css",
+  matiere: "/src/components/matiere/matiere.css",
 };
