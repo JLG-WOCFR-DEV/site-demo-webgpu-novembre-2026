@@ -44,6 +44,24 @@ const SEED = () => {
   };
 };
 
+/**
+ * Suivi du travail GPU : chaque `queue.submit` compte jusqu'à son `onSubmittedWorkDone`. On n'avance l'horloge factice
+ * que GPU au repos — sinon, sur SwiftShader, les pages lourdes empilent des minutes de travail GPU en quelques images
+ * factices et le compositeur ne livre plus aucune image (capture bloquée). C'est aussi plus fidèle : une vraie page
+ * est cadencée par son GPU.
+ */
+const GPU_TRACK = () => {
+  if (typeof GPUQueue === "undefined") return;
+  let pending = 0;
+  const orig = GPUQueue.prototype.submit;
+  GPUQueue.prototype.submit = function (cbs) {
+    orig.call(this, cbs);
+    pending++;
+    this.onSubmittedWorkDone().then(() => pending--, () => pending--);
+  };
+  Object.defineProperty(window, "__gpuPending", { get: () => pending, configurable: true });
+};
+
 const results = [];
 const t0 = Date.now();
 for (const shot of SHOTS.filter((s) => !ONLY || ONLY.includes(s.page))) {
@@ -53,6 +71,7 @@ for (const shot of SHOTS.filter((s) => !ONLY || ONLY.includes(s.page))) {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.addInitScript(SEED);
+  await page.addInitScript(GPU_TRACK);
   // Sans WebGPU (Firefox sous Linux et macOS, Safari avant 26, vieux appareils) : la page doit rester complète, en HTML.
   if (shot.nogpu) await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "gpu", { get: () => undefined, configurable: true }));
   await page.clock.install({ time: new Date("2026-11-01T12:00:00Z") });
@@ -60,29 +79,33 @@ for (const shot of SHOTS.filter((s) => !ONLY || ONLY.includes(s.page))) {
   await page.goto(`http://localhost:${PORT}/${shot.page}.html${shot.query ?? ""}`, { waitUntil: "load" });
   // Laisser vivre la page : des pas de 1/60 s d'horloge factice, entrecoupés d'un vrai répit (le GPU, les fontes,
   // les promesses de compilation avancent en temps réel).
+  const idle = async () => {
+    const t = Date.now();
+    while (Date.now() - t < 90_000 && (await page.evaluate(() => window.__gpuPending ?? 0)) > 0) await page.waitForTimeout(20);
+  };
   const step = async (frames) => {
     for (let k = 0; k < frames; k++) {
       await page.clock.runFor(1000 / 60);
-      if (k % 6 === 0) await page.waitForTimeout(40);
+      await idle();
+      if (k % 10 === 0) await page.waitForTimeout(10); // promesses non GPU (fontes, décodage d'images)
     }
   };
   await page.waitForTimeout(1500); // compilation des pipelines (asynchrone, temps réel)
   await step(shot.frames ?? 120);
   if (shot.before) await page.evaluate(shot.before);
   await step(shot.after ?? 30);
-  await page.waitForTimeout(400);
+  await idle();
   const file = `${shot.page}${shot.name ? `-${shot.name}` : ""}.png`;
   console.error(`… ${file} (${Math.round((Date.now() - t0) / 1000)} s)`);
   // La capture attend une image du compositeur : l'horloge factice continue d'avancer pendant ce temps, sinon une
   // page qui dessine dans requestAnimationFrame ne livrerait jamais l'image demandée.
-  let buf = null;
-  const shotP = page.screenshot({ timeout: 240_000, animations: "disabled", caret: "hide" }).then((b) => (buf = b), (e) => errors.push(`capture : ${String(e).slice(0, 100)}`));
-  for (let k = 0; buf === null && k < 4000; k++) {
-    await Promise.race([shotP, page.waitForTimeout(60)]);
-    if (buf === null) await page.clock.runFor(1000 / 60).catch(() => {});
-    if (errors.some((e) => e.startsWith("capture"))) break;
+  // GPU au repos, horloge arrêtée : la capture est celle de l'état atteint, à l'image près.
+  let buf = await page.screenshot({ timeout: 60_000, animations: "disabled", caret: "hide" }).catch(() => null);
+  if (!buf) {
+    // Repli : capture directe par le protocole DevTools (n'attend pas d'image d'animation de la page).
+    const cdp = await ctx.newCDPSession(page);
+    buf = await cdp.send("Page.captureScreenshot", { format: "png" }).then((r) => Buffer.from(r.data, "base64"), (e) => (errors.push(`capture : ${String(e).slice(0, 100)}`), null));
   }
-  await shotP;
   await ctx.close();
   if (!buf) {
     results.push({ file: `${shot.page}${shot.name ? `-${shot.name}` : ""}.png`, status: "ÉCHEC (capture)", errors });
