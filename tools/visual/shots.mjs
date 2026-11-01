@@ -10,16 +10,16 @@ export const SHOTS = [
   { page: "atelier", frames: 150 },
   { page: "orbite", frames: 90 },
   { page: "presse", frames: 90 },
-  { page: "matieres", name: "paillettes", frames: 150, before: () => document.querySelector("[data-mt=paillettes]").scrollIntoView() },
-  { page: "matieres", name: "trio", frames: 60, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), after: 150 },
-  { page: "matieres", name: "phase", frames: 60, before: () => document.querySelector("[data-mt=phase]").scrollIntoView(), after: 120 },
+  { page: "matieres", name: "paillettes", frames: 150, before: () => document.querySelector("[data-mt=paillettes]").scrollIntoView(), settle: 6000 },
+  { page: "matieres", name: "trio", frames: 30, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), settle: 3000, ready: ".x-matiere.is-gl ~ .x-matiere.is-gl ~ .x-matiere.is-gl", after: 90 },
+  { page: "matieres", name: "phase", frames: 60, before: () => document.querySelector("[data-mt=phase]").scrollIntoView(), settle: 6000, after: 90 },
   { page: "defilement", frames: 90 },
-  { page: "defilement", name: "bruit", frames: 60, before: () => { const el = document.getElementById("bruit"); scrollTo(0, el.offsetTop + el.offsetHeight * 0.35); }, after: 120 },
+  { page: "defilement", name: "bruit", frames: 60, before: () => { const el = document.getElementById("bruit"); scrollTo(0, el.offsetTop + el.offsetHeight * 0.35); }, settle: 5000, after: 90 },
   { page: "kerguehennec", frames: 60 },
   { page: "kerguehennec-styles", frames: 60 },
   { page: "sampler", frames: 60 },
   // Le chemin du mouvement réduit : rien ne doit casser.
-  { page: "matieres", name: "reduit", reducedMotion: true, frames: 60, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), after: 90 },
+  { page: "matieres", name: "reduit", reducedMotion: true, frames: 30, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), settle: 3000, ready: ".x-matiere.is-gl ~ .x-matiere.is-gl ~ .x-matiere.is-gl", after: 60 },
 ];
 
 // Sans WebGPU : chaque page, en haut, puis défilée jusqu'au bas (aucune erreur, le HTML tient la page).

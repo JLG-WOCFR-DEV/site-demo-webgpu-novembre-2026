@@ -93,6 +93,10 @@ for (const shot of SHOTS.filter((s) => !ONLY || ONLY.includes(s.page))) {
   await page.waitForTimeout(1500); // compilation des pipelines (asynchrone, temps réel)
   await step(shot.frames ?? 120);
   if (shot.before) await page.evaluate(shot.before);
+  // Ce qui se monte à l'approche de l'écran compile ses pipelines en temps réel : `settle` (ms) leur en laisse le temps,
+  // horloge arrêtée ; `ready` (sélecteur) attend qu'ils soient prêts.
+  if (shot.settle) await page.waitForTimeout(shot.settle);
+  if (shot.ready) await page.waitForFunction((sel) => document.querySelectorAll(sel).length > 0, shot.ready, { timeout: 120_000, polling: 250 }).catch(() => errors.push(`pas prêt : ${shot.ready}`));
   await step(shot.after ?? 30);
   await idle();
   const file = `${shot.page}${shot.name ? `-${shot.name}` : ""}.png`;
