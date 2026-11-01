@@ -21,6 +21,10 @@ import { parseGLB, writeGLB } from "./gltf.ts";
 import { MODELS, loadModel } from "./meshfile.ts";
 import { inflate, maskFromSource, type Mesh, pebble, relief, torusKnot, vase } from "./meshes.ts";
 import { GBUF, MAX_TRAIL, PARTICLES_DRAW, PARTICLES_SIM, STYLE } from "./shaders.ts";
+import { hot } from "../../presse/components.ts";
+
+// Rechargement à chaud : le module (ou un shader dont il dépend) changé, les objets de la page sont remontés.
+if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "objet"));
 
 export const STYLES = ["ascii", "tramage", "encre", "verre", "particules", "liquide"] as const;
 export type ObjetStyle = (typeof STYLES)[number];

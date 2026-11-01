@@ -1,0 +1,39 @@
+# Régression visuelle de Presse : chaque page rendue en WebGPU (SwiftShader) et sans WebGPU, horloge et hasard figés,
+# comparée aux références de tests/visual/baseline. En cas d'écart, les images (actuelle, différences) sont jointes au job.
+#
+# Les références ont été produites avec le Chromium 1194 (SwiftShader) : un autre Chromium peut différer de quelques
+# pixels sur l'anticrénelage. Si toutes les captures dérivent d'un coup après une montée de version, régénérer les
+# références (npm run test:visual -- --update) et les committer. Le job est consultatif tant que les références n'ont
+# pas été régénérées une fois sur le runner GitHub (continue-on-error).
+name: Régression visuelle
+on:
+  push:
+    branches: [main, "v2/**"]
+  pull_request:
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Serveur de prévisualisation
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          for i in $(seq 1 60); do curl -sf http://localhost:4173/index.html >/dev/null && break; sleep 1; done
+      - name: Captures et comparaison
+        run: npm run test:visual
+        env:
+          PW_CHROMIUM: ""
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-visuelle
+          path: test-results/visual

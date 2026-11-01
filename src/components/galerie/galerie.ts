@@ -25,6 +25,10 @@ import { SPRINGS, springStep } from "../../presse/tokens.ts";
 import { getDevice } from "../device.ts";
 import { ARRANGEMENTS, apply, type ArrangeName, type Ctx, DEG, type Inst, mod, OPTIONS, type Pose, pose, rotation, stackDir } from "./arrange.ts";
 import { BACKDROP, GALERIE, MAX_ITEMS, STRIDE } from "./shader.ts";
+import { hot } from "../../presse/components.ts";
+
+// Rechargement à chaud : le module (ou un shader dont il dépend) changé, les galeries de la page sont remontés.
+if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "galerie"));
 
 export type Selection = "inline" | "detail" | "reveal";
 export type Presence = "auto" | "fade" | "contract" | "scatter" | "slideAlong";

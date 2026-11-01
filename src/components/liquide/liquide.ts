@@ -17,6 +17,10 @@ import { painted } from "../../presse/sweep.ts";
 import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
 import { LIQUID, MAX_CARDS } from "./shaders.ts";
+import { hot } from "../../presse/components.ts";
+
+// Rechargement à chaud : le module (ou un shader dont il dépend) changé, les liquides de la page sont remontés.
+if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "liquide"));
 
 const JELLY_OMEGA = 2 * Math.PI * 3;
 const JELLY_DAMPING = 0.3;

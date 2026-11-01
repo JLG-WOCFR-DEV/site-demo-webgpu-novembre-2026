@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0 --port 8080",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test 'src/**/*.test.ts'",
-    "images": "python3 tools/images.py"
+    "images": "python3 tools/images.py",
+    "test:visual": "node tools/visual/run.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
@@ -21,7 +22,9 @@
     "@webgpu/types": "^0.1.74",
     "meshoptimizer": "^0.22.0",
     "node-html-parser": "^6.1.13",
+    "pixelmatch": "^7.2.0",
     "playwright": "1.62",
+    "pngjs": "^7.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   },

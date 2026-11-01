@@ -6,19 +6,22 @@
  * composants les remonte, voir src/presse/components.ts). Une destruction volontaire (`device.destroy()`, raison
  * « destroyed ») n'est pas une perte.
  */
-let devicePromise: Promise<GPUDevice> | null = null;
-const lostListeners = new Set<(reason: string) => void>();
+// État partagé par toutes les copies du module (en développement, Vite peut en réimporter une seconde, horodatée) :
+// une page = un appareil, une liste d'abonnés.
+type DeviceState = { promise: Promise<GPUDevice> | null; listeners: Set<(reason: string) => void> };
+const S: DeviceState = ((globalThis as { __presseDevice?: DeviceState }).__presseDevice ??= { promise: null, listeners: new Set() });
+const lostListeners = S.listeners;
 
 export function getDevice() {
-  devicePromise ??= (async () => {
+  S.promise ??= (async () => {
     if (!navigator.gpu) throw new Error("WebGPU absent");
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) throw new Error("Aucun adaptateur WebGPU");
     const device = await adapter.requestDevice();
-    const mine = devicePromise;
+    const mine = S.promise;
     void device.lost.then((info) => {
       // Seul l'appareil courant compte : un ancien, déjà remplacé, ne relance rien.
-      if (devicePromise === mine) devicePromise = null;
+      if (S.promise === mine) S.promise = null;
       if (info.reason === "destroyed") return;
       console.warn("[presse] appareil WebGPU perdu :", info.message || info.reason);
       for (const fn of [...lostListeners]) {
@@ -31,7 +34,7 @@ export function getDevice() {
     });
     return device;
   })();
-  return devicePromise;
+  return S.promise;
 }
 
 /** Prévient quand l'appareil partagé est perdu ; renvoie de quoi se désabonner. */
@@ -45,9 +48,9 @@ export function onDeviceLost(fn: (reason: string) => void) {
  * « destroyed », que l'on ignore ; on prévient donc les abonnés à la main).
  */
 export async function simulateDeviceLoss() {
-  if (!devicePromise) return false;
-  const d = await devicePromise;
-  devicePromise = null;
+  if (!S.promise) return false;
+  const d = await S.promise;
+  S.promise = null;
   d.destroy();
   for (const fn of [...lostListeners]) fn("simulée");
   return true;

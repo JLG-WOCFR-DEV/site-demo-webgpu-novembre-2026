@@ -25,6 +25,10 @@ import { SPRINGS, ease, springStep } from "../../presse/tokens.ts";
 import { getDevice } from "../device.ts";
 import { COLOR_BY, type OrbiteConfig, PALETTES, PARAMS, coerce, defaults, fromDataset } from "./params.ts";
 import { DRAW, GRADE, MAX_CARDS, MAX_SLOTS, SCENE, SIM, UBYTES } from "./shaders.ts";
+import { hot } from "../../presse/components.ts";
+
+// Rechargement à chaud : le module (ou un shader dont il dépend) changé, les orbites de la page sont remontés.
+if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "orbite"));
 
 type App = { id: string; title: string; tag: string; href: string; color: [number, number, number]; img: HTMLImageElement; link: HTMLAnchorElement; aspect: number };
 type V3 = [number, number, number];

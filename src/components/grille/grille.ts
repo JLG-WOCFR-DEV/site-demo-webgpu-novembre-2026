@@ -19,6 +19,10 @@ import { motionScale } from "../../motion-scale.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
+import { hot } from "../../presse/components.ts";
+
+// Rechargement à chaud : le module (ou un shader dont il dépend) changé, les grilles de la page sont remontés.
+if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "grille"));
 
 const MAX_TILES = 1400;
 const SHADER = /* wgsl */ `

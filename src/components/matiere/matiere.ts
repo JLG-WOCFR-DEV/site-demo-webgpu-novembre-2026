@@ -4,6 +4,11 @@
  * son mot en HTML ; avec, elle reçoit `.is-gl` et le mot HTML s'efface. L'arrêt (démontage, perte de l'appareil GPU :
  * src/presse/components.ts) arrête la boucle de dessin et l'observateur.
  */
+import { hot } from "../../presse/components.ts";
+
+// Rechargement à chaud : le module (ou un shader dont il dépend) changé, les matieres de la page sont remontés.
+if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "matiere"));
+
 type Stoppable = { stop(): void };
 
 export function mount(root: HTMLElement) {

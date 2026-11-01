@@ -700,15 +700,18 @@ function Ne() {
 }
 //#endregion
 //#region src/components/device.ts
-var V = null, Pe = /* @__PURE__ */ new Set();
+var V = globalThis.__presseDevice ??= {
+	promise: null,
+	listeners: /* @__PURE__ */ new Set()
+}, Pe = V.listeners;
 function Fe() {
-	return V ??= (async () => {
+	return V.promise ??= (async () => {
 		if (!navigator.gpu) throw Error("WebGPU absent");
 		let e = await navigator.gpu.requestAdapter();
 		if (!e) throw Error("Aucun adaptateur WebGPU");
-		let t = await e.requestDevice(), n = V;
+		let t = await e.requestDevice(), n = V.promise;
 		return t.lost.then((e) => {
-			if (V === n && (V = null), e.reason !== "destroyed") {
+			if (V.promise === n && (V.promise = null), e.reason !== "destroyed") {
 				console.warn("[presse] appareil WebGPU perdu :", e.message || e.reason);
 				for (let t of [...Pe]) try {
 					t(e.message || String(e.reason));
@@ -717,7 +720,7 @@ function Fe() {
 				}
 			}
 		}), t;
-	})(), V;
+	})(), V.promise;
 }
 //#endregion
 //#region src/presse/sweep.ts
