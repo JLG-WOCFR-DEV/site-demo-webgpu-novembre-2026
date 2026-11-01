@@ -1,0 +1,294 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --ink: #121212;
+  --paper: #efeee8;
+  --spot: #c8321c;
+  --night: #050506;
+  --fg: #f1efe8;
+  --fg-dim: #b9b5ab;
+  --glass: rgba(10, 10, 12, 0.72);
+  --rule: rgba(241, 239, 232, 0.22);
+}
+/* Rendus clairs (liquide sur papier, encres) : le texte passe à l'encre. */
+body.fl[data-fl-light="1"] {
+  --fg: #16130f;
+  --fg-dim: #4b463e;
+  --glass: rgba(239, 238, 232, 0.78);
+  --rule: rgba(18, 18, 18, 0.2);
+}
+html,
+body.fl {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--night);
+  color: var(--fg);
+  font: 16px/1.5 "Archivo Variable", Arial, sans-serif;
+  overscroll-behavior: none;
+}
+body.fl[data-fl-light="1"] {
+  background: var(--paper);
+}
+.fl-stage {
+  position: fixed;
+  inset: 0;
+}
+.fl-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.fl-head {
+  position: absolute;
+  left: clamp(16px, 4vw, 48px);
+  bottom: clamp(16px, 4vw, 40px);
+  max-width: min(460px, calc(100vw - 32px));
+  z-index: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 12px color-mix(in srgb, var(--night) 60%, transparent);
+}
+body.fl[data-fl-light="1"] .fl-head {
+  text-shadow: 0 1px 10px color-mix(in srgb, var(--paper) 80%, transparent);
+}
+/* Un voile sous le titre : lisible sur les points comme sur les encres, sans cacher le fluide. */
+.fl-head::before {
+  content: "";
+  position: absolute;
+  inset: -60px -90px -50px -70px;
+  z-index: -1;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--night) 78%, transparent), transparent);
+}
+body.fl[data-fl-light="1"] .fl-head::before {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--paper) 80%, transparent), transparent);
+}
+.fl-kicker {
+  margin: 0 0 8px;
+  font: 500 12px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.fl-title {
+  margin: 0;
+  font-size: clamp(56px, 10vw, 148px);
+  font-weight: 900;
+  font-variation-settings: "wdth" 125;
+  line-height: 0.88;
+  letter-spacing: -0.02em;
+}
+.fl-lede {
+  margin: 14px 0 0;
+  color: var(--fg-dim);
+  max-width: 40ch;
+}
+.fl-credit {
+  margin: 10px 0 0;
+  font: 11px/1.5 "IBM Plex Mono", monospace;
+  color: var(--fg-dim);
+  opacity: 0.85;
+  max-width: 52ch;
+}
+
+.fl-panel {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: min(344px, calc(100vw - 28px));
+  max-height: calc(100svh - 28px);
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font: 12px/1.35 "IBM Plex Mono", monospace;
+  scrollbar-width: thin;
+}
+.fl-panel summary {
+  padding: 10px 14px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.fl-panel summary::-webkit-details-marker {
+  display: none;
+}
+.fl-panel summary::after {
+  content: "−";
+  font-size: 16px;
+}
+.fl-panel details:not([open]) summary::after {
+  content: "+";
+}
+.fl-panel summary:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+.fl-body {
+  display: grid;
+  gap: 7px;
+  padding: 2px 14px 14px;
+}
+.fl-row {
+  display: grid;
+  grid-template-columns: 5.8em 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+}
+.fl-row > select,
+.fl-row > .fl-seg {
+  grid-column: 2 / 4;
+}
+.fl-lab {
+  color: var(--fg-dim);
+}
+.fl-row output {
+  min-width: 4.2em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.fl-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--spot);
+  margin: 0;
+}
+.fl-panel select {
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  min-width: 0;
+}
+.fl-panel select option {
+  background: #1a1a1d;
+  color: #f1efe8;
+}
+.fl-seg {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.fl-panel button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.fl-panel button:hover {
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+}
+.fl-panel button[aria-pressed="true"] {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--glass-solid, #000);
+}
+body.fl[data-fl-light="1"] .fl-panel button[aria-pressed="true"] {
+  color: var(--paper);
+}
+.fl-panel button:focus-visible,
+.fl-panel select:focus-visible,
+.fl-panel input:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+.fl-row.fl-ang {
+  grid-template-columns: 5.8em auto 1fr auto;
+}
+.fl-ang input[type="number"] {
+  width: 4.4em;
+  padding: 3px 4px;
+  font: inherit;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
+.fl-ang i {
+  font-style: normal;
+}
+.fl-group {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.fl-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.fl-stats,
+.fl-keys {
+  margin: 4px 0 0;
+  color: var(--fg-dim);
+  font-size: 11px;
+}
+
+/* Sans WebGPU : le message, le titre ; pas de panneau. */
+.fl-nogl {
+  display: none;
+}
+body.fl-nogpu .fl-nogl {
+  display: grid;
+  place-content: center;
+  position: absolute;
+  inset: 0;
+  padding: 24px;
+  text-align: center;
+  color: var(--fg-dim);
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0, 160, 220, 0.18), transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(229, 0, 126, 0.16), transparent 42%),
+    var(--night);
+}
+body.fl-nogpu .fl-nogl p {
+  margin: 0 0 8px;
+  max-width: 44ch;
+}
+body.fl-nogpu .fl-panel {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .fl-head {
+    bottom: 12px;
+  }
+  .fl-lede,
+  .fl-credit {
+    display: none;
+  }
+  .fl-panel {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+    width: auto;
+    max-width: calc(100vw - 24px);
+    max-height: 70svh;
+  }
+  .fl-panel details[open] {
+    width: min(330px, calc(100vw - 24px));
+  }
+}

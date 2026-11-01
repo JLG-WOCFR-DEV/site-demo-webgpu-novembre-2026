@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr" data-presse-intro="#050506" data-presse-intro-label="WebGPU-demo-UBS · Fluide">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Fluide</title>
+    <meta name="description" content="Un fluide SPH en WebGPU qu'on remue au pointeur : un champ de particules, un bassin d'eau qui se renverse, une marbrure d'encres cyan, magenta, jaune." />
+    <meta name="theme-color" content="#050506" />
+    <script type="module" src="/src/fluide/main.ts"></script>
+  </head>
+  <body class="fl" data-fl-render="points">
+    <main class="fl-stage" data-fl>
+      <canvas class="fl-gl" aria-hidden="true"></canvas>
+      <div class="fl-nogl" role="note">
+        <p>Ce navigateur n'a pas WebGPU : le fluide ne peut pas tourner ici.</p>
+        <p>Essayez Chrome, Edge ou Safari 26 sur un ordinateur ou un téléphone récent.</p>
+      </div>
+
+      <header class="fl-head">
+        <p class="fl-kicker" data-intro>WebGPU-demo-UBS · Fluide</p>
+        <h1 class="fl-title" data-intro>Fluide</h1>
+        <p class="fl-lede" data-intro>Des dizaines de milliers de particules qui se poussent et se retiennent, simulées sur la carte graphique. Remuez avec le pointeur.</p>
+        <p class="fl-credit" data-intro>D'après « GPGPU 2D SPH » de Robert Leitl (WebGL 2). Refait en WebGPU : grille triée par comptage, densité et densité proche, tout en compute shaders.</p>
+      </header>
+
+      <aside class="fl-panel" aria-label="Réglages du fluide">
+        <details open data-fl-details>
+          <summary>Réglages</summary>
+          <div class="fl-body">
+            <div class="fl-row">
+              <span class="fl-lab" id="fl-l-mode">Scène</span>
+              <span class="fl-seg" role="radiogroup" aria-labelledby="fl-l-mode">
+                <button type="button" data-fl-mode="champ" aria-pressed="true">Champ</button>
+                <button type="button" data-fl-mode="bassin" aria-pressed="false">Bassin</button>
+                <button type="button" data-fl-mode="marbrure" aria-pressed="false">Marbrure</button>
+              </span>
+            </div>
+            <div class="fl-row">
+              <span class="fl-lab" id="fl-l-tool">Outil</span>
+              <span class="fl-seg" role="radiogroup" aria-labelledby="fl-l-tool">
+                <button type="button" data-fl-tool="remuer" aria-pressed="true" title="Au survol (souris) ou au doigt">Remuer</button>
+                <button type="button" data-fl-tool="attirer" aria-pressed="false" title="Bouton enfoncé">Attirer</button>
+                <button type="button" data-fl-tool="repousser" aria-pressed="false" title="Bouton enfoncé ; ou clic droit avec n'importe quel outil">Repousser</button>
+              </span>
+            </div>
+            <label class="fl-row"><span class="fl-lab">Rendu</span>
+              <select data-fl="render">
+                <option value="points">Points</option>
+                <option value="liquide">Liquide</option>
+                <option value="encres">Encres</option>
+              </select>
+            </label>
+            <label class="fl-row"><span class="fl-lab">Couleurs</span><select data-fl-colors></select></label>
+            <label class="fl-row"><span class="fl-lab">Particules</span>
+              <select data-fl="count" data-fl-reset>
+                <option value="4096">4 096</option>
+                <option value="8192">8 192</option>
+                <option value="16384">16 384</option>
+                <option value="32768">32 768</option>
+                <option value="65536">65 536</option>
+              </select>
+            </label>
+
+            <p class="fl-group">Physique</p>
+            <label class="fl-row"><span class="fl-lab">Gravité</span><input type="range" min="0" max="30" step="0.5" value="0" data-fl="gravity" /><output data-fl-out="gravity"></output></label>
+            <label class="fl-row fl-ang"><span class="fl-lab">Direction</span><input type="number" min="-180" max="180" step="1" value="-90" data-angle data-fl="angle" aria-label="Direction de la gravité (degrés)" /><i>°</i></label>
+            <label class="fl-row"><span class="fl-lab">Pression</span><input type="range" min="50" max="1500" step="10" value="500" data-fl="pressure" /><output data-fl-out="pressure"></output></label>
+            <label class="fl-row"><span class="fl-lab">Proche</span><input type="range" min="0" max="60" step="1" value="18" data-fl="near" /><output data-fl-out="near"></output></label>
+            <label class="fl-row"><span class="fl-lab">Viscosité</span><input type="range" min="0" max="1.5" step="0.01" value="0.12" data-fl="viscosity" /><output data-fl-out="viscosity"></output></label>
+            <label class="fl-row"><span class="fl-lab">Densité</span><input type="range" min="0.6" max="1.6" step="0.01" value="1" data-fl="density" /><output data-fl-out="density"></output></label>
+            <label class="fl-row"><span class="fl-lab">Sous-pas</span><input type="range" min="1" max="8" step="1" value="3" data-fl="substeps" /><output data-fl-out="substeps"></output></label>
+            <label class="fl-row"><span class="fl-lab">Temps</span><input type="range" min="0.1" max="2" step="0.05" value="1" data-fl="speed" /><output data-fl-out="speed"></output></label>
+
+            <p class="fl-group">Pointeur</p>
+            <label class="fl-row"><span class="fl-lab">Rayon</span><input type="range" min="0.03" max="0.35" step="0.01" value="0.12" data-fl="radius" /><output data-fl-out="radius"></output></label>
+            <label class="fl-row"><span class="fl-lab">Force</span><input type="range" min="2" max="200" step="1" value="24" data-fl="strength" /><output data-fl-out="strength"></output></label>
+
+            <div class="fl-actions">
+              <button type="button" data-fl-act="pause" aria-pressed="false">Pause</button>
+              <button type="button" data-fl-act="reset">Recommencer</button>
+            </div>
+            <p class="fl-stats" aria-live="off" data-fl-stats>—</p>
+            <p class="fl-keys">Espace : pause · R : recommencer · clic droit : repousser</p>
+          </div>
+        </details>
+      </aside>
+    </main>
+  </body>
+</html>

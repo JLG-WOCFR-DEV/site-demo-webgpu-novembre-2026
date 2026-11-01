@@ -15,6 +15,11 @@ export const SHOTS = [
   { page: "matieres", name: "phase", frames: 60, before: () => document.querySelector("[data-mt=phase]").scrollIntoView(), settle: 6000, after: 90 },
   { page: "defilement", frames: 90 },
   { page: "defilement", name: "bruit", frames: 60, before: () => { const el = document.getElementById("bruit"); scrollTo(0, el.offsetTop + el.offsetHeight * 0.35); }, settle: 5000, after: 90 },
+  // Fluide : la simulation tourne dès le montage (pilote automatique dans le champ et la marbrure, barrage dans le bassin).
+  // Le rideau d'entrée compte environ 1,5 s : on le laisse se lever avant de changer de scène.
+  { page: "fluide", frames: 100 },
+  { page: "fluide", name: "bassin", frames: 90, before: () => document.querySelector("[data-fl-mode=bassin]").click(), after: 45 },
+  { page: "fluide", name: "marbrure", frames: 90, before: () => document.querySelector("[data-fl-mode=marbrure]").click(), after: 40 },
   { page: "kerguehennec", frames: 60 },
   { page: "kerguehennec-styles", frames: 60 },
   { page: "sampler", frames: 60 },
@@ -23,6 +28,6 @@ export const SHOTS = [
 ];
 
 // Sans WebGPU : chaque page, en haut, puis défilée jusqu'au bas (aucune erreur, le HTML tient la page).
-const PAGES = ["index", "liquide", "grille", "galerie", "atelier", "orbite", "presse", "matieres", "defilement", "kerguehennec", "kerguehennec-styles", "sampler"];
+const PAGES = ["index", "liquide", "grille", "galerie", "atelier", "orbite", "presse", "matieres", "defilement", "fluide", "kerguehennec", "kerguehennec-styles", "sampler"];
 for (const page of PAGES) SHOTS.push({ page, name: "sans-webgpu", nogpu: true, frames: 60, after: 30 });
 SHOTS.push({ page: "matieres", name: "sans-webgpu-trio", nogpu: true, frames: 30, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), after: 30 });
