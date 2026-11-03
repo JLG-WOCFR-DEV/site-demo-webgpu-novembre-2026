@@ -292,3 +292,20 @@ body.fl-nogpu .fl-panel {
     width: min(330px, calc(100vw - 24px));
   }
 }
+
+/* Inclinaison (téléphone) : le bouton sur toute la largeur, le message en dessous. */
+.fl-row.fl-tilt > button {
+  justify-self: start;
+}
+.fl-row.fl-tilt > button[aria-pressed="true"]::before {
+  content: "● ";
+  color: var(--spot);
+}
+.fl-tilt-msg {
+  grid-column: 1 / -1;
+  color: var(--fg-dim);
+  font-size: 11px;
+}
+.fl-tilt-msg:empty {
+  display: none;
+}

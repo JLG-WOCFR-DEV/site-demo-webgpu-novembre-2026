@@ -16,10 +16,12 @@ export const SHOTS = [
   { page: "defilement", frames: 90 },
   { page: "defilement", name: "bruit", frames: 60, before: () => { const el = document.getElementById("bruit"); scrollTo(0, el.offsetTop + el.offsetHeight * 0.35); }, settle: 5000, after: 90 },
   // Fluide : la simulation tourne dès le montage (pilote automatique dans le champ et la marbrure, barrage dans le bassin).
-  // Le rideau d'entrée compte environ 1,5 s : on le laisse se lever avant de changer de scène.
-  { page: "fluide", frames: 100 },
-  { page: "fluide", name: "bassin", frames: 90, before: () => document.querySelector("[data-fl-mode=bassin]").click(), after: 45 },
-  { page: "fluide", name: "marbrure", frames: 90, before: () => document.querySelector("[data-fl-mode=marbrure]").click(), after: 40 },
+  // Le rideau d'entrée compte environ 1,5 s : on le laisse se lever, puis la scène recommence et ne tourne que 25 images.
+  // Un fluide est chaotique : sur une autre machine (autre processeur sous SwiftShader), un écart d'arrondi grandit
+  // à chaque pas ; court, il reste sous le seuil.
+  { page: "fluide", frames: 100, before: () => window.__fluide.reset(), after: 25 },
+  { page: "fluide", name: "bassin", frames: 90, before: () => document.querySelector("[data-fl-mode=bassin]").click(), after: 25 },
+  { page: "fluide", name: "marbrure", frames: 90, before: () => document.querySelector("[data-fl-mode=marbrure]").click(), after: 25 },
   { page: "kerguehennec", frames: 60 },
   { page: "kerguehennec-styles", frames: 60 },
   { page: "sampler", frames: 60 },

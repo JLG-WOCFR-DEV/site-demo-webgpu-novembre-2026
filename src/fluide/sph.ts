@@ -82,6 +82,11 @@ export type FluidConfig = {
   /** Vitesse du temps. */
   speed: number;
   paused: boolean;
+  /**
+   * Inclinaison de l'appareil : la gravité projetée sur l'écran (x à droite, y vers le bas, longueur 0 à plat, 1 debout),
+   * multipliée par `gravity`. Elle remplace la direction du cadran tant qu'elle est là.
+   */
+  tilt?: [number, number] | null;
 };
 
 export const PRESETS: Record<Mode, Partial<FluidConfig>> = {
@@ -847,7 +852,8 @@ export async function mountFluide(root: HTMLElement, init: Partial<FluidConfig> 
     simData.set([W, Hh, H, n], 0);
     simData.set([gx, gy, gx * gy, sdt], 4);
     simData.set([restDensity, cfg.pressure, cfg.near, cfg.viscosity], 8);
-    simData.set([Math.cos(ga) * cfg.gravity, -Math.sin(ga) * cfg.gravity, 0.6, 80], 12);
+    const gv = cfg.tilt ? [cfg.tilt[0] * cfg.gravity, cfg.tilt[1] * cfg.gravity] : [Math.cos(ga) * cfg.gravity, -Math.sin(ga) * cfg.gravity];
+    simData.set([gv[0]!, gv[1]!, 0.6, 80], 12);
     simData.set([ptr.x, ptr.y, ptr.vx, ptr.vy], 16);
     simData.set([cfg.radius * Hh, cfg.strength, tool, 1 / 120], 20);
     simData.set([pendingRescale?.[0] ?? 1, pendingRescale?.[1] ?? 1, 0, 0], 24);

@@ -3,6 +3,7 @@ import { mountDebugPanel } from "../debug-panel.ts";
 import { mountPagesNav } from "../pages-nav.ts";
 import { enhanceAngles } from "../presse/angle.ts";
 import { recoverable } from "../components/device.ts";
+import { startTilt, whenTiltAvailable } from "./tilt.ts";
 import { INK_SETS, LIQUID_TINTS, PRESETS, mountFluide, type FluidApi, type FluidConfig, type Mode } from "./sph.ts";
 
 /**
@@ -84,6 +85,8 @@ panel.querySelectorAll<HTMLButtonElement>("[data-fl-mode]").forEach((b) =>
     const mode = b.dataset.flMode as Mode;
     Object.assign(state, PRESETS[mode], { mode });
     api?.setMode(mode);
+    // Inclinaison en cours : une scène sans gravité en reçoit, sinon pencher l'appareil ne ferait rien.
+    if (stopTilt && (state.gravity ?? 0) < 1) set("gravity", 12);
     syncPanel();
   }),
 );
@@ -106,6 +109,48 @@ addEventListener("keydown", (e) => {
     e.preventDefault();
     togglePause();
   } else if (e.key === "r" || e.key === "R") api?.reset();
+});
+
+// Inclinaison (téléphone, tablette) : la gravité suit l'appareil. Le cadran suit aussi (sans compter dans l'état :
+// à l'arrêt de l'inclinaison, la gravité reste où elle était).
+const tiltRow = panel.querySelector<HTMLElement>("[data-fl-tilt-row]")!;
+const tiltBtn = panel.querySelector<HTMLButtonElement>("[data-fl-act=tilt]")!;
+const tiltMsg = panel.querySelector<HTMLElement>("[data-fl-tilt-msg]")!;
+const angleInput = panel.querySelector<HTMLInputElement>("[data-fl=angle]")!;
+let stopTilt: (() => void) | null = null;
+let lastDial = 0;
+const endTilt = () => {
+  stopTilt?.();
+  stopTilt = null;
+  set("tilt", null);
+  tiltBtn.setAttribute("aria-pressed", "false");
+};
+whenTiltAvailable(() => (tiltRow.hidden = false));
+tiltBtn.addEventListener("click", () => {
+  if (stopTilt) return endTilt();
+  tiltMsg.textContent = "";
+  // Sans gravité (champ, marbrure), l'inclinaison n'aurait rien à faire : on lui en donne.
+  if ((state.gravity ?? 0) < 1) {
+    set("gravity", 12);
+    syncPanel();
+  }
+  startTilt((g) => {
+    set("tilt", g);
+    const now = performance.now();
+    if (now - lastDial > 120 && Math.hypot(g[0], g[1]) > 0.15) {
+      lastDial = now;
+      angleInput.value = String(Math.round((Math.atan2(-g[1], g[0]) * 180) / Math.PI));
+      angleInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  })
+    .then((stop) => {
+      stopTilt = stop;
+      tiltBtn.setAttribute("aria-pressed", "true");
+    })
+    .catch((e: Error) => {
+      endTilt();
+      tiltMsg.textContent = e.message === "permission refusée" ? "Accès aux capteurs refusé (Réglages du navigateur pour le rouvrir)." : "Aucun capteur d'orientation ne répond sur cet appareil.";
+    });
 });
 
 const stats = panel.querySelector<HTMLElement>("[data-fl-stats]")!;
