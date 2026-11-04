@@ -1,18 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parse } from "node-html-parser";
-import { BLOCK_LIST, BLOCKS, compileSite, contrast, makeBlock, normalize, PALETTES, renderBlock } from "./model.ts";
+import { BLOCK_LIST, BLOCKS, compileSite, contrast, href, makeBlock, normalize, PALETTES, renderBlock, uniqueSlug } from "./model.ts";
 import { TEMPLATES } from "./templates.ts";
 import { COMPONENTS } from "../presse/render.ts";
 import { validate } from "../../presse/build/validate.ts";
 
+const fresh = () => {
+  const site = normalize({});
+  return { site, doc: site.pages[0]! };
+};
+
 test("chaque bloc se rend, en export et en aperçu, sans attribut d'aperçu à l'export", () => {
   for (const d of BLOCK_LIST) {
-    const site = normalize({ blocks: [] });
+    const { site, doc } = fresh();
     const b = makeBlock(d.type);
-    site.blocks.push(b);
-    const out = renderBlock(b, site);
-    const prev = renderBlock(b, site, true);
+    doc.blocks.push(b);
+    const out = renderBlock(b, site, doc);
+    const prev = renderBlock(b, site, doc, true);
     assert.ok(out.length > 40, d.type);
     assert.ok(!out.includes("data-cr-"), `${d.type} : attribut d'aperçu à l'export`);
     assert.ok(prev.includes(`data-cr-id="${b.id}"`), `${d.type} : pas d'identifiant d'aperçu`);
@@ -25,14 +30,16 @@ test("chaque champ a une valeur par défaut", () => {
 
 test("les balises <x-…> produites passent la validation des composants et se déroulent", () => {
   for (const t of TEMPLATES) {
-    const html = compileSite(t.make());
-    const root = parse(html);
-    const tags = root.querySelectorAll("*").filter((n) => n.rawTagName?.toLowerCase().startsWith("x-"));
-    for (const el of tags) {
-      const name = el.rawTagName.toLowerCase().slice(2);
-      assert.deepEqual(validate(name, el.attributes), [], `${t.id} <x-${name}>`);
-      const out = COMPONENTS[name]!(el.attributes, el.childNodes.filter((c) => c.nodeType === 1) as never, {});
-      assert.ok(out.includes("data-presse-component") || name === "lettres", `${t.id} <x-${name}> déroulé`);
+    const site = t.make();
+    for (const doc of site.pages) {
+      const root = parse(compileSite(site, doc));
+      const tags = root.querySelectorAll("*").filter((n) => n.rawTagName?.toLowerCase().startsWith("x-"));
+      for (const el of tags) {
+        const name = el.rawTagName.toLowerCase().slice(2);
+        assert.deepEqual(validate(name, el.attributes), [], `${t.id}/${doc.slug} <x-${name}>`);
+        const out = COMPONENTS[name]!(el.attributes, el.childNodes.filter((c) => c.nodeType === 1) as never, {});
+        assert.ok(out.includes("data-presse-component") || name === "lettres", `${t.id} <x-${name}> déroulé`);
+      }
     }
   }
 });
@@ -45,24 +52,59 @@ test("la page compilée : options du moteur sur <html>, jetons sur :root, une se
   assert.match(html, /data-ps-dark/);
   assert.match(html, /--paper: #0d0d10/);
   assert.equal(html.match(/<script /g)?.length, 1);
-  // Navigation avant <main>, pied après.
   assert.ok(html.indexOf("ps-nav") < html.indexOf("<main>"));
   assert.ok(html.indexOf("ps-foot") > html.indexOf("</main>"));
 });
 
-test("le texte est échappé", () => {
-  const site = normalize({ blocks: [] });
-  const b = makeBlock("hero", { title: `<script>alert("x")</script>` });
-  site.blocks.push(b);
-  assert.ok(!renderBlock(b, site).includes("<script>"));
+test("plusieurs pages : chaque carte de projet mène à une page existante, où sa photo et son titre atterrissent", () => {
+  const site = TEMPLATES.find((t) => t.id === "portfolio")!.make();
+  assert.equal(site.pages[0]!.slug, "index");
+  assert.ok(site.pages.length >= 4);
+  const home = compileSite(site, site.pages[0]);
+  const cards = [...home.matchAll(/<a class="ps-proj" href="\.\/([a-z0-9-]+)\.html" data-flight="([\w-]+)"/g)];
+  assert.equal(cards.length, 3);
+  for (const [, slug, id] of cards) {
+    const doc = site.pages.find((p) => p.slug === slug);
+    assert.ok(doc, `page ${slug}`);
+    const html = compileSite(site, doc);
+    assert.match(html, new RegExp(`data-flight-id="${id}"`), `${slug} reçoit la photo ${id}`);
+    assert.match(html, new RegExp(`<h1[^>]*data-flight-title="${id}"`), `${slug} reçoit le titre`);
+    assert.match(home, new RegExp(`data-flight-title="${id}"`));
+  }
 });
 
-test("un JSON abîmé est réparé", () => {
+test("liens vers les pages : tels quels à l'export, ?page= dans l'aperçu", () => {
+  const site = TEMPLATES.find((t) => t.id === "portfolio")!.make();
+  const doc = site.pages[0]!;
+  assert.equal(href("./yosemite.html", { preview: false, site, doc }), "./yosemite.html");
+  assert.equal(href("./yosemite.html", { preview: true, site, doc }), "?page=yosemite");
+  assert.equal(href("./inconnue.html", { preview: true, site, doc }), "./inconnue.html");
+  assert.equal(href("#a", { preview: true, site, doc }), "#a");
+});
+
+test("le texte est échappé", () => {
+  const { site, doc } = fresh();
+  const b = makeBlock("hero", { title: `<script>alert("x")</script>` });
+  doc.blocks.push(b);
+  assert.ok(!renderBlock(b, site, doc).includes("<script>"));
+});
+
+test("un JSON abîmé est réparé ; un site d'une version précédente devient une page", () => {
   const s = normalize({ page: { title: "T", effects: "bloom" }, blocks: [{ type: "hero", id: "a" }, { type: "inconnu" }, { type: "texte", id: "a" }, null] });
-  assert.equal(s.blocks.length, 2);
-  assert.notEqual(s.blocks[0]!.id, s.blocks[1]!.id);
+  assert.equal(s.pages.length, 1);
+  assert.equal(s.pages[0]!.slug, "index");
+  const bs = s.pages[0]!.blocks;
+  assert.equal(bs.length, 2);
+  assert.notEqual(bs[0]!.id, bs[1]!.id);
   assert.deepEqual(s.page.effects, ["loupe", "bloom", "grain"]);
-  assert.equal(s.blocks[0]!.props.kinetic, BLOCKS.hero!.defaults.kinetic);
+  assert.equal(bs[0]!.props.kinetic, BLOCKS.hero!.defaults.kinetic);
+});
+
+test("adresses de pages : uniques, accueil en tête", () => {
+  const s = normalize({ pages: [{ title: "À propos", slug: "a-propos" }, { title: "Accueil", slug: "index" }, { title: "À propos", slug: "a-propos" }] });
+  assert.deepEqual(s.pages.map((p) => p.slug), ["index", "a-propos", "a-propos-2"]);
+  assert.equal(uniqueSlug(s, "Été à Paris"), "ete-a-paris");
+  assert.equal(uniqueSlug(s, "a propos"), "a-propos-3");
 });
 
 test("les palettes nommées sont lisibles (contraste AAA, 7:1)", () => {
@@ -72,10 +114,10 @@ test("les palettes nommées sont lisibles (contraste AAA, 7:1)", () => {
   }
 });
 
-test("sommaire automatique : une entrée par section ancrée et titrée", () => {
-  const site = normalize({ blocks: [] });
-  site.blocks.push(makeBlock("sommaire"), makeBlock("texte", { anchor: "a", title: "Alpha" }), makeBlock("texte", { anchor: "", title: "Sans ancre" }));
-  const out = renderBlock(site.blocks[0]!, site);
+test("sommaire automatique : une entrée par section ancrée et titrée de la page", () => {
+  const { site, doc } = fresh();
+  doc.blocks.push(makeBlock("sommaire"), makeBlock("texte", { anchor: "a", title: "Alpha" }), makeBlock("texte", { anchor: "", title: "Sans ancre" }));
+  const out = renderBlock(doc.blocks[0]!, site, doc);
   assert.match(out, /<a href="#a">Alpha<\/a>/);
   assert.ok(!out.includes("Sans ancre"));
 });

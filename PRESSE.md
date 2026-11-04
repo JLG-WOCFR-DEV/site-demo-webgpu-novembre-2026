@@ -149,6 +149,13 @@ Typographie : `data-ps-type` sur `<html>` — `grotesque` (Archivo large), `dido
   épinglée, bandeau, sommaire en lettres (automatique : une entrée par section ancrée), appel à l'action, pied. Chaque bloc
   déclare ses champs (texte, menu, curseur, interrupteur, photo, lien, couleur ; groupés, conditionnels) et ses éléments
   de liste (photos, cartes, liens). Le site est un JSON ; la compilation en fait une page du kit. Quatre modèles de départ.
+- **Pages** : un site a plusieurs pages (l'accueil `index.html`, puis `projet.html`…), qui partagent la direction du site
+  (couleurs, typo, rendu). Une page neuve reprend la navigation et le pied de l'accueil ; changer l'adresse d'une page
+  met à jour les liens qui y menaient ; les champs de lien proposent les pages et les ancres. Le bloc **Projets** : des
+  cartes qui mènent chacune à une page (« Créer la page de ce projet » la fabrique et la relie) ; au clic, **la photo et
+  le titre volent** jusqu'à la page (`data-flight`) : toute image d'un bloc porte `data-flight-id` (le nom de sa photo),
+  l'ouverture d'une page porte `data-flight-title` (celui de sa première photo). Ça marche aussi dans l'aperçu, en mode
+  Essayer : les liens vers les pages y deviennent `?page=…`, une vraie navigation, et l'éditeur suit.
 - **Aperçu** (`createur-apercu.html`, `src/createur/apercu.ts`) : une vraie page Presse dans une iframe, au format
   bureau, tablette ou mobile. À chaque changement, le site est rapproché bloc par bloc : un bloc inchangé n'est pas
   touché, un bloc changé est **patché en place** (attributs et textes, nœud à nœud) — la section garde son impression,
@@ -160,9 +167,9 @@ Typographie : `data-ps-type` sur `<html>` — `grotesque` (Archivo large), `dido
   Mode « Essayer » (`E`) : la page se comporte comme publiée. Calques glissables, blocs déposés depuis la bibliothèque,
   annuler / rétablir (les frappes d'un même champ font une étape), enregistrement dans le navigateur, contraste
   encre / papier vérifié.
-- **Export** : *site autonome* (un zip : la page, le moteur et les modules qu'elle charge, fontes, atlas, photos, modèles
+- **Export** : *site autonome* (un zip : une page HTML par page du site, le moteur et les modules qu'elle charge, fontes, atlas, photos, modèles
   — `presse/build/export.ts` suit après la construction tout ce que charge le gabarit `createur-site.html` et en écrit la
-  liste dans `dist/createur-export.json`) ; *page Presse* (le HTML source à poser dans un projet, `npm run build` y
+  liste dans `dist/createur-export.json`) ; *pages Presse* (le HTML source de chaque page, à poser dans un projet, `npm run build` y
   ajoute AVIF/WebP et l'atlas des titres) ; *projet* JSON, et son import.
 
 Ce que le Créateur a demandé au moteur, et qui sert à tout contenu qui change (CMS, script) : images ajoutées ou retirées
@@ -191,7 +198,7 @@ de lui : tout ce qui peut être calculé à la construction l'est, pour laisser 
 ### B. Éditeur
 
 **Fait (v1) : le Créateur** (voir plus haut). Reste : édition des styles par bloc (couleurs, tailles, marges au-delà des
-choix proposés), pages multiples et navigation entre elles (le passage d'images en est prêt), photos déposées par
+choix proposés), photos déposées par
 l'utilisateur dans le site exporté (aujourd'hui : la bibliothèque ou une adresse), images préparées (AVIF, mips) à
 l'export autonome, atlas MTSDF des titres propre à la page exportée, publication directe (Netlify, GitHub Pages).
 

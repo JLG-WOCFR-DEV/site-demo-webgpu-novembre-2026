@@ -36,7 +36,10 @@ export type Page = {
   width: string;
   radius: number;
 };
-export type Site = { v: 1; name: string; page: Page; blocks: Block[] };
+/** Une page du site : son adresse (`index` : l'accueil), son titre, ses blocs. */
+export type SitePage = { id: string; slug: string; title: string; blocks: Block[] };
+/** Un site : une direction (réglages communes à toutes les pages) et des pages. */
+export type Site = { v: 2; name: string; page: Page; pages: SitePage[] };
 
 export type FieldType = "text" | "area" | "select" | "range" | "toggle" | "image" | "color" | "link";
 export type Field = {
@@ -59,6 +62,8 @@ export type RenderCtx = {
   /** Aperçu du Créateur : chaque bloc porte son identifiant, chaque texte modifiable sur place son champ. */
   preview: boolean;
   site: Site;
+  /** La page rendue. */
+  doc: SitePage;
 };
 export type BlockDef = {
   type: string;
@@ -194,10 +199,32 @@ const h2 = (b: Block, ctx: RenderCtx, key = "title") => (str(b.props[key]) ? `<h
 function figure(src: Value | undefined, alt: Value | undefined, o: { material?: Value; reveal?: Value; hover?: Value; ratio?: Value; caption?: Value; cls?: string; ctx: RenderCtx; capKey?: string }) {
   const ph = photo(str(src));
   const ratio = str(o.ratio);
-  return `<figure class="ps-fig${o.cls ? ` ${o.cls}` : ""}"${attr("data-gl-material", o.material)}${ratio ? ` data-ratio style="--ratio: ${esc(ratio)}"` : ""}><img data-gl-img${attr("data-gl-reveal", o.reveal)}${attr("data-gl-hover", o.hover)} src="${esc(src)}"${ph ? ` width="${ph.w}" height="${ph.h}"` : ""} alt="${esc(alt)}" />${str(o.caption) ? `<figcaption class="ps-cap"${ed(o.ctx, o.capKey ?? "caption")}>${esc(o.caption)}</figcaption>` : ""}</figure>`;
+  return `<figure class="ps-fig${o.cls ? ` ${o.cls}` : ""}"${attr("data-flight-id", flightId(src))}${attr("data-gl-material", o.material)}${ratio ? ` data-ratio style="--ratio: ${esc(ratio)}"` : ""}><img data-gl-img${attr("data-gl-reveal", o.reveal)}${attr("data-gl-hover", o.hover)} src="${esc(src)}"${ph ? ` width="${ph.w}" height="${ph.h}"` : ""} alt="${esc(alt)}" />${str(o.caption) ? `<figcaption class="ps-cap"${ed(o.ctx, o.capKey ?? "caption")}>${esc(o.caption)}</figcaption>` : ""}</figure>`;
 }
-const button = (label: Value | undefined, href: Value | undefined, fill: boolean, ctx: RenderCtx, key: string) =>
-  str(label) ? `<a class="ps-btn${fill ? " ps-btn--fill" : ""}" href="${esc(str(href) || "#")}" data-magnet="0.25"><span${ed(ctx, key)}>${esc(label)}</span> <span aria-hidden="true">↗</span></a>` : "";
+/**
+ * Une adresse de lien. Vers une page du site (`./projet.html`) : telle quelle à l'export ; dans l'aperçu, la même iframe
+ * avec `?page=projet` (le passage d'images fonctionne alors aussi en mode Essayer : c'est une vraie navigation).
+ */
+export function href(v: Value | undefined, ctx: RenderCtx) {
+  const s = str(v) || "#";
+  if (!ctx.preview) return s;
+  const m = /^\.\/([a-z0-9-]+)\.html(#.*)?$/.exec(s);
+  if (m && ctx.site.pages.some((p) => p.slug === m[1])) return `?page=${m[1]}${m[2] ?? ""}`;
+  return s;
+}
+/** L'identifiant de passage d'une photo : son nom (./plates/pont.jpg → pont). La même photo, d'une page à l'autre, vole. */
+export const flightId = (src: Value | undefined) => /([\w-]+)\.(?:jpe?g|png|webp|avif)$/i.exec(str(src))?.[1] ?? "";
+/**
+ * L'identifiant de passage qu'une page reçoit : celui de sa première photo (image, texte et image, épinglée). Le titre
+ * de la carte qui y mène porte le même : photo et titre volent ensemble (le titre d'arrivée est celui de l'ouverture).
+ */
+const landingId = (ctx: RenderCtx) => {
+  if (ctx.doc.slug === "index") return "";
+  const b = ctx.doc.blocks.find((x) => !x.hidden && ["image", "duo", "epingle"].includes(x.type) && str(x.props.src));
+  return b ? flightId(b.props.src) : "";
+};
+const button = (label: Value | undefined, hrefv: Value | undefined, fill: boolean, ctx: RenderCtx, key: string) =>
+  str(label) ? `<a class="ps-btn${fill ? " ps-btn--fill" : ""}" href="${esc(href(hrefv, ctx))}" data-magnet="0.25"><span${ed(ctx, key)}>${esc(label)}</span> <span aria-hidden="true">↗</span></a>` : "";
 
 /* ───────────────────────── Champs communs ───────────────────────── */
 
@@ -272,8 +299,8 @@ def({
   render: (b, ctx) => {
     const p = b.props;
     return `<header class="ps-nav"${ctx.preview ? ` data-cr-id="${esc(b.id)}"` : ""}${flag("data-sticky", p.sticky)}>
-  <a class="ps-brand" href="#"${ed(ctx, "brand")}>${esc(p.brand)}</a>
-  <nav class="ps-nav-links" aria-label="Sections">${(b.items ?? []).map((it, i) => `<a href="${esc(str(it.href) || "#")}"${ed(ctx, "label", i)}>${esc(it.label)}</a>`).join("")}</nav>
+  <a class="ps-brand" href="${esc(href("./index.html", ctx))}"${ed(ctx, "brand")}>${esc(p.brand)}</a>
+  <nav class="ps-nav-links" aria-label="Sections">${(b.items ?? []).map((it, i) => `<a href="${esc(href(it.href, ctx))}"${ed(ctx, "label", i)}>${esc(it.label)}</a>`).join("")}</nav>
   ${button(p.cta, p.ctaHref, true, ctx, "cta")}
 </header>`;
   },
@@ -324,7 +351,7 @@ def({
     return `${open(b, ctx, "ps-hero", attr("data-align", p.align === "centre" ? "centre" : "") + attr("data-height", p.height) + attr("data-gl-stage", p.stage) + (str(p.stage) ? " data-stage" : ""))}
   <div class="ps-in">
     ${kicker(b, ctx)}
-    <h1 class="ps-display" data-size="${esc(p.size)}" data-gl-text${flag("data-gl-morph", p.morph)}${attr("data-gl-kinetic", p.kinetic)}${ed(ctx, "title")}>${esc(p.title).replace(/\n/g, "<br />")}</h1>
+    <h1 class="ps-display" data-size="${esc(p.size)}"${attr("data-flight-title", landingId(ctx))} data-gl-text${flag("data-gl-morph", p.morph)}${attr("data-gl-kinetic", p.kinetic)}${ed(ctx, "title")}>${esc(p.title).replace(/\n/g, "<br />")}</h1>
     ${str(p.lede) ? `<p class="ps-lede" data-gl-text${ed(ctx, "lede")}>${esc(p.lede)}</p>` : ""}
     ${main || str(p.cta2) ? `<div class="ps-actions">${on(p.fire) && main ? `<span class="ps-fire" data-gl-stage="enveloppe">${main}</span>` : main}${button(p.cta2, p.cta2Href, false, ctx, "cta2")}</div>` : ""}
   </div>
@@ -766,6 +793,62 @@ def({
 });
 
 def({
+  type: "projets",
+  label: "Projets",
+  group: "Image",
+  glyph: "▤",
+  desc: "Des cartes qui mènent chacune à sa page ; la photo et le titre y volent",
+  fields: [
+    { key: "kicker", label: "Surtitre", type: "text", group: "Contenu" },
+    { key: "title", label: "Titre", type: "text", group: "Contenu" },
+    { key: "cols", label: "Colonnes", type: "range", min: 1, max: 4, step: 1, group: "Mise en page" },
+    { key: "ratio", label: "Proportion", type: "select", choices: RATIOS.filter(([k]) => k), group: "Mise en page" },
+    { key: "hover", label: "Survol", type: "select", choices: HOVERS, group: "Effets GPU" },
+    { key: "reveal", label: "Révélation", type: "select", choices: REVEALS, group: "Effets GPU" },
+  ],
+  defaults: { kicker: "Travaux", title: "Projets choisis", cols: 3, ratio: "4/5", hover: "deplacement", reveal: "", anchor: "travaux" },
+  items: {
+    label: "Projets",
+    noun: "projet",
+    min: 1,
+    max: 12,
+    fields: [
+      { key: "src", label: "Photo", type: "image" },
+      { key: "title", label: "Titre", type: "text" },
+      { key: "text", label: "Texte", type: "text" },
+      { key: "page", label: "Page du projet", type: "link", hint: "./ma-page.html : la photo et le titre y volent" },
+      { key: "alt", label: "Texte alternatif", type: "text" },
+    ],
+    make: (i) => {
+      const ph = PHOTOS[i % PHOTOS.length]!;
+      return { src: ph.src, title: ph.title, text: "Une ligne sur le projet.", page: "", alt: ph.alt };
+    },
+  },
+  defaultItems: () => [0, 1, 2].map((i) => ({ src: PHOTOS[i]!.src, title: PHOTOS[i]!.title, text: "Une ligne sur le projet.", page: "", alt: PHOTOS[i]!.alt })),
+  render: (b, ctx) => {
+    const p = b.props;
+    const cards = (b.items ?? []).map((it, i) => {
+      const id = flightId(it.src);
+      const ph = photo(str(it.src));
+      const fl = str(it.page) && id ? ` data-flight="${esc(id)}" data-flight-id="${esc(id)}"` : "";
+      return `<li><a class="ps-proj" href="${esc(href(it.page, ctx))}"${fl}>
+        <figure class="ps-fig ps-proj-fig" style="--ratio: ${esc(p.ratio)}"><img data-gl-img${attr("data-gl-hover", p.hover)}${attr("data-gl-reveal", p.reveal)} src="${esc(it.src)}"${ph ? ` width="${ph.w}" height="${ph.h}"` : ""} alt="${esc(it.alt)}" /></figure>
+        <span class="ps-proj-meta" data-gl-text><span class="ps-proj-num">${String(i + 1).padStart(2, "0")}</span><span class="ps-proj-title"${fl ? ` data-flight-title="${esc(id)}"` : ""}${ed(ctx, "title", i)}>${esc(it.title)}</span>${str(it.text) ? `<span class="ps-proj-text"${ed(ctx, "text", i)}>${esc(it.text)}</span>` : ""}</span>
+      </a></li>`;
+    });
+    return `${open(b, ctx, "ps-projets")}
+  <div class="ps-in">
+    ${kicker(b, ctx)}
+    ${h2(b, ctx)}
+    <ul class="ps-proj-grid" style="--cols: ${Number(p.cols) || 3}">
+      ${cards.join("\n      ")}
+    </ul>
+  </div>
+</section>`;
+  },
+});
+
+def({
   type: "epingle",
   label: "Section épinglée",
   group: "Image",
@@ -835,7 +918,7 @@ def({
   render: (b, ctx) => {
     const p = b.props;
     const links: Item[] = on(p.auto)
-      ? ctx.site.blocks.filter((x) => !x.hidden && str(x.props.anchor) && (str(x.props.title) || str(x.props.word))).map((x) => ({ label: str(x.props.title) || str(x.props.word), href: `#${str(x.props.anchor)}` }))
+      ? ctx.doc.blocks.filter((x) => !x.hidden && str(x.props.anchor) && (str(x.props.title) || str(x.props.word))).map((x) => ({ label: str(x.props.title) || str(x.props.word), href: `#${str(x.props.anchor)}` }))
       : (b.items ?? []);
     return `${open(b, ctx, "ps-sommaire", "", "section")}
   <div class="ps-in">
@@ -900,7 +983,7 @@ def({
     return `${open(b, ctx, "ps-foot", "", "footer")}
   <div class="ps-in">
     <p class="ps-foot-brand" data-gl-text${ed(ctx, "brand")}>${esc(p.brand)}</p>
-    <ul class="ps-foot-links">${(b.items ?? []).map((it, i) => `<li><a href="${esc(str(it.href) || "#")}"${ed(ctx, "label", i)}>${esc(it.label)}</a></li>`).join("")}</ul>
+    <ul class="ps-foot-links">${(b.items ?? []).map((it, i) => `<li><a href="${esc(href(it.href, ctx))}"${ed(ctx, "label", i)}>${esc(it.label)}</a></li>`).join("")}</ul>
     ${str(p.legal) ? `<p class="ps-foot-legal"${ed(ctx, "legal")}>${esc(p.legal)}</p>` : ""}
   </div>
 </footer>`;
@@ -945,12 +1028,26 @@ export const DEFAULT_PAGE: Page = {
   radius: 10,
 };
 
-/** Un site réparé : champs manquants remis à leur valeur par défaut, blocs inconnus écartés (import d'un JSON). */
-export function normalize(raw: unknown): Site {
-  const r = (raw ?? {}) as Partial<Site>;
-  const page = { ...DEFAULT_PAGE, ...(r.page ?? {}) } as Page;
-  if (!Array.isArray(page.effects)) page.effects = [...DEFAULT_PAGE.effects];
-  const blocks = (Array.isArray(r.blocks) ? r.blocks : [])
+/** Une adresse de page : minuscules, sans accents, tirets. */
+export const slugify = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48) || "page";
+/** Une adresse libre parmi celles du site. */
+export function uniqueSlug(site: Site, want: string, except?: string) {
+  const base = slugify(want);
+  let s = base;
+  for (let i = 2; site.pages.some((p) => p.slug === s && p.id !== except); i++) s = `${base}-${i}`;
+  return s;
+}
+export const makePage = (title: string, slug: string, blocks: Block[] = []): SitePage => ({ id: newId("page"), slug, title, blocks });
+
+function normalizeBlocks(raw: unknown): Block[] {
+  return (Array.isArray(raw) ? raw : [])
     .filter((b): b is Block => !!b && typeof b === "object" && typeof (b as Block).type === "string" && !!BLOCKS[(b as Block).type])
     .map((b) => {
       const d = BLOCKS[b.type]!;
@@ -959,13 +1056,40 @@ export function normalize(raw: unknown): Site {
       if (b.hidden) out.hidden = true;
       return out;
     });
-  // Identifiants uniques (un JSON édité à la main peut en dupliquer).
-  const seen = new Set<string>();
-  for (const b of blocks) {
-    if (seen.has(b.id)) b.id = newId(b.type);
-    seen.add(b.id);
+}
+
+/**
+ * Un site réparé : champs manquants remis à leur valeur par défaut, blocs inconnus écartés, identifiants et adresses
+ * uniques, accueil en tête (import d'un JSON). Un site d'une version précédente (une seule liste de blocs) devient un
+ * site d'une page.
+ */
+export function normalize(raw: unknown): Site {
+  const r = (raw ?? {}) as Partial<Site> & { blocks?: unknown };
+  const page = { ...DEFAULT_PAGE, ...(r.page ?? {}) } as Page;
+  if (!Array.isArray(page.effects)) page.effects = [...DEFAULT_PAGE.effects];
+  const rawPages: Partial<SitePage>[] = Array.isArray(r.pages) && r.pages.length ? r.pages : [{ slug: "index", title: page.title, blocks: r.blocks as Block[] }];
+  const site: Site = { v: 2, name: typeof r.name === "string" && r.name ? r.name : page.title, page, pages: [] };
+  for (const rp of rawPages) {
+    if (!rp || typeof rp !== "object") continue;
+    const title = typeof rp.title === "string" && rp.title ? rp.title : "Page";
+    const p = makePage(title, "", normalizeBlocks(rp.blocks));
+    if (typeof rp.id === "string" && rp.id && !site.pages.some((x) => x.id === rp.id)) p.id = rp.id;
+    p.slug = uniqueSlug(site, typeof rp.slug === "string" && rp.slug ? rp.slug : title, p.id);
+    site.pages.push(p);
   }
-  return { v: 1, name: typeof r.name === "string" && r.name ? r.name : page.title, page, blocks };
+  if (!site.pages.length) site.pages.push(makePage(page.title, "index"));
+  // L'accueil : la page « index », sinon la première, en tête.
+  const home = site.pages.findIndex((p) => p.slug === "index");
+  if (home < 0) site.pages[0]!.slug = "index";
+  else if (home > 0) site.pages.unshift(...site.pages.splice(home, 1));
+  // Identifiants de blocs uniques dans tout le site (un JSON édité à la main peut en dupliquer).
+  const seen = new Set<string>();
+  for (const p of site.pages)
+    for (const b of p.blocks) {
+      if (seen.has(b.id)) b.id = newId(b.type);
+      seen.add(b.id);
+    }
+  return site;
 }
 
 /* ───────────────────────── Compilation ───────────────────────── */
@@ -1020,48 +1144,58 @@ export function rootCss(page: Page) {
   return `:root { --paper: ${col.paper}; --ink: ${col.ink}; --spot: ${col.spot}; --ps-max: ${WIDTH_PX[page.width] ?? WIDTH_PX.normale}; --ps-radius: ${Math.max(0, Number(page.radius) || 0)}px; }`;
 }
 
-export function renderBlock(b: Block, site: Site, preview = false) {
+export function renderBlock(b: Block, site: Site, doc: SitePage, preview = false) {
   const d = BLOCKS[b.type];
   if (!d) return "";
-  return d.render(b, { preview, site });
+  return d.render(b, { preview, site, doc });
 }
-export const renderBody = (site: Site, preview = false) =>
-  site.blocks
+export const renderBody = (site: Site, doc: SitePage, preview = false) =>
+  doc.blocks
     .filter((b) => !b.hidden)
-    .map((b) => renderBlock(b, site, preview))
+    .map((b) => renderBlock(b, site, doc, preview))
     .join("\n\n");
 
-/**
- * La page source complète, à poser à la racine d'un projet Presse (à côté de index.html) : `npm run build` la déroule,
- * prépare ses images, en fait l'atlas des titres. `entry` : le module du kit (par défaut celui du projet).
- */
-export function compileSite(site: Site, o: { entry?: string } = {}) {
-  const page = site.page;
-  const attrs = Object.entries(htmlAttrs(page))
-    .map(([k, v]) => (v === "" ? ` ${k}` : ` ${k}="${esc(v)}"`))
-    .join("");
-  // La navigation en tête et le pied en fin restent hors de <main> (repères de page).
-  const shown = site.blocks.filter((b) => !b.hidden);
+/** Le titre de document d'une page : celui du site à l'accueil, « page — site » ailleurs. */
+export const docTitle = (site: Site, doc: SitePage) => (doc.slug === "index" ? site.page.title : `${doc.title} — ${site.page.title}`);
+/** Le nom du fichier d'une page. */
+export const fileOf = (doc: SitePage) => `${doc.slug}.html`;
+
+/** La navigation en tête et le pied en fin restent hors de <main> (repères de page). */
+export function splitLandmarks(blocks: Block[]) {
+  const shown = blocks.filter((b) => !b.hidden);
   let a0 = 0;
   while (a0 < shown.length && shown[a0]!.type === "nav") a0++;
   let a1 = shown.length;
   while (a1 > a0 && shown[a1 - 1]!.type === "pied") a1--;
+  return { head: shown.slice(0, a0), main: shown.slice(a0, a1), foot: shown.slice(a1) };
+}
+
+/**
+ * Une page source complète, à poser à la racine d'un projet Presse (à côté de index.html) : `npm run build` la déroule,
+ * prépare ses images, en fait l'atlas des titres. `entry` : le module du kit (par défaut celui du projet).
+ */
+export function compileSite(site: Site, doc: SitePage = site.pages[0]!, o: { entry?: string } = {}) {
+  const page = site.page;
+  const attrs = Object.entries(htmlAttrs(page))
+    .map(([k, v]) => (v === "" ? ` ${k}` : ` ${k}="${esc(v)}"`))
+    .join("");
+  const parts = splitLandmarks(doc.blocks);
   const part = (bs: Block[], pad: string) =>
     bs
-      .map((b) => renderBlock(b, site))
+      .map((b) => renderBlock(b, site, doc))
       .join("\n\n")
       .split("\n")
       .map((l) => (l ? pad + l : l))
       .join("\n");
-  const head = part(shown.slice(0, a0), "    ");
-  const main = part(shown.slice(a0, a1), "      ");
-  const foot = part(shown.slice(a1), "    ");
+  const head = part(parts.head, "    ");
+  const main = part(parts.main, "      ");
+  const foot = part(parts.foot, "    ");
   return `<!doctype html>
 <html${attrs}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${esc(page.title)}</title>
+    <title>${esc(docTitle(site, doc))}</title>
     <meta name="description" content="${esc(page.description)}" />
     <meta name="generator" content="Presse — Créateur" />
     <style>

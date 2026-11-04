@@ -7,7 +7,7 @@
  * page charge par son adresse : atlas des lettres, photos, modèles 3D.
  */
 import { COMPONENTS } from "../presse/render.ts";
-import { esc, htmlAttrs, renderBlock, rootCss, type Site } from "./model.ts";
+import { docTitle, esc, fileOf, htmlAttrs, renderBlock, rootCss, splitLandmarks, type Site, type SitePage } from "./model.ts";
 import { zip } from "./zip.ts";
 
 const ALWAYS = ["msdf/display.json", "msdf/display.png", "sdf/text.json", "sdf/text.png"];
@@ -40,7 +40,7 @@ export function siteFiles(site: Site) {
     const s = String(v ?? "");
     if (/^\.\/[\w./-]+\.(?:jpe?g|png|webp|avif|gif|svg|glb)$/i.test(s)) out.add(s.slice(2));
   };
-  for (const b of site.blocks) {
+  for (const b of site.pages.flatMap((p) => p.blocks)) {
     if (b.hidden) continue;
     for (const v of Object.values(b.props)) local(v);
     for (const it of b.items ?? []) for (const v of Object.values(it)) local(v);
@@ -53,26 +53,22 @@ export function siteFiles(site: Site) {
   return [...out];
 }
 
-/** La page complète du site, à partir du gabarit construit. */
-export function pageFromTemplate(tpl: string, site: Site) {
+/** Une page complète du site, à partir du gabarit construit. */
+export function pageFromTemplate(tpl: string, site: Site, doc: SitePage) {
   const page = site.page;
   const attrs = Object.entries(htmlAttrs(page))
     .map(([k, v]) => (v === "" ? ` ${k}` : ` ${k}="${esc(v)}"`))
     .join("");
-  const shown = site.blocks.filter((b) => !b.hidden);
-  let a0 = 0;
-  while (a0 < shown.length && shown[a0]!.type === "nav") a0++;
-  let a1 = shown.length;
-  while (a1 > a0 && shown[a1 - 1]!.type === "pied") a1--;
-  const part = (bs: typeof shown) => expandHtml(bs.map((b) => renderBlock(b, site)).join("\n"));
-  const body = `${part(shown.slice(0, a0))}\n<main>\n${part(shown.slice(a0, a1))}\n</main>\n${part(shown.slice(a1))}`;
+  const parts = splitLandmarks(doc.blocks);
+  const part = (bs: SitePage["blocks"]) => expandHtml(bs.map((b) => renderBlock(b, site, doc)).join("\n"));
+  const body = `${part(parts.head)}\n<main>\n${part(parts.main)}\n</main>\n${part(parts.foot)}`;
   return tpl
     .replace(/<!--[\s\S]*?-->\s*/, "")
     .replace(/<html[^>]*>/, `<html${attrs}>`)
-    .replace(/<title>[^<]*<\/title>/, `<title>${esc(page.title)}</title>`)
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(docTitle(site, doc))}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${esc(page.description)}" />`)
     .replace(/<\/head>/, `  <style>${rootCss(page)}</style>\n  </head>`)
-    .replace(/<main data-ps-main><\/main>/, body);
+    .replace(/<main data-ps-main><\/main>/, () => body);
 }
 
 export type Progress = (done: number, total: number) => void;
@@ -84,9 +80,10 @@ export async function exportZip(site: Site, progress?: Progress): Promise<Blob> 
     .catch(() => null);
   if (!manifest) throw new Error("Le site autonome se fabrique depuis la version construite (npm run build) : ici, exportez la page Presse.");
   const tpl = await (await fetch(`./${manifest.page}`)).text();
-  const html = pageFromTemplate(tpl, site);
+  const enc = new TextEncoder();
   const names = [...new Set([...manifest.files, ...ALWAYS, ...siteFiles(site)])];
-  const entries: { name: string; data: Uint8Array }[] = [{ name: "index.html", data: new TextEncoder().encode(html) }];
+  // Une page HTML par page du site, chacune à son adresse : les liens ./page.html et le passage d'images marchent tels quels.
+  const entries: { name: string; data: Uint8Array }[] = site.pages.map((d) => ({ name: fileOf(d), data: enc.encode(pageFromTemplate(tpl, site, d)) }));
   let done = 0;
   const missing: string[] = [];
   // Quelques téléchargements à la fois.
@@ -101,10 +98,10 @@ export async function exportZip(site: Site, progress?: Progress): Promise<Blob> 
       }
     }),
   );
-  if (missing.length) entries.push({ name: "MANQUANTS.txt", data: new TextEncoder().encode(`Fichiers introuvables au moment de l'export :\n${missing.join("\n")}\n`) });
+  if (missing.length) entries.push({ name: "MANQUANTS.txt", data: enc.encode(`Fichiers introuvables au moment de l'export :\n${missing.join("\n")}\n`) });
   entries.push({
     name: "LISEZMOI.txt",
-    data: new TextEncoder().encode(
+    data: enc.encode(
       `${site.page.title}\n\nSite fait avec le Créateur de Presse. Déposez ce dossier tel quel chez un hébergeur statique (Netlify, GitHub Pages, un serveur web) : index.html à la racine, chemins relatifs.\n\nLe rendu WebGPU demande Chrome, Edge ou Safari 26 ; ailleurs, la page reste son HTML, complète et lisible.\nOuvert directement depuis le disque (file://), le navigateur refuse les modules : passez par un serveur (npx serve .).\n`,
     ),
   });

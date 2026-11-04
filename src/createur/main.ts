@@ -4,9 +4,10 @@
  * historique (annuler, rétablir), enregistrement dans le navigateur, aperçu, interface.
  */
 import "./style.css";
-import { BLOCKS, BLOCK_LIST, CUI_CHOICES, STYLE_PRESETS, EFFECTS, GROUPS, LOOK_NAMES, MOTIONS, PALETTES, PHOTOS, TRANSITION_CHOICES, TYPES, WIDTHS, colors, compileSite, contrast, makeBlock, newId, normalize, type Block, type Field, type Page, type Props, type Site, type Value } from "./model.ts";
-import { TEMPLATES } from "./templates.ts";
+import { BLOCKS, BLOCK_LIST, CUI_CHOICES, STYLE_PRESETS, makePage, uniqueSlug, fileOf, type SitePage, EFFECTS, GROUPS, LOOK_NAMES, MOTIONS, PALETTES, PHOTOS, TRANSITION_CHOICES, TYPES, WIDTHS, colors, compileSite, contrast, makeBlock, newId, normalize, type Block, type Field, type Page, type Props, type Site, type Value } from "./model.ts";
+import { TEMPLATES, projectPage } from "./templates.ts";
 import { exportZip } from "./export.ts";
+import { zip } from "./zip.ts";
 import type { FromPreview, ToPreview } from "./protocol.ts";
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector<T>(s)!;
@@ -42,9 +43,9 @@ const store = {
 
 const ui = (() => {
   try {
-    return { device: "bureau", edit: true, ...(JSON.parse(store.get(UI_KEY) ?? "{}") as object) } as { device: string; edit: boolean };
+    return { device: "bureau", edit: true, page: "", ...(JSON.parse(store.get(UI_KEY) ?? "{}") as object) } as { device: string; edit: boolean; page: string };
   } catch {
-    return { device: "bureau", edit: true };
+    return { device: "bureau", edit: true, page: "" };
   }
 })();
 let site: Site = (() => {
@@ -65,7 +66,9 @@ const redo: string[] = [];
 let coalesceKey = "";
 let coalesceT = 0;
 
-const blockById = (id: string) => site.blocks.find((b) => b.id === id);
+/** La page en cours d'édition. */
+const doc = (): SitePage => site.pages.find((p) => p.id === ui.page) ?? site.pages[0]!;
+const blockById = (id: string) => doc().blocks.find((b) => b.id === id);
 const saveUi = () => store.set(UI_KEY, JSON.stringify(ui));
 
 /**
@@ -89,6 +92,7 @@ function change(fn: (s: Site) => void, o: { key?: string; quiet?: boolean; live?
 function after(o: { quiet?: boolean; live?: boolean } = {}) {
   persist();
   if (!o.live) sendSite();
+  renderPages();
   renderLayers();
   if (!o.quiet) renderInspector();
   renderTitle();
@@ -131,7 +135,7 @@ function sendSite() {
   sendQueued = true;
   requestAnimationFrame(() => {
     sendQueued = false;
-    sendPreview({ type: "site", site, selected });
+    sendPreview({ type: "site", site, page: doc().slug, selected });
   });
 }
 // Curseur et défilement s'installent au démarrage de la page : les changer recharge l'aperçu.
@@ -153,8 +157,13 @@ addEventListener("message", (e: MessageEvent) => {
     case "ready":
       ready = true;
       gpu = m.gpu;
+      // L'aperçu a navigué (un lien vers une autre page, en mode Essayer) : l'éditeur le suit.
+      if (m.page && m.page !== doc().slug) {
+        const to = site.pages.find((p) => p.slug === m.page);
+        if (to) setPage(to.id, false);
+      }
       sendPreview({ type: "mode", edit: ui.edit });
-      sendPreview({ type: "site", site, selected });
+      sendPreview({ type: "site", site, page: doc().slug, selected });
       renderStatus();
       break;
     case "gpu":
@@ -250,36 +259,36 @@ function select(id: string, reveal = true) {
   if (selected) $(`[data-layer="${selected}"]`)?.scrollIntoView({ block: "nearest" });
 }
 function act(id: string, op: "up" | "down" | "dup" | "del") {
-  const i = site.blocks.findIndex((b) => b.id === id);
+  const i = doc().blocks.findIndex((b) => b.id === id);
   if (i < 0) return;
   if (op === "del") {
-    const label = BLOCKS[site.blocks[i]!.type]?.label ?? "Bloc";
-    change((s) => void s.blocks.splice(i, 1));
-    selected = site.blocks[Math.min(i, site.blocks.length - 1)]?.id ?? "";
+    const label = BLOCKS[doc().blocks[i]!.type]?.label ?? "Bloc";
+    change((s) => void doc().blocks.splice(i, 1));
+    selected = doc().blocks[Math.min(i, doc().blocks.length - 1)]?.id ?? "";
     renderLayers();
     renderInspector();
     sendPreview({ type: "select", id: selected });
     toast(`${label} supprimé — ⌘Z pour le rendre`);
   } else if (op === "dup") {
-    const copy = JSON.parse(JSON.stringify(site.blocks[i])) as Block;
+    const copy = JSON.parse(JSON.stringify(doc().blocks[i])) as Block;
     copy.id = newId(copy.type);
     if (copy.props.anchor) copy.props.anchor = `${copy.props.anchor}-2`;
-    change((s) => void s.blocks.splice(i + 1, 0, copy));
+    change((s) => void doc().blocks.splice(i + 1, 0, copy));
     select(copy.id);
   } else {
     const j = op === "up" ? i - 1 : i + 1;
-    if (j < 0 || j >= site.blocks.length) return;
+    if (j < 0 || j >= doc().blocks.length) return;
     change((s) => {
-      const [b] = s.blocks.splice(i, 1);
-      s.blocks.splice(j, 0, b!);
+      const [b] = doc().blocks.splice(i, 1);
+      doc().blocks.splice(j, 0, b!);
     });
     sendPreview({ type: "select", id, reveal: true });
   }
 }
 function addBlock(type: string, at?: number) {
   const b = makeBlock(type);
-  const i = at ?? (selected ? site.blocks.findIndex((x) => x.id === selected) + 1 : site.blocks.length - (site.blocks.at(-1)?.type === "pied" ? 1 : 0));
-  change((s) => void s.blocks.splice(Math.max(0, i), 0, b));
+  const i = at ?? (selected ? doc().blocks.findIndex((x) => x.id === selected) + 1 : doc().blocks.length - (doc().blocks.at(-1)?.type === "pied" ? 1 : 0));
+  change((s) => void doc().blocks.splice(Math.max(0, i), 0, b));
   setTab("layers");
   select(b.id);
 }
@@ -290,17 +299,17 @@ const layersEl = $("[data-cr-layers]");
 const summary = (b: Block) => String(b.props.title || b.props.brand || b.props.word || b.props.quote || b.props.text || b.props.lines || b.props.words || b.props.caption || b.props.kicker || (b.props.src ? String(b.props.src).split("/").pop() : "") || "").split("\n")[0]!.slice(0, 48);
 let dragId = "";
 function renderLayers() {
-  layersEl.innerHTML = site.blocks
+  layersEl.innerHTML = doc().blocks
     .map((b) => {
       const d = BLOCKS[b.type]!;
-      return `<li class="cr-layer" role="option" tabindex="${b.id === selected || (!selected && b === site.blocks[0]) ? 0 : -1}" aria-selected="${b.id === selected}" data-layer="${b.id}" draggable="true"${b.hidden ? " data-hidden" : ""}>
+      return `<li class="cr-layer" role="option" tabindex="${b.id === selected || (!selected && b === doc().blocks[0]) ? 0 : -1}" aria-selected="${b.id === selected}" data-layer="${b.id}" draggable="true"${b.hidden ? " data-hidden" : ""}>
   <span class="cr-glyph" aria-hidden="true">${d.glyph}</span>
   <span class="cr-layer-txt"><b>${esc(d.label)}</b><span>${esc(summary(b)) || "&nbsp;"}</span></span>
   <button type="button" class="cr-mini" data-eye title="${b.hidden ? "Afficher" : "Masquer"}" aria-label="${b.hidden ? "Afficher" : "Masquer"} ${esc(d.label)}">${b.hidden ? "◌" : "●"}</button>
 </li>`;
     })
     .join("");
-  if (!site.blocks.length) layersEl.innerHTML = `<li class="cr-empty">La page est vide. Ajoutez un bloc.</li>`;
+  if (!doc().blocks.length) layersEl.innerHTML = `<li class="cr-empty">La page est vide. Ajoutez un bloc.</li>`;
 }
 layersEl.addEventListener("click", (e) => {
   const li = (e.target as HTMLElement).closest<HTMLElement>("[data-layer]");
@@ -318,11 +327,11 @@ layersEl.addEventListener("click", (e) => {
 layersEl.addEventListener("keydown", (e) => {
   const li = (e.target as HTMLElement).closest<HTMLElement>("[data-layer]");
   if (!li) return;
-  const i = site.blocks.findIndex((b) => b.id === li.dataset.layer);
+  const i = doc().blocks.findIndex((b) => b.id === li.dataset.layer);
   if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) return;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault();
-    const n = site.blocks[i + (e.key === "ArrowDown" ? 1 : -1)];
+    const n = doc().blocks[i + (e.key === "ArrowDown" ? 1 : -1)];
     if (n) {
       select(n.id);
       $<HTMLElement>(`[data-layer="${n.id}"]`).focus();
@@ -369,13 +378,13 @@ layersEl.addEventListener("drop", (e) => {
   const fresh = e.dataTransfer?.getData("text/x-cr-new");
   if (fresh) return addBlock(fresh, i);
   const id = e.dataTransfer?.getData("text/x-cr-block") || dragId;
-  const from = site.blocks.findIndex((b) => b.id === id);
+  const from = doc().blocks.findIndex((b) => b.id === id);
   if (from < 0) return;
   const to = i > from ? i - 1 : i;
   if (to === from) return;
   change((s) => {
-    const [b] = s.blocks.splice(from, 1);
-    s.blocks.splice(to, 0, b!);
+    const [b] = doc().blocks.splice(from, 1);
+    doc().blocks.splice(to, 0, b!);
   });
   sendPreview({ type: "select", id, reveal: true });
 });
@@ -383,6 +392,67 @@ layersEl.addEventListener("dragend", () => {
   dragId = "";
   $$(".is-drag", layersEl).forEach((x) => x.classList.remove("is-drag"));
 });
+
+/* ───────────────────────── Pages ───────────────────────── */
+
+const pagesEl = $("[data-cr-pages]");
+function renderPages() {
+  pagesEl.innerHTML = site.pages
+    .map(
+      (p) =>
+        `<li><button type="button" class="cr-page" data-page="${p.id}" aria-current="${p.id === doc().id ? "page" : "false"}"><span class="cr-page-ico" aria-hidden="true">${p.slug === "index" ? "⌂" : "▭"}</span><span class="cr-page-txt"><b>${esc(p.title)}</b><code>${esc(fileOf(p))}</code></span></button></li>`,
+    )
+    .join("");
+}
+/** Changer de page : calques, inspecteur et aperçu suivent. `send` : faux quand c'est l'aperçu qui a navigué. */
+function setPage(id: string, send = true) {
+  if (!site.pages.some((p) => p.id === id)) return;
+  ui.page = id;
+  saveUi();
+  selected = "";
+  coalesceKey = "";
+  renderPages();
+  renderLayers();
+  renderInspector();
+  if (send) {
+    sendSite();
+    sendPreview({ type: "scroll", top: 0 });
+  }
+}
+pagesEl.addEventListener("click", (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>("[data-page]");
+  if (b) setPage(b.dataset.page!);
+});
+/** Une page neuve reprend la navigation et le pied de l'accueil. */
+function addPage(title = "Nouvelle page", blocks?: Block[]) {
+  const clone = (b?: Block) => (b ? ({ ...JSON.parse(JSON.stringify(b)), id: newId(b.type) } as Block) : null);
+  const home = site.pages[0]!;
+  const nav = clone(home.blocks.find((b) => b.type === "nav"));
+  const foot = clone(home.blocks.find((b) => b.type === "pied"));
+  const pg = makePage(title, uniqueSlug(site, title), blocks ?? [...(nav ? [nav] : []), makeBlock("hero", { kicker: "", title, lede: "", cta: "", cta2: "", size: "l", height: "auto", kinetic: "" }), makeBlock("texte", { kicker: "", title: "", rule: false }), ...(foot ? [foot] : [])]);
+  change((s) => void s.pages.push(pg));
+  setPage(pg.id);
+  toast(`Page « ${title} » : ./${fileOf(pg)}`);
+  return pg;
+}
+$("[data-cr-addpage]").addEventListener("click", () => addPage());
+function pageOp(op: "dup" | "del") {
+  const d = doc();
+  if (op === "del") {
+    if (d.slug === "index") return;
+    change((s) => void s.pages.splice(s.pages.indexOf(d), 1));
+    setPage(site.pages[0]!.id);
+    toast(`Page « ${d.title} » supprimée — ⌘Z pour la rendre`);
+  } else {
+    const copy = JSON.parse(JSON.stringify(d)) as SitePage;
+    copy.id = newId("page");
+    copy.title = `${d.title} (copie)`;
+    copy.slug = uniqueSlug(site, d.slug === "index" ? "accueil-copie" : `${d.slug}-copie`);
+    for (const b of copy.blocks) b.id = newId(b.type);
+    change((s) => void s.pages.splice(s.pages.indexOf(d) + 1, 0, copy));
+    setPage(copy.id);
+  }
+}
 
 /* ───────────────────────── Bibliothèque ───────────────────────── */
 
@@ -416,6 +486,16 @@ $("[data-cr-tab-go]").addEventListener("click", () => setTab("add"));
 /* ───────────────────────── Inspecteur ───────────────────────── */
 
 const insp = $("[data-cr-insp]");
+/** Les liens possibles : les pages du site, les ancres de la page. */
+const linksList = document.createElement("datalist");
+linksList.id = "cr-links";
+document.body.append(linksList);
+function renderLinks() {
+  const anchors = doc()
+    .blocks.map((b) => String(b.props.anchor ?? ""))
+    .filter(Boolean);
+  linksList.innerHTML = [...site.pages.map((p) => `<option value="./${esc(fileOf(p))}">${esc(p.title)}</option>`), ...anchors.map((a) => `<option value="#${esc(a)}">Ancre de la page</option>`)].join("");
+}
 const fieldId = (k: string) => `cr-f-${k.replace(/[^a-z0-9-]/gi, "")}`;
 const thumb = (src: Value | undefined) => (src ? `<img src="${esc(src)}" alt="" loading="lazy" />` : `<span>—</span>`);
 
@@ -439,7 +519,7 @@ function fieldHtml(f: Field, v: Value | undefined, item?: number) {
     case "image":
       return `<div class="cr-field">${label}<button type="button" class="cr-img" id="${id}" ${data} data-img value="${esc(v)}">${thumb(v)}<span>${esc(PHOTOS.find((p) => p.src === v)?.title ?? (v ? String(v).split("/").pop() : "Choisir"))}</span></button>${hint}</div>`;
     default:
-      return `<div class="cr-field">${label}<input id="${id}" type="${f.type === "link" ? "text" : "text"}" ${data} value="${esc(v)}" spellcheck="${f.type === "link" ? "false" : "true"}"${f.type === "link" ? ' placeholder="#ancre, ./page.html, https://…"' : ""} />${hint}</div>`;
+      return `<div class="cr-field">${label}<input id="${id}" type="${f.type === "link" ? "text" : "text"}" ${data} value="${esc(v)}" spellcheck="${f.type === "link" ? "false" : "true"}"${f.type === "link" ? ' list="cr-links" placeholder="#ancre, ./page.html, https://…"' : ""} />${hint}</div>`;
   }
 }
 function grouped(fields: Field[], values: Props) {
@@ -466,7 +546,7 @@ function itemsHtml(b: Block) {
       return `<li class="cr-item" data-item="${i}"><details${openItems.has(key) ? " open" : ""} data-ikey="${key}"><summary>${it.src !== undefined ? `<span class="cr-item-thumb">${thumb(it.src)}</span>` : ""}<span class="cr-item-name">${esc(title)}</span><span class="cr-item-tools"><button type="button" class="cr-mini" data-iop="up" aria-label="Monter">↑</button><button type="button" class="cr-mini" data-iop="down" aria-label="Descendre">↓</button><button type="button" class="cr-mini" data-iop="del" aria-label="Retirer"${items.length <= spec.min ? " disabled" : ""}>✕</button></span></summary><div class="cr-item-body">${spec.fields
         .filter((f) => !f.when || f.when(it))
         .map((f) => fieldHtml(f, it[f.key], i))
-        .join("")}</div></details></li>`;
+        .join("")}${b.type === "projets" && !site.pages.some((p) => `./${fileOf(p)}` === it.page) ? `<button type="button" class="cr-add-wide" data-mkpage>Créer la page de ce projet</button>` : ""}</div></details></li>`;
     })
     .join("")}</ol>
   ${items.length < spec.max ? `<button type="button" class="cr-add-wide" data-iadd>+ Ajouter ${spec.noun === "entrée" ? "une" : spec.noun === "lien" || spec.noun === "chiffre" ? "un" : "une"} ${esc(spec.noun)}</button>` : ""}
@@ -504,6 +584,7 @@ function pageFields(p: Page): string {
 }
 
 function renderInspector() {
+  renderLinks();
   for (const b of $$<HTMLButtonElement>("[data-cr-rtab]")) b.setAttribute("aria-selected", String(b.dataset.crRtab === rtab));
   const scroll = insp.scrollTop;
   const closed = new Set($$<HTMLDetailsElement>("details.cr-group:not([open])", insp).map((d) => d.dataset.group!));
@@ -514,11 +595,18 @@ function renderInspector() {
       const on = (Object.keys(sp.page) as (keyof Page)[]).every((k) => JSON.stringify(site.page[k]) === JSON.stringify(sp.page[k]));
       return `<button type="button" class="cr-preset" data-preset="${sp.id}" aria-pressed="${on}" style="--p:${pal.paper};--i:${pal.ink};--s:${pal.spot}"><span class="cr-preset-aa" style="font-family:${FONT[sp.page.type!]};${sp.page.type === "technique" ? "font-variation-settings:'wdth' 62;text-transform:uppercase;" : ""}">Aa</span><span>${esc(sp.label)}</span></button>`;
     }).join("");
-    insp.innerHTML = `<header class="cr-insp-head"><span class="cr-glyph" aria-hidden="true">⚙</span><div><h2>Page</h2><p>Couleurs, typographie, rendu GPU — pour toute la page</p></div></header><details class="cr-group" open data-group="Directions"><summary>Directions</summary><div class="cr-group-body"><div class="cr-presets">${presets}</div></div></details>${pageFields(site.page)}`;
+    insp.innerHTML = `<header class="cr-insp-head"><span class="cr-glyph" aria-hidden="true">⚙</span><div><h2>Site</h2><p>Couleurs, typographie, rendu GPU — pour toutes les pages</p></div></header><details class="cr-group" open data-group="Directions"><summary>Directions</summary><div class="cr-group-body"><div class="cr-presets">${presets}</div></div></details>${pageFields(site.page)}`;
   } else {
     const b = blockById(selected);
     if (!b) {
-      insp.innerHTML = `<div class="cr-insp-empty"><p><b>Aucun bloc choisi.</b></p><p>Cliquez un bloc dans l'aperçu ou dans les calques. Double-cliquez un texte de l'aperçu pour l'écrire sur place.</p><p><button type="button" class="cr-btn" data-goto-page>Réglages de la page</button></p></div>`;
+      const d = doc();
+      const home = d.slug === "index";
+      insp.innerHTML = `<header class="cr-insp-head"><span class="cr-glyph" aria-hidden="true">▭</span><div><h2>${esc(d.title)}</h2><p>${home ? "L'accueil" : "Une page"} du site · <code>${esc(fileOf(d))}</code></p></div><span class="cr-insp-tools"><button type="button" class="cr-mini" data-pop="dup" title="Dupliquer la page" aria-label="Dupliquer la page">⧉</button>${home ? "" : `<button type="button" class="cr-mini" data-pop="del" title="Supprimer la page" aria-label="Supprimer la page">✕</button>`}</span></header>
+<details class="cr-group" open data-group="PageDoc"><summary>Page</summary><div class="cr-group-body">
+  <div class="cr-field"><label class="cr-lab" for="cr-pg-title">Titre</label><input id="cr-pg-title" type="text" data-pg="title" value="${esc(d.title)}" /><small class="cr-hint-txt">${home ? "L'onglet affiche le titre du site" : "L'onglet affiche « titre — site »"}</small></div>
+  ${home ? "" : `<div class="cr-field"><label class="cr-lab" for="cr-pg-slug">Adresse</label><input id="cr-pg-slug" type="text" data-pg="slug" value="${esc(d.slug)}" spellcheck="false" /><small class="cr-hint-txt">Le fichier : <code>${esc(fileOf(d))}</code> ; les liens <code>./${esc(d.slug)}.html</code> y mènent</small></div>`}
+</div></details>
+<div class="cr-insp-empty"><p>Cliquez un bloc dans l'aperçu ou dans les calques. Double-cliquez un texte de l'aperçu pour l'écrire sur place.</p><p><button type="button" class="cr-btn" data-goto-page>Réglages du site</button></p></div>`;
     } else {
       const d = BLOCKS[b.type]!;
       insp.innerHTML = `<header class="cr-insp-head"><span class="cr-glyph" aria-hidden="true">${d.glyph}</span><div><h2>${esc(d.label)}</h2><p>${esc(d.desc)}</p></div><span class="cr-insp-tools"><button type="button" class="cr-mini" data-bop="dup" title="Dupliquer (⌘D)" aria-label="Dupliquer">⧉</button><button type="button" class="cr-mini" data-bop="del" title="Supprimer" aria-label="Supprimer">✕</button></span></header>${grouped(d.fields, b.props)}${d.items ? itemsHtml(b) : ""}`;
@@ -572,10 +660,32 @@ function onField(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement 
 }
 insp.addEventListener("input", (e) => {
   const el = e.target as HTMLInputElement;
+  if (el.dataset.pg === "title") {
+    const d = doc();
+    change(() => void (d.title = el.value), { key: `pg:${d.id}:title`, quiet: true });
+    return;
+  }
   if (el.matches("[data-f], [data-if], [data-fx]")) onField(el, false);
 });
 insp.addEventListener("change", (e) => {
   const el = e.target as HTMLInputElement;
+  if (el.dataset.pg === "slug") {
+    // Changer l'adresse d'une page : les liens qui y menaient suivent.
+    const d = doc();
+    const old = `./${fileOf(d)}`;
+    const slug = uniqueSlug(site, el.value || d.title, d.id);
+    if (slug === "index" || slug === d.slug) return renderInspector();
+    change((s) => {
+      d.slug = slug;
+      const now = `./${fileOf(d)}`;
+      for (const p of s.pages)
+        for (const b of p.blocks) {
+          for (const [k, v] of Object.entries(b.props)) if (typeof v === "string" && v.startsWith(old)) b.props[k] = now + v.slice(old.length);
+          for (const it of b.items ?? []) for (const [k, v] of Object.entries(it)) if (typeof v === "string" && v.startsWith(old)) it[k] = now + v.slice(old.length);
+        }
+    });
+    return;
+  }
   if (!el.matches("[data-f], [data-if], [data-fx]")) return;
   // Le texte a déjà été pris à la frappe ; un menu, une case, la fin d'un curseur redessinent (champs conditionnels).
   if (el instanceof HTMLSelectElement || el.type === "checkbox") onField(el, true);
@@ -591,6 +701,26 @@ insp.addEventListener("click", (e) => {
   }
   if (t.closest("[data-goto-page]")) {
     rtab = "page";
+    return renderInspector();
+  }
+  const pop = t.closest<HTMLElement>("[data-pop]")?.dataset.pop;
+  if (pop) return pageOp(pop as "dup" | "del");
+  if (t.closest("[data-mkpage]")) {
+    const b = blockById(selected);
+    const i = Number(t.closest<HTMLElement>("[data-item]")!.dataset.item);
+    const it = b?.items?.[i];
+    if (!b || !it) return;
+    const from = doc();
+    const title = String(it.title || "Projet");
+    const brand = String(site.pages[0]!.blocks.find((x) => x.type === "nav")?.props.brand ?? site.name);
+    const pg = projectPage({ title, slug: uniqueSlug(site, title), src: String(it.src), brand, kicker: String(b.props.kicker || "Projet") });
+    change((s) => {
+      s.pages.push(pg);
+      it.page = `./${fileOf(pg)}`;
+    });
+    toast(`Page « ${title} » créée et reliée — la photo y volera`);
+    // On reste sur la page des cartes : la nouvelle est dans la liste des pages.
+    ui.page = from.id;
     return renderInspector();
   }
   const bop = t.closest<HTMLElement>("[data-bop]")?.dataset.bop;
@@ -695,7 +825,7 @@ $("[data-cr-undo]").addEventListener("click", () => history(-1));
 $("[data-cr-redo]").addEventListener("click", () => history(1));
 $("[data-cr-full]").addEventListener("click", () => {
   store.set(KEY, JSON.stringify(site));
-  open("./createur-apercu.html?seul", "_blank", "noopener");
+  open(`./createur-apercu.html?seul&page=${encodeURIComponent(doc().slug)}`, "_blank", "noopener");
 });
 
 const dialogs = Object.fromEntries($$<HTMLDialogElement>("[data-cr-dialog]").map((d) => [d.dataset.crDialog!, d]));
@@ -706,6 +836,7 @@ $("[data-cr-templates]").addEventListener("click", (e) => {
   if (!t) return;
   const next = t.make();
   change((s) => Object.assign(s, next));
+  ui.page = site.pages[0]!.id;
   selected = "";
   dialogs.templates?.close();
   renderInspector();
@@ -753,11 +884,25 @@ $("[data-cr-dialog=export]").addEventListener("click", async (e) => {
       btn.disabled = false;
       bar.hidden = true;
     }
-  } else if (x === "html") download(`${slugName()}.html`, compileSite(site), "text/html");
+  } else if (x === "html") {
+    // Une page : le fichier ; plusieurs : une archive des sources (chacune à son adresse).
+    if (site.pages.length === 1) download(`${slugName()}.html`, compileSite(site, site.pages[0]), "text/html");
+    else {
+      const enc = new TextEncoder();
+      const blob = zip(site.pages.map((p) => ({ name: fileOf(p), data: enc.encode(compileSite(site, p)) })));
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slugName()}-pages.zip`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+  }
   else if (x === "json") download(`${slugName()}.presse.json`, JSON.stringify(site, null, 2), "application/json");
   else if (x === "copy") {
     try {
-      await navigator.clipboard.writeText(compileSite(site));
+      await navigator.clipboard.writeText(compileSite(site, doc()));
       toast("HTML copié");
     } catch {
       toast("Le presse-papiers est refusé ici : utilisez « Page Presse »");
@@ -770,10 +915,11 @@ $<HTMLInputElement>("[data-cr-import]").addEventListener("change", async (e) => 
   try {
     const next = normalize(JSON.parse(await f.text()));
     change((s) => Object.assign(s, next));
+    ui.page = site.pages[0]!.id;
     selected = "";
     renderInspector();
     dialogs.export?.close();
-    toast(`« ${next.name} » importé — ${next.blocks.length} blocs`);
+    toast(`« ${next.name} » importé — ${next.pages.length} page(s)`);
   } catch {
     toast("Ce fichier n'est pas un projet du Créateur");
   }
@@ -835,6 +981,7 @@ function renderStatus() {
 }
 
 renderLibrary();
+renderPages();
 renderLayers();
 renderInspector();
 renderTitle();

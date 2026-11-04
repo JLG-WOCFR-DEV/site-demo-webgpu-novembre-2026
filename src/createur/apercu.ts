@@ -23,7 +23,7 @@ import { startSite } from "../presse/site.ts";
 import { setMotionLevel, type MotionLevel } from "../motion-scale.ts";
 import { settings, TRANSITIONS } from "../state.ts";
 import { CUI_EFFECTS } from "../gpu/cui.ts";
-import { BLOCKS, htmlAttrs, normalize, renderBlock, rootCss, type Site } from "./model.ts";
+import { BLOCKS, docTitle, htmlAttrs, normalize, renderBlock, rootCss, type Site } from "./model.ts";
 import type { FromPreview, ToPreview } from "./protocol.ts";
 
 const root = document.documentElement;
@@ -144,7 +144,7 @@ function applyPage(s: Site, first: boolean) {
     document.head.append(st);
   }
   st.textContent = rootCss(s.page);
-  document.title = s.page.title;
+  document.title = docTitle(s, docOf(s));
   if (first) return;
   // À chaud : direction artistique, transition, passes, mouvement, effet de page.
   if (root.dataset.crLook !== s.page.look) applyLook(s.page.look);
@@ -163,16 +163,32 @@ function applyPage(s: Site, first: boolean) {
   dispatchEvent(new Event("pli:relayout"));
 }
 
-function reconcile(s: Site) {
+/** La page montée : celle de l'adresse (?page=), sinon l'accueil. L'éditeur peut en changer. */
+let slug = new URLSearchParams(location.search).get("page") || "index";
+const docOf = (s: Site) => s.pages.find((p) => p.slug === slug) ?? s.pages[0]!;
+
+function reconcile(s: Site, page = slug) {
   const first = !site;
   site = s;
   applyPage(s, first);
+  if (page !== slug) {
+    // Autre page : on repart d'une page vide (le moteur relit le DOM ; l'impression se rejoue).
+    slug = page;
+    for (const v of shown.values()) {
+      unmountComponents(v.el);
+      v.el.remove();
+    }
+    shown.clear();
+    scrollTo(0, 0);
+    history.replaceState(null, "", `?page=${encodeURIComponent(slug)}${location.search.includes("seul") ? "&seul" : ""}`);
+  }
+  const doc = docOf(s);
   const keep = new Set<string>();
   let prev: HTMLElement | null = null;
-  for (const b of s.blocks) {
+  for (const b of doc.blocks) {
     if (b.hidden || !BLOCKS[b.type]) continue;
     keep.add(b.id);
-    const html = renderBlock(b, s, true);
+    const html = renderBlock(b, s, doc, true);
     const cur = shown.get(b.id);
     let el: HTMLElement;
     if (cur && cur.html === html) el = cur.el;
@@ -237,7 +253,7 @@ let hovered = "";
 
 const blockEl = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLElement>("[data-cr-id]") : null);
 const labelOf = (id: string) => {
-  const b = site?.blocks.find((x) => x.id === id);
+  const b = site ? docOf(site).blocks.find((x) => x.id === id) : undefined;
   return b ? (BLOCKS[b.type]?.label ?? b.type) : "";
 };
 function place(box: HTMLElement, id: string) {
@@ -378,7 +394,7 @@ addEventListener("message", (e: MessageEvent) => {
   const m = e.data as ToPreview & { cr?: number };
   if (!m || m.cr !== 1 || e.source !== parent) return;
   if (m.type === "site") {
-    reconcile(m.site);
+    reconcile(m.site, m.page);
     if (m.selected !== undefined) selected = m.selected;
     drawOverlay();
   } else if (m.type === "select") {
@@ -413,4 +429,4 @@ if (parent === window || new URLSearchParams(location.search).has("seul")) {
   }
   if (raw) reconcile(normalize(JSON.parse(raw)));
   else main.innerHTML = `<section class="ps-sec"><div class="ps-in"><p class="ps-p">Aucun site enregistré : ouvrez le Créateur.</p></div></section>`;
-} else send({ type: "ready", gpu: !!navigator.gpu });
+} else send({ type: "ready", gpu: !!navigator.gpu, page: slug });
