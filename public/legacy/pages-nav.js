@@ -1075,6 +1075,11 @@ var Qe = [
 		text: "Roue de projets, mots qui roulent, liste qui s'ouvre, images au bruit, bento"
 	},
 	{
+		href: "fluide.html",
+		name: "Fluide",
+		text: "Un fluide SPH qu'on remue : champ de particules, bassin, marbrure d'encres"
+	},
+	{
 		href: "atelier.html",
 		name: "Atelier",
 		text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide"

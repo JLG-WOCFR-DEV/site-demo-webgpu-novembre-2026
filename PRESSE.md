@@ -107,8 +107,67 @@ ils sont la page : capture vidéo et PNG comprises. Sans WebGPU, chacun garde so
 
 Les images d'un composant passent par la chaîne d'images comme les autres : `sizes` se règle sur `<x-liquide sizes="…">`.
 
-Écrire un composant : une fonction `(attributs, enfants) → HTML` dans `presse/build/components.ts`, sa feuille de style
-dans `STYLES`, et, s'il a un comportement, un module `mount(racine) → arrêt` déclaré dans `src/presse/components.ts`.
+Écrire un composant : une fonction `(attributs, enfants) → HTML` dans `src/presse/render.ts` (isomorphe : la construction
+la passe à node-html-parser, le Créateur au DOM ; ce qui touche au disque arrive par le contexte), sa feuille de style dans
+`STYLES`, et, s'il a un comportement, un module `mount(racine) → arrêt` déclaré dans `src/presse/components.ts`.
+
+## Le kit de sections
+
+Un site entier sans écrire de CSS : `src/presse/site.ts` (entrée : jetons, look, rideau, défilement, curseur, moteur) et
+`src/presse/sections.css` (sections éditoriales). Les sections ne peignent jamais de fond opaque : le canvas du moteur est
+dessous et imprime texte et images.
+
+```html
+<html data-presse-look="papier" data-presse-transition="buvard" data-ps-type="didone" data-presse-cursor data-presse-scroll="doux">
+  <style>:root { --paper: #0d0d10; --ink: #f0ede6; --spot: #ff5a36; --ps-max: 1240px; --ps-radius: 10px; }</style>
+  <script type="module" src="/src/presse/site.ts"></script>
+  <body class="ps">
+    <section class="ps-sec ps-hero" data-height="ecran" data-gl-print>
+      <div class="ps-in"><h1 class="ps-display" data-size="xl" data-gl-text data-gl-kinetic="respire">Titre</h1></div>
+    </section>
+```
+
+| Classe | Section |
+|---|---|
+| `ps-sec` + `ps-in` | Une section (marges, `data-space` (`serre`, `ample`, `aucun`), `data-rule`, `data-align="centre"`) et sa colonne (`--ps-max`). |
+| `ps-nav`, `ps-foot` | Barre du haut (`data-sticky`), pied à marque géante. |
+| `ps-hero` | Ouverture (`data-height="ecran"`, fond de matière par `data-gl-stage`) ; titre `ps-display` (`data-size` (`l`, `xl`, `xxl`)). |
+| `ps-text`, `ps-duo`, `ps-split` | Texte (`data-layout` (`colonnes`, `cote`)), texte et image, média à côté (`data-side`). |
+| `ps-kin`, `ps-marquee` | Mots cinétiques, bandeau défilant (DOM : il bouge en continu). |
+| `ps-cards`, `ps-stats`, `ps-quote` | Cartes à matières, chiffres, citation. |
+| `ps-pin`, `ps-cta` | Section épinglée (la photo grandit), appel à l'action ; `ps-fire` : bouton dans une enveloppe de feu. |
+
+Typographie : `data-ps-type` sur `<html>` — `grotesque` (Archivo large), `didone` (Bodoni Moda), `garalde` (Cormorant),
+`technique` (Archivo étroite en capitales, texte en Plex Mono). Palette sombre : `data-ps-dark`.
+
+## Le Créateur
+
+`createur.html` : composer un site Presse par blocs, sans écrire de HTML. C'est le chantier B de la feuille de route.
+
+- **Blocs** (`src/createur/model.ts`) : navigation, ouverture, texte, image, texte et image, typo cinétique, cartes à
+  matières, chiffres, citation, matière vivante (`<x-matiere>`), objet 3D, galerie 3D, mur infini, grille liquide, section
+  épinglée, bandeau, sommaire en lettres (automatique : une entrée par section ancrée), appel à l'action, pied. Chaque bloc
+  déclare ses champs (texte, menu, curseur, interrupteur, photo, lien, couleur ; groupés, conditionnels) et ses éléments
+  de liste (photos, cartes, liens). Le site est un JSON ; la compilation en fait une page du kit. Quatre modèles de départ.
+- **Aperçu** (`createur-apercu.html`, `src/createur/apercu.ts`) : une vraie page Presse dans une iframe, au format
+  bureau, tablette ou mobile. À chaque changement, le site est rapproché bloc par bloc : un bloc inchangé n'est pas
+  touché, un bloc changé est **patché en place** (attributs et textes, nœud à nœud) — la section garde son impression,
+  l'image sa texture, et un titre `data-gl-morph` fait voyager ses lettres pendant qu'on le tape. Un composant changé est
+  remplacé et remonté. Réglages de page à chaud (look, transition, passes, mouvement, effet de page, couleurs, typo) ;
+  curseur et défilement rechargent l'aperçu.
+- **Édition** : clic pour choisir un bloc (cadre, nom, monter, descendre, dupliquer, supprimer), double-clic sur un texte
+  pour l'écrire sur place (Entrée valide, Échap annule ; le paragraphe, la ligne ou l'élément retrouve son champ).
+  Mode « Essayer » (`E`) : la page se comporte comme publiée. Calques glissables, blocs déposés depuis la bibliothèque,
+  annuler / rétablir (les frappes d'un même champ font une étape), enregistrement dans le navigateur, contraste
+  encre / papier vérifié.
+- **Export** : *site autonome* (un zip : la page, le moteur et les modules qu'elle charge, fontes, atlas, photos, modèles
+  — `presse/build/export.ts` suit après la construction tout ce que charge le gabarit `createur-site.html` et en écrit la
+  liste dans `dist/createur-export.json`) ; *page Presse* (le HTML source à poser dans un projet, `npm run build` y
+  ajoute AVIF/WebP et l'atlas des titres) ; *projet* JSON, et son import.
+
+Ce que le Créateur a demandé au moteur, et qui sert à tout contenu qui change (CMS, script) : images ajoutées ou retirées
+reprises à chaque mise en page (textures gardées, attributs relus), texte déjà révélé qui ne réapparaît pas quand le DOM
+change ailleurs, couleur du papier relue, éléments retirés oubliés par le défilement.
 
 ## Feuille de route
 
@@ -131,8 +190,10 @@ de lui : tout ce qui peut être calculé à la construction l'est, pour laisser 
 
 ### B. Éditeur
 
-Sélectionner un élément, régler ses attributs dans un inspecteur, exporter du HTML propre. Le panneau de débogage en est
-l'embryon.
+**Fait (v1) : le Créateur** (voir plus haut). Reste : édition des styles par bloc (couleurs, tailles, marges au-delà des
+choix proposés), pages multiples et navigation entre elles (le passage d'images en est prêt), photos déposées par
+l'utilisateur dans le site exporté (aujourd'hui : la bibliothèque ou une adresse), images préparées (AVIF, mips) à
+l'export autonome, atlas MTSDF des titres propre à la page exportée, publication directe (Netlify, GitHub Pages).
 
 ### C. Composants et navigation
 
@@ -213,4 +274,4 @@ ancres, `sticky`), des effets qui ne survivent pas au mouvement réduit.
 7. ~~**D4 + D5**~~ : survols, révélations, curseur, première version.
 8. ~~**D3 + D7**~~ : chorégraphie d'entrée, direction artistique, premières versions.
 9. ~~**D6, D8**~~ : typographie cinétique, passage des titres, premières versions. **D9, D10** ensuite : 3D PBR, son.
-10. **A4, B, D12** : rendu serveur, éditeur, paquet : quand un vrai projet les demande.
+10. ~~**B**~~ : le Créateur, première version. **A4, D12** : rendu serveur, paquet : quand un vrai projet les demande.

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Créateur — Presse</title>
+    <meta name="description" content="Composer un site Presse par blocs : aperçu WebGPU en direct, inspecteur, édition du texte sur place, export en page Presse." />
+    <script type="module" src="/src/createur/main.ts"></script>
+  </head>
+  <body class="cr">
+    <header class="cr-bar">
+      <a class="cr-logo" href="./presse.html" title="Presse, la documentation"><span class="cr-logo-mark" aria-hidden="true"></span>Créateur</a>
+      <label class="cr-name"><span class="sr-only">Nom du site</span><input data-cr-name type="text" spellcheck="false" /></label>
+      <span class="cr-saved" data-cr-saved aria-live="polite"></span>
+      <div class="cr-bar-mid">
+        <div class="cr-seg" role="group" aria-label="Appareil">
+          <button type="button" data-cr-device="bureau" title="Bureau, 1440 px">Bureau</button>
+          <button type="button" data-cr-device="tablette" title="Tablette, 834 px">Tablette</button>
+          <button type="button" data-cr-device="mobile" title="Mobile, 390 px">Mobile</button>
+        </div>
+        <div class="cr-seg" role="group" aria-label="Mode">
+          <button type="button" data-cr-mode="edit" title="Choisir et modifier les blocs (E)">Éditer</button>
+          <button type="button" data-cr-mode="try" title="Essayer la page comme publiée (E)">Essayer</button>
+        </div>
+      </div>
+      <div class="cr-bar-end">
+        <button type="button" class="cr-icon" data-cr-undo title="Annuler (⌘Z)" aria-label="Annuler">↶</button>
+        <button type="button" class="cr-icon" data-cr-redo title="Rétablir (⇧⌘Z)" aria-label="Rétablir">↷</button>
+        <button type="button" class="cr-btn" data-cr-open="templates">Modèles</button>
+        <button type="button" class="cr-btn" data-cr-open="export">Exporter</button>
+        <button type="button" class="cr-btn cr-btn--fill" data-cr-full title="Ouvrir l'aperçu dans un onglet">Voir le site ↗</button>
+      </div>
+    </header>
+
+    <aside class="cr-left" aria-label="Structure de la page">
+      <div class="cr-tabs" role="tablist">
+        <button type="button" role="tab" data-cr-tab="layers" aria-selected="true">Calques</button>
+        <button type="button" role="tab" data-cr-tab="add" aria-selected="false">Ajouter</button>
+      </div>
+      <div class="cr-pane" data-cr-pane="layers">
+        <ol class="cr-layers" data-cr-layers role="listbox" aria-label="Blocs de la page"></ol>
+        <button type="button" class="cr-add-wide" data-cr-tab-go="add">+ Ajouter un bloc</button>
+      </div>
+      <div class="cr-pane" data-cr-pane="add" hidden>
+        <div class="cr-lib" data-cr-lib></div>
+      </div>
+    </aside>
+
+    <main class="cr-stage" data-cr-stage aria-label="Aperçu">
+      <div class="cr-frame" data-cr-frame>
+        <iframe data-cr-iframe title="Aperçu du site" src="./createur-apercu.html"></iframe>
+      </div>
+      <p class="cr-zoom" data-cr-zoom aria-hidden="true"></p>
+      <p class="cr-hint" data-cr-hint>Clic : choisir un bloc · double-clic sur un texte : l'écrire sur place · <kbd>E</kbd> : essayer la page</p>
+    </main>
+
+    <aside class="cr-right" aria-label="Inspecteur">
+      <div class="cr-tabs" role="tablist">
+        <button type="button" role="tab" data-cr-rtab="block" aria-selected="true">Bloc</button>
+        <button type="button" role="tab" data-cr-rtab="page" aria-selected="false">Page</button>
+      </div>
+      <div class="cr-insp" data-cr-insp></div>
+    </aside>
+
+    <dialog class="cr-dialog" data-cr-dialog="templates" aria-labelledby="cr-t-title">
+      <form method="dialog">
+        <h2 id="cr-t-title">Partir d'un modèle</h2>
+        <p class="cr-dim">Le site en cours est remplacé ; <kbd>⌘Z</kbd> le rend.</p>
+        <div class="cr-templates" data-cr-templates></div>
+        <p class="cr-dialog-end"><button class="cr-btn" value="cancel">Fermer</button></p>
+      </form>
+    </dialog>
+
+    <dialog class="cr-dialog" data-cr-dialog="export" aria-labelledby="cr-x-title">
+      <form method="dialog">
+        <h2 id="cr-x-title">Exporter</h2>
+        <div class="cr-export">
+          <button type="button" class="cr-x cr-x--main" data-cr-x="zip"><b>Site autonome <small>.zip</small></b><span>La page et tout ce qu'elle charge (moteur, composants, fontes, atlas, photos). À déposer tel quel chez n'importe quel hébergeur statique.</span><span class="cr-x-progress" data-cr-zip-progress hidden><i></i></span></button>
+          <button type="button" class="cr-x" data-cr-x="html"><b>Page Presse</b><span>Le HTML source : balises <code>&lt;x-…&gt;</code>, attributs <code>data-gl-*</code>, une ligne de script. À poser dans un projet Presse ; <code>npm run build</code> en fait le site (images AVIF, atlas des titres).</span></button>
+          <button type="button" class="cr-x" data-cr-x="copy"><b>Copier le HTML</b><span>Le même, dans le presse-papiers.</span></button>
+          <button type="button" class="cr-x" data-cr-x="json"><b>Projet</b><span>Le site en JSON, pour le reprendre plus tard ici ou dans un autre navigateur.</span></button>
+          <label class="cr-x"><b>Importer un projet</b><span>Un fichier JSON exporté d'ici.</span><input type="file" accept="application/json,.json" data-cr-import hidden /></label>
+        </div>
+        <details class="cr-howto">
+          <summary>Publier la page exportée</summary>
+          <ol>
+            <li>Posez le fichier à la racine du projet, à côté de <code>index.html</code>.</li>
+            <li>Ajoutez-le aux entrées de <code>vite.config.ts</code> (<code>rollupOptions.input</code>).</li>
+            <li><code>npm run build</code> : <code>dist/</code> s'héberge tel quel, chemins relatifs.</li>
+          </ol>
+        </details>
+        <p class="cr-dialog-end"><button class="cr-btn" value="cancel">Fermer</button></p>
+      </form>
+    </dialog>
+
+    <div class="cr-toast" data-cr-toast role="status" aria-live="polite"></div>
+  </body>
+</html>

@@ -139,7 +139,10 @@ shared.hotSwap ??= hotSwap;
 
 /** Arrête les composants sous `root` (avant de retirer leur HTML de la page). */
 export function unmountComponents(root: ParentNode = document) {
-  for (const el of root.querySelectorAll<HTMLElement>("[data-presse-component]")) {
+  const els = [...root.querySelectorAll<HTMLElement>("[data-presse-component]")];
+  // La racine elle-même peut être un composant (le Créateur remplace un composant seul).
+  if (root instanceof HTMLElement && root.dataset.presseComponent) els.push(root);
+  for (const el of els) {
     mounted.get(el)?.();
     mounted.delete(el);
   }

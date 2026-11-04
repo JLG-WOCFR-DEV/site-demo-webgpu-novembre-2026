@@ -7,6 +7,11 @@ import { BLIT } from "./wgsl.ts";
  */
 export type Plate = {
   img: HTMLImageElement;
+  /** Source au moment du chargement (src|srcset) : une source changée recharge la texture. */
+  src: string;
+  loading: boolean;
+  /** Retirée de la page pendant son chargement : la texture n'est pas créée. */
+  gone: boolean;
   texture: GPUTexture | null;
   bind: GPUBindGroup | null;
   width: number;
@@ -36,6 +41,8 @@ export const frameOf = (img: HTMLImageElement): Element => {
   return (p?.tagName === "PICTURE" ? p.parentElement : p) ?? img;
 };
 
+const srcKey = (img: HTMLImageElement) => `${img.getAttribute("src") ?? ""}|${img.getAttribute("srcset") ?? ""}`;
+
 export class ImageLayer {
   plates: Plate[] = [];
   private blitPipe: GPURenderPipeline;
@@ -60,10 +67,36 @@ export class ImageLayer {
     this.blitSampler = device.createSampler({ minFilter: "linear", magFilter: "linear" });
   }
 
+  /**
+   * Relit les images du DOM. Incrémental : une image déjà chargée garde sa texture (même élément, même source) ; une
+   * image retirée de la page libère la sienne ; une nouvelle se charge. Appelé à chaque nouvelle mise en page : le
+   * contenu peut changer (CMS, script, le Créateur qui remplace un bloc) sans recharger la page.
+   */
   collect() {
     const imgs = [...document.querySelectorAll<HTMLImageElement>("img[data-gl-img]")];
-    this.plates = imgs.map((img) => ({
+    const old = new Map(this.plates.map((p) => [p.img, p]));
+    const next: Plate[] = [];
+    for (const img of imgs) {
+      const prev = old.get(img);
+      if (prev && prev.src === srcKey(img)) {
+        old.delete(img);
+        this.refresh(prev);
+        next.push(prev);
+        continue;
+      }
+      next.push(this.plateOf(img));
+    }
+    for (const p of old.values()) this.drop(p);
+    this.plates = next;
+    for (const p of next) if (!p.texture && !p.loading) void this.load(p);
+  }
+
+  private plateOf(img: HTMLImageElement): Plate {
+    return {
       img,
+      src: srcKey(img),
+      loading: false,
+      gone: false,
       texture: null,
       bind: null,
       width: img.naturalWidth || Number(img.getAttribute("width")) || 1,
@@ -78,8 +111,33 @@ export class ImageLayer {
       revealMode: Math.max(0, REVEAL_MODES.indexOf(img.dataset.glReveal ?? "")),
       reveal: img.dataset.glReveal ? 0 : 1,
       revealT0: -1,
-    }));
-    for (const p of this.plates) void this.load(p);
+    };
+  }
+
+  /** Attributs relus sur une image gardée (le Créateur change une révélation ou un survol sans remplacer l'image). */
+  private refresh(p: Plate) {
+    const img = p.img;
+    p.quad = img.hasAttribute("data-gl-quad");
+    p.fluid = img.hasAttribute("data-gl-fluid");
+    p.hoverMode = Math.max(0, HOVER_MODES.indexOf(img.dataset.glHover ?? ""));
+    const reveal = Math.max(0, REVEAL_MODES.indexOf(img.dataset.glReveal ?? ""));
+    if (reveal !== p.revealMode) {
+      // Nouvelle révélation : elle se rejoue.
+      p.revealMode = reveal;
+      p.reveal = reveal ? 0 : 1;
+      p.revealT0 = -1;
+    }
+    p.radius = Number.parseFloat(getComputedStyle(frameOf(img)).borderTopLeftRadius) || 0;
+  }
+
+  private drop(p: Plate) {
+    p.gone = true;
+    if (p.texture) {
+      this.bytes -= Math.round(p.width * p.height * 4 * (4 / 3));
+      p.texture.destroy();
+      p.texture = null;
+      p.bind = null;
+    }
   }
 
   private async load(p: Plate) {
@@ -88,6 +146,7 @@ export class ImageLayer {
     // texture préparée à la construction (data-gl-tex : AVIF à la plus grande
     // largeur), sinon l'original.
     const img = p.img;
+    p.loading = true;
     await img.decode().catch(() => undefined);
     const need = img.getBoundingClientRect().width * Math.min(devicePixelRatio || 1, 2);
     // naturalWidth est corrigé de la densité du srcset : la vraie largeur est dans le nom (pont-960.avif).
@@ -105,7 +164,8 @@ export class ImageLayer {
         /* format non décodable ici : source suivante */
       }
     }
-    if (!bitmap) return;
+    p.loading = false;
+    if (!bitmap || p.gone) return void bitmap?.close();
     const levels = Math.floor(Math.log2(Math.max(bitmap.width, bitmap.height))) + 1;
     const texture = this.device.createTexture({
       label: p.img.alt.slice(0, 40),

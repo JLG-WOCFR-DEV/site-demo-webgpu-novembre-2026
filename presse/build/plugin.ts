@@ -1,8 +1,7 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname } from "node:path";
 import { parse, type HTMLElement as Node } from "node-html-parser";
 import type { Plugin } from "vite";
-import { COMPONENTS, STYLES } from "./components.ts";
+import { COMPONENTS, STYLES, nodeCtx } from "./components.ts";
 import { validate } from "./validate.ts";
 
 /**
@@ -19,6 +18,7 @@ export function presseComponents(): Plugin {
         const root = parse(html, { comment: true, blockTextElements: { script: true, style: true, pre: true, textarea: true } });
         const base = dirname(ctx.filename);
         const used = new Set<string>();
+        const rctx = nodeCtx(base);
         // Les composants peuvent en contenir d'autres : on déroule jusqu'à épuisement.
         for (let pass = 0; pass < 6; pass++) {
           const tags = root.querySelectorAll("*").filter((n) => n.rawTagName?.toLowerCase().startsWith("x-"));
@@ -33,9 +33,7 @@ export function presseComponents(): Plugin {
               const line = html.slice(0, Math.max(0, el.range?.[0] ?? 0)).split("\n").length;
               console.warn(`\x1b[33m[presse]\x1b[0m <x-${name}> ${ctx.filename.split("/").pop()}:${line} — ${msg}`);
             }
-            const out = render(el.attributes, el.childNodes.filter((c): c is Node => c.nodeType === 1), {
-              read: (p) => readFileSync(resolve(base, p), "utf8"),
-            });
+            const out = render(el.attributes, el.childNodes.filter((c): c is Node => c.nodeType === 1), rctx);
             el.replaceWith(out);
           }
         }

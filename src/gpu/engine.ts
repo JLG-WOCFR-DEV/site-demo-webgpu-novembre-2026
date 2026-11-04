@@ -796,6 +796,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     }
     if (needLayout) {
       needLayout = false;
+      // Le contenu a pu changer : images ajoutées ou retirées (incrémental, les textures chargées restent), papier.
+      images.collect();
+      readPaper();
       relayout(dpr);
     }
     const now = clockNow();

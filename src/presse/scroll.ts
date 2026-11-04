@@ -165,6 +165,12 @@ export function initScroll() {
     { rootMargin: "25% 0px" },
   );
   const collect = () => {
+    // Retirés de la page (le Créateur remplace un bloc) : on les oublie.
+    for (let i = tracked.length; i--; ) {
+      if (tracked[i]!.el.isConnected) continue;
+      io.unobserve(tracked[i]!.el);
+      tracked.splice(i, 1);
+    }
     for (const el of document.querySelectorAll<HTMLElement>("[data-scroll]")) {
       if (tracked.some((t) => t.el === el)) continue;
       tracked.push({ el, kind: el.dataset.scroll ?? "", on: false, last: "" });

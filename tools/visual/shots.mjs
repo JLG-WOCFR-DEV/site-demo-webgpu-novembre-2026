@@ -30,6 +30,6 @@ export const SHOTS = [
 ];
 
 // Sans WebGPU : chaque page, en haut, puis défilée jusqu'au bas (aucune erreur, le HTML tient la page).
-const PAGES = ["index", "liquide", "grille", "galerie", "atelier", "orbite", "presse", "matieres", "defilement", "fluide", "kerguehennec", "kerguehennec-styles", "sampler"];
+const PAGES = ["index", "liquide", "grille", "galerie", "atelier", "orbite", "presse", "matieres", "defilement", "fluide", "kerguehennec", "kerguehennec-styles", "sampler", "createur"];
 for (const page of PAGES) SHOTS.push({ page, name: "sans-webgpu", nogpu: true, frames: 60, after: 30 });
 SHOTS.push({ page: "matieres", name: "sans-webgpu-trio", nogpu: true, frames: 30, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), after: 30 });

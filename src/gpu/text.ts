@@ -217,6 +217,9 @@ export class TextLayer {
     const u32: number[] = [];
     // Par glyphe : décalage de départ (x, y), genre (0 fixe, 1 voyage, 2 apparaît, 3 s'efface), retard.
     const extra: number[] = [];
+    // Un élément déjà révélé le reste : relire le DOM (contenu changé ailleurs, Créateur, CMS) ne refait pas apparaître
+    // tout le texte de la page.
+    const revealed = new Map(this.elems.map((e) => [e.el, e.revealStart]));
     this.elems = [];
     this.msdfGlyphs = 0;
     let total = 0;
@@ -329,10 +332,11 @@ export class TextLayer {
         }
         this.morphPrev.set(el, { key, glyphs: cur });
       }
-      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: -1 });
+      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: revealed.get(el) ?? -1 });
     });
 
     if (had) root.classList.add("gl-on");
+    for (const el of this.morphPrev.keys()) if (!el.isConnected) (this.morphPrev.delete(el), this.morphSince.delete(el));
 
     // Entrelacement f32/u32 selon la struct WGSL (16 mots par glyphe).
     const buf = new ArrayBuffer(Math.max(GLYPH_STRIDE, total * GLYPH_STRIDE));
@@ -353,13 +357,34 @@ export class TextLayer {
   }
 }
 
+/**
+ * Couleur CSS calculée → RGBA8 (petit-boutiste). Chrome sérialise `rgb()` d'ordinaire, mais `color(srgb …)` pour un
+ * `color-mix()` ou une couleur relative, et garde l'espace d'origine pour oklch(), lab()… : ceux-là passent par une toile
+ * 1 × 1 (une fois par valeur, en cache).
+ */
+const colorCache = new Map<string, number>();
+let colorCtx: OffscreenCanvasRenderingContext2D | null = null;
+const pack = (r: number, g: number, b: number, a: number) => ((Math.round(a * 255) << 24) | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r)) >>> 0;
 function packColor(css: string): number {
-  const m = css.match(/rgba?\(([^)]+)\)/);
-  if (!m) return 0xff121212;
-  const p = m[1]!.split(/[\s,/]+/).filter(Boolean).map(Number);
-  const r = p[0] ?? 0;
-  const g = p[1] ?? 0;
-  const b = p[2] ?? 0;
-  const a = p[3] === undefined ? 1 : p[3];
-  return ((Math.round(a * 255) << 24) | (b << 16) | (g << 8) | r) >>> 0;
+  const hit = colorCache.get(css);
+  if (hit !== undefined) return hit;
+  let v = 0xff121212;
+  const rgb = css.match(/^rgba?\(([^)]+)\)/);
+  const srgb = css.match(/^color\(srgb\s+([^)]+)\)/);
+  if (rgb || srgb) {
+    const p = (rgb ?? srgb)![1]!.split(/[\s,/]+/).filter(Boolean).map(Number);
+    const k = srgb ? 255 : 1;
+    v = pack((p[0] ?? 0) * k, (p[1] ?? 0) * k, (p[2] ?? 0) * k, p[3] === undefined ? 1 : p[3]);
+  } else if (typeof OffscreenCanvas !== "undefined") {
+    colorCtx ??= new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true });
+    if (colorCtx) {
+      colorCtx.clearRect(0, 0, 1, 1);
+      colorCtx.fillStyle = css;
+      colorCtx.fillRect(0, 0, 1, 1);
+      const d = colorCtx.getImageData(0, 0, 1, 1).data;
+      v = pack(d[0]!, d[1]!, d[2]!, d[3]! / 255);
+    }
+  }
+  colorCache.set(css, v);
+  return v;
 }

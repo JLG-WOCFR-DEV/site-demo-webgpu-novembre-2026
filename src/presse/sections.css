@@ -1,0 +1,684 @@
+/*
+ * Presse — sections de site (le kit du Créateur).
+ *
+ * Une grammaire de sections éditoriales prête à l'emploi : ouverture, texte, image, texte et image, typographie
+ * cinétique, cartes à matières, chiffres, citation, épinglée, appel, bandeau, navigation, pied. Tout se règle par des
+ * jetons sur :root (posés par la page, ou par le Créateur) :
+ *   --paper --ink --ink-soft --spot --rule   couleurs (--paper est lu par le GPU)
+ *   --ps-max                                 largeur du contenu
+ *   --ps-radius                              arrondi des images et des cartes
+ * et deux attributs sur <html> : data-ps-type (couple de fontes), data-ps-dark (palette sombre).
+ * Les sections ne peignent jamais de fond opaque : le canvas du moteur est dessous, il imprime texte et images.
+ */
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource-variable/bodoni-moda/opsz.css";
+@import "@fontsource/cormorant-garamond/500.css";
+@import "@fontsource/cormorant-garamond/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #efeee8;
+  --ink: #121212;
+  --ink-soft: color-mix(in srgb, var(--ink) 66%, var(--paper));
+  --spot: #c8321c;
+  --rule: color-mix(in srgb, var(--ink) 18%, var(--paper));
+  --ps-max: 1240px;
+  --ps-radius: 10px;
+  --ps-gutter: clamp(16px, 5vw, 72px);
+  --ps-f-display: "Archivo Variable", Arial, sans-serif;
+  --ps-f-text: "Archivo Variable", Arial, sans-serif;
+  --ps-f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --ps-display-wdth: 125;
+  --ps-display-wght: 900;
+  --ps-display-case: none;
+  --ps-display-track: -0.03em;
+  color-scheme: light;
+}
+html[data-ps-dark] {
+  color-scheme: dark;
+}
+html[data-ps-type="didone"] {
+  --ps-f-display: "Bodoni Moda Variable", "Bodoni 72", Georgia, serif;
+  --ps-display-wdth: 100;
+  --ps-display-wght: 600;
+  --ps-display-track: -0.02em;
+}
+html[data-ps-type="garalde"] {
+  --ps-f-display: "Cormorant Garamond", Garamond, Georgia, serif;
+  --ps-display-wdth: 100;
+  --ps-display-wght: 600;
+  --ps-display-track: -0.01em;
+}
+html[data-ps-type="technique"] {
+  --ps-f-text: "IBM Plex Mono", ui-monospace, monospace;
+  --ps-display-wdth: 62;
+  --ps-display-wght: 800;
+  --ps-display-case: uppercase;
+  --ps-display-track: -0.01em;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  background: var(--paper);
+  color: var(--ink);
+}
+body.ps {
+  margin: 0;
+  font: 400 17px/1.55 var(--ps-f-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+html[data-ps-type="technique"] body.ps {
+  font-size: 15px;
+}
+.ps :where(a) {
+  color: inherit;
+}
+.ps :focus-visible {
+  outline: 2px solid var(--spot);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ───── Section et grille ───── */
+.ps-sec {
+  padding: clamp(64px, 9vw, 128px) var(--ps-gutter);
+}
+.ps-sec[data-space="serre"] {
+  padding-block: clamp(32px, 4vw, 56px);
+}
+.ps-sec[data-space="ample"] {
+  padding-block: clamp(96px, 14vw, 200px);
+}
+.ps-sec[data-space="aucun"] {
+  padding-block: 0;
+}
+.ps-in {
+  max-width: var(--ps-max);
+  margin-inline: auto;
+}
+.ps-sec[data-rule] > .ps-in {
+  border-top: 1px solid var(--rule);
+  padding-top: clamp(24px, 3vw, 40px);
+}
+.ps-sec[data-align="centre"] > .ps-in {
+  text-align: center;
+}
+.ps-sec[data-align="centre"] :is(.ps-lede, .ps-p, .ps-h2, .ps-display) {
+  margin-inline: auto;
+}
+.ps-sec[data-align="centre"] .ps-actions {
+  justify-content: center;
+}
+
+/* ───── Typographie ───── */
+.ps-kicker {
+  margin: 0 0 14px;
+  font: 500 12px/1.4 var(--ps-f-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spot);
+}
+.ps-display {
+  margin: 0;
+  font-family: var(--ps-f-display);
+  font-weight: var(--ps-display-wght);
+  font-variation-settings: "wdth" var(--ps-display-wdth);
+  text-transform: var(--ps-display-case);
+  font-size: clamp(56px, 11vw, 168px);
+  line-height: 0.9;
+  letter-spacing: var(--ps-display-track);
+  max-width: 14ch;
+  text-wrap: balance;
+}
+.ps-display[data-size="l"] {
+  font-size: clamp(44px, 7.5vw, 112px);
+  max-width: 18ch;
+}
+.ps-display[data-size="xxl"] {
+  font-size: clamp(64px, 16vw, 260px);
+  line-height: 0.84;
+  max-width: none;
+}
+.ps-h2 {
+  margin: 0 0 18px;
+  font-family: var(--ps-f-display);
+  font-weight: calc(var(--ps-display-wght) - 100);
+  font-variation-settings: "wdth" calc(var(--ps-display-wdth) * 0.9 + 10);
+  text-transform: var(--ps-display-case);
+  font-size: clamp(32px, 4.6vw, 68px);
+  line-height: 0.98;
+  letter-spacing: var(--ps-display-track);
+  max-width: 20ch;
+  text-wrap: balance;
+}
+.ps-h3 {
+  margin: 0 0 10px;
+  font-family: var(--ps-f-display);
+  font-weight: calc(var(--ps-display-wght) - 150);
+  font-size: clamp(22px, 2.2vw, 32px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+.ps-lede {
+  margin: 26px 0 0;
+  max-width: 50ch;
+  font-size: clamp(18px, 1.7vw, 23px);
+  line-height: 1.45;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+.ps-p {
+  margin: 0 0 1em;
+  max-width: 64ch;
+  text-wrap: pretty;
+}
+.ps-p:last-child {
+  margin-bottom: 0;
+}
+.ps-body[data-size="grand"] .ps-p {
+  font-size: clamp(19px, 1.8vw, 24px);
+  line-height: 1.45;
+}
+.ps-cap {
+  margin: 12px 0 0;
+  font: 400 13px/1.45 var(--ps-f-mono);
+  color: var(--ink-soft);
+}
+
+/* ───── Boutons ───── */
+.ps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 36px;
+}
+.ps-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 13px/1 var(--ps-f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.2s var(--ease-out, ease),
+    color 0.2s var(--ease-out, ease);
+}
+.ps-btn--fill {
+  background: var(--ink);
+  color: var(--paper);
+}
+.ps-btn:hover {
+  background: var(--spot);
+  border-color: var(--spot);
+  color: #fff;
+}
+/* Le bouton en flammes : la plaque est le bouton plus la marge où monte le feu (WRAP_PAD du moteur). */
+.ps-fire {
+  display: inline-block;
+  padding: 112px;
+  margin: -112px;
+}
+.ps-fire .ps-btn {
+  display: flex;
+}
+
+/* ───── Navigation ───── */
+.ps-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 18px var(--ps-gutter);
+  font: 500 13px/1 var(--ps-f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ps-nav[data-sticky] {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+}
+.ps-brand {
+  margin-right: auto;
+  font: 800 18px/1 var(--ps-f-display);
+  letter-spacing: -0.01em;
+  text-transform: none;
+  text-decoration: none;
+}
+.ps-nav-links {
+  display: flex;
+  gap: 22px;
+}
+.ps-nav-links a {
+  text-decoration: none;
+  opacity: 0.8;
+}
+.ps-nav-links a:hover {
+  opacity: 1;
+  color: var(--spot);
+}
+.ps-nav .ps-btn {
+  min-height: 38px;
+  padding: 0 16px;
+}
+@media (max-width: 720px) {
+  .ps-nav-links {
+    display: none;
+  }
+}
+
+/* ───── Ouverture ───── */
+.ps-hero[data-height="ecran"] {
+  min-height: 92svh;
+  display: grid;
+  align-content: end;
+}
+.ps-hero[data-height="ecran"] > .ps-in {
+  width: 100%;
+}
+.ps-hero[data-stage] {
+  border-radius: var(--ps-radius);
+  margin: 12px;
+  overflow: hidden;
+}
+
+/* ───── Texte ───── */
+.ps-text[data-layout="colonnes"] .ps-body {
+  columns: 2 30ch;
+  column-gap: clamp(24px, 4vw, 64px);
+}
+.ps-text[data-layout="colonnes"] .ps-p {
+  break-inside: avoid;
+}
+.ps-text[data-layout="cote"] > .ps-in {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(24px, 5vw, 96px);
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .ps-text[data-layout="cote"] > .ps-in {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ───── Images ───── */
+.ps-fig {
+  margin: 0;
+}
+.ps-fig img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--ps-radius);
+}
+.ps-fig[data-ratio] img {
+  aspect-ratio: var(--ratio);
+  height: auto;
+  object-fit: cover;
+}
+.ps-image[data-width="pleine"] {
+  padding-inline: 0;
+}
+.ps-image[data-width="pleine"] > .ps-in {
+  max-width: none;
+}
+.ps-image[data-width="pleine"] .ps-fig img {
+  border-radius: 0;
+}
+.ps-image[data-width="pleine"] .ps-cap {
+  padding-inline: var(--ps-gutter);
+}
+.ps-image[data-width="etroite"] > .ps-in {
+  max-width: min(var(--ps-max), 760px);
+}
+
+/* ───── Texte et image ───── */
+.ps-duo > .ps-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(24px, 5vw, 96px);
+  align-items: center;
+}
+.ps-duo[data-side="gauche"] .ps-fig {
+  order: -1;
+}
+@media (max-width: 760px) {
+  .ps-duo > .ps-in {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ps-duo[data-side="gauche"] .ps-fig {
+    order: 0;
+  }
+}
+
+/* ───── Typographie cinétique ───── */
+.ps-kin-line {
+  margin: 0;
+  font-family: var(--ps-f-display);
+  font-weight: var(--ps-display-wght);
+  font-variation-settings: "wdth" var(--ps-display-wdth);
+  text-transform: var(--ps-display-case);
+  font-size: clamp(56px, 12vw, 190px);
+  line-height: 0.92;
+  letter-spacing: var(--ps-display-track);
+}
+.ps-kin[data-size="l"] .ps-kin-line {
+  font-size: clamp(44px, 8vw, 120px);
+}
+.ps-kin[data-size="xxl"] .ps-kin-line {
+  font-size: clamp(64px, 18vw, 300px);
+  line-height: 0.84;
+}
+
+/* ───── Cartes à matières ───── */
+.ps-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 24px);
+  margin-top: 36px;
+}
+.ps-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 300px;
+  padding: 26px;
+  border: 1px solid var(--rule);
+  border-radius: var(--ps-radius);
+  overflow: hidden;
+}
+.ps-card .ps-p {
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 36ch;
+}
+.ps-card .ps-fig {
+  margin-top: auto;
+}
+.ps-card .ps-fig img {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+@media (max-width: 900px) {
+  .ps-cards-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ───── Chiffres ───── */
+.ps-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: clamp(16px, 3vw, 48px);
+  margin: 36px 0 0;
+}
+.ps-stat {
+  margin: 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+.ps-stat-value {
+  margin: 0;
+  font-family: var(--ps-f-display);
+  font-weight: var(--ps-display-wght);
+  font-variation-settings: "wdth" var(--ps-display-wdth);
+  font-size: clamp(48px, 7vw, 104px);
+  line-height: 0.9;
+  letter-spacing: var(--ps-display-track);
+}
+.ps-stat-label {
+  margin: 10px 0 0;
+  font: 400 13px/1.45 var(--ps-f-mono);
+  color: var(--ink-soft);
+}
+
+/* ───── Citation ───── */
+.ps-quote-text {
+  margin: 0;
+  font-family: var(--ps-f-display);
+  font-weight: calc(var(--ps-display-wght) - 200);
+  font-size: clamp(28px, 4vw, 60px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  max-width: 26ch;
+  text-wrap: balance;
+}
+.ps-quote-by {
+  margin: 24px 0 0;
+  font: 500 12px/1.4 var(--ps-f-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* ───── Matière, composants ───── */
+.ps-split > .ps-in {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(24px, 5vw, 96px);
+  align-items: center;
+}
+.ps-split[data-side="gauche"] .ps-split-media {
+  order: -1;
+}
+.ps-split[data-layout="seul"] > .ps-in {
+  display: block;
+}
+@media (max-width: 860px) {
+  .ps-split > .ps-in {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ps-split[data-side="gauche"] .ps-split-media {
+    order: 0;
+  }
+}
+.ps-comp-head {
+  margin-bottom: 32px;
+}
+.ps-split .x-matiere,
+.ps-split .x-objet {
+  border-radius: var(--ps-radius);
+  overflow: hidden;
+}
+.ps-objet .x-objet {
+  aspect-ratio: 4 / 3;
+  min-height: 320px;
+}
+
+/* ───── Épinglée ───── */
+.ps-pin {
+  height: 280vh;
+}
+.ps-pin-stage {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 28px;
+  height: 100svh;
+}
+.ps-pin-fig {
+  margin: 0;
+  width: min(86vw, 1100px, 93vh);
+  aspect-ratio: 3 / 2;
+  scale: calc(0.42 + 0.58 * min(1, var(--p, 0) * 1.6));
+  translate: 0 calc((1 - min(1, var(--p, 0) * 1.6)) * 6vh - 5vh);
+}
+.ps-pin-fig img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--ps-radius);
+}
+.ps-pin-words {
+  position: absolute;
+  left: 50%;
+  bottom: 7vh;
+  translate: -50% 0;
+  margin: 0;
+  width: max-content;
+  max-width: 90vw;
+  text-align: center;
+  font-family: var(--ps-f-display);
+  font-weight: calc(var(--ps-display-wght) - 100);
+  font-size: clamp(22px, 3.6vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.ps-pin-words span {
+  display: inline-block;
+  --k: clamp(0, calc(var(--p, 0) * 9 - 3.2 - var(--i) * 0.55), 1);
+  opacity: var(--k);
+  translate: 0 calc((1 - var(--k)) * 0.6em);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ps-pin {
+    height: auto;
+  }
+  .ps-pin-fig {
+    scale: 1;
+    translate: 0;
+  }
+  .ps-pin-words span {
+    opacity: 1;
+    translate: 0;
+  }
+  .ps-pin-words {
+    position: static;
+    translate: 0;
+  }
+}
+
+/* ───── Appel ───── */
+.ps-cta > .ps-in {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.ps-cta[data-align="centre"] > .ps-in {
+  justify-items: center;
+}
+.ps-cta[data-stage] {
+  margin: 12px;
+  border-radius: var(--ps-radius);
+  overflow: hidden;
+}
+.ps-cta .ps-actions {
+  margin-top: 44px;
+}
+
+/* ───── Bandeau défilant (DOM : il bouge en continu, le GPU ne le repeint pas) ───── */
+.ps-marquee {
+  overflow: hidden;
+  padding-inline: 0;
+  border-block: 1px solid var(--rule);
+}
+.ps-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: ps-marquee var(--speed, 28s) linear infinite;
+}
+.ps-marquee[data-reverse] .ps-marquee-track {
+  animation-direction: reverse;
+}
+.ps-marquee-item {
+  padding-inline: 0.4em;
+  font-family: var(--ps-f-display);
+  font-weight: var(--ps-display-wght);
+  font-variation-settings: "wdth" var(--ps-display-wdth);
+  text-transform: var(--ps-display-case);
+  font-size: clamp(40px, 8vw, 120px);
+  line-height: 1.1;
+  letter-spacing: var(--ps-display-track);
+  white-space: nowrap;
+}
+.ps-marquee-item::after {
+  content: "✶";
+  margin-left: 0.4em;
+  color: var(--spot);
+  font-size: 0.5em;
+  vertical-align: middle;
+}
+@keyframes ps-marquee {
+  to {
+    translate: -50% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ps-marquee-track {
+    animation: none;
+  }
+}
+
+/* ───── Pied ───── */
+.ps-foot > .ps-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px 48px;
+  align-items: end;
+  border-top: 1px solid var(--rule);
+  padding-top: 32px;
+}
+.ps-foot-brand {
+  margin: 0;
+  font-family: var(--ps-f-display);
+  font-weight: var(--ps-display-wght);
+  font-variation-settings: "wdth" var(--ps-display-wdth);
+  text-transform: var(--ps-display-case);
+  font-size: clamp(48px, 10vw, 150px);
+  line-height: 0.86;
+  letter-spacing: var(--ps-display-track);
+}
+.ps-foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 500 13px/1.4 var(--ps-f-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ps-foot-links a {
+  text-decoration: none;
+}
+.ps-foot-links a:hover {
+  color: var(--spot);
+}
+.ps-foot-legal {
+  grid-column: 1 / -1;
+  margin: 0;
+  font: 400 12px/1.4 var(--ps-f-mono);
+  color: var(--ink-soft);
+}
+@media (max-width: 720px) {
+  .ps-foot > .ps-in {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
