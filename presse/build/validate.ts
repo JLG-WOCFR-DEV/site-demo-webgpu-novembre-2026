@@ -16,7 +16,7 @@ const orbiteAttrs: Spec["attrs"] = Object.fromEntries(
 );
 
 export const SCHEMAS: Record<string, Spec> = {
-  liquide: { attrs: { filters: "any", label: "any", full: "any", link: "any", sizes: "any" } },
+  liquide: { attrs: { filters: "any", label: "any", full: "any", link: "any", sizes: "any", frame: "any" } },
   grille: { attrs: { param: "any", label: "any", hint: "any", kicker: "any", back: "any", variety: "num", full: "any", view: ["grille", "canevas"], canvas: ["true", "false"], drop: ["true", "false"], ...pagesAttrs } },
   lettres: { attrs: { label: "any" } },
   // <x-include> remplace {{attribut}} par n'importe quel attribut : rien à vérifier.

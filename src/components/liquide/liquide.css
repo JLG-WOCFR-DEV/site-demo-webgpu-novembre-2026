@@ -133,10 +133,127 @@
 .lq-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
-  gap: clamp(14px, 2vw, 26px);
+  /* Écarts relatifs au conteneur (le cadre quand il y en a un, sinon la fenêtre). */
+  gap: clamp(14px, 2cqi, 26px);
   margin: 0;
   padding: 0 0 40px;
   list-style: none;
+}
+
+/* Flex : chaque carte part de 260 px et grandit pour remplir sa rangée ; la dernière, seule, prend toute la largeur. */
+.lq-grid[data-layout="flex"] {
+  display: flex;
+  flex-wrap: wrap;
+}
+.lq-grid[data-layout="flex"] > .lq-card {
+  flex: 1 1 min(100%, 260px);
+  min-width: 0;
+}
+
+/* ───── Le cadre (<x-liquide frame>) ───── */
+.x-liquide .lq-frame {
+  position: relative;
+  z-index: 1;
+}
+.lq-frame-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin: 0 0 14px;
+}
+.lq-frame-bar[hidden] {
+  display: none;
+}
+.lq-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.lq-sizes .lq-legend {
+  float: none;
+  padding-top: 0;
+}
+.lq-size {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--rule, #c8c5ba);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.lq-size[aria-pressed="true"] {
+  background: var(--ink, #121212);
+  border-color: var(--ink, #121212);
+  color: var(--paper, #efeee8);
+}
+.lq-size:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.lq-btn[aria-pressed="true"] {
+  background: var(--spot, #c8321c);
+  border-color: var(--spot, #c8321c);
+  color: #fff;
+}
+.lq-size:focus-visible,
+.lq-handle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--paper, #efeee8), 0 0 0 4px var(--spot, #c8321c);
+}
+.lq-size-out {
+  font: 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  color: var(--ink-soft, #55534d);
+  font-variant-numeric: tabular-nums;
+}
+.lq-stage {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 100%;
+  container-type: inline-size;
+  padding: 18px 18px 0;
+}
+.lq-frame.is-live .lq-stage {
+  border: 1px dashed var(--rule, #c8c5ba);
+  border-radius: 20px;
+}
+.lq-frame.is-resizing .lq-stage {
+  border-color: var(--spot, #c8321c);
+}
+/* La poignée : toute la hauteur du bord droit, et un grip qui reste à l'écran le long d'un cadre plus haut que la fenêtre. */
+.lq-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -12px;
+  width: 24px;
+  cursor: ew-resize;
+  touch-action: none;
+  border-radius: 12px;
+}
+.lq-handle[hidden] {
+  display: none;
+}
+.lq-grip {
+  position: sticky;
+  top: calc(50vh - 32px);
+  display: block;
+  width: 14px;
+  height: 64px;
+  margin: 24px auto;
+  border: 1px solid var(--ink, #121212);
+  border-radius: 999px;
+  background: var(--paper, #efeee8) linear-gradient(90deg, transparent 4px, var(--ink, #121212) 4px 5px, transparent 5px 7px, var(--ink, #121212) 7px 8px, transparent 8px) center / 100% 40% no-repeat;
+  transition: transform 0.15s;
+}
+.lq-handle:hover .lq-grip,
+.lq-frame.is-resizing .lq-grip {
+  transform: scaleX(1.25);
+  border-color: var(--spot, #c8321c);
 }
 
 .lq-card {

@@ -669,6 +669,7 @@ function Ne() {
 		}
 		c();
 	}, { rootMargin: "25% 0px" }), v = () => {
+		for (let e = g.length; e--;) g[e].el.isConnected || (_.unobserve(g[e].el), g.splice(e, 1));
 		for (let e of document.querySelectorAll("[data-scroll]")) g.some((t) => t.el === e) || (g.push({
 			el: e,
 			kind: e.dataset.scroll ?? "",
@@ -1088,6 +1089,11 @@ var Qe = [
 		href: "presse.html",
 		name: "Presse",
 		text: "Le framework : un Webflow WebGPU, en attributs HTML"
+	},
+	{
+		href: "createur.html",
+		name: "Créateur",
+		text: "Composer un site Presse par blocs, aperçu WebGPU en direct, export"
 	},
 	{
 		href: "kerguehennec.html",

@@ -21,7 +21,7 @@
 
     <main id="lq-main">
       <!-- Un composant : déroulé en HTML statique à la construction (presse/build). -->
-      <x-liquide full filters="eau:L'eau|terre:La terre|vivant:Le vivant" link="./grille.html?photo={id}">
+      <x-liquide full frame filters="eau:L'eau|terre:La terre|vivant:Le vivant" link="./grille.html?photo={id}">
         <img src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." data-cat="eau" data-id="pont" data-caption="Le pont" />
         <img src="./plates/jardin.jpg" alt="Un jardin japonais : azalées rouges, lanterne de pierre et maison de thé." data-cat="vivant" data-id="jardin" data-caption="Le jardin" />
         <img src="./plates/alcatraz.jpg" alt="L'île d'Alcatraz et son phare au milieu de la baie." data-cat="eau" data-id="alcatraz" data-caption="L'île" />
@@ -44,6 +44,13 @@
           cartes se frôlent, un pont de verre les relie, et ses couleurs mêlent celles des deux photos. Le bord est une lentille :
           la normale du champ dévie la lecture de la photo, avec une légère dispersion des couleurs et un reflet. Au repos, les
           cartes redeviennent des rectangles arrondis exacts.
+        </p>
+        <p>
+          Le cadre autour des photos se redimensionne : tirez sa poignée, choisissez une largeur type ou laissez-le balayer.
+          La grille (<code>repeat(auto-fill, minmax(260px, 1fr))</code>) compte ses colonnes sur la largeur de son
+          conteneur, ses écarts sont en unités de conteneur (<code>cqi</code>) : le cadre est une fenêtre miniature. Quand le
+          nombre de colonnes change, chaque carte rejoint sa nouvelle place par le même ressort. En Flex, chaque carte part de
+          260 px et grandit pour remplir sa rangée : la dernière, seule, prend toute la largeur.
         </p>
         <p>
           D'après l'exemple « Liquid Layout » de vgpu, réécrit en WebGPU brut. Le texte, les légendes et les images restent dans le

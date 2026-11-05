@@ -18,6 +18,7 @@ import { renderScale } from "../../gpu/governor.ts";
 import { getDevice } from "../device.ts";
 import { LIQUID, MAX_CARDS } from "./shaders.ts";
 import { hot } from "../../presse/components.ts";
+import { mountFrame } from "./frame.ts";
 
 // Rechargement à chaud : le module (ou un shader dont il dépend) changé, les liquides de la page sont remontés.
 if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "liquide"));
@@ -219,6 +220,17 @@ export function mount(root: HTMLElement) {
     const r = c.el.getBoundingClientRect();
     return { x: r.left - c.ox, y: r.top - c.oy, w: r.width, h: r.height };
   };
+  // Place de chaque carte dans la grille (sans le décalage FLIP), relative au coin de la grille : quand la grille
+  // change de taille (fenêtre, cadre), chaque carte part de là où elle était pour rejoindre sa nouvelle place.
+  const home = new Map<Card, { x: number; y: number }>();
+  const remember = () => {
+    const g = grid.getBoundingClientRect();
+    for (const c of cards) {
+      if (!c.shown) continue;
+      const l = layoutRect(c);
+      home.set(c, { x: l.x - g.left, y: l.y - g.top });
+    }
+  };
   /** Modifie le DOM, puis anime chaque carte de là où elle était vers sa nouvelle place. */
   const flip = (mutate: () => void) => {
     const before = new Map(cards.filter((c) => c.shown).map((c) => [c, c.el.getBoundingClientRect()]));
@@ -232,7 +244,23 @@ export function mount(root: HTMLElement) {
       c.oy = b.top - l.y;
       applyTransform(c);
     }
+    remember();
   };
+  const reflow = new ResizeObserver(() => {
+    const g = grid.getBoundingClientRect();
+    for (const c of cards) {
+      const h = home.get(c);
+      if (!h || !c.shown || c.drag || reduced.matches) continue;
+      const l = layoutRect(c);
+      c.ox += h.x - (l.x - g.left);
+      c.oy += h.y - (l.y - g.top);
+      applyTransform(c);
+    }
+    remember();
+  });
+  remember();
+  reflow.observe(grid);
+  const unframe = mountFrame(root, flip);
   const announce = (c: Card) => {
     const v = visible();
     say(`${c.name} : position ${v.indexOf(c) + 1} sur ${v.length}.`);
@@ -507,6 +535,8 @@ export function mount(root: HTMLElement) {
   return () => {
     stopped = true;
     io.disconnect();
+    reflow.disconnect();
+    unframe();
     unwire();
     root.classList.remove("is-gl");
   };

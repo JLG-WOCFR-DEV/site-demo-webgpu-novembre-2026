@@ -76,11 +76,12 @@ const pages = (a: Record<string, string>, label: string): [string, string][] => 
 };
 
 /**
- * <x-liquide filters="eau:L'eau|terre:La terre" link="./grille.html?photo={id}">
+ * <x-liquide filters="eau:L'eau|terre:La terre" link="./grille.html?photo={id}" frame>
  *   <img src="…" alt="…" data-cat="eau" data-caption="Le pont" data-id="pont">
  *
  * Avec link et data-id, la légende devient un lien et la photo vole jusqu'à
- * la page visée (src/presse/flight.ts).
+ * la page visée (src/presse/flight.ts). Avec frame, la grille est posée dans un
+ * cadre qu'on redimensionne (poignée, largeurs types, balayage, Grid ou Flex).
  * </x-liquide>
  */
 const liquide: Render = (a, children) => {
@@ -106,6 +107,26 @@ const liquide: Render = (a, children) => {
       return `<li class="lq-card" data-cat="${esc(im.getAttribute("data-cat") ?? "")}"${id ? ` data-flight-id="${esc(id)}"` : ""} tabindex="0"><img class="lq-img" src="${esc(im.getAttribute("src") ?? "")}"${dims(im)} sizes="${esc(a.sizes ?? "(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 340px")}" alt="${esc(im.getAttribute("alt") ?? "")}" />${capHtml}</li>`;
     })
     .join("\n");
+  const grid = `<ul class="lq-grid" aria-label="${esc(a.label ?? "Photos, réordonnables : glisser, ou Alt + flèches au clavier")}">
+${cards}
+  </ul>`;
+  // Le cadre : une largeur qu'on tire, pour voir la grille se recomposer sans toucher à la fenêtre.
+  // La barre reste cachée tant que le script ne l'a pas branchée (sans lui, elle ne ferait rien).
+  const frameBar = `<div class="lq-frame-bar" data-lq-frame-bar hidden>
+    <div class="lq-sizes" role="group" aria-label="Largeur du cadre">
+      <span class="lq-legend" aria-hidden="true">Cadre</span>
+      <button type="button" class="lq-size" data-w="390" aria-pressed="false">Téléphone</button>
+      <button type="button" class="lq-size" data-w="820" aria-pressed="false">Tablette</button>
+      <button type="button" class="lq-size" data-w="1280" aria-pressed="false">Portable</button>
+      <button type="button" class="lq-size" data-w="" aria-pressed="true">Pleine largeur</button>
+    </div>
+    <div class="lq-sizes" role="group" aria-label="Mise en page">
+      <button type="button" class="lq-size" data-layout="grid" aria-pressed="true">Grid</button>
+      <button type="button" class="lq-size" data-layout="flex" aria-pressed="false">Flex</button>
+    </div>
+    <button type="button" class="lq-btn" data-lq-sweep aria-pressed="false">Balayer</button>
+    <output class="lq-size-out" data-lq-size></output>
+  </div>`;
   return `<div class="x-liquide" data-presse-component="liquide"${a.full !== undefined ? " data-full" : ""}>
   <canvas class="lq-gl" aria-hidden="true"></canvas>
   <div class="lq-tools">
@@ -115,9 +136,9 @@ const liquide: Render = (a, children) => {
     <label class="lq-range"><span>Réfraction</span><input type="range" name="refraction" min="0" max="2.5" step="0.05" value="1" /></label>
     <p class="lq-status" data-lq-status role="status"></p>
   </div>
-  <ul class="lq-grid" aria-label="${esc(a.label ?? "Photos, réordonnables : glisser, ou Alt + flèches au clavier")}">
-${cards}
-  </ul>
+  ${a.frame !== undefined ? `<div class="lq-frame" data-lq-frame>${frameBar}<div class="lq-stage" data-lq-stage>${grid}
+    <div class="lq-handle" data-lq-handle hidden role="slider" tabindex="0" aria-label="Largeur du cadre" aria-orientation="horizontal"><span class="lq-grip" aria-hidden="true"></span></div>
+  </div></div>` : grid}
   <p class="sr-only" aria-live="polite" data-lq-live></p>
 </div>`;
 };

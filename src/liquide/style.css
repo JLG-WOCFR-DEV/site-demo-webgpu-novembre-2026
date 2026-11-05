@@ -112,3 +112,10 @@ header.lq-head,
 .lq-essay p {
   margin: 0 0 14px;
 }
+
+.lq-essay code {
+  font: 0.85em/1 var(--f-mono);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
