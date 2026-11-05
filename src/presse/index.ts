@@ -1,6 +1,6 @@
 import "./presse.css";
 import { mountDebugPanel, setDebugCaps } from "../debug-panel.ts";
-import { createEngine, type Engine } from "../gpu/engine.ts";
+import { createEngine, type Engine, type EngineHooks } from "../gpu/engine.ts";
 import { setMotionLevel, type MotionLevel } from "../motion-scale.ts";
 import { CUI_EFFECTS, type CuiEffect } from "../gpu/cui.ts";
 import { mountComponents } from "./components.ts";
@@ -37,6 +37,8 @@ export type PresseOptions = {
   fonts?: string[];
   /** Mode à la demande : le moteur ne peint que lorsque quelque chose bouge (application, mobile). */
   onDemand?: boolean;
+  /** Mesures du moteur (temps GPU par passe si timestamp-query, temps CPU, images par seconde), 2,5 fois par seconde. */
+  onTimings?: EngineHooks["onTimings"];
 };
 export type Presse = {
   engine: Engine | null;
@@ -84,7 +86,7 @@ export async function presse(o: PresseOptions = {}): Promise<Presse> {
   try {
     await Promise.all((o.fonts ?? []).map((f) => document.fonts.load(f))).catch(() => undefined);
     await document.fonts.ready;
-    const engine = await createEngine(canvas, { onDemand: o.onDemand });
+    const engine = await createEngine(canvas, { onDemand: o.onDemand, onTimings: o.onTimings });
     api.engine = engine;
     root.classList.add("gl-on");
     let pending = 0;

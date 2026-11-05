@@ -20,3 +20,4 @@ export { EASE, DUR, SPRINGS, springStep, spring, ease, initTokens, type Spring }
 export { setMotionLevel, motionLevel, motionScale, onMotionLevel, type MotionLevel } from "../motion-scale.ts";
 export { renderScale, onRenderScale, governorState } from "../gpu/governor.ts";
 export { getDevice, onDeviceLost, recoverable } from "../components/device.ts";
+export { CUI_EFFECTS, type CuiEffect } from "../gpu/cui.ts";

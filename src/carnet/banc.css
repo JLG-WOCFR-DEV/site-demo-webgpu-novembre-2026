@@ -1,0 +1,96 @@
+/* Banc Carnet : la table des mesures et la scène où les effets travaillent. */
+.cn-banc .cn-btn {
+  text-decoration: none;
+  color: var(--ink);
+  display: inline-block;
+}
+.cn-banc .cn-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.bn-lede,
+.bn-device,
+.bn-status {
+  max-width: 1220px;
+  margin: 10px auto 0;
+  font: 15px/1.55 var(--serif);
+  color: var(--ink-soft);
+  max-inline-size: 70ch;
+  margin-inline: auto;
+}
+.bn-device,
+.bn-status {
+  font: 12px/1.6 var(--mono);
+}
+.bn-status {
+  color: var(--accent);
+  min-height: 1.6em;
+}
+.bn-table-wrap {
+  max-width: 1220px;
+  margin: 16px auto 0;
+  overflow-x: auto;
+}
+.bn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 13px/1.4 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.bn-table th,
+.bn-table td {
+  text-align: right;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.bn-table th[scope="row"],
+.bn-table thead th:first-child {
+  text-align: left;
+  white-space: normal;
+  font-weight: 500;
+}
+.bn-table thead th {
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.bn-table td[data-verdict] {
+  font-weight: 600;
+}
+.bn-table td[data-verdict="Tenu"] {
+  color: var(--accent);
+}
+.bn-table td[data-verdict="Limite"] {
+  color: #a8742f;
+}
+.bn-table td[data-verdict="Trop lourd"] {
+  color: #b3412e;
+}
+.bn-stage {
+  max-width: 1220px;
+  margin: 22px auto 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  background-image: radial-gradient(circle at center, var(--dot) 0 1.05px, transparent 1.5px);
+  background-size: var(--g) var(--g);
+}
+.bn-col {
+  min-width: 0;
+}
+.bn-dust {
+  grid-column: 1 / -1;
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+}
+.bn-dust-word {
+  font: 400 clamp(34px, 7vw, 64px) / 1.1 var(--serif);
+  margin: 0;
+}

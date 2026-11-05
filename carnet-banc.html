@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Banc Carnet</title>
+    <meta name="description" content="Banc de mesure de Carnet sur Presse : sommeil du moteur, morphing de migration, matières, batterie. À lancer sur un Android milieu de gamme." />
+    <meta name="theme-color" content="#f5f3ee" />
+    <script type="module" src="/src/carnet/banc.ts"></script>
+  </head>
+  <body class="cn cn-banc">
+    <header class="cn-bar">
+      <div class="cn-brand"><b>Banc</b><span>Carnet · Android</span></div>
+      <nav class="cn-tools" aria-label="Actions">
+        <button class="cn-btn" id="run-all" type="button">Lancer les 5 tests</button>
+        <button class="cn-btn" id="run-battery" type="button">Batterie, 2 min</button>
+        <button class="cn-btn" id="copy" type="button">Copier les résultats</button>
+        <a class="cn-btn" href="./carnet.html">Retour au carnet</a>
+      </nav>
+    </header>
+
+    <p class="bn-lede">
+      Ce banc mesure ce que coûtent les effets de Carnet sur cet appareil. Branche le téléphone sur secteur pour les cinq tests (le résultat ne
+      doit pas dépendre de l'économie d'énergie), débranche-le pour la mesure de batterie, écran allumé, luminosité fixe. Ne touche pas l'écran
+      pendant un test.
+    </p>
+    <p class="bn-device" id="device" data-gl-ignore>Appareil : lecture…</p>
+
+    <div class="bn-table-wrap">
+      <table class="bn-table" aria-describedby="device">
+        <thead>
+          <tr>
+            <th scope="col">Test</th>
+            <th scope="col">Images/s</th>
+            <th scope="col">p95 (ms)</th>
+            <th scope="col">Saccades</th>
+            <th scope="col">GPU (ms)</th>
+            <th scope="col">Échelle</th>
+            <th scope="col">Verdict</th>
+          </tr>
+        </thead>
+        <tbody id="results" data-gl-ignore></tbody>
+      </table>
+    </div>
+    <p class="bn-status" id="status" role="status" aria-live="polite" data-gl-ignore></p>
+
+    <section class="bn-stage" aria-label="Scène du test">
+      <div class="bn-col">
+        <p class="cn-label">Jour de départ</p>
+        <ol class="cn-log" id="src"></ol>
+      </div>
+      <div class="bn-col">
+        <p class="cn-label">Jour cible</p>
+        <ol class="cn-log" id="dst"></ol>
+      </div>
+      <div class="bn-dust" id="dust">
+        <p class="bn-dust-word" data-gl-text>Poussière de gomme</p>
+      </div>
+    </section>
+  </body>
+</html>
