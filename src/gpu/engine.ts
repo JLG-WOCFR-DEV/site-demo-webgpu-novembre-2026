@@ -7,7 +7,7 @@ import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
-import { renderScale } from "./governor.ts";
+import { renderScale, setGovernorIdle } from "./governor.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -17,7 +17,21 @@ export type EngineHooks = {
   onLost?: (reason: string) => void;
   /** Contraste WCAG mesuré sur l'image finale (leçon 10.2). */
   onContrast?: (ratio: number) => void;
+  /**
+   * Mode à la demande : le moteur ne peint plus quand rien ne bouge. Il se
+   * réveille sur une mise en page (contenu changé, morphing), le défilement,
+   * le pointeur, le clavier ou un appel à `wake()`, peint le temps que les
+   * animations finissent, puis s'endort (gouverneur compris). Les effets
+   * entretenus par l'horloge (grain animé, matières vivantes) s'y figent :
+   * c'est le mode d'une application ouverte toute la journée sur un téléphone.
+   */
+  onDemand?: boolean;
 };
+
+/** Durée d'éveil après une mise en page : couvre le morphing (1,15 s) et les révélations (1,3 s). */
+const WAKE_LAYOUT_MS = 1600;
+/** Durée d'éveil après un geste (défilement, pointeur, clavier). */
+const WAKE_INPUT_MS = 400;
 
 /**
  * Couleur du papier : lue sur le jeton CSS --paper s'il existe, pour que le
@@ -710,6 +724,28 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let dpr = 1;
   let raf = 0;
   let paused = false;
+  const onDemand = !!hooks.onDemand;
+  // Fin de la fenêtre d'éveil (mode à la demande) ; hors de ce mode, le moteur ne dort jamais.
+  let awakeUntil = onDemand ? performance.now() + WAKE_LAYOUT_MS : Number.POSITIVE_INFINITY;
+  let asleep = false;
+  const wake = (ms = WAKE_INPUT_MS) => {
+    if (!onDemand || destroyed) return;
+    awakeUntil = Math.max(awakeUntil, performance.now() + ms);
+    if (asleep) {
+      asleep = false;
+      setGovernorIdle(false);
+      if (!raf) raf = requestAnimationFrame(frame);
+    }
+  };
+  if (onDemand) {
+    const onInput = () => wake();
+    for (const ev of ["scroll", "wheel", "pointermove", "pointerdown", "pointerup", "keydown", "resize", "focusin"] as const) {
+      addEventListener(ev, onInput, { passive: true });
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) wake(WAKE_LAYOUT_MS);
+    });
+  }
   let needLayout = true;
   let fpsCount = 0;
   let fpsT = performance.now();
@@ -776,8 +812,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let gridCache: { gl: number; gr: number; gap: number; w: number } | null = null;
 
   const frame = () => {
+    raf = 0;
     if (destroyed) return;
-    raf = requestAnimationFrame(frame);
+    // Mode à la demande : passé la fenêtre d'éveil, cette image est la dernière (elle fige l'état final).
+    if (!onDemand || recorder || performance.now() < awakeUntil) raf = requestAnimationFrame(frame);
+    else {
+      asleep = true;
+      setGovernorIdle(true);
+    }
     if (paused) return;
     const cpuStart = performance.now();
     const cssW = canvas.clientWidth;
@@ -847,7 +889,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const hideSpecimen = e.fx === 2 && settings.glyph.atlas;
       const ms = text.morphSince.get(e.el);
       const morph = ms === undefined || reduced ? 1 : Math.min(1, (now - ms) / MORPH_MS);
-      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen ? 0 : 1, morph, e.kin], i * 8);
+      // Un élément retiré du DOM attend la prochaine mise en page : sa boîte vaut zéro, il ne doit pas s'imprimer en haut de l'écran.
+      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen || !e.el.isConnected ? 0 : 1, morph, e.kin], i * 8);
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left, r.top, r.width, r.height, 0, 0.627, 0.863, 0.9);
     });
     if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 8);
@@ -1478,6 +1521,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     canTime,
     relayout: () => {
       needLayout = true;
+      wake(WAKE_LAYOUT_MS);
+    },
+    /** Mode à la demande : peindre encore au moins `ms` millisecondes (une animation pilotée par la page). */
+    wake: (ms?: number) => wake(ms ?? WAKE_LAYOUT_MS),
+    /** Mode à la demande : le moteur dort-il (aucune image demandée) ? */
+    get asleep() {
+      return asleep;
     },
     pause: (v: boolean) => {
       paused = v;
@@ -1491,6 +1541,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     record: (o: RecordOptions) => {
       if (recorder) return false;
       recorder = new Recorder(device, canvas, format, performance.now(), o);
+      wake(WAKE_LAYOUT_MS);
       return true;
     },
     stopRecording: () => recorder?.stop(),

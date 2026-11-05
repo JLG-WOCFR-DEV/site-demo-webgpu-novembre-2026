@@ -35,6 +35,8 @@ export type PresseOptions = {
   canvasUi?: CuiEffect;
   /** Polices à attendre avant de mesurer les lettres (descripteurs CSS font). */
   fonts?: string[];
+  /** Mode à la demande : le moteur ne peint que lorsque quelque chose bouge (application, mobile). */
+  onDemand?: boolean;
 };
 export type Presse = {
   engine: Engine | null;
@@ -44,6 +46,8 @@ export type Presse = {
   relayout: () => void;
   /** Rejouer l'impression des sections. */
   replay: () => void;
+  /** Mode à la demande : peindre encore au moins `ms` millisecondes. Sans effet sinon. */
+  wake: (ms?: number) => void;
 };
 
 const EFFECT_KEYS: Record<Effect, keyof typeof settings.chain> = { loupe: "distort", rvb: "rgb", trame: "trame", bloom: "bloom", grain: "grain" };
@@ -67,7 +71,7 @@ export async function presse(o: PresseOptions = {}): Promise<Presse> {
   // repli sans WebGPU : ils démarrent quoi qu'il arrive au moteur.
   void mountComponents();
 
-  const api: Presse = { engine: null, settings, relayout: () => {}, replay: () => {} };
+  const api: Presse = { engine: null, settings, relayout: () => {}, replay: () => {}, wake: () => {} };
   if (!navigator.gpu) return api;
 
   let canvas = o.canvas;
@@ -80,7 +84,7 @@ export async function presse(o: PresseOptions = {}): Promise<Presse> {
   try {
     await Promise.all((o.fonts ?? []).map((f) => document.fonts.load(f))).catch(() => undefined);
     await document.fonts.ready;
-    const engine = await createEngine(canvas);
+    const engine = await createEngine(canvas, { onDemand: o.onDemand });
     api.engine = engine;
     root.classList.add("gl-on");
     let pending = 0;
@@ -89,11 +93,19 @@ export async function presse(o: PresseOptions = {}): Promise<Presse> {
       pending = requestAnimationFrame(() => engine.relayout());
     };
     api.replay = () => engine.replayPrint();
+    api.wake = (ms) => engine.wake(ms);
     new ResizeObserver(api.relayout).observe(document.body);
     document.fonts.addEventListener("loadingdone", api.relayout);
     addEventListener("pli:relayout", api.relayout);
-    // Le contenu change (CMS, script) : on relit le DOM.
-    new MutationObserver(api.relayout).observe(document.body, { subtree: true, childList: true, characterData: true });
+    // Le contenu change (CMS, script) : on relit le DOM. Sauf ce qui vit sous [data-gl-ignore] (horloge,
+    // compteur, indicateur d'état) : le GPU n'en peint rien, et le relire réveillerait le moteur à la demande.
+    const ignored = (r: MutationRecord) => {
+      const n = r.target instanceof Element ? r.target : r.target.parentElement;
+      return !!n?.closest("[data-gl-ignore]");
+    };
+    new MutationObserver((recs) => {
+      if (!recs.every(ignored)) api.relayout();
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
     setDebugCaps({
       wire: (on) => (settings.debug.wire = on),
       grid: (g) => {
@@ -123,5 +135,6 @@ export function presseFromHtml() {
     motion: (d.presseMotion as MotionLevel) ?? undefined,
     debug: d.presseDebug !== undefined,
     canvasUi: (d.presseCanvasUi as CuiEffect) ?? undefined,
+    onDemand: d.presseDemand !== undefined,
   });
 }

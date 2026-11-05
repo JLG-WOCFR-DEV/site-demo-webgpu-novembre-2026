@@ -57,6 +57,9 @@ p.replay();                  // rejouer l'impression des sections
 | `data-presse-look` | `html` | Direction artistique de toute la page (texte, images, canvas) : `neutre`, `papier`, `argentique`, `nuit`, `presse`. Réglages fins : `data-presse-grain`, `data-presse-vignette`. À chaud : `applyLook(nom)`. |
 | `data-angle` | `input type="number"` | Cadran d'angle façon Photoshop / InDesign / Illustrator (`enhanceAngles()`, `src/presse/angle.ts`) : une aiguille dans un cercle, on la tourne au pointeur (Maj : crans de 15°), molette et flèches ±1° (Maj ±15°), Origine : 0°, double-clic : valeur par défaut ; 0° à droite, sens inverse des aiguilles. L'input reste la vérité (valeur, événements `input` et `change`). Utilisé par Matières (sens du tissu des paillettes, orientation et lumière du diagramme de phase). |
 | `data-presse-debug` | `html` | Panneau de débogage : fil de fer, grille, capture vidéo, image PNG. |
+| `data-presse-demand` | `html` | Mode à la demande (`presse({ onDemand: true })`) : le moteur ne peint que lorsque quelque chose bouge — mise en page (contenu changé, morphing), défilement, pointeur, clavier, `p.wake(ms)` — puis s'endort, gouverneur compris. Les effets entretenus par l'horloge (grain animé, matières vivantes) s'y figent. Le mode d'une application ouverte toute la journée sur un téléphone (Carnet). `engine.asleep` dit s'il dort. |
+| `data-gl-ignore` | tout élément | Ses changements ne relancent pas la mise en page : horloge, compteur, indicateur d'état. Indispensable en mode à la demande, où toute mutation réveille le moteur. |
+| `data-gl-morph-id` / `data-gl-morph-from` | avec `data-gl-text` | Morphing entre deux éléments : un élément qui apparaît avec `data-gl-morph-from="x"` fait partir ses lettres de celles de l'élément `data-gl-morph-id="x"` à la mise en page précédente (en coordonnées de page ; la source reste en place). Carnet s'en sert pour la migration d'une tâche, la suggestion gardée et le vol semaine ↔ jour. |
 | `--paper` | `:root` (CSS) | Couleur du papier, lue par le GPU. |
 
 ## Comment ça marche
@@ -269,6 +272,12 @@ Relevé au 26 octobre 2026, classé par effet sur la qualité perçue rapporté 
 
 Ce qu'on ne fera pas : du WebGL de repli (le HTML est le repli), du défilement simulé qui remplace le natif (accessibilité,
 ancres, `sticky`), des effets qui ne survivent pas au mouvement réduit.
+
+### E. Application : Carnet
+
+`carnet.html`, `src/carnet/` : un bullet journal bâti sur Presse, qui n'importe le moteur que par `src/presse/lib.ts`, l'API
+publique (premier pas du paquet D12). Il a demandé au moteur le mode à la demande, `data-gl-ignore` et le morphing entre
+éléments (voir les attributs).
 
 ### Ordre proposé
 

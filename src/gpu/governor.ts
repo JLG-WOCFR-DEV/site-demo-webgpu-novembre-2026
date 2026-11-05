@@ -28,16 +28,25 @@ let over = 0;
 let under = 0;
 let lastChange = 0;
 const subs = new Set<(s: number) => void>();
+// Mode à la demande (moteur endormi quand rien ne bouge) : le gouverneur dort avec lui.
+let idle = false;
+let ticking = false;
+let tick: ((now: number) => void) | null = null;
+let last = 0;
 
 function start() {
   started = true;
   if (document.documentElement.dataset.presseQuality === "fixe") return;
   const mins: number[] = [];
-  let last = performance.now();
-  const tick = (now: number) => {
+  last = performance.now();
+  tick = (now: number) => {
     const dt = now - last;
     last = now;
-    requestAnimationFrame(tick);
+    if (idle) {
+      ticking = false;
+      return;
+    }
+    requestAnimationFrame(tick!);
     // Pause, onglet en arrière-plan, gros chargement : ce n'est pas la cadence.
     if (document.hidden || dt <= 0 || dt > 250) return;
     // La cadence de l'écran : le plus court des intervalles récents, arrondi à un écran connu.
@@ -61,7 +70,22 @@ function start() {
       for (const fn of subs) fn(scale);
     }
   };
+  ticking = true;
   requestAnimationFrame(tick);
+}
+
+/**
+ * Endort ou réveille la mesure (mode à la demande du moteur). Endormi, le
+ * gouverneur ne demande plus d'image ; réveillé, il reprend sans compter
+ * l'intervalle de sommeil (un intervalle de plus de 250 ms est ignoré).
+ */
+export function setGovernorIdle(v: boolean) {
+  idle = v;
+  if (!v && tick && !ticking) {
+    ticking = true;
+    last = performance.now();
+    requestAnimationFrame(tick);
+  }
 }
 
 /** Facteur d'échelle du rendu (multiplie devicePixelRatio). */

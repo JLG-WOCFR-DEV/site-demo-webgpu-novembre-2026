@@ -196,6 +196,18 @@ export class TextLayer {
   private morphPrev = new Map<HTMLElement, { key: string; glyphs: MorphGlyph[] }>();
   /** Début du dernier morphing de chaque élément (horloge des animations). */
   morphSince = new Map<HTMLElement, number>();
+  /**
+   * Éléments [data-gl-morph-id] à la mise en page précédente : leurs glyphes et la
+   * place de leur boîte dans la page. Un élément [data-gl-morph-from] qui apparaît
+   * fait partir ses lettres de là (migration d'une tâche d'un jour à l'autre).
+   */
+  private morphIds = new Map<string, { glyphs: MorphGlyph[]; x: number; y: number }>();
+  /**
+   * Morphings en cours : pour chaque lettre, son point de départ dans la page, son genre et son retard.
+   * Une mise en page qui tombe pendant l'animation (redimensionnement, contenu changé ailleurs) les
+   * réapplique au lieu de remettre les lettres à leur place d'un coup.
+   */
+  private morphLive = new Map<HTMLElement, { key: string; starts: number[] }>();
 
   layout(dpr: number) {
     performance.mark("presse:text-start");
@@ -224,13 +236,19 @@ export class TextLayer {
     this.msdfGlyphs = 0;
     let total = 0;
     const range = document.createRange();
+    const nextIds = new Map<string, { glyphs: MorphGlyph[]; x: number; y: number }>();
+    // Éléments nés d'un autre (morphing entre éléments) : leurs lettres arrivent déjà imprimées, elles voyagent.
+    const arrived = new Set<HTMLElement>();
 
     containers.forEach((el, elemIndex) => {
       const box = el.getBoundingClientRect();
       const fx = el.dataset.glFx === "hero" ? 1 : el.dataset.glFx === "specimen" ? 2 : 0;
       const first = total;
       let idx = 0;
-      const morph = el.hasAttribute("data-gl-morph");
+      const morph = el.hasAttribute("data-gl-morph") || el.hasAttribute("data-gl-morph-from");
+      const morphId = el.dataset.glMorphId;
+      // Les glyphes sont gardés pour un morphing à venir : le sien, ou celui d'un autre élément qui partira d'ici.
+      const capture = morph || !!morphId;
       const cur: MorphGlyph[] = [];
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
@@ -277,7 +295,7 @@ export class TextLayer {
                 u32.push(color, elemIndex);
                 out.push(idx, -k);
                 extra.push(0, 0, 0, 0);
-                if (morph) cur.push({ ch, f: out.slice(out.length - 10), color });
+                if (capture) cur.push({ ch, f: out.slice(out.length - 10), color });
                 total++;
                 idx++;
                 this.msdfGlyphs++;
@@ -291,7 +309,7 @@ export class TextLayer {
                 u32.push(color, elemIndex);
                 out.push(idx, q.k);
                 extra.push(0, 0, 0, 0);
-                if (morph) cur.push({ ch, f: out.slice(out.length - 10), color });
+                if (capture) cur.push({ ch, f: out.slice(out.length - 10), color });
                 total++;
                 idx++;
               }
@@ -307,7 +325,32 @@ export class TextLayer {
         // restent un temps, en fantômes, pour s'effacer.
         const key = cur.map((g) => g.ch).join("");
         const prev = this.morphPrev.get(el);
-        if (prev && prev.key !== key) {
+        const fromId = el.dataset.glMorphFrom;
+        const src = !prev && fromId ? this.morphIds.get(fromId) : undefined;
+        const bx = box.left + scrollX;
+        const by = box.top + scrollY;
+        let fresh = false;
+        if (src) {
+          // Morphing entre deux éléments : chaque lettre part de la lettre identique de la source,
+          // en coordonnées de page. La source reste en place : pas de fantômes à effacer.
+          fresh = true;
+          arrived.add(el);
+          const used = new Set<number>();
+          cur.forEach((g, i) => {
+            const j = src.glyphs.findIndex((p, k) => !used.has(k) && p.ch === g.ch);
+            const e = (first + i) * 4;
+            const delay = (i / Math.max(1, cur.length)) * 0.32 + ((i * 7919) % 13) / 13 * 0.08;
+            if (j >= 0) {
+              used.add(j);
+              const p = src.glyphs[j]!;
+              extra.splice(e, 4, src.x + p.f[0]! - (bx + g.f[0]!), src.y + p.f[1]! - (by + g.f[1]!), 1, delay);
+            } else {
+              extra.splice(e, 4, 0, 0, 2, delay + 0.12);
+            }
+          });
+          this.morphSince.set(el, clockNow());
+        } else if (prev && prev.key !== key) {
+          fresh = true;
           const used = new Set<number>();
           cur.forEach((g, i) => {
             const j = prev.glyphs.findIndex((p, k) => !used.has(k) && p.ch === g.ch);
@@ -330,13 +373,36 @@ export class TextLayer {
           });
           this.morphSince.set(el, clockNow());
         }
+        if (fresh) {
+          // Point de départ de chaque lettre dans la page, pour les mises en page à venir pendant l'animation.
+          const starts: number[] = [];
+          cur.forEach((g, i) => {
+            const e = (first + i) * 4;
+            starts.push(extra[e]! + bx + g.f[0]!, extra[e + 1]! + by + g.f[1]!, extra[e + 2]!, extra[e + 3]!);
+          });
+          this.morphLive.set(el, { key, starts });
+        } else {
+          const live = this.morphLive.get(el);
+          const since = this.morphSince.get(el);
+          if (live && since !== undefined && clockNow() - since < MORPH_MS && live.key === key && live.starts.length === cur.length * 4) {
+            cur.forEach((g, i) => {
+              const k = live.starts[i * 4 + 2]!;
+              if (k === 0) return;
+              const travel = k === 1;
+              extra.splice((first + i) * 4, 4, travel ? live.starts[i * 4]! - (bx + g.f[0]!) : 0, travel ? live.starts[i * 4 + 1]! - (by + g.f[1]!) : 0, k, live.starts[i * 4 + 3]!);
+            });
+          } else if (live) this.morphLive.delete(el);
+        }
         this.morphPrev.set(el, { key, glyphs: cur });
       }
-      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: revealed.get(el) ?? -1 });
+      if (morphId) nextIds.set(morphId, { glyphs: cur, x: box.left + scrollX, y: box.top + scrollY });
+      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: arrived.has(el) ? 0 : (revealed.get(el) ?? -1) });
     });
 
     if (had) root.classList.add("gl-on");
     for (const el of this.morphPrev.keys()) if (!el.isConnected) (this.morphPrev.delete(el), this.morphSince.delete(el));
+    this.morphIds = nextIds;
+    for (const el of this.morphLive.keys()) if (!el.isConnected) this.morphLive.delete(el);
 
     // Entrelacement f32/u32 selon la struct WGSL (16 mots par glyphe).
     const buf = new ArrayBuffer(Math.max(GLYPH_STRIDE, total * GLYPH_STRIDE));
