@@ -1,0 +1,567 @@
+/*
+ * Carnet — le papier, la grille, l'encre.
+ * Le GPU peint le papier (--paper) et le texte des entrées ; le DOM garde la
+ * grille pointée, les puces, les heures et les commandes. Aucun fond opaque
+ * au-dessus du canvas : il masquerait l'encre.
+ */
+:root {
+  --paper: #f5f3ee;
+  --ink: #1d2840;
+  --ink-soft: #5b6378;
+  --pencil: #8b8e95;
+  --accent: #2c6a56;
+  --line: rgba(29, 40, 64, 0.18);
+  --dot: rgba(29, 40, 64, 0.26);
+  --hover: rgba(29, 40, 64, 0.06);
+  --shadow: rgba(20, 24, 34, 0.3);
+  --serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --g: 26px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1d1c1a;
+    --ink: #dcd8ce;
+    --ink-soft: #9d998f;
+    --pencil: #7c7a74;
+    --accent: #7fc0a6;
+    --line: rgba(220, 216, 206, 0.16);
+    --dot: rgba(220, 216, 206, 0.2);
+    --hover: rgba(220, 216, 206, 0.07);
+    --shadow: rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #1d1c1a;
+  --ink: #dcd8ce;
+  --ink-soft: #9d998f;
+  --pencil: #7c7a74;
+  --accent: #7fc0a6;
+  --line: rgba(220, 216, 206, 0.16);
+  --dot: rgba(220, 216, 206, 0.2);
+  --hover: rgba(220, 216, 206, 0.07);
+  --shadow: rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+html,
+body {
+  margin: 0;
+}
+body.cn {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  min-height: 100vh;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 40px;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+kbd {
+  font: 500 11px var(--mono);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* Barre */
+.cn-bar {
+  max-width: 1220px;
+  margin: 0 auto 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
+  justify-content: space-between;
+}
+.cn-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.cn-brand b {
+  font: 500 24px/1 var(--serif);
+}
+.cn-brand span {
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.cn-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.cn-btn {
+  font: 500 12.5px/1 var(--mono);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 11px;
+  cursor: pointer;
+}
+.cn-btn:hover {
+  background: var(--hover);
+}
+.cn-icon {
+  width: 34px;
+  padding-inline: 0;
+}
+.cn-seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cn-seg button {
+  border: 0;
+  background: none;
+  padding: 8px 11px;
+  font: 500 12.5px/1 var(--mono);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.cn-seg button + button {
+  box-shadow: inset 1px 0 0 var(--line);
+}
+.cn-seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.cn-sample {
+  max-width: 1220px;
+  margin: 0 auto 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  justify-content: space-between;
+  font: 12px/1.5 var(--mono);
+  color: var(--ink-soft);
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+/* Titre : persistant d'une vue à l'autre, il se réarrange lettre à lettre (data-gl-morph). */
+.cn-title {
+  max-width: 1220px;
+  margin: 10px auto 0;
+  font: 400 clamp(28px, 4.4vw, 46px) / 1.2 var(--serif);
+  letter-spacing: -0.01em;
+  min-height: 1.2em;
+  text-wrap: balance;
+}
+
+/* Double page */
+.cn-spread {
+  max-width: 1220px;
+  margin: 12px auto 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  position: relative;
+  background-image: radial-gradient(circle at center, var(--dot) 0 1.05px, transparent 1.5px);
+  background-size: var(--g) var(--g);
+  background-position: calc(var(--g) / 2) calc(var(--g) / 2);
+  border-top: 1px solid var(--line);
+}
+/* La reliure : une ombre douce, sans fond. */
+.cn-spread[data-view="week"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 22px);
+  width: 44px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--shadow) 50%, transparent);
+  opacity: 0.18;
+}
+.cn-spread[data-view="day"] {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 760px;
+}
+.cn-page {
+  min-width: 0;
+  padding: var(--g) calc(var(--g) * 1.2) calc(var(--g) * 2);
+}
+.cn-spread[data-view="day"] .cn-right {
+  display: none;
+}
+
+/* Bloc d'un jour */
+.cn-day {
+  min-height: calc(var(--g) * 6);
+  padding-bottom: calc(var(--g) / 2);
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+.cn-day.is-big {
+  min-height: calc(var(--g) * 18);
+  box-shadow: none;
+}
+.cn-dhead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: var(--g);
+  padding-top: calc(var(--g) / 2);
+}
+.cn-dname {
+  border: 0;
+  background: none;
+  padding: 0 4px;
+  margin-left: -4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: 500 11px / var(--g) var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.cn-dname b {
+  font: 400 22px / var(--g) var(--serif);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  margin-left: 6px;
+}
+.cn-dname:hover {
+  background: var(--hover);
+}
+.is-today .cn-dname,
+.is-today .cn-dname b {
+  color: var(--accent);
+}
+.cn-label {
+  font: 500 11px / var(--g) var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* Lignes */
+.cn-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cn-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--g) var(--g) auto minmax(0, 1fr) auto;
+  align-items: start;
+  min-height: var(--g);
+  font-size: 17px;
+  line-height: var(--g);
+}
+.is-big .cn-row {
+  font-size: 18.5px;
+}
+.cn-mark {
+  font: 600 14px / var(--g) var(--mono);
+  color: var(--accent);
+  text-align: center;
+}
+.cn-bullet {
+  width: var(--g);
+  height: var(--g);
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 4px;
+  font: 500 16px / var(--g) var(--mono);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+}
+.cn-bullet:hover:not(:disabled) {
+  background: var(--hover);
+}
+.cn-bullet:disabled {
+  cursor: default;
+}
+.cn-time {
+  font: 400 12px / var(--g) var(--mono);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+.cn-time:empty {
+  padding: 0;
+}
+.cn-body {
+  min-width: 0;
+}
+.cn-text {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  padding: 0 3px;
+  margin-left: -3px;
+  border-radius: 3px;
+  outline: none;
+  overflow-wrap: anywhere;
+  caret-color: var(--ink);
+}
+.cn-row .cn-text:focus {
+  background: var(--hover);
+}
+.state-done .cn-text,
+.state-migrated .cn-text,
+.state-cancelled .cn-text {
+  color: var(--ink-soft);
+}
+.state-cancelled {
+  opacity: 0.6;
+}
+.cn-strike {
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  width: calc(100% + 2px);
+  height: 10px;
+  transform: translateY(-46%);
+  overflow: visible;
+  pointer-events: none;
+}
+.cn-strike path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  animation: cn-draw 0.2s ease-out;
+}
+@keyframes cn-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+.cn-ops {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.cn-row:hover .cn-ops,
+.cn-row:focus-within .cn-ops {
+  opacity: 1;
+}
+@media (hover: none) {
+  .cn-ops {
+    opacity: 0.7;
+  }
+}
+.cn-op {
+  width: var(--g);
+  height: var(--g);
+  border: 0;
+  background: none;
+  border-radius: 4px;
+  font: 500 15px / var(--g) var(--mono);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.cn-op:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+/* Crayon : la couleur est lue par le GPU, qui imprime la suggestion en graphite. */
+.cn-ghost {
+  color: var(--pencil);
+  border-radius: 4px;
+}
+.cn-ghost .cn-bullet {
+  color: var(--pencil);
+  cursor: default;
+}
+.cn-ghost .cn-text {
+  font-style: italic;
+  color: var(--pencil);
+}
+.cn-ghost:focus {
+  outline: 1px dashed var(--accent);
+  outline-offset: 2px;
+}
+.cn-src {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px dashed var(--pencil);
+  border-radius: 3px;
+  font: 500 10px/16px var(--mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--pencil);
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+.cn-gops {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0 0 8px;
+}
+.cn-gbtn {
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  font: 500 11.5px/20px var(--mono);
+}
+.cn-keep {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.cn-keep:hover {
+  background: var(--accent);
+  color: var(--paper);
+}
+.cn-drop {
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+/* Saisie */
+.cn-form {
+  display: grid;
+  grid-template-columns: var(--g) var(--g) minmax(0, 1fr);
+}
+.cn-prompt {
+  grid-column: 2;
+  font: 500 14px / var(--g) var(--mono);
+  color: var(--pencil);
+  text-align: center;
+}
+.cn-form input {
+  height: var(--g);
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  border-radius: 0;
+  background: transparent;
+  font: 16px / var(--g) var(--serif);
+  color: var(--ink);
+  outline: none;
+  min-width: 0;
+}
+.is-big .cn-form input {
+  font-size: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.cn-form input::placeholder {
+  color: var(--pencil);
+  font-style: italic;
+}
+.cn-form input:hover {
+  border-bottom-color: var(--line);
+}
+.cn-form input:focus {
+  border-bottom: 1px solid var(--accent);
+}
+
+/* Vol semaine ↔ jour : un contour de feuille, transparent (l'encre reste visible dessous). */
+.cn-flysheet {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  transform-origin: 0 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 18px 36px -24px var(--shadow);
+}
+
+.cn-foot {
+  max-width: 1220px;
+  margin: 18px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  font: 11px/1.8 var(--mono);
+  color: var(--ink-soft);
+}
+.cn-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.cn-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 10;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  background: var(--ink);
+  color: var(--paper);
+  font: 12.5px/1.4 var(--mono);
+  padding: 9px 14px;
+  border-radius: 6px;
+}
+
+@media (max-width: 860px) {
+  .cn-spread {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cn-spread[data-view="week"]::before {
+    display: none;
+  }
+  .cn-page {
+    padding-inline: 4px;
+  }
+  .cn-gops {
+    grid-column: 3 / -1;
+    padding: 0 0 6px;
+  }
+  .cn-ghost {
+    grid-template-columns: var(--g) var(--g) auto minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cn-strike path {
+    animation: none;
+  }
+  .cn-ops {
+    transition: none;
+  }
+}
+
+/*
+ * Presse pose `position: relative; z-index: 1` sur chaque enfant direct de body
+ * (html.gl-on body > :not(.presse-canvas), spécificité 0-2-2) pour passer le
+ * contenu au-dessus du canvas. Le toast et le contour de vol gardent leur place.
+ */
+body > .cn-toast.cn-toast.cn-toast {
+  position: fixed;
+  z-index: 10;
+}
+body > .cn-flysheet.cn-flysheet.cn-flysheet {
+  position: absolute;
+  z-index: 3;
+}

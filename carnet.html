@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Carnet</title>
+    <meta name="description" content="Carnet : un bullet journal à l'encre, sur Presse. Semaine en double page, migration et suggestions au crayon." />
+    <meta name="theme-color" content="#f5f3ee" />
+    <script type="module" src="/src/carnet/main.ts"></script>
+  </head>
+  <body class="cn">
+    <header class="cn-bar">
+      <div class="cn-brand"><b>Carnet</b><span>v0 · sur Presse</span></div>
+      <nav class="cn-tools" aria-label="Navigation">
+        <div class="cn-seg" role="group" aria-label="Vue">
+          <button type="button" data-view="week" aria-pressed="true">Semaine</button>
+          <button type="button" data-view="day" aria-pressed="false">Jour</button>
+        </div>
+        <button class="cn-btn cn-icon" id="prev" type="button" aria-label="Semaine précédente">‹</button>
+        <button class="cn-btn" id="today" type="button">Aujourd'hui</button>
+        <button class="cn-btn cn-icon" id="next" type="button" aria-label="Semaine suivante">›</button>
+      </nav>
+    </header>
+
+    <div class="cn-sample" id="cn-sample" hidden>
+      <span>Carnet d'exemple : les entrées et l'agenda sont fictifs.</span>
+      <button class="cn-btn" id="cn-reset" type="button">Vider le carnet</button>
+    </div>
+
+    <h1 class="cn-title" id="cn-title" data-gl-text data-gl-morph>Semaine</h1>
+
+    <main class="cn-spread" id="spread" data-view="week">
+      <section class="cn-page cn-left" aria-label="Page de gauche"></section>
+      <section class="cn-page cn-right" aria-label="Page de droite"></section>
+    </main>
+
+    <footer class="cn-foot">
+      <span id="cn-gpu" data-gl-ignore>GPU : démarrage…</span>
+      <span>Saisie : <kbd>.</kbd> tâche <kbd>o</kbd> événement <kbd>-</kbd> note <kbd>*</kbd> priorité <kbd>14:00</kbd> heure · <kbd>[</kbd> <kbd>]</kbd> page</span>
+      <button class="cn-link" id="cn-reseed" type="button">Recharger l'exemple</button>
+    </footer>
+    <div class="cn-toast" id="cn-toast" role="status" aria-live="polite" data-gl-ignore hidden></div>
+  </body>
+</html>
