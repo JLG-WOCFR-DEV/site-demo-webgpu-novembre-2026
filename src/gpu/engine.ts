@@ -96,6 +96,19 @@ const additive: GPUBlendState = {
   alpha: { srcFactor: "one", dstFactor: "one", operation: "add" },
 };
 
+/**
+ * Opacité posée en style sur l'élément et ses parents (moteur de temps, data-anim) : le GPU fond avec le DOM. Lue dans
+ * l'attribut style, sans recalcul de style ; l'opacité d'une feuille CSS n'est pas suivie.
+ */
+function inlineOpacity(el: HTMLElement) {
+  let a = 1;
+  for (let n: HTMLElement | null = el; n && n !== document.body; n = n.parentElement) {
+    const o = n.style.opacity;
+    if (o) a *= Number(o);
+  }
+  return a;
+}
+
 export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks = {}) {
   readPaper();
   if (!navigator.gpu) throw new Error("WebGPU absent de ce navigateur");
@@ -714,11 +727,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let fpsCount = 0;
   let fpsT = performance.now();
   let fps = 0;
-  const t0 = performance.now();
+  const t0 = clockNow();
   let lastTimings = 0;
   let lastScroll = scrollY;
   let velocity = 0;
-  let lastNow = performance.now();
+  let bend = 0;
+  let lastNow = clockNow();
   // Profondeur imprimée de chaque chapitre (px css), qui ne fait que croître.
   const printDepth = new WeakMap<Element, { shown: number; target: number }>();
   // Ce que le DOM peint lui-même (réglages, code, liens) apparaît quand le
@@ -816,6 +830,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const v = Math.abs(dy) > 600 ? 0 : dy / dt; // px/s
     velocity += (v - velocity) * (1 - Math.exp(-dt * 10));
     const slip = reduced ? 0 : Math.max(-1, Math.min(1, velocity / 4000));
+    // Courbure (data-presse-effects="courbure") : la page se bombe avec la vitesse, et retombe en douceur.
+    bend += ((settings.chain.bend && !reduced ? slip * motionScale() : 0) - bend) * (1 - Math.exp(-dt * 6));
     // Vitesse du pointeur, lissée : c'est elle qui « balaie » les lettres et l'encre.
     const k = 1 - Math.exp(-dt * 18);
     pvx += ((pointer.x - lastPx) / dt - pvx) * k;
@@ -837,20 +853,21 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
     /* Éléments de texte : seule la boîte de l'élément est relue. */
     const elems = text.elems;
-    if (elemData.length < elems.length * 8) elemData = new Float32Array(elems.length * 8);
+    if (elemData.length < elems.length * 12) elemData = new Float32Array(elems.length * 12);
     const boxes: number[] = [];
     elems.forEach((e, i) => {
       const r = e.el.getBoundingClientRect();
       if (e.revealStart < 0 && r.top < cssH * 0.92 && r.bottom > 0) e.revealStart = now;
-      const dur = e.fx === 1 ? 1500 : 900;
+      // Lignes, érosion : une cascade par ligne, la durée grandit avec le nombre de lignes ; la courbe se joue par ligne.
+      const dur = e.rv === 1 ? 650 + e.lines * 120 : e.rv === 2 ? 1000 + e.lines * 160 : e.fx === 1 ? 1500 : 900;
       const reveal = reduced ? 1 : e.revealStart < 0 ? 0 : Math.min(1, (now - e.revealStart) / dur);
       const hideSpecimen = e.fx === 2 && settings.glyph.atlas;
       const ms = text.morphSince.get(e.el);
       const morph = ms === undefined || reduced ? 1 : Math.min(1, (now - ms) / MORPH_MS);
-      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen ? 0 : 1, morph, e.kin], i * 8);
+      elemData.set([r.left, r.top, e.rv ? reveal : ease(reveal), e.fx, e.count, hideSpecimen ? 0 : inlineOpacity(e.el), morph, e.kin, e.rv, e.lh, e.lines, r.width], i * 12);
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left, r.top, r.width, r.height, 0, 0.627, 0.863, 0.9);
     });
-    if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 8);
+    if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 12);
 
     /* Plans */
     type Job = { offset: number; bind: GPUBindGroup; shadow: boolean; peel: boolean };
@@ -907,7 +924,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
         pushPlane(r, uv, [radius, shadow * shadowK, lift, 1], [0, 2, p.hover, 0], p.bind, shadow > 0.01, 0, fx);
         pushPlane(r, uv, [radius, 0, lift, 1], [0, 0, p.hover, 1.6], p.bind, false, p.peel, fx);
       } else {
-        pushPlane(r, uv, [radius, shadow * shadowK, lift, 1], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01, 0, fx);
+        pushPlane(r, uv, [radius, shadow * shadowK, lift, inlineOpacity(p.img)], [p.quad && q.wire ? 1 : 0, 0, p.hover, 1.6], p.bind, shadow > 0.01, 0, fx);
       }
     }
 
@@ -994,7 +1011,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     postData.set([T.cell, T.gain, T.misreg, T.mix], 16);
     postData.set([PAPER[0], PAPER[1], PAPER[2], slip], 20);
     const F = settings.filter;
-    postData.set([F.kind, F.size, F.amount, 0], 24);
+    postData.set([F.kind, F.size, F.amount, bend], 24);
 
     /* Transition : impression des chapitres */
     const P = settings.transition;

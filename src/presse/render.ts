@@ -362,7 +362,39 @@ const matiere: Render = (a) => {
 </figure>`;
 };
 
-export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie, objet, orbite, matiere };
+/**
+ * <x-tambour label="Projets" speed="0.3" height="80vh">
+ *   <p><span>2021</span> Oura Isle <span>SFO</span></p>
+ *   …
+ * </x-tambour>
+ *
+ * Une liste sur un tambour (d'après la vidéo d'Aristide Benoist, novembre 2026) : chaque enfant est une ligne posée sur
+ * un cylindre vu de face. Vers les bords, les lignes s'écrasent, s'espacent et passent en italique ; le tambour tourne
+ * seul (speed : lignes par seconde, 0 pour l'arrêter), avec le défilement de la page (scroll : facteur, 0 pour le
+ * détacher) et au glisser. En boucle : s'il n'y a pas assez de lignes pour faire le tour, elles sont répétées (copies
+ * cachées aux lecteurs d'écran). numerals="non" retire les chiffres romains des marges. Sans script : une liste qui défile.
+ */
+const ROMAN: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+export const roman = (n: number) => ROMAN.reduce((s, [v, r]) => {
+  while (n >= v) ((s += r), (n -= v));
+  return s;
+}, "");
+const TB_ATTRS = ["speed", "scroll"];
+const tambour: Render = (a, children) => {
+  const items = children.filter((c) => c.tagName !== "SCRIPT");
+  if (!items.length) throw new Error("Presse : <x-tambour> sans lignes (un enfant par ligne)");
+  const data = TB_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k]!)}"`).join("");
+  const num = a.numerals !== "non";
+  const h = a.height ? ` style="--tb-h: ${esc(a.height)}"` : "";
+  const lis = items.map((c, i) => `<li class="tb-item"${num ? ` data-n="${roman(i + 1)}"` : ""}>${c.outerHTML ?? c.toString()}</li>`).join("\n");
+  return `<div class="x-tambour" data-presse-component="tambour"${data}${h} role="group" aria-label="${esc(a.label ?? "Liste")}" tabindex="0">
+  <ol class="tb-list">
+${lis}
+  </ol>
+</div>`;
+};
+
+export const COMPONENTS: Record<string, Render> = { liquide, grille, lettres, include, galerie, objet, orbite, matiere, tambour };
 
 /** Feuille de style de chaque composant, ajoutée au <head> des pages qui l'emploient. */
 export const STYLES: Record<string, string> = {
@@ -373,4 +405,5 @@ export const STYLES: Record<string, string> = {
   objet: "/src/components/objet/objet.css",
   orbite: "/src/components/orbite/orbite.css",
   matiere: "/src/components/matiere/matiere.css",
+  tambour: "/src/components/tambour/tambour.css",
 };

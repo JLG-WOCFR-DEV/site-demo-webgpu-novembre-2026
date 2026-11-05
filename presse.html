@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-presse-cursor data-presse-scroll="doux" data-presse-transition="buvard" data-presse-effects="loupe bloom grain" data-presse-debug>
+<html lang="fr" data-presse-cursor data-presse-scroll="doux" data-presse-transition="buvard" data-presse-effects="loupe bloom grain courbure" data-presse-debug>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -144,6 +144,67 @@
         </div>
       </section>
 
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-time">
+        <h2 id="pd-time" class="pd-h2" data-gl-text>Le moteur de temps</h2>
+        <p class="pd-p" data-gl-text data-gl-reveal="lignes">
+          Une seule horloge pour toute la page, celle qu'avance aussi l'enregistreur vidéo. Une timeline n'est pas une suite
+          d'événements mais une fonction du temps : on la joue, on la renverse à mi-course, on la cale sur le défilement, on
+          saute à la fin quand le mouvement est réduit, et l'état est toujours le même au même instant.
+        </p>
+        <ol class="pd-anim-list" data-anim="monte" data-anim-stagger="0.08">
+          <li><span>01</span> Une horloge, déterministe</li>
+          <li><span>02</span> Des pistes posées dans le temps</li>
+          <li><span>03</span> Interrompables, réversibles</li>
+          <li><span>04</span> Écrites en CSS : le GPU suit</li>
+        </ol>
+        <div class="pd-anim-row">
+          <a class="pd-btn pd-anim-link" href="#pd-time" data-anim="x 0 10; --fl 0 1" data-anim-trigger="survol">Survol <span aria-hidden="true">→</span></a>
+          <button type="button" class="pd-btn" data-anim="scale 1 0.92" data-anim-trigger="appui" data-anim-dur="0.25">Appui</button>
+        </div>
+        <div class="pd-anim-scrub">
+          <figure data-anim="y 70 -70; rotate -3 3" data-anim-trigger="defilement">
+            <img data-gl-img data-gl-reveal="etirement" src="./plates/glass.jpg" alt="Un verre d'eau sur une table, la lumière à travers." />
+          </figure>
+          <p class="pd-p" data-gl-text>
+            La photo est révélée par <code>etirement</code> (les pixels du front s'étirent en traînées), puis pilotée par le
+            défilement : <code>data-anim-trigger="defilement"</code>. Faites défiler vite : avec <code>courbure</code>, toute la
+            page se bombe.
+          </p>
+        </div>
+        <pre class="pd-code"><code>&lt;ol data-anim="monte" data-anim-stagger="0.08"&gt;…&lt;/ol&gt;          &lt;!-- monte, fondu, glisse, zoom, masque, rideau, flou, bascule --&gt;
+&lt;a data-anim="x 0 10; --fl 0 1" data-anim-trigger="survol"&gt;     &lt;!-- entree, defilement, survol, appui, chargement --&gt;
+&lt;figure data-anim="y 70 -70; rotate -3 3" data-anim-trigger="defilement"&gt;
+
+import { timeline } from "presse/timeline";
+timeline()
+  .fromTo(titre, { y: "1em", opacity: 0 }, { y: "0em", opacity: 1 }, { dur: 0.9 })
+  .fromTo(photos, { clip: 100 }, { clip: 0 }, { stagger: 0.08, at: "-=0.5" })
+  .play();                                   // .reverse(), .seek(t), .progress(p), .finished()</code></pre>
+      </section>
+
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-tambour">
+        <h2 id="pd-tambour" class="pd-h2" data-gl-text>Un tambour, une érosion</h2>
+        <p class="pd-p" data-gl-text data-gl-reveal="erosion">
+          D'après la vidéo du framework d'Aristide Benoist (novembre 2026). Une liste posée sur un cylindre : vers les bords,
+          les lignes s'écrasent, s'espacent et passent en italique ; le tambour tourne seul, avec le défilement et au glisser.
+          Ce paragraphe, lui, s'est déposé ligne à ligne, rongé par un bruit.
+        </p>
+        <x-tambour label="Projets (liste fictive)" speed="0.22" height="72vh">
+          <p><span class="tb-y">2021</span><em>Atelier Morvan</em><span class="tb-l">BES</span></p>
+          <p><span class="tb-y">2023</span>Maison Kerval<span class="tb-l">VNE</span></p>
+          <p><span class="tb-y">2022</span><em>Les Lices</em><span class="tb-l">RNS</span></p>
+          <p><span class="tb-y">2024</span>Éditions Pontcallec<span class="tb-l">LRT</span></p>
+          <p><span class="tb-y">2020</span>Halles du Port<span class="tb-l">NTE</span></p>
+          <p><span class="tb-y">2025</span><em>Fonderie Blanche</em><span class="tb-l">QPR</span></p>
+          <p><span class="tb-y">2023</span>Studio Golfe<span class="tb-l">VNE</span></p>
+        </x-tambour>
+        <pre class="pd-code"><code>&lt;x-tambour label="Projets" speed="0.22" height="72vh"&gt;   &lt;!-- scroll="1", numerals="non" --&gt;
+  &lt;p&gt;&lt;span&gt;2021&lt;/span&gt;&lt;em&gt;Atelier Morvan&lt;/em&gt;&lt;span&gt;BES&lt;/span&gt;&lt;/p&gt;
+&lt;/x-tambour&gt;
+&lt;p data-gl-text data-gl-reveal="erosion"&gt;…&lt;/p&gt;   &lt;!-- texte : lignes, erosion · image : rideau, dissolution, pixels, tri, etirement --&gt;
+&lt;html data-presse-effects="loupe bloom grain courbure"&gt;</code></pre>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-comp">
         <h2 id="pd-comp" class="pd-h2" data-gl-text>Les composants</h2>
         <p class="pd-p" data-gl-text>
@@ -183,7 +244,7 @@
         </x-grille>
 
         <h3 class="pd-h3" data-gl-text>Galerie</h3>
-        <p class="pd-p" data-gl-text>Neuf arrangements 3D, un seul appel de dessin. Ici un carrousel sur fond dégradé, ouvert en fiche ; tous les réglages sont sur la page Galerie.</p>
+        <p class="pd-p" data-gl-text>Dix arrangements 3D, un seul appel de dessin. Ici un carrousel sur fond dégradé, ouvert en fiche ; tous les réglages sont sur la page Galerie.</p>
         <x-galerie param="planche" page="./grille.html" arrange="carousel" item="220x275" gap="22" backdrop="0.6" selection="reveal" tilt="0.6" label="Six photos : flèches pour parcourir, Entrée pour ouvrir">
           <img data-id="figue" src="./plates/fig.jpg" data-title="La figue" data-cat="objets" alt="Une figue ouverte sur une pierre calcaire, près d'une fenêtre." />
           <img data-id="lac" src="./plates/lac.jpg" data-title="Le lac" data-cat="eau" alt="Un lac entre des collines dorées, sous un ciel strié." />

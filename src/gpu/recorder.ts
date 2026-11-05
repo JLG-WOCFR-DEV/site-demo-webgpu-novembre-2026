@@ -1,4 +1,5 @@
 import { ArrayBufferTarget, Muxer } from "webm-muxer";
+import { clockHeldBy, clockNow, setClockSource } from "./clock.ts";
 
 export type RecordOptions = {
   fps: number;
@@ -9,16 +10,9 @@ export type RecordOptions = {
 
 type Slot = { buf: GPUBuffer; busy: boolean };
 
-/** Enregistrement en cours, s'il y en a un : son horloge virtuelle remplace performance.now(). */
-let active: Recorder | null = null;
-/**
- * L'horloge des animations. Pendant une capture, elle avance d'un pas fixe par
- * image rendue ; sinon, c'est performance.now(). Toute animation qui veut
- * apparaître juste dans une vidéo doit lire l'heure ici.
- */
-export function clockNow() {
-  return active ? active.now : performance.now();
-}
+// L'horloge des animations vit dans clock.ts ; l'enregistrement en cours la tient (son horloge virtuelle remplace
+// performance.now()).
+export { clockNow };
 
 /**
  * Enregistreur à pas fixe. À chaque image, le moteur copie la texture du
@@ -55,7 +49,7 @@ export class Recorder {
     private o: RecordOptions,
   ) {
     this.now = start;
-    active = this;
+    setClockSource(this);
     this.total = Math.max(1, Math.round(o.fps * o.seconds));
     this.step = 1000 / o.fps;
     // VP9 exige des dimensions paires ; les lignes copiées sont alignées sur 256 octets.
@@ -131,7 +125,7 @@ export class Recorder {
 
   private release() {
     this.done = true;
-    if (active === this) active = null;
+    if (clockHeldBy(this)) setClockSource(null);
   }
 
   stop() {

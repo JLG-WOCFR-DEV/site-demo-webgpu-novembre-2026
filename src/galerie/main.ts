@@ -139,9 +139,16 @@ const PRESETS: Record<string, Preset> = {
     options: { maxRotationDegrees: 28, maxDepthPx: 140, minScale: 0.92 },
     config: { item: [300, 375], gap: 28, backdrop: 0.75, backdropSize: 0.7, backdropBlur: 28, friction: 0.9, shadow: 0.6 },
   },
+  ruban: {
+    title: "Ruban",
+    lede: "Les photos bout à bout sur une bande qui se tord autour de son axe : en glissant, la torsion court le long du ruban, les faces tournées vers l'arrière s'assombrissent. D'après la vidéo du framework d'Aristide Benoist (novembre 2026).",
+    arrange: "ruban",
+    options: { twist: 26, wave: 40, depth: 120 },
+    config: { item: [230, 290], gap: 6, loop: true, tilt: 0.5, selection: "detail", backdrop: 0 },
+  },
   bac: {
     title: "Bac à sable",
-    lede: "Les neuf arrangements et toutes leurs options. Changez d'arrangement en plein mouvement : chaque photo part de sa pose du moment.",
+    lede: "Les dix arrangements et toutes leurs options. Changez d'arrangement en plein mouvement : chaque photo part de sa pose du moment.",
     arrange: "list",
     options: {},
     config: {},
@@ -196,7 +203,7 @@ document.querySelector("[data-gp-copy]")!.addEventListener("click", async (e) =>
   setTimeout(() => ((e.target as HTMLElement).textContent = "Copier"), 1600);
 });
 
-const NAMES: Record<ArrangeName, string> = { list: "Liste", grid: "Grille", barrel: "Tonneau", coverflow: "Coverflow", helix: "Hélice", ring: "Anneau", sphere: "Sphère", stack: "Paquet", carousel: "Carrousel" };
+const NAMES: Record<ArrangeName, string> = { list: "Liste", grid: "Grille", barrel: "Tonneau", coverflow: "Coverflow", helix: "Hélice", ring: "Anneau", sphere: "Sphère", stack: "Paquet", carousel: "Carrousel", ruban: "Ruban" };
 const fmt = (v: number) => (Math.abs(v) >= 10 || Number.isInteger(v) ? String(Math.round(v)) : v.toFixed(2)).replace(".", ",");
 
 function range(label: string, value: number, min: number, max: number, step: number, set: (v: number) => void, auto?: { on: boolean; set: (on: boolean) => void }) {

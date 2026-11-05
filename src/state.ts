@@ -3,7 +3,7 @@ export type Settings = {
   dom: { boxes: boolean; hideGpu: boolean };
   quad: { radius: number; shadow: number; lift: number; wire: boolean; peel: number; hoverPeel: boolean };
   glyph: { wave: number; ink: number; scatter: number; atlas: boolean };
-  chain: { distort: boolean; rgb: boolean; trame: boolean; bloom: boolean; grain: boolean; print: boolean; split: boolean };
+  chain: { distort: boolean; rgb: boolean; trame: boolean; bloom: boolean; grain: boolean; print: boolean; split: boolean; bend: boolean };
   trame: { cell: number; gain: number; misreg: number; mix: number };
   light: { bloom: number; threshold: number; naive: boolean };
   /** Chapitre 06. source : 0 photo, 1 dégradé maillé, 2 encre marbrée, 3 ondes, 4 métaballes. */
@@ -50,7 +50,7 @@ export const settings: Settings = {
   dom: { boxes: false, hideGpu: false },
   quad: { radius: 6, shadow: 0.45, lift: 0.3, wire: false, peel: 0, hoverPeel: true },
   glyph: { wave: 0.35, ink: 0, scatter: 0, atlas: false },
-  chain: { distort: true, rgb: true, trame: true, bloom: true, grain: true, print: true, split: false },
+  chain: { distort: true, rgb: true, trame: true, bloom: true, grain: true, print: true, split: false, bend: false },
   trame: { cell: 7, gain: 0.08, misreg: 0.15, mix: 1 },
   light: { bloom: 0.6, threshold: 0.03, naive: false },
   filter: { kind: 1, size: 6, amount: 0.5, source: 0 },

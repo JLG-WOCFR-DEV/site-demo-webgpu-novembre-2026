@@ -455,7 +455,50 @@ const carousel: Arrangement = {
   },
 };
 
-export const ARRANGEMENTS = { list, grid, barrel, coverflow, helix, ring, sphere, stack, carousel };
+/* ───── ruban ───── */
+/**
+ * Ruban (d'après la vidéo d'Aristide Benoist, novembre 2026) : les images bout à bout sur une bande qui se tord autour
+ * de son axe ; la torsion avance avec la bande, si bien qu'en glissant, la vague de rotation court le long du ruban.
+ * Les faces tournées vers l'arrière s'assombrissent.
+ */
+const ruban: Arrangement = {
+  space: "1d",
+  loops: () => false,
+  unit: (c) => (c.axis === "x" ? c.iw : c.ih) + c.gap,
+  layout(c, off) {
+    const step = this.unit(c);
+    const twist = num(c, "twist", 26) * DEG;
+    const phase = num(c, "phase", 0) * DEG;
+    const amp = num(c, "wave", 40);
+    const depth = num(c, "depth", 120);
+    const out: Inst[] = [];
+    for (let k = 0; k < c.n; k++) {
+      const rel = relOf(k, off.x, c, c.loop);
+      const a = rel * twist + phase;
+      const d = rel * step;
+      const facing = Math.cos(a);
+      out.push({
+        key: String(k),
+        k,
+        rel,
+        pose: pose({
+          x: c.axis === "x" ? d : Math.sin(rel * 0.5) * amp,
+          y: c.axis === "x" ? Math.sin(rel * 0.5) * amp : d,
+          z: -Math.abs(Math.sin(a)) * depth,
+          rx: c.axis === "x" ? a : 0,
+          ry: c.axis === "y" ? a : 0,
+          w: c.iw,
+          h: c.ih,
+          o: seam(rel, c, c.loop),
+          shade: 0.45 + 0.55 * smooth(-0.3, 1, Math.abs(facing)),
+        }),
+      });
+    }
+    return out;
+  },
+};
+
+export const ARRANGEMENTS = { list, grid, barrel, coverflow, helix, ring, sphere, stack, carousel, ruban };
 export type ArrangeName = keyof typeof ARRANGEMENTS;
 export const stackDir = (d: number) => {
   stack.dir = d < 0 ? -1 : 1;
@@ -515,6 +558,12 @@ export const OPTIONS: Record<ArrangeName, OptSpec[]> = {
     { key: "maxRotationDegrees", label: "Rotation max.", type: "range", min: 0, max: 80, step: 1, def: 28 },
     { key: "maxDepthPx", label: "Profondeur max.", type: "range", min: 0, max: 500, step: 1, def: 140 },
     { key: "minScale", label: "Échelle min.", type: "range", min: 0.5, max: 1, step: 0.01, def: 0.92 },
+  ],
+  ruban: [
+    { key: "twist", label: "Torsion par image", type: "range", min: 0, max: 90, step: 1, def: 26 },
+    { key: "phase", label: "Phase", type: "range", min: -180, max: 180, step: 1, def: 0 },
+    { key: "wave", label: "Ondulation", type: "range", min: 0, max: 200, step: 1, def: 40 },
+    { key: "depth", label: "Profondeur", type: "range", min: 0, max: 400, step: 1, def: 120 },
   ],
   stack: [
     { key: "peek", label: "Dépassement", type: "range", min: 0, max: 60, step: 1, def: 14 },

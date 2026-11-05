@@ -34,7 +34,8 @@ html.gl-on [data-gl-text] li::marker {
   color: var(--ink, #121212);
 }
 html.gl-on img[data-gl-img] {
-  opacity: 0;
+  /* !important : une opacité posée en style (moteur de temps) ne doit pas rallumer l'image DOM ; le GPU la lit. */
+  opacity: 0 !important;
 }
 html.gl-on ::selection {
   color: transparent;

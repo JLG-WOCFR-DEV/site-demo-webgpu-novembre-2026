@@ -33,7 +33,7 @@ export type Plate = {
 };
 
 export const HOVER_MODES = ["", "deplacement", "rvb", "onde", "pixels"];
-export const REVEAL_MODES = ["", "rideau", "dissolution", "pixels", "tri"];
+export const REVEAL_MODES = ["", "rideau", "dissolution", "pixels", "tri", "etirement"];
 
 /** Le cadre d'une image : son parent, en sautant le <picture> de la chaîne d'images. */
 export const frameOf = (img: HTMLImageElement): Element => {

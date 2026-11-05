@@ -14,6 +14,7 @@ import { presseFromHtml, type Presse } from "./index.ts";
 import { initIntro } from "./intro.ts";
 import { initLook } from "./look.ts";
 import { initScroll } from "./scroll.ts";
+import { initAnim } from "./timeline.ts";
 import { initTokens } from "./tokens.ts";
 
 export function startSite(): Promise<Presse> {
@@ -21,6 +22,7 @@ export function startSite(): Promise<Presse> {
   initLook();
   initIntro();
   initScroll();
+  initAnim();
   initCursor();
   return presseFromHtml();
 }

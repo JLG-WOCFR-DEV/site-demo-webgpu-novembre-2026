@@ -1,0 +1,70 @@
+/* Composant <x-tambour> : une liste sur un cylindre. Sans script, une liste qui défile dans sa hauteur. */
+.x-tambour {
+  --tb-h: 80vh;
+  --tb-gap: 0px;
+  position: relative;
+  height: var(--tb-h);
+  overflow: auto;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.x-tambour:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--spot, #c8321c);
+}
+.x-tambour .tb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.x-tambour .tb-item {
+  position: relative;
+  margin: 0;
+  padding: calc(var(--tb-gap) / 2) 3.5em;
+  text-align: center;
+  white-space: nowrap;
+}
+.x-tambour .tb-item > * {
+  margin: 0;
+}
+/* Les chiffres romains des marges : petits, en capitales, dans les deux marges. */
+.x-tambour .tb-item[data-n]::before,
+.x-tambour .tb-item[data-n]::after {
+  content: attr(data-n);
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  font: 500 10px/1 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  font-style: normal;
+  opacity: 0.55;
+}
+.x-tambour .tb-item[data-n]::before {
+  left: 0.6em;
+}
+.x-tambour .tb-item[data-n]::after {
+  right: 0.6em;
+}
+
+/* Animé : chaque ligne est posée au milieu, puis placée sur le cylindre (translate, scale) par le script. */
+.x-tambour.is-live {
+  overflow: clip;
+  cursor: grab;
+  contain: layout paint;
+}
+.x-tambour.is-live.is-dragging {
+  cursor: grabbing;
+}
+.x-tambour.is-live .tb-item {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform-origin: 50% 50%;
+  will-change: translate, scale;
+  /* Vers les bords : la ligne s'écrase (scale) et s'espace. */
+  letter-spacing: calc((1 - var(--tb-c, 1)) * 0.3em);
+}
+.x-tambour.is-live .tb-item.is-tilt {
+  font-style: italic;
+}

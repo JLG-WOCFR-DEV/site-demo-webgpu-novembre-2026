@@ -19,7 +19,7 @@ import { settings, TRANSITIONS } from "../state.ts";
  * Voir PRESSE.md pour la liste des attributs et le fonctionnement.
  */
 
-export type Effect = "loupe" | "rvb" | "trame" | "bloom" | "grain";
+export type Effect = "loupe" | "rvb" | "trame" | "bloom" | "grain" | "courbure";
 export type PresseOptions = {
   /** Transition d'impression des sections [data-gl-print] (par nom : buvard, trame, pli, tri…). */
   transition?: (typeof TRANSITIONS)[number];
@@ -46,7 +46,7 @@ export type Presse = {
   replay: () => void;
 };
 
-const EFFECT_KEYS: Record<Effect, keyof typeof settings.chain> = { loupe: "distort", rvb: "rgb", trame: "trame", bloom: "bloom", grain: "grain" };
+const EFFECT_KEYS: Record<Effect, keyof typeof settings.chain> = { loupe: "distort", rvb: "rgb", trame: "trame", bloom: "bloom", grain: "grain", courbure: "bend" };
 
 export async function presse(o: PresseOptions = {}): Promise<Presse> {
   const root = document.documentElement;

@@ -9,7 +9,7 @@ import { PARAMS, attrOf } from "../../src/components/orbite/params.ts";
 
 type Spec = { attrs: Record<string, readonly string[] | "num" | "any">; open?: boolean };
 
-const GX_ARR = ["list", "grid", "barrel", "coverflow", "helix", "ring", "sphere", "stack", "carousel"] as const;
+const GX_ARR = ["list", "grid", "barrel", "coverflow", "helix", "ring", "sphere", "stack", "carousel", "ruban"] as const;
 const pagesAttrs = { page: "any", "page-label": "any", pages: "any" } as const;
 const orbiteAttrs: Spec["attrs"] = Object.fromEntries(
   PARAMS.map((p) => [attrOf(p.key), p.type === "select" ? p.choices!.map((c) => c[0]) : p.type === "range" ? "num" : "any"]),
@@ -31,6 +31,7 @@ export const SCHEMAS: Record<string, Spec> = {
   },
   objet: { attrs: { style: ["ascii", "tramage", "encre", "verre", "particules", "liquide"], model: "any", cell: "num", amount: "num", frost: "num", spin: "num", full: "any", label: "any", caption: "any" } },
   orbite: { attrs: { ...orbiteAttrs, aperture: "num", kicker: "any", open: "any", hint: "any", full: "any", label: "any" } },
+  tambour: { attrs: { label: "any", speed: "num", scroll: "num", height: "any", numerals: ["oui", "non"] } },
   matiere: { attrs: { kind: ["eau", "eclair", "feu", "paillettes", "phase"], word: "any", image: "any", metal: ["argent", "or", "noir"], ratio: "any", class: "any", label: "any", caption: "any" } },
 };
 

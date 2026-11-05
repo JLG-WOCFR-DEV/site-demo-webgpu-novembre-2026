@@ -122,6 +122,16 @@ fn fx_uv(local0: vec2f, size: vec2f, ptr: vec2f, hov: f32, t: f32) -> vec3f {
       let k = clamp((e - lag * 0.45) / 0.55, 0.0, 1.0);
       local.y = local.y * k + (1.0 - k) * min(local.y, 0.02 + lag * 0.4) * 0.6;
       cover = smoothstep(0.0, 0.25, k + 0.05);
+    } else if (rm == 5u) {
+      // Étirement (d'après Aristide Benoist) : un front balaie la photo de gauche à droite ; juste derrière lui, la
+      // colonne la plus en retard s'étire en traînées horizontales, qui se resserrent en image.
+      let front = e * 1.35 - 0.08;
+      let band = 0.3;
+      cover = 1.0 - smoothstep(front - 0.004, front + 0.004, local.x);
+      let s = clamp((front - local.x) / band, 0.0, 1.0);
+      let smear = pow(1.0 - s, 2.2);
+      let jitter = (fx_hash(vec2f(floor(local.y * size.y / 2.0), fx.w * 17.0)) - 0.5) * 0.04 * smear;
+      local.x = mix(local.x, clamp(front - band + jitter, 0.0, 1.0), smear * 0.92);
     }
   }
   return vec3f(local, cover);
@@ -495,6 +505,10 @@ struct Elem {
   alpha: f32,
   morph: f32,    // progression du morphing de l'élément (0…1)
   kin: f32,      // typographie cinétique (D6) : 0 aucune, 1 respire, 2 vitesse, 3 contour, 4 vague
+  rv: f32,       // révélation : 0 encre, 1 lignes, 2 érosion
+  lh: f32,       // hauteur de ligne (css)
+  lines: f32,    // nombre de lignes
+  w: f32,        // largeur de l'élément (css)
 };
 
 // État physique d'une lettre de l'ouverture, écrit par la passe de calcul.
@@ -524,7 +538,22 @@ struct VsOut {
   @location(4) @interpolate(flat) size: vec2f,
   @location(5) @interpolate(flat) multi: f32,
   @location(6) @interpolate(flat) kin: vec2f,  // mode cinétique, intensité pour cette lettre
+  @location(7) @interpolate(flat) rvm: vec2f,  // révélation (0, 1 lignes, 2 érosion), bas de la ligne (css)
+  @location(8) rvq: f32,                       // érosion : avancée du front sous ce point (0…1+)
 };
+
+// Bruit de valeur, deux octaves : les bords rongés de l'érosion.
+fn ero_hash(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+fn ero_noise(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let u2 = f * f * (3.0 - 2.0 * f);
+  let a = mix(ero_hash(i), ero_hash(i + vec2f(1.0, 0.0)), u2.x);
+  let b = mix(ero_hash(i + vec2f(0.0, 1.0)), ero_hash(i + vec2f(1.0, 1.0)), u2.x);
+  return mix(a, b, u2.y);
+}
 
 fn rot(a: f32) -> mat2x2f {
   let c = cos(a);
@@ -618,8 +647,35 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
     }
   }
 
+  // Révélations par ligne (data-gl-reveal="lignes" | "erosion") : chaque ligne a sa part du temps, décalée de 35 %.
+  let rv = u32(e.rv + 0.5);
+  var rvm = vec2f(0.0);
+  var rvq = 1.0;
+  if (rv > 0u && e.lh > 0.0) {
+    let line = floor(max(0.0, g.pos.y + g.size.y * 0.5) / e.lh);
+    let n = max(e.lines, 1.0);
+    let share = 1.0 / (1.0 + 0.35 * (n - 1.0));
+    let lp = clamp((e.reveal - line * 0.35 * share) / share, 0.0, 1.0);
+    if (rv == 1u) {
+      // Lignes : la ligne monte de sous sa ligne de base ; un masque au bas de la ligne la cache tant qu'elle est dessous.
+      let k = 1.0 - pow(1.0 - lp, 3.0);
+      center.y += (1.0 - k) * e.lh * 0.9;
+      reveal = min(1.0, k * 1.6);
+      rvm = vec2f(1.0, e.origin.y + (line + 1.0) * e.lh + e.lh * 0.08);
+    } else {
+      // Érosion : un front ronge la ligne de gauche à droite ; le bruit décide de ce qui reste.
+      let xs = clamp((g.pos.x + c.x * g.size.x) / max(e.w, 1.0), 0.0, 1.0);
+      rvq = lp * 1.7 - xs * 0.6 - 0.05;
+      rvm = vec2f(2.0, 0.0);
+      center.y += (1.0 - smoothstep(0.0, 1.0, lp)) * e.lh * 0.06;
+      reveal = 1.0;
+    }
+  }
+
   var out: VsOut;
   out.clip = to_clip(center + local, frame);
+  out.rvm = rvm;
+  out.rvq = rvq;
   out.uv = mix(g.uv.xy, g.uv.zw, c);
   out.color = unpack4x8unorm(g.color) * e.alpha;
   out.local = c;
@@ -647,6 +703,13 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   let edge = select(in.edge, 0.5 + (in.edge - 0.75) * 0.85, isMulti);
   let w = max(fwidth(d) * 0.75, 0.002);
   var a = smoothstep(edge - w, edge + w, d) * in.color.a;
+  // Révélations par ligne : masque au bas de la ligne, ou érosion au bruit (en pixels d'écran : les fragments ne glissent pas avec la lettre).
+  if (in.rvm.x > 0.5 && in.rvm.x < 1.5 && in.clip.y > in.rvm.y * frame.viewport.z) { a = 0.0; }
+  if (in.rvm.x > 1.5) {
+    let q = in.clip.xy / (frame.viewport.z * 6.0);
+    let n = ero_noise(q) * 0.65 + ero_noise(q * 2.7 + 13.1) * 0.35;
+    a *= smoothstep(n - 0.035, n + 0.035, in.rvq);
+  }
   if (in.kin.x > 2.5 && in.kin.x < 3.5) {
     // Contour : une bande autour du bord, qui devient le plein près du pointeur.
     let band = 1.0 - smoothstep(0.035 - w, 0.035 + w, abs(d - edge));
@@ -1609,7 +1672,7 @@ struct Post {
   chain2: vec4f,   // grain (0 coupé, 1 réel, plus = loupe), split, splitX (px), intensité bloom
   trame: vec4f,    // cellule (px css), engraissement, repérage, mélange
   paper: vec4f,    // rgb du papier, glissement (vitesse de défilement −1…1)
-  filt: vec4f,     // filtre (0…4), taille (css), intensité, 0
+  filt: vec4f,     // filtre (0…4), taille (css), intensité, courbure (vitesse lissée −1…1)
   stages: array<vec4f, ${MAX_STAGES}>, // x, y, w, h en px
   kinds: array<vec4f, ${MAX_STAGES / 4}>,
   print: vec4f,    // nombre de chapitres, largeur du front (px), actif, style
@@ -2525,7 +2588,20 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   lens.y -= sort_pull(px);
   // Effets d'après Canvas UI : d'abord la déviation de la lecture.
   lens += cui_offset(px);
-  var col = source(px, lens);
+  // Courbure (d'après Aristide Benoist) : quand la page file, elle se bombe comme une feuille sur un cylindre — les
+  // bords haut et bas se resserrent, le milieu traîne un peu derrière le geste ; au repos, la page est plane.
+  let bendK = u.filt.w;
+  var bentOut = false;
+  if (abs(bendK) > 0.0005) {
+    let c = u.res.xy * 0.5;
+    let q = (px - c) / c;
+    let k = abs(bendK) * 0.26;
+    lens += vec2f((px.x - c.x) * k * q.y * q.y, (px.y - c.y) * k * 0.3 * q.x * q.x);
+    lens.y -= bendK * (1.0 - q.x * q.x) * 26.0 * u.res.z;
+    let s = px + lens;
+    bentOut = s.x < 0.0 || s.y < 0.0 || s.x > u.res.x || s.y > u.res.y;
+  }
+  var col = select(source(px, lens), u.paper.rgb, bentOut);
 
   if (kind > 2.5 && kind < 3.5) {
     col = image_filter(px, stage);

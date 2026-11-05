@@ -36,6 +36,7 @@ const REGISTRY: Record<string, () => Promise<{ mount: Mount }>> = {
   objet: () => import("../components/objet/objet.ts"),
   orbite: () => import("../components/orbite/orbite.ts"),
   matiere: () => import("../components/matiere/matiere.ts"),
+  tambour: () => import("../components/tambour/tambour.ts"),
 };
 
 // Map (et non WeakMap) : après une perte de l'appareil GPU, il faut pouvoir parcourir les composants montés.

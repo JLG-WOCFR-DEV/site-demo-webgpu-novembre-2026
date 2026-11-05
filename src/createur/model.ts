@@ -710,7 +710,7 @@ def({
   fields: [
     { key: "kicker", label: "Surtitre", type: "text", group: "Contenu" },
     { key: "title", label: "Titre", type: "text", group: "Contenu" },
-    { key: "arrange", label: "Arrangement", type: "select", choices: c(["carousel", "Carrousel"], ["barrel", "Tonneau"], ["coverflow", "Coverflow"], ["helix", "Hélice"], ["ring", "Anneau"], ["sphere", "Sphère"], ["stack", "Pile"], ["grid", "Grille"], ["list", "Liste"]), group: "Galerie" },
+    { key: "arrange", label: "Arrangement", type: "select", choices: c(["carousel", "Carrousel"], ["barrel", "Tonneau"], ["coverflow", "Coverflow"], ["helix", "Hélice"], ["ring", "Anneau"], ["sphere", "Sphère"], ["stack", "Pile"], ["grid", "Grille"], ["list", "Liste"], ["ruban", "Ruban"]), group: "Galerie" },
     { key: "selection", label: "À l'ouverture", type: "select", choices: c(["reveal", "Fiche"], ["detail", "Boîte et vignettes"], ["inline", "En place"]), group: "Galerie" },
     { key: "size", label: "Taille des photos", type: "select", choices: c(["180x225", "Petites"], ["220x275", "Moyennes"], ["280x350", "Grandes"]), group: "Galerie" },
     { key: "backdrop", label: "Fond dégradé", type: "range", min: 0, max: 1, step: 0.05, group: "Galerie" },

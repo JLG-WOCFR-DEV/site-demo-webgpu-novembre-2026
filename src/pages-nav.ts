@@ -10,6 +10,7 @@ import { initCursor } from "./presse/cursor.ts";
 import { initIntro } from "./presse/intro.ts";
 import { initLook } from "./presse/look.ts";
 import { initScroll } from "./presse/scroll.ts";
+import { initAnim } from "./presse/timeline.ts";
 import { initTokens } from "./presse/tokens.ts";
 import { initSweep } from "./presse/sweep.ts";
 
@@ -18,7 +19,7 @@ export const PAGES = [
   { href: "sampler.html", name: "Sampler", text: "Un effet à la fois, par catégories" },
   { href: "liquide.html", name: "Liquide", text: "Glisser, mélanger, filtrer : des photos en verre qui fusionne" },
   { href: "grille.html", name: "Grille infinie", text: "Un mur sans fin ; chaque photo ouvre sa page, l'image vole" },
-  { href: "galerie.html", name: "Galerie", text: "Neuf arrangements 3D : tonneau, cartes, film, fond dégradé…" },
+  { href: "galerie.html", name: "Galerie", text: "Dix arrangements 3D : tonneau, cartes, film, ruban, fond dégradé…" },
   { href: "orbite.html", name: "Orbite", text: "Un lanceur : quatre applications en anneau, des particules, la mise au point" },
   { href: "matieres.html", name: "Matières", text: "Paillettes qu'on brosse, lettres en eau, éclair et feu, diagramme de phase" },
   { href: "defilement.html", name: "Défilement", text: "Roue de projets, mots qui roulent, liste qui s'ouvre, images au bruit, bento" },
@@ -92,6 +93,7 @@ export function mountPagesNav(base = "./") {
   initFlights();
   initSweep();
   initScroll();
+  initAnim();
   initCursor();
   const style = document.createElement("style");
   style.textContent = CSS;

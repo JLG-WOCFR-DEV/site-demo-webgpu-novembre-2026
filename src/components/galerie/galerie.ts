@@ -90,6 +90,7 @@ const PRESENCE_AUTO: Record<ArrangeName, Exclude<Presence, "auto">> = {
   sphere: "scatter",
   stack: "slideAlong",
   carousel: "slideAlong",
+  ruban: "slideAlong",
 };
 
 const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));

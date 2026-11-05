@@ -1,3 +1,5 @@
+@import "@fontsource-variable/bodoni-moda/opsz.css";
+@import "@fontsource-variable/bodoni-moda/opsz-italic.css";
 @import "@fontsource-variable/archivo/standard.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
@@ -291,4 +293,91 @@ body.pd {
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;
+}
+
+
+/* Le moteur de temps (data-anim) */
+.pd-anim-list {
+  list-style: none;
+  margin: 28px 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font: 800 clamp(22px, 3.2vw, 40px) / 1.1 var(--f-text, "Archivo Variable", sans-serif);
+  letter-spacing: -0.01em;
+}
+.pd-anim-list span {
+  display: inline-block;
+  width: 2.4em;
+  font: 500 12px/1 "IBM Plex Mono", monospace;
+  letter-spacing: 0.1em;
+  color: var(--spot);
+  vertical-align: middle;
+}
+.pd-anim-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 32px;
+}
+.pd-anim-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+.pd-anim-link span {
+  display: inline-block;
+  translate: calc(var(--fl, 0) * 6px) 0;
+  opacity: calc(0.4 + 0.6 * var(--fl, 0));
+}
+.pd-anim-scrub {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  margin: 48px 0 32px;
+}
+.pd-anim-scrub figure {
+  margin: 0;
+}
+.pd-anim-scrub img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 6px;
+}
+@media (max-width: 760px) {
+  .pd-anim-scrub {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Le tambour de la démonstration : didone, trois lignes par projet. */
+@media (max-width: 600px) {
+  .pd-sec .x-tambour .tb-item {
+    padding-inline: 2.2em;
+  }
+}
+.pd-sec .x-tambour {
+  margin: 32px 0;
+  font-family: "Bodoni Moda Variable", "Bodoni 72", Georgia, serif;
+  color: #1d2bd8;
+  --tb-gap: 18px;
+}
+.pd-sec .x-tambour p {
+  font-size: clamp(21px, 5.4vw, 64px);
+  line-height: 0.92;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.pd-sec .x-tambour p > * {
+  display: block;
+  font-style: inherit;
+}
+.pd-sec .x-tambour .tb-item.is-tilt em,
+.pd-sec .x-tambour em {
+  font-style: italic;
 }

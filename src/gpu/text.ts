@@ -32,7 +32,7 @@ export type BakeGlyph = { key: string; m: [number, number, number, number, numbe
 
 /** Glyphe tel qu'émis, gardé pour le morphing de l'élément au prochain changement de texte. */
 type MorphGlyph = { ch: string; f: number[]; color: number };
-export const ELEM_STRIDE = 32;
+export const ELEM_STRIDE = 48;
 
 type AtlasEntry = SdfMetrics & { u0: number; v0: number; u1: number; v1: number };
 
@@ -52,6 +52,12 @@ const MSDF_MIN_SIZE = 24;
 
 /** Typographie cinétique (D6) : data-gl-kinetic. */
 export const KINETIC = ["", "respire", "vitesse", "contour", "vague"];
+/**
+ * Révélations du texte (data-gl-reveal sur un bloc data-gl-text), d'après la vidéo d'Aristide Benoist (novembre 2026) :
+ *   lignes   chaque ligne monte de sous sa propre ligne de base, masquée, l'une après l'autre ;
+ *   erosion  chaque ligne se dépose par un bruit qui la ronge de gauche à droite (fragments, bords mangés).
+ */
+export const TEXT_REVEALS = ["", "lignes", "erosion"];
 
 export type TextElem = {
   el: HTMLElement;
@@ -61,6 +67,10 @@ export type TextElem = {
   count: number;
   first: number;
   revealStart: number;
+  /** Révélation (0 encre, 1 lignes, 2 érosion), hauteur de ligne (px) et nombre de lignes. */
+  rv: number;
+  lh: number;
+  lines: number;
 };
 
 const SKIP = "a, button, label, input, select, textarea, pre, .sr-only, [data-gl-skip]";
@@ -332,7 +342,14 @@ export class TextLayer {
         }
         this.morphPrev.set(el, { key, glyphs: cur });
       }
-      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: revealed.get(el) ?? -1 });
+      const rv = Math.max(0, TEXT_REVEALS.indexOf(el.dataset.glReveal ?? ""));
+      let lh = 0;
+      if (rv) {
+        const cs = getComputedStyle(el);
+        lh = Number.parseFloat(cs.lineHeight) || Number.parseFloat(cs.fontSize) * 1.2;
+      }
+      const lines = rv ? Math.max(1, Math.round(box.height / lh)) : 1;
+      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: revealed.get(el) ?? -1, rv, lh, lines });
     });
 
     if (had) root.classList.add("gl-on");
