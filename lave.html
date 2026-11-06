@@ -58,10 +58,15 @@
       </section>
 
       <form class="lv-panel" data-lv-panel aria-label="Réglages de la liste">
+        <fieldset class="lv-seg">
+          <legend>Sol</legend>
+          <label><input type="radio" name="sol" value="lave" checked /> Lave</label>
+          <label><input type="radio" name="sol" value="glace" /> Glace</label>
+        </fieldset>
         <label class="lv-field"><span>Nouvelle tâche</span><input type="text" name="task" placeholder="Arroser le ficus" autocomplete="off" maxlength="80" /></label>
         <button type="submit" class="lv-small">Ajouter</button>
         <button type="button" class="lv-small" data-lv-reset>Remettre les tâches</button>
-        <p class="lv-hint">Glissez une tâche pour la ranger ; jetez-la dans la lave pour la brûler. Au clavier : la poignée, puis Alt + ↑ ↓ pour déplacer, Suppr pour jeter.</p>
+        <p class="lv-hint">Glissez une tâche pour la ranger ; jetez-la au sol pour la brûler, ou, sur la glace, la geler et la briser (lancée de côté, elle glisse). Au clavier : la poignée, puis Alt + ↑ ↓ pour déplacer, Suppr pour jeter.</p>
         <p class="lv-status" data-lv-status role="status"></p>
       </form>
 
@@ -96,6 +101,17 @@
           HTML disparaît. La texture tombe, s'enfonce, et un front de bruit la consume depuis le bas : un liseré
           incandescent, une bande charbonneuse, puis plus rien. Le sol est un plan en perspective découpé en cellules de
           Voronoï dont les bords rougeoient.
+        </p>
+        <h3>La variante glace</h3>
+        <p>
+          Le même moteur, à l'envers. Le sol devient un lac gelé : des fissures blanches en surface, d'autres plus bas
+          sous la glace, des plaques de givre, un reflet rasant vers l'horizon et des éclats qui scintillent. La neige
+          descend là où les braises montaient. Le fluide garde ses équations, mais sa poussée change de signe : l'air
+          froid retombe, si bien que la bouffée laissée par la carte s'écrase sur la glace et roule de part et d'autre
+          en brouillard. La carte, elle, ne s'enfonce pas : elle se pose et glisse, presque sans frottement, avec la
+          vitesse de côté du lâcher. Le givre la gagne depuis le bas en ramifications, des fêlures la parcourent, puis
+          elle vole en éclats — des cellules de Voronoï sur la carte, que chaque pixel retrouve une fois déplacées — qui
+          filent vers l'avant sur la glace et s'effacent.
         </p>
         <p class="lv-credit">
           D'après la démo de liste en feu de <a href="https://github.com/anomalyco/rune">Rune</a> (Anomaly, licence MIT),

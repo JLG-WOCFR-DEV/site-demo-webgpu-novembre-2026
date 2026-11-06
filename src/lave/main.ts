@@ -29,6 +29,36 @@ const reduced = () => reducedMq.matches;
 const GAP = 10;
 const TEMPLATE = list.innerHTML;
 
+/* ───────────────────────── Le sol : lave ou glace ───────────────────────── */
+
+type Sol = "lave" | "glace";
+let sol: Sol = new URLSearchParams(location.search).get("sol") === "glace" ? "glace" : "lave";
+const WORDS = {
+  lave: { floor: "le sol est de lave", gone: "jetée dans la lave", gpu: "WebGPU : le feu est un fluide simulé (grille de 4 px, 14 itérations de pression par pas) ; la carte jetée est imprimée dans une texture." },
+  glace: { floor: "le sol est gelé", gone: "gelée, puis brisée sur la glace", gpu: "WebGPU : le brouillard est le même fluide, à poussée négative (le froid retombe) ; la carte jetée glisse, givre, se fend et vole en éclats." },
+} as const;
+function setSol(v: Sol, push = true) {
+  sol = v;
+  app.dataset.sol = v;
+  document.documentElement.style.setProperty("color-scheme", "dark");
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta) meta.content = v === "glace" ? "#081019" : "#0c0b0f";
+  for (const r of panel.querySelectorAll<HTMLInputElement>('input[name="sol"]')) r.checked = r.value === v;
+  if (push) {
+    const u = new URL(location.href);
+    if (v === "glace") u.searchParams.set("sol", "glace");
+    else u.searchParams.delete("sol");
+    history.replaceState(history.state, "", u);
+  }
+  if (lava) status.textContent = WORDS[v].gpu;
+  relayout();
+  dirty = true;
+}
+panel.addEventListener("change", (e) => {
+  const t = e.target as HTMLInputElement;
+  if (t.name === "sol") setSol(t.value === "glace" ? "glace" : "lave");
+});
+
 const dateEl = app.querySelector<HTMLTimeElement>("[data-lv-date]");
 if (dateEl) {
   const d = new Date();
@@ -93,7 +123,7 @@ function relayout() {
   });
   list.style.height = `${Math.max(0, cards.length * slot - GAP)}px`;
   const n = cards.length;
-  countEl.textContent = `${n} tâche${n > 1 ? "s" : ""} · le sol est de lave`;
+  countEl.textContent = `${n} tâche${n > 1 ? "s" : ""} · ${WORDS[sol].floor}`;
   emptyEl.hidden = n > 0;
 }
 
@@ -179,7 +209,7 @@ const up = (e: PointerEvent) => {
   const bottom = listTop() + c.y.x + cardH;
   // Lâchée sur la lave, ou lancée vers elle assez fort pour y finir : elle y va.
   const landing = bottom + projette(0, vy, DECELERATION.rapide);
-  if (e.type !== "pointercancel" && (bottom > hor - 28 || (vy > 650 && landing > hor + 8))) return burn(c, vy);
+  if (e.type !== "pointercancel" && (bottom > hor - 28 || (vy > 650 && landing > hor + 8))) return burn(c, vy, vx);
   c.heat = 0;
   if (reduced()) c.y.pose(slotY(cards.indexOf(c)));
   else c.y.lacher(vy, slotY(cards.indexOf(c)));
@@ -257,7 +287,7 @@ function snapshot(el: HTMLElement) {
   return cv;
 }
 
-function burn(c: Card, vy: number) {
+function burn(c: Card, vy: number, vx = 0) {
   const i = cards.indexOf(c);
   if (i < 0) return;
   cards.splice(i, 1);
@@ -265,16 +295,17 @@ function burn(c: Card, vy: number) {
   const y = listTop() + c.y.x;
   const w = c.el.offsetWidth;
   const h = c.el.offsetHeight;
-  say(`« ${c.title} » jetée dans la lave.`);
+  say(`« ${c.title} » ${WORDS[sol].gone}.`);
   if (lava) {
     // Droite pour l'impression (l'inclinaison fausserait la place des lettres), puis le HTML s'en va.
     c.el.style.transform = `translate3d(${c.x.x}px, ${c.y.x}px, 0)`;
     const cv = snapshot(c.el);
-    lava.addBurn(cv, x, y, w, h, vy, clockNow());
+    // Sur la glace, la vitesse de côté du lâcher fait glisser la carte.
+    lava.addBurn(cv, x, y, w, h, vx, vy, clockNow());
     c.el.remove();
   } else {
     // Sans GPU : elle tombe et se consume en CSS.
-    c.el.classList.add("is-burning");
+    c.el.classList.add(sol === "glace" ? "is-freezing" : "is-burning");
     c.el.style.transform = `translate3d(${c.x.x}px, ${hor - listTop()}px, 0) rotate(4deg)`;
     window.setTimeout(() => c.el.remove(), reduced() ? 0 : 900);
   }
@@ -345,7 +376,7 @@ function tick(t: number) {
     hot = { x0, x1: x0 + held.el.offsetWidth, k: held.heat };
   } else hot.k *= Math.exp(-dt * 6);
   // Mouvement réduit : le sol est figé ; on ne redessine que ce qui change.
-  if (lava && visible && (!reduced() || moving || held || lava.burning || dirty)) lava.frame(now, dt, { hor, hot, reduced: reduced() });
+  if (lava && visible && (!reduced() || moving || held || lava.burning || dirty)) lava.frame(now, dt, { hor, hot, reduced: reduced(), theme: sol === "glace" ? 1 : 0 });
   dirty = false;
   requestAnimationFrame(tick);
 }
@@ -366,13 +397,14 @@ async function startGpu() {
   lava = await createLava(device, canvas);
   lava.resize(app.clientWidth, app.clientHeight, readHor());
   app.classList.add("is-gl");
-  status.textContent = "WebGPU : le feu est un fluide simulé (grille de 4 px, 14 itérations de pression par pas) ; la carte jetée est imprimée dans une texture.";
+  status.textContent = WORDS[sol].gpu;
   dirty = true;
 }
 
 async function main() {
   await document.fonts.ready;
   build();
+  setSol(sol, false);
   readHor();
   new ResizeObserver(() => {
     readHor();
@@ -393,7 +425,8 @@ void main();
 
 // Tests et captures : jeter la carte n dans la lave, comme un lâcher.
 (window as unknown as { __lave: object }).__lave = {
-  burn: (n = 1, vy = 300) => cards[n] && burn(cards[n]!, vy),
+  burn: (n = 1, vy = 300, vx = 0) => cards[n] && burn(cards[n]!, vy, vx),
+  sol: (v: Sol) => setSol(v),
   get count() {
     return cards.length;
   },

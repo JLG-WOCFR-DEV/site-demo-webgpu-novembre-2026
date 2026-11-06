@@ -18,6 +18,8 @@ export const SHOTS = [
   // Lave : le sol, puis une tâche jetée (le feu est un fluide : peu d'images après, l'écart d'arrondi reste petit).
   { page: "lave", frames: 60, settle: 3000, ready: ".lv-app.is-gl", after: 20 },
   { page: "lave", name: "feu", frames: 60, settle: 3000, ready: ".lv-app.is-gl", before: () => window.__lave.burn(3, 200), after: 40 },
+  { page: "lave", name: "glace", query: "?sol=glace", frames: 60, settle: 3000, ready: ".lv-app.is-gl", before: () => window.__lave.burn(3, 200, 200), after: 70 },
+  { page: "lave", name: "glace-sans-webgpu", query: "?sol=glace", nogpu: true, frames: 30, after: 10 },
   { page: "defilement", name: "bruit", frames: 60, before: () => { const el = document.getElementById("bruit"); scrollTo(0, el.offsetTop + el.offsetHeight * 0.35); }, settle: 5000, after: 90 },
   // Fluide : la simulation tourne dès le montage (pilote automatique dans le champ et la marbrure, barrage dans le bassin).
   // Le rideau d'entrée compte environ 1,5 s : on le laisse se lever, puis la scène recommence et ne tourne que 25 images.

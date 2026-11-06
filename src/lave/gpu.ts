@@ -12,6 +12,12 @@
  * 3. Les braises : trois couches de points qui montent, plus nombreuses quand ça brûle.
  * 4. La carte jetée : son impression (texture) tombe, s'enfonce sous la ligne (le sol, dessiné après, la couvre) et un
  *    front de bruit la consume depuis le bas.
+ *
+ * Variante « glace » (thème 1), le même moteur à l'envers : un lac gelé (fissures blanches en surface, d'autres en
+ * profondeur, givre, reflets rasants, éclats), de la neige qui tombe au lieu de braises qui montent, et le même fluide
+ * avec une poussée négative — un brouillard froid qui retombe sur la glace et s'y étale. La carte jetée se pose sur la
+ * glace et y glisse (frottement faible), se couvre de givre depuis le bas, se fend, puis vole en éclats qui filent sur
+ * la glace : chaque pixel cherche l'éclat (cellule de Voronoï) qui le couvre une fois déplacé.
  */
 
 export const CELL = 4;
@@ -142,7 +148,7 @@ struct R {
   view: vec4f, // largeur, hauteur (px CSS), dpr, temps
   hor: vec4f,  // ligne de lave, haut du domaine du feu, hauteur du domaine, mouvement réduit
   hot: vec4f,  // carte tenue : x0, x1, proximité ; braises (densité)
-  card: vec4f, // dernière carte : x0, x1, éclat ; 0
+  card: vec4f, // dernière carte : x0, x1, éclat ; thème (0 lave, 1 glace)
 }
 fn hash1(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
 fn hash2(p: vec2f) -> vec2f {
@@ -202,6 +208,11 @@ fn fire(p: vec2f) -> vec4f {
   // Du détail que la grille de 4 px n'a pas : un bruit qui monte avec les gaz, et une silhouette plus nette.
   let fine = fbm(vec2f(p.x * 0.055, p.y * 0.035 + t * 3.2));
   let temp = s.z * inside * (0.55 + 0.9 * fine);
+  if (r.card.w > 0.5) {
+    // Glace : la même grille porte un brouillard froid, laiteux et bleuté.
+    let fa = smoothstep(0.02, 0.75, temp) * 0.8;
+    return vec4f(vec3f(0.8, 0.89, 0.97) * fa, fa);
+  }
   let a = smoothstep(0.1, 0.42, temp);
   let sm = clamp(s.w * 0.3, 0.0, 0.45) * inside * (1.0 - a);
   return vec4f(blackbody(temp) * a + vec3f(0.05, 0.045, 0.045) * sm, a + sm);
@@ -232,10 +243,45 @@ fn embers(p: vec2f, t: f32) -> vec3f {
   return acc;
 }
 
+// La neige : trois couches de flocons qui descendent en se balançant, plus gros et plus lents devant.
+fn snow(p: vec2f, t: f32) -> vec3f {
+  var acc = vec3f(0.0);
+  for (var l = 0; l < 3; l++) {
+    let fl = f32(l);
+    let g = 48.0 + fl * 34.0;
+    let speed = 22.0 + fl * 14.0;
+    let q = vec2f(p.x + sin(p.y * 0.02 + t * (0.6 + 0.2 * fl) + fl * 1.7) * (8.0 + 6.0 * fl), p.y - t * speed);
+    let cell = floor(q / g);
+    let f = q / g - cell;
+    let h = hash2(cell + fl * 13.1);
+    let h3 = hash1(cell * 2.3 + fl);
+    let d = length((f - (0.15 + 0.7 * h)) * g);
+    let size = 0.7 + 1.1 * h3 + 0.5 * fl;
+    let alive = step(0.45, h3);
+    acc += vec3f(0.85, 0.92, 1.0) * alive * (exp(-d * d / (size * size)) * (0.45 + 0.2 * fl));
+  }
+  // Rien sous la ligne (les flocons s'y posent).
+  return acc * smoothstep(4.0, -2.0, p.y - r.hor.x);
+}
+
 // Ce qui est au-dessus du sol : la ligne, le voile, le feu, les braises.
 fn sky(p: vec2f) -> vec4f {
   let t = r.view.w;
   let dy = p.y - r.hor.x;
+  if (r.card.w > 0.5) {
+    // Glace : une ligne froide et fine, un halo pâle, le brouillard, la neige.
+    let line = exp(-abs(dy) / 0.9) * 0.85 + exp(-abs(dy) / 7.0) * 0.22;
+    let haze = select(0.0, exp(dy / 170.0) * 0.13, dy < 0.0);
+    var col = vec3f(0.78, 0.93, 1.0) * line + vec3f(0.3, 0.52, 0.72) * haze;
+    var a = clamp(line + haze * 0.6, 0.0, 1.0);
+    let fo = fire(p);
+    col = fo.rgb + col * (1.0 - fo.a);
+    a = fo.a + a * (1.0 - fo.a);
+    let sn = snow(p, t);
+    col += sn;
+    a = clamp(a + sn.g, 0.0, 1.0);
+    return vec4f(col, a);
+  }
   let line = exp(-abs(dy) / 1.1) * 1.1 + exp(-abs(dy) / 9.0) * 0.32;
   let haze = select(0.0, exp(dy / 130.0) * 0.16, dy < 0.0);
   var col = vec3f(1.0, 0.6, 0.22) * line + vec3f(0.9, 0.25, 0.05) * haze;
@@ -304,6 +350,29 @@ fn voronoi(x: vec2f) -> vec2f {
   let hot = r.hot.z * exp(-dx * dx / 9000.0) * exp(-d / 110.0);
   let flame = textureSampleLevel(fireTex, samp, vec2f(clamp(p.x / r.view.x, 0.0, 1.0), 0.985), 0.0).z;
   k *= 1.0 + 2.6 * hot + 1.8 * flame * exp(-d / 140.0);
+  if (r.card.w > 0.5) {
+    // Le lac gelé : du bleu profond, des fissures blanches en surface, d'autres plus bas, du givre, un reflet rasant.
+    let far = smoothstep(0.15, 0.7, px);
+    let deep = fbm(q * 0.25 + vec2f(0.0, t * 0.01));
+    var ice = mix(vec3f(0.012, 0.045, 0.08), vec3f(0.04, 0.13, 0.2), deep);
+    let low = (1.0 - smoothstep(0.0, 0.05 + px2 * 1.2, v2.x)) * mix(0.14, 0.04, smoothstep(0.15, 0.7, px2));
+    ice += vec3f(0.25, 0.48, 0.65) * low;
+    // Peu de fissures en surface : seulement là où la glace a travaillé (un masque lent), et pas sur toutes les plaques.
+    let worked = smoothstep(0.45, 0.72, fbm(q * 0.3 + vec2f(11.0, 4.0))) * step(0.35, v1.y);
+    let crackI = mix(1.0 - smoothstep(0.0, 0.01 + px * 1.1, v1.x), 0.02, far) * worked;
+    ice = mix(ice, vec3f(0.8, 0.92, 0.99), clamp(crackI * 0.7, 0.0, 1.0));
+    let frost = smoothstep(0.52, 0.8, fbm(q * 0.6 + vec2f(3.0, 1.0)));
+    ice = mix(ice, vec3f(0.5, 0.62, 0.72), frost * 0.4);
+    ice += vec3f(0.3, 0.5, 0.68) * exp(-d / 45.0) * 0.55;
+    // Des éclats : un point sur mille, qui scintille.
+    let gl = hash1(floor(p * 0.5));
+    ice += vec3f(0.9, 0.97, 1.0) * step(0.9975, gl) * (0.5 + 0.5 * sin(t * 4.0 + gl * 100.0)) * (1.0 - far);
+    // La carte tenue au-dessus : un froid bleuté dessous ; le brouillard éclaire le pied de la ligne.
+    ice += vec3f(0.35, 0.6, 0.85) * hot * 0.45 + vec3f(0.5, 0.62, 0.72) * flame * exp(-d / 90.0) * 0.4;
+    ice *= 1.0 - 0.22 * smoothstep(0.55, 1.0, (p.y - r.hor.x) / max(1.0, r.view.y - r.hor.x));
+    let si = sky(p);
+    return vec4f(si.rgb + ice * (1.0 - si.a), 1.0);
+  }
   // Les fissures, nettes de près, moyennées au loin (une cellule plus petite qu'un pixel n'a plus de bord).
   let core1 = 1.0 - smoothstep(0.0, 0.016 + px * 1.1, v1.x);
   let halo1 = exp(-v1.x / (0.045 + px));
@@ -330,8 +399,9 @@ const CARD = /* wgsl */ `
 ${COMMON}
 struct C {
   rect: vec4f, // x, y, largeur, hauteur (px CSS)
-  m: vec4f,    // brûlé (0 → 1,3), chaleur, graine, opacité
+  m: vec4f,    // brûlé ou gelé (0 → 1,35), chaleur, graine, opacité
   view: vec4f, // largeur, hauteur, dpr, rayon des coins
+  ext: vec4f,  // marge du quad (px), thème, 0, 0
 }
 @group(0) @binding(0) var<uniform> c: C;
 @group(0) @binding(1) var tex: texture_2d<f32>;
@@ -339,13 +409,82 @@ struct C {
 struct O { @builtin(position) pos: vec4f, @location(0) uv: vec2f }
 @vertex fn vs(@builtin(vertex_index) i: u32) -> O {
   let k = array<vec2f, 6>(vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0), vec2f(0.0, 1.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0))[i];
-  let p = c.rect.xy + k * c.rect.zw;
+  // Une marge autour de la carte : les éclats en sortent.
+  let mg = c.ext.x;
+  let p = c.rect.xy - mg + k * (c.rect.zw + 2.0 * mg);
   var o: O;
   o.pos = vec4f(p.x / c.view.x * 2.0 - 1.0, 1.0 - p.y / c.view.y * 2.0, 0.0, 1.0);
-  o.uv = k;
+  o.uv = (p - c.rect.xy) / c.rect.zw;
   return o;
 }
+
+// Les éclats : les cellules d'un Voronoï sur la carte (une unité ≈ un éclat).
+fn site(g: vec2f) -> vec2f { return g + 0.15 + 0.7 * hash2(g + c.m.z); }
+fn nearest(x: vec2f) -> vec3f {
+  let ip = floor(x);
+  var best = vec2f(0.0);
+  var md = 9.0;
+  var md2 = 9.0;
+  for (var j = -1; j <= 1; j++) {
+    for (var i = -1; i <= 1; i++) {
+      let g = ip + vec2f(f32(i), f32(j));
+      let d = length(site(g) - x);
+      if (d < md) { md2 = md; md = d; best = g; } else if (d < md2) { md2 = d; }
+    }
+  }
+  // Troisième composante : à quelle distance du bord de l'éclat (≈ écart aux deux plus proches).
+  return vec3f(best, md2 - md);
+}
+
+fn freeze(uv0: vec2f) -> vec4f {
+  let p = c.m.x;
+  let aspect = c.rect.z / max(1.0, c.rect.w);
+  let sc = vec2f(aspect * 1.9, 1.9);
+  let x = uv0 * sc;
+  // Le déplacement de chaque éclat : il s'écarte du centre et glisse vers l'avant, sur la glace.
+  let sep = smoothstep(0.78, 1.3, p);
+  var src = uv0;
+  var edge = 1.0;
+  var found = false;
+  let ip = floor(x);
+  for (var j = -2; j <= 2; j++) {
+    for (var i = -2; i <= 2; i++) {
+      let g = ip + vec2f(f32(i), f32(j));
+      let st = site(g);
+      let h = hash2(g * 3.1 + c.m.z);
+      let dir = normalize(st - sc * 0.5 + vec2f(0.001, 0.0));
+      let off = (dir * vec2f(0.55, 0.25) + vec2f((h.x - 0.5) * 0.4, 0.9 + 1.2 * h.y)) * sep * (0.6 + 0.6 * h.x);
+      let back = x - off;
+      let n = nearest(back);
+      if (!found && all(n.xy == g)) {
+        found = true;
+        src = back / sc;
+        edge = n.z;
+      }
+    }
+  }
+  let inside = select(0.0, 1.0, found && all(src >= vec2f(0.0)) && all(src <= vec2f(1.0)));
+  let tx = textureSample(tex, samp, clamp(src, vec2f(0.0), vec2f(1.0))) * inside;
+  // Le givre monte du bas et des bords, en ramifications.
+  let n1 = fbm(src * vec2f(aspect * 4.0, 4.0) + c.m.z);
+  let ridge = 1.0 - abs(fbm(src * vec2f(aspect * 11.0, 11.0) + 7.0) * 2.0 - 1.0);
+  let field = (1.0 - src.y) * 0.55 + min(src.x, 1.0 - src.x) * 0.5 + n1 * 0.45;
+  let fr = 1.0 - smoothstep(p * 1.25 - 0.2, p * 1.25, field);
+  let lum = dot(tx.rgb, vec3f(0.3, 0.55, 0.15));
+  var col = mix(tx.rgb, vec3f(lum) * vec3f(0.75, 0.88, 1.0) + vec3f(0.02, 0.05, 0.09) * tx.a, fr * 0.8);
+  col = mix(col, vec3f(0.84, 0.92, 0.99) * tx.a, fr * (0.35 + 0.45 * pow(ridge, 4.0)));
+  // Les fêlures apparaissent, puis chaque éclat garde un liseré clair.
+  let crack = (1.0 - smoothstep(0.0, 0.05, edge)) * smoothstep(0.55, 0.78, p);
+  col = mix(col, vec3f(0.95, 0.99, 1.0) * tx.a, crack * 0.9);
+  // Le froid qui monte de la glace quand la carte approche.
+  col += vec3f(0.35, 0.6, 0.9) * c.m.y * pow(clamp(src.y, 0.0, 1.0), 3.0) * 0.35 * tx.a;
+  // Tout est prémultiplié par tx.a ; les éclats s'effacent à la fin.
+  let fade = (1.0 - smoothstep(1.05, 1.35, p)) * c.m.w;
+  return vec4f(col * fade, tx.a * fade);
+}
+
 @fragment fn fs(o: O) -> @location(0) vec4f {
+  if (c.ext.y > 0.5) { return freeze(o.uv); }
   let tx = textureSample(tex, samp, o.uv);
   let aspect = c.rect.z / max(1.0, c.rect.w);
   let n = fbm(o.uv * vec2f(aspect * 2.6, 2.6) + vec2f(c.m.z, c.m.z * 1.7));
@@ -365,8 +504,8 @@ struct O { @builtin(position) pos: vec4f, @location(0) uv: vec2f }
 }
 `;
 
-export type Burn = { tex: GPUTexture; x: number; y: number; w: number; h: number; vy: number; t0: number; touch: number; seed: number; done: boolean; buf: GPUBuffer; group: GPUBindGroup };
-export type Frame = { hor: number; hot: { x0: number; x1: number; k: number }; reduced: boolean };
+export type Burn = { tex: GPUTexture; x: number; y: number; w: number; h: number; vx: number; vy: number; t0: number; touch: number; seed: number; done: boolean; buf: GPUBuffer; group: GPUBindGroup };
+export type Frame = { hor: number; hot: { x0: number; x1: number; k: number }; reduced: boolean; theme: 0 | 1 };
 
 export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   const format = navigator.gpu.getPreferredCanvasFormat();
@@ -506,14 +645,16 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   type Fire = { x0: number; x1: number; t0: number };
   const fires: Fire[] = [];
   let hotFuel = { x0: 0, x1: 0, k: 0 };
+  let theme: 0 | 1 = 0;
   const fuelAt = (x: number, now: number) => {
     let f = 0;
     for (const e of fires) {
       const a = (now - e.t0) / 1000;
       if (a < 0) continue;
       // Ça prend vite, ça brûle fort deux secondes, puis ça baisse ; le feu gagne la ligne de part et d'autre.
-      const env = Math.min(1, a / 0.18) * (a < 2 ? 1 : Math.exp(-(a - 2) / 1.8));
-      const spread = 40 + a * 160;
+      // Glace : une bouffée de froid au contact, plus brève, qui roule plus loin.
+      const env = theme ? Math.min(1, a / 0.25) * (a < 0.8 ? 1 : Math.exp(-(a - 0.8) / 1.4)) : Math.min(1, a / 0.18) * (a < 2 ? 1 : Math.exp(-(a - 2) / 1.8));
+      const spread = theme ? 60 + a * 230 : 40 + a * 160;
       const out = Math.max(e.x0 - x, x - e.x1, 0);
       const side = out <= 0 ? 1 : Math.max(0, 1 - out / spread) * 0.55;
       f += 0.95 * env * side;
@@ -531,10 +672,10 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   /* ───── Les cartes qui brûlent ───── */
 
   const burns: Burn[] = [];
-  const addBurn = (source: HTMLCanvasElement, x: number, y: number, w: number, h: number, vy: number, now: number) => {
+  const addBurn = (source: HTMLCanvasElement, x: number, y: number, w: number, h: number, vx: number, vy: number, now: number) => {
     const tex = device.createTexture({ size: [source.width, source.height], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
     device.queue.copyExternalImageToTexture({ source }, { texture: tex, premultipliedAlpha: true }, [source.width, source.height]);
-    const buf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const buf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const group = device.createBindGroup({
       layout: cardPipe.getBindGroupLayout(0),
       entries: [
@@ -543,7 +684,7 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
         { binding: 2, resource: linear },
       ],
     });
-    burns.push({ tex, x, y, w, h, vy: Math.max(60, vy), t0: now, touch: -1, seed: Math.random() * 50, done: false, buf, group });
+    burns.push({ tex, x, y, w, h, vx, vy: Math.max(60, vy), t0: now, touch: -1, seed: Math.random() * 50, done: false, buf, group });
   };
 
   /* ───── Une image ───── */
@@ -552,7 +693,9 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   let simTime = 0;
   const udata = new Float32Array(16);
   const sdata = new Float32Array(16);
-  const cdata = new Float32Array(12);
+  const cdata = new Float32Array(16);
+  /** Durée de la fin d'une carte (ms) : brûlée en 1,5 s, gelée puis brisée en 2,2 s. */
+  const life = (reduced: boolean) => (reduced ? 500 : theme ? 2200 : 1500);
   let glowCard = { x0: 0, x1: 0, k: 0 };
 
   const frame = (now: number, dt: number, f: Frame) => {
@@ -561,6 +704,12 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
     fireTop = hor - fireH + CELL;
     hotFuel = f.hot;
     const reduced = f.reduced;
+    if (f.theme !== theme) {
+      // Changer de sol : le feu ou le brouillard en cours s'éteint.
+      theme = f.theme;
+      fires.length = 0;
+      lastFuel = -1e9;
+    }
 
     // Les cartes : elles tombent jusqu'à la lave, puis s'y enfoncent en brûlant.
     for (const b of burns) {
@@ -574,6 +723,20 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
       } else if (bottom < hor) {
         b.vy += 2600 * dt;
         b.y += b.vy * dt;
+      } else if (theme) {
+        // Glace : la carte se pose sur la ligne et glisse, presque sans frottement ; elle rebondit mollement aux bords.
+        if (b.touch < 0) {
+          b.touch = now;
+          ignite(b.x, b.x + b.w, now);
+          b.vy = 0;
+          b.y = hor - b.h + 3;
+        }
+        b.x += b.vx * dt;
+        b.vx *= Math.exp(-dt * 0.45);
+        if (b.x < 0 || b.x + b.w > W) {
+          b.x = Math.max(0, Math.min(W - b.w, b.x));
+          b.vx *= -0.35;
+        }
       } else {
         if (b.touch < 0) {
           b.touch = now;
@@ -587,8 +750,8 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
         b.vy += (40 - b.vy) * (1 - Math.exp(-dt * 3));
         b.y += b.vy * dt;
       }
-      const p = b.touch < 0 ? 0 : (now - b.touch) / (reduced ? 500 : 1500);
-      if (p > 1.35 || b.y > hor + 10) {
+      const p = b.touch < 0 ? 0 : (now - b.touch) / life(reduced);
+      if (p > 1.35 || (!theme && b.y > hor + 10)) {
         b.done = true;
         b.tex.destroy();
         b.buf.destroy();
@@ -610,10 +773,17 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
         device.queue.writeBuffer(grid.fuel, 0, grid.fuelData);
         sdata.set([grid.nx, grid.ny, CELL, STEP], 0);
         // Montée 120 px/s, poussée 280 px/s², refroidissement 2,3/s : des flammes de 50 à 90 px, pas des colonnes.
-        sdata.set([simTime, 3.1, 3, 70], 4);
-        // Tourbillons : la force vaut ε·h·(N × ω), ω en 1/s ; il faut ε ≈ 8 pour qu'elle pèse face à la poussée.
-        sdata.set([300, 2.3, 8, 0.8], 8);
-        sdata.set([0.95, 700, 0.8, 0], 12);
+        if (theme) {
+          // Brouillard froid : une poussée négative (l'air froid retombe), il s'étale sur la glace et s'attarde.
+          sdata.set([simTime, 3.1, 3, 22], 4);
+          sdata.set([-140, 0.55, 6, 0], 8);
+          sdata.set([1, 380, 0.5, 0], 12);
+        } else {
+          sdata.set([simTime, 3.1, 3, 70], 4);
+          // Tourbillons : la force vaut ε·h·(N × ω), ω en 1/s ; il faut ε ≈ 8 pour qu'elle pèse face à la poussée.
+          sdata.set([300, 2.3, 8, 0.8], 8);
+          sdata.set([0.95, 700, 0.8, 0], 12);
+        }
         device.queue.writeBuffer(simUni, 0, sdata);
         const gx = Math.ceil(grid.nx / 8);
         const gy = Math.ceil(grid.ny / 8);
@@ -645,22 +815,27 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
     udata.set([W, H, dpr, t], 0);
     udata.set([hor, fireTop, fireH, f.reduced ? 1 : 0], 4);
     udata.set([f.hot.x0, f.hot.x1, f.hot.k, 0.55 + 1.2 * burning + 0.5 * f.hot.k], 8);
-    udata.set([glowCard.x0, glowCard.x1, glowCard.k, 0], 12);
+    udata.set([glowCard.x0, glowCard.x1, glowCard.k, theme], 12);
     device.queue.writeBuffer(uni, 0, udata);
 
     const pass = enc.beginRenderPass({ colorAttachments: [{ view: ctx.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
-    // D'abord les cartes (le sol, dessiné ensuite, couvre ce qui s'est enfoncé ; le feu passe devant).
-    for (const b of burns) {
-      const p = b.touch < 0 ? 0 : Math.min(1.35, (now - b.touch) / (f.reduced ? 500 : 1500));
-      const heat = b.touch < 0 ? Math.max(0, 1 - (hor - b.y - b.h) / 160) : 1;
-      cdata.set([b.x, b.y, b.w, b.h], 0);
-      cdata.set([p, heat, b.seed, 1], 4);
-      cdata.set([W, H, dpr, 12], 8);
-      device.queue.writeBuffer(b.buf, 0, cdata);
-      pass.setPipeline(cardPipe);
-      pass.setBindGroup(0, b.group);
-      pass.draw(6);
-    }
+    const cards = () => {
+      for (const b of burns) {
+        const p = b.touch < 0 ? 0 : Math.min(1.35, (now - b.touch) / life(f.reduced));
+        const heat = b.touch < 0 ? Math.max(0, 1 - (hor - b.y - b.h) / 160) : 1;
+        cdata.set([b.x, b.y, b.w, b.h], 0);
+        cdata.set([p, heat, b.seed, 1], 4);
+        cdata.set([W, H, dpr, 12], 8);
+        cdata.set([theme ? 110 : 0, theme, 0, 0], 12);
+        device.queue.writeBuffer(b.buf, 0, cdata);
+        pass.setPipeline(cardPipe);
+        pass.setBindGroup(0, b.group);
+        pass.draw(6);
+      }
+    };
+    // Lave : d'abord les cartes (le sol, dessiné ensuite, couvre ce qui s'est enfoncé ; le feu passe devant).
+    // Glace : après (la carte est posée sur la glace, ses éclats y glissent).
+    if (!theme) cards();
     const horPx = Math.round(Math.max(0, Math.min(H, hor - 1)) * dpr);
     const cw = canvas.width;
     const ch = canvas.height;
@@ -676,6 +851,10 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
       pass.setBindGroup(0, grid.lavaGroup);
       pass.draw(3);
     }
+    if (theme) {
+      pass.setScissorRect(0, 0, cw, ch);
+      cards();
+    }
     pass.end();
     device.queue.submit([enc.finish()]);
   };
@@ -684,6 +863,10 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
     resize,
     frame,
     addBurn,
+    /** Le brouillard ou le feu s'arrête (changement de sol). */
+    clear() {
+      fires.length = 0;
+    },
     get burning() {
       return burns.length > 0 || fires.some((e) => performance.now() - e.t0 < 6000);
     },
