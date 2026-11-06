@@ -1423,6 +1423,11 @@ var zt = [
 		text: "Paillettes qu'on brosse, lettres en eau, éclair et feu, diagramme de phase"
 	},
 	{
+		href: "tissu.html",
+		name: "Tissu",
+		text: "Le HTML de la page imprimé sur une étoffe simulée en WebGPU : on la tire, on la décroche"
+	},
+	{
 		href: "defilement.html",
 		name: "Défilement",
 		text: "Roue de projets, mots qui roulent, liste qui s'ouvre, images au bruit, bento"

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr" data-presse-cursor>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Tissu</title>
+    <meta name="description" content="Le haut de cette page est du HTML imprimé sur une étoffe simulée en WebGPU : on la tire, on la décroche, on change le titre, l'encre suit." />
+    <meta name="theme-color" content="#f4f3ef" />
+    <script type="module" src="/src/tissu/main.ts"></script>
+  </head>
+  <body class="ts">
+    <header class="ts-bar">
+      <a class="ts-mark" href="./index.html" aria-label="WebGPU-demo-UBS, accueil">UBS</a>
+      <nav class="ts-nav" aria-label="Démonstrations">
+        <a href="./presse.html">Presse</a>
+        <a href="./liquide.html">Liquide</a>
+        <a href="./galerie.html">Galerie</a>
+        <a href="./matieres.html">Matières</a>
+      </nav>
+      <a class="ts-bar-cta" href="#ts-how">Comment ça marche <span aria-hidden="true">■</span></a>
+    </header>
+
+    <main>
+      <section class="ts-hero" data-ts aria-labelledby="ts-title">
+        <div class="ts-content" data-ts-content>
+          <h1 id="ts-title" class="ts-title" data-ts-title>Imprimer le web<br />sur une étoffe</h1>
+          <p class="ts-lede">Ce titre, ce paragraphe et ce bouton sont le HTML de la page, imprimés sur un tissu simulé en WebGPU. Attrapez un coin, tirez le milieu, lâchez.</p>
+          <a class="ts-btn" href="#ts-how">Comment ça marche</a>
+        </div>
+      </section>
+
+      <form class="ts-panel" aria-label="Réglages du tissu" data-ts-panel>
+        <fieldset class="ts-seg">
+          <legend>Tenue</legend>
+          <label><input type="radio" name="mode" value="drap" checked /> Drap</label>
+          <label><input type="radio" name="mode" value="rideau" /> Rideau</label>
+          <label><input type="radio" name="mode" value="suspendu" /> Suspendu</label>
+        </fieldset>
+        <fieldset class="ts-seg">
+          <legend>Étoffe</legend>
+          <label><input type="radio" name="fabric" value="jacquard" checked /> Jacquard</label>
+          <label><input type="radio" name="fabric" value="lin" /> Lin</label>
+          <label><input type="radio" name="fabric" value="velours" /> Velours</label>
+        </fieldset>
+        <label class="ts-field"><span>Titre</span><input type="text" name="title" value="Imprimer le web / sur une étoffe" autocomplete="off" /></label>
+        <label class="ts-check"><input type="checkbox" name="wind" /> Vent</label>
+        <button type="button" class="ts-small" data-ts-type>Écrire</button>
+        <button type="button" class="ts-small" data-ts-reset>Remettre à plat</button>
+        <p class="ts-status" data-ts-status role="status"></p>
+      </form>
+
+      <section id="ts-how" class="ts-essay" aria-labelledby="ts-how-t">
+        <h2 id="ts-how-t">Comment ça marche</h2>
+        <p>
+          Le haut de la page est une section HTML ordinaire : un titre, un paragraphe, un lien. Le navigateur la met en page ;
+          on en tire une image, posée comme une encre sur une étoffe dont chaque point est simulé sur le GPU : une grille de
+          particules intégrée en Verlet, retenue par des contraintes de distance (trame, chaîne, biais, flexion) résolues en
+          parallèle, seize fois par demi-image. Le mur arrête le tissu, la main le soulève vers vous, l'ombre se décale avec
+          la hauteur.
+        </p>
+        <p>
+          L'image du HTML vient de <strong>HTML-in-Canvas</strong> quand le navigateur l'expose (Chrome, essai d'origine,
+          versions 155 à 160) : la section devient l'enfant d'un canvas <code>content="drawable"</code>, le navigateur la
+          dessine lui-même dans une texture (<code>drawElementImageToTexture</code>), et ses zones de clic suivent. Ailleurs,
+          Presse relit la mise en page — chaque lettre à sa place, chaque fond, chaque bordure — et la réimprime dans un
+          canvas : le même principe que tout le reste de ce site. Changez le titre : l'encre suit.
+        </p>
+        <p>
+          Le lien reste un lien : au clavier, et à la souris quand le drap est à plat. D'après une démo partagée sur X
+          (« HTML in canvas API so all the text and buttons are actual HTML from our website printed onto a fabric texture
+          simulated in WebGPU »), refaite ici sans reprendre son code ; les étoffes sont procédurales.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

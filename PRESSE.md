@@ -256,6 +256,17 @@ liquide 1,6, grille 1,7, galerie 4,3 ; Performance, « presse:capture ») : les 
 décodées d'avance hors du fil principal, et les deux toiles 2D sont créées au calme — la première toile 2D d'une page
 coûtait jusqu'à 1,5 s en rendu logiciel.
 
+**Fait : la page Tissu** (`tissu.html`, `src/tissu/`). Le héros — un titre, un paragraphe, un lien, en HTML — est imprimé sur
+une étoffe simulée en WebGPU (grille de particules en Verlet, contraintes de distance résolues à la Jacobi : trame, chaîne,
+biais, flexion ; deux sous-pas de seize relaxations), qu'on attrape, qu'on décolle et qui revient se coller (`drap`), ou
+qui pend froncée (`rideau`) ou par deux coins (`suspendu`) ; trois étoffes procédurales (jacquard, lin, velours) aux fils
+filtrés contre le moiré, ombre portée selon la hauteur. L'image du HTML vient de **HTML-in-Canvas** quand le navigateur
+l'expose (`drawElementImageToTexture`, canvas `content="drawable"`, Chrome 155 à 160 en essai d'origine), sinon de
+l'**impression du DOM** (`src/tissu/print.ts` : chaque lettre à la place que lui donne le navigateur, fonds et bordures) ;
+tout changement du HTML réimprime l'étoffe (le champ Titre, « Écrire », l'encre sombre du lin). Le lien reste un lien au
+clavier, et à la souris quand le drap est à plat. Non vérifié ici : le chemin HTML-in-Canvas (Chromium 141 dans cet
+environnement).
+
 ### D. Vers des sites très soignés
 
 Ce qui sépare un site primé (Lusion, Active Theory, Locomotive, Immersive Garden) d'une bonne démo tient moins aux effets

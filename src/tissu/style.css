@@ -1,0 +1,276 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/cormorant-garamond/500.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #f4f3ef;
+  --ink: #121212;
+  --ink-soft: #55534d;
+  --rule: #d6d3c8;
+  --spot: #c8321c;
+  --f-text: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-serif: "Cormorant Garamond", Georgia, serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  background: var(--paper);
+  color: var(--ink);
+}
+html,
+body.ts {
+  overflow-x: clip;
+}
+body.ts {
+  margin: 0;
+  font: 16px/1.5 var(--f-text);
+  background: var(--paper);
+}
+
+.ts-bar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 60px;
+  /* À gauche, la place du menu des pages (bouton fixe de pages-nav). */
+  padding: 0 max(18px, env(safe-area-inset-right, 0px)) 0 150px;
+  background: #fff;
+  font-size: 14px;
+}
+.ts-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: var(--ink);
+  color: #fff;
+  font: 600 10px/1 var(--f-mono);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+.ts-nav {
+  display: flex;
+  gap: 24px;
+}
+.ts-nav a,
+.ts-bar-cta {
+  color: inherit;
+  text-decoration: none;
+}
+.ts-nav a:hover,
+.ts-bar-cta:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.ts-bar-cta {
+  margin-left: auto;
+}
+
+/* Le héros : la section HTML, et l'étoffe qui la porte. */
+.ts-hero {
+  position: relative;
+  height: calc(100svh - 60px - 12px);
+  min-height: 460px;
+  margin: 0 12px;
+  border-radius: 0 0 14px 14px;
+  background: #fbfaf7;
+  touch-action: none;
+}
+.ts-content {
+  position: absolute;
+  inset: 0;
+  padding: clamp(28px, 6vw, 72px) clamp(20px, 5vw, 64px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 18px;
+  color: #f6f3e8;
+  /* Sans WebGPU : le HTML se montre tel quel, sur une étoffe dessinée en CSS. */
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.08) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 20% 10%, #59693d, #2a3d27 70%);
+  border-radius: inherit;
+}
+.ts-title {
+  margin: 0 0 auto;
+  padding-top: clamp(40px, 10vh, 120px);
+  font: 500 clamp(40px, 6.4vw, 92px) / 1 var(--f-serif);
+  letter-spacing: -0.01em;
+  outline: none;
+}
+.ts-lede {
+  max-width: 34ch;
+  margin: 0;
+  font-size: clamp(15px, 1.25vw, 18px);
+  line-height: 1.4;
+}
+.ts-btn {
+  align-self: flex-start;
+  padding: 10px 16px;
+  background: #fbfaf5;
+  color: #1b1b1b;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 2px;
+}
+.ts-btn:focus-visible {
+  outline: 2px solid var(--spot);
+  outline-offset: 3px;
+}
+
+/* Avec WebGPU : le canvas couvre le héros et sa marge ; le HTML reste là, invisible, cliquable quand le drap est à plat. */
+.ts-hero.is-gl .ts-content {
+  opacity: 0;
+  background: none;
+  pointer-events: none;
+}
+.ts-hero.is-gl.is-calm .ts-btn {
+  pointer-events: auto;
+}
+.ts-hero.is-gl .ts-btn:focus-visible {
+  opacity: 1;
+}
+.ts-gl {
+  position: absolute;
+  z-index: 2;
+  cursor: grab;
+}
+.ts-gl.is-holding {
+  cursor: grabbing;
+}
+.ts-hero.is-gl.is-calm .ts-content {
+  z-index: 3;
+}
+/* HTML-in-Canvas : la section est l'enfant du canvas, peinte par lui ; elle doit rester visible pour être dessinée. */
+.ts-hero.is-hic .ts-content {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Réglages */
+.ts-panel {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 22px;
+  margin: 18px 12px 0;
+  padding: 14px 18px;
+  background: #fff;
+  border-radius: 12px;
+  font-size: 14px;
+}
+.ts-seg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ts-seg legend {
+  float: left;
+  margin-right: 8px;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.ts-seg label {
+  position: relative;
+  padding: 6px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ts-seg input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.ts-seg label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.ts-seg label:has(input:focus-visible),
+.ts-small:focus-visible,
+.ts-field input:focus-visible {
+  outline: 2px solid var(--spot);
+  outline-offset: 2px;
+}
+.ts-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ts-field span {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.ts-field input {
+  width: min(320px, 60vw);
+  padding: 6px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font: inherit;
+}
+.ts-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ts-small {
+  padding: 6px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ts-status {
+  flex-basis: 100%;
+  margin: 0;
+  font: 12px/1.45 var(--f-mono);
+  color: var(--ink-soft);
+}
+
+.ts-essay {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: 64px 20px 120px;
+}
+.ts-essay h2 {
+  font: 500 40px/1.1 var(--f-serif);
+  margin: 0 0 18px;
+}
+.ts-essay code {
+  font: 0.85em var(--f-mono);
+}
+
+@media (max-width: 720px) {
+  .ts-nav {
+    display: none;
+  }
+}
+
+/* Sur le lin, l'encre est sombre : c'est le HTML qui change, et l'étoffe se réimprime. */
+.ts-hero[data-fabric="lin"] .ts-content {
+  color: #24211b;
+}
+.ts-hero[data-fabric="lin"] .ts-btn {
+  background: #24211b;
+  color: #f1ece0;
+}
