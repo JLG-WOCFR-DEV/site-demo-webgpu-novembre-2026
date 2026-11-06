@@ -9,12 +9,19 @@
     <script type="module" src="/src/lave/main.ts"></script>
   </head>
   <body class="lv">
+    <!-- La brume de chaleur : un bruit qui déplace les pixels de la carte tenue au-dessus de la lave. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <filter id="lv-haze" x="-4%" y="-30%" width="108%" height="160%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.06" numOctaves="2" seed="4" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
     <main>
       <section class="lv-app" data-lv aria-labelledby="lv-title">
         <header class="lv-head">
           <div>
             <h1 id="lv-title" class="lv-h1">Aujourd'hui</h1>
-            <p class="lv-sub" data-lv-count>5 tâches · le sol est de lave</p>
+            <p class="lv-sub"><span data-lv-num>5</span> <span data-lv-count>tâches · le sol est de lave</span></p>
           </div>
           <time class="lv-date" data-lv-date></time>
         </header>

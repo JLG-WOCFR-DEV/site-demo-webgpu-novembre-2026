@@ -20,7 +20,12 @@
  * la glace : chaque pixel cherche l'éclat (cellule de Voronoï) qui le couvre une fois déplacé.
  */
 
+import { OneShots } from "../presse/oneshots.ts";
+import { SPRING_WGSL } from "../gpu/springs.ts";
+
 export const CELL = 4;
+/** Cartes éclairées et porteuses d'ombre, au plus. */
+export const MAX_RECTS = 12;
 const STEP = 1 / 60;
 const MAX_STEPS = 3;
 const JACOBI = 14;
@@ -149,6 +154,10 @@ struct R {
   hor: vec4f,  // ligne de lave, haut du domaine du feu, hauteur du domaine, mouvement réduit
   hot: vec4f,  // carte tenue : x0, x1, proximité ; braises (densité)
   card: vec4f, // dernière carte : x0, x1, éclat ; thème (0 lave, 1 glace)
+  light: vec4f, // nombre de cartes, intensité de la lumière du sol, 0, 0
+  burst: array<vec4f, 4>,  // gerbes d'étincelles : x, y, âge (s), opacité
+  burst2: array<vec4f, 4>, // largeur, graine, 0, 0
+  rects: array<vec4f, 12>, // les cartes (px CSS) : x, y, largeur, hauteur
 }
 fn hash1(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
 fn hash2(p: vec2f) -> vec2f {
@@ -264,6 +273,99 @@ fn snow(p: vec2f, t: f32) -> vec3f {
   return acc * smoothstep(4.0, -2.0, p.y - r.hor.x);
 }
 
+/* ── Lumière du sol (d'après rune-light) : chaque carte est un rectangle arrondi connu. ── */
+
+// erf (Abramowitz et Stegun 7.1.26) : assez juste pour une pénombre.
+fn erf7(x: f32) -> f32 {
+  let a = abs(x);
+  let t = 1.0 / (1.0 + 0.3275911 * a);
+  let y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * exp(-a * a);
+  return sign(x) * y;
+}
+// L'ombre d'une carte éclairée par en dessous : une bande au-dessus d'elle, floue en forme close (une source étendue
+// donne une pénombre qui s'élargit avec la distance), sans marche de rayons.
+fn cardShadow(p: vec2f, rc: vec4f) -> f32 {
+  let above = rc.y + rc.w - p.y;
+  let up = max(0.0, rc.y - p.y);
+  let sigma = 2.0 + 0.2 * up;
+  let k = 0.70710678 / sigma;
+  let cov = 0.5 * (erf7((p.x - rc.x) * k) - erf7((p.x - rc.x - rc.z) * k));
+  return cov * smoothstep(0.0, 8.0, above) * exp(-up / 240.0);
+}
+// Ce que voit la ligne depuis p : le produit des ombres des cartes (sauf « skip »).
+fn visibility(p: vec2f, skip: i32) -> f32 {
+  var v = 1.0;
+  let n = i32(r.light.x);
+  for (var i = 0; i < 12; i++) {
+    if (i >= n) { break; }
+    if (i == skip) { continue; }
+    v *= 1.0 - 0.8 * cardShadow(p, r.rects[i]);
+  }
+  return v;
+}
+fn sdRect(p: vec2f, rc: vec4f, rad: f32) -> f32 {
+  let q = abs(p - (rc.xy + rc.zw * 0.5)) - rc.zw * 0.5 + rad;
+  return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - rad;
+}
+// La lumière reçue par une carte : plus forte près de la ligne, un liseré sur le bord tourné vers elle ; les cartes
+// plus bas la masquent. Additive (alpha 0) : elle s'ajoute au HTML dessous.
+fn cardLight(p: vec2f) -> vec3f {
+  let n = i32(r.light.x);
+  for (var i = 0; i < 12; i++) {
+    if (i >= n) { break; }
+    let rc = r.rects[i];
+    let sd = sdRect(p, rc, 12.0);
+    if (sd < 0.0) {
+      let dist = max(0.0, r.hor.x - (rc.y + rc.w));
+      let base = exp(-dist / 170.0);
+      let fy = clamp((p.y - rc.y) / rc.w, 0.0, 1.0);
+      let rim = exp(sd / 2.2) * smoothstep(0.35, 1.0, fy);
+      let vis = visibility(vec2f(p.x, rc.y + rc.w + 1.0), i);
+      var col = vec3f(1.0, 0.42, 0.1);
+      if (r.card.w > 0.5) { col = vec3f(0.5, 0.75, 1.0) * 0.6; }
+      let fl = textureSampleLevel(fireTex, samp, vec2f(clamp(p.x / r.view.x, 0.0, 1.0), 0.985), 0.0).z;
+      return col * r.light.y * (1.0 + 1.6 * fl) * base * vis * (0.05 + 0.3 * pow(fy, 3.0) + 0.9 * rim);
+    }
+  }
+  return vec3f(0.0);
+}
+
+// Les gerbes d'étincelles (un réservoir d'effets ponctuels côté CPU) : des traînées balistiques.
+fn sparks(p: vec2f) -> vec3f {
+  var acc = vec3f(0.0);
+  let ice = r.card.w > 0.5;
+  for (var b = 0; b < 4; b++) {
+    let B = r.burst[b];
+    if (B.w <= 0.0) { continue; }
+    let w = r.burst2[b].x;
+    let seed = r.burst2[b].y;
+    if (abs(p.x - B.x) > w * 0.5 + 420.0 || p.y > B.y + 40.0 || p.y < B.y - 520.0) { continue; }
+    for (var i = 0; i < 28; i++) {
+      let h = hash2(vec2f(f32(i), seed));
+      let h3 = hash1(vec2f(seed, f32(i) * 1.3));
+      let life = select(0.5 + 0.7 * h3, 0.7 + 0.8 * h3, ice);
+      let age = B.z - 0.15 * h3;
+      if (age < 0.0 || age > life) { continue; }
+      let ang = (h.x - 0.5) * 1.7;
+      let speed = select(170.0 + 380.0 * h.y, 90.0 + 220.0 * h.y, ice);
+      let g = select(900.0, 260.0, ice);
+      let o = vec2f(B.x + (h3 - 0.5) * w, B.y);
+      let v0 = vec2f(sin(ang), -cos(ang)) * speed;
+      let pos = o + v0 * age + vec2f(0.0, 0.5 * g * age * age);
+      let vel = v0 + vec2f(0.0, g * age);
+      // Une traînée : la distance au segment parcouru pendant l'obturateur.
+      let a = pos - vel * 0.018;
+      let ab = pos - a;
+      let ts = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-3), 0.0, 1.0);
+      let d = length(p - (a + ab * ts));
+      let fade = (1.0 - age / life) * B.w;
+      let col = select(vec3f(1.0, 0.62, 0.22), vec3f(0.85, 0.95, 1.0), ice);
+      acc += col * fade * (exp(-d * d / 1.1) * 1.5 + exp(-d / 4.0) * 0.08);
+    }
+  }
+  return acc;
+}
+
 // Ce qui est au-dessus du sol : la ligne, le voile, le feu, les braises.
 fn sky(p: vec2f) -> vec4f {
   let t = r.view.w;
@@ -271,26 +373,27 @@ fn sky(p: vec2f) -> vec4f {
   if (r.card.w > 0.5) {
     // Glace : une ligne froide et fine, un halo pâle, le brouillard, la neige.
     let line = exp(-abs(dy) / 0.9) * 0.85 + exp(-abs(dy) / 7.0) * 0.22;
-    let haze = select(0.0, exp(dy / 170.0) * 0.13, dy < 0.0);
+    let haze = select(0.0, exp(dy / 170.0) * 0.16, dy < 0.0) * visibility(p, -1);
     var col = vec3f(0.78, 0.93, 1.0) * line + vec3f(0.3, 0.52, 0.72) * haze;
     var a = clamp(line + haze * 0.6, 0.0, 1.0);
     let fo = fire(p);
     col = fo.rgb + col * (1.0 - fo.a);
     a = fo.a + a * (1.0 - fo.a);
-    let sn = snow(p, t);
-    col += sn;
+    let sn = snow(p, t) + sparks(p);
+    col += sn + cardLight(p);
     a = clamp(a + sn.g, 0.0, 1.0);
     return vec4f(col, a);
   }
   let line = exp(-abs(dy) / 1.1) * 1.1 + exp(-abs(dy) / 9.0) * 0.32;
-  let haze = select(0.0, exp(dy / 130.0) * 0.16, dy < 0.0);
+  // Le voile de chaleur éclaire la page ; les cartes y projettent leur ombre.
+  let haze = select(0.0, exp(dy / 150.0) * (0.17 + 0.25 * r.light.y), dy < 0.0) * visibility(p, -1);
   var col = vec3f(1.0, 0.6, 0.22) * line + vec3f(0.9, 0.25, 0.05) * haze;
   var a = clamp(line + haze * 0.6, 0.0, 1.0);
   let fi = fire(p);
   col = fi.rgb + col * (1.0 - fi.a);
   a = fi.a + a * (1.0 - fi.a);
-  let e = embers(p, t);
-  col += e;
+  let e = embers(p, t) + sparks(p);
+  col += e + cardLight(p);
   a = clamp(a + max(e.r, max(e.g, e.b)), 0.0, 1.0);
   return vec4f(col, a);
 }
@@ -397,11 +500,13 @@ fn voronoi(x: vec2f) -> vec2f {
 
 const CARD = /* wgsl */ `
 ${COMMON}
+${SPRING_WGSL}
 struct C {
   rect: vec4f, // x, y, largeur, hauteur (px CSS)
   m: vec4f,    // brûlé ou gelé (0 → 1,35), chaleur, graine, opacité
   view: vec4f, // largeur, hauteur, dpr, rayon des coins
   ext: vec4f,  // marge du quad (px), thème, 0, 0
+  mo: vec4f,   // vitesse (px/s) x, y ; secondes depuis le bris ; 0
 }
 @group(0) @binding(0) var<uniform> c: C;
 @group(0) @binding(1) var tex: texture_2d<f32>;
@@ -441,8 +546,9 @@ fn freeze(uv0: vec2f) -> vec4f {
   let aspect = c.rect.z / max(1.0, c.rect.w);
   let sc = vec2f(aspect * 1.9, 1.9);
   let x = uv0 * sc;
-  // Le déplacement de chaque éclat : il s'écarte du centre et glisse vers l'avant, sur la glace.
-  let sep = smoothstep(0.78, 1.3, p);
+  // Le déplacement de chaque éclat : un ressort par éclat et par axe, évalué ici (src/gpu/springs.ts) ; parti de
+  // zéro avec un élan, il dépasse un peu sa place puis s'y pose — l'éclat dérape sur la glace.
+  let tsh = c.mo.z;
   var src = uv0;
   var edge = 1.0;
   var found = false;
@@ -453,7 +559,13 @@ fn freeze(uv0: vec2f) -> vec4f {
       let st = site(g);
       let h = hash2(g * 3.1 + c.m.z);
       let dir = normalize(st - sc * 0.5 + vec2f(0.001, 0.0));
-      let off = (dir * vec2f(0.55, 0.25) + vec2f((h.x - 0.5) * 0.4, 0.9 + 1.2 * h.y)) * sep * (0.6 + 0.6 * h.x);
+      let goal = (dir * vec2f(0.55, 0.25) + vec2f((h.x - 0.5) * 0.4, 0.9 + 1.2 * h.y)) * (0.6 + 0.6 * h.x);
+      var off = vec2f(0.0);
+      if (tsh > 0.0) {
+        let w0 = 7.0 + 4.0 * h.y;
+        off.x = spring_at(SpringTrack(vec4f(-goal.x, goal.x * 4.0, w0, 0.55), vec4f(goal.x, 0.0, 0.0, 0.0)), 0.0, tsh).x;
+        off.y = spring_at(SpringTrack(vec4f(-goal.y, goal.y * 4.0, w0, 0.55), vec4f(goal.y, 0.0, 0.0, 0.0)), 0.0, tsh).x;
+      }
       let back = x - off;
       let n = nearest(back);
       if (!found && all(n.xy == g)) {
@@ -464,7 +576,15 @@ fn freeze(uv0: vec2f) -> vec4f {
     }
   }
   let inside = select(0.0, 1.0, found && all(src >= vec2f(0.0)) && all(src <= vec2f(1.0)));
-  let tx = textureSample(tex, samp, clamp(src, vec2f(0.0), vec2f(1.0))) * inside;
+  // Flou d'obturateur : la carte qui glisse est échantillonnée là où elle était pendant la demi-image écoulée.
+  let sh = vec2f(c.mo.x, 0.0) * (1.0 / 120.0) / c.rect.zw;
+  var tx = vec4f(0.0);
+  for (var k = 0; k < 4; k++) {
+    let u = src - sh * (f32(k) / 3.0);
+    let inU = select(0.0, 1.0, all(u >= vec2f(0.0)) && all(u <= vec2f(1.0)));
+    tx += textureSample(tex, samp, clamp(u, vec2f(0.0), vec2f(1.0))) * inU;
+  }
+  tx *= inside * 0.25;
   // Le givre monte du bas et des bords, en ramifications.
   let n1 = fbm(src * vec2f(aspect * 4.0, 4.0) + c.m.z);
   let ridge = 1.0 - abs(fbm(src * vec2f(aspect * 11.0, 11.0) + 7.0) * 2.0 - 1.0);
@@ -485,7 +605,16 @@ fn freeze(uv0: vec2f) -> vec4f {
 
 @fragment fn fs(o: O) -> @location(0) vec4f {
   if (c.ext.y > 0.5) { return freeze(o.uv); }
-  let tx = textureSample(tex, samp, o.uv);
+  // Flou d'obturateur analytique : la position exacte de la carte à six instants de la demi-image écoulée (on connaît
+  // sa vitesse), moyennée. À l'arrêt, les six échantillons tombent au même endroit : rien ne bave.
+  let sh = c.mo.xy * (1.0 / 120.0) / c.rect.zw;
+  var tx = vec4f(0.0);
+  for (var k = 0; k < 6; k++) {
+    let u = o.uv - sh * (f32(k) / 5.0);
+    let inU = select(0.0, 1.0, all(u >= vec2f(0.0)) && all(u <= vec2f(1.0)));
+    tx += textureSample(tex, samp, clamp(u, vec2f(0.0), vec2f(1.0))) * inU;
+  }
+  tx *= 1.0 / 6.0;
   let aspect = c.rect.z / max(1.0, c.rect.w);
   let n = fbm(o.uv * vec2f(aspect * 2.6, 2.6) + vec2f(c.m.z, c.m.z * 1.7));
   // Le front part du bas (le côté qui touche la lave) et des bords, rongé par le bruit.
@@ -505,7 +634,7 @@ fn freeze(uv0: vec2f) -> vec4f {
 `;
 
 export type Burn = { tex: GPUTexture; x: number; y: number; w: number; h: number; vx: number; vy: number; t0: number; touch: number; seed: number; done: boolean; buf: GPUBuffer; group: GPUBindGroup };
-export type Frame = { hor: number; hot: { x0: number; x1: number; k: number }; reduced: boolean; theme: 0 | 1 };
+export type Frame = { hor: number; hot: { x0: number; x1: number; k: number }; reduced: boolean; theme: 0 | 1; rects: Float32Array; nrects: number };
 
 export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   const format = navigator.gpu.getPreferredCanvasFormat();
@@ -527,7 +656,7 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   const cardMod = device.createShaderModule({ code: CARD, label: "lave:carte" });
   const cardPipe = device.createRenderPipeline({ layout: "auto", vertex: { module: cardMod, entryPoint: "vs" }, fragment: { module: cardMod, entryPoint: "fs", targets: [{ format, blend }] }, label: "lave:carte" });
 
-  const uni = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const uni = device.createBuffer({ size: (5 + 8 + MAX_RECTS) * 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const simUni = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
   // La grille du feu, refaite à chaque changement de taille.
@@ -675,7 +804,7 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   const addBurn = (source: HTMLCanvasElement, x: number, y: number, w: number, h: number, vx: number, vy: number, now: number) => {
     const tex = device.createTexture({ size: [source.width, source.height], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
     device.queue.copyExternalImageToTexture({ source }, { texture: tex, premultipliedAlpha: true }, [source.width, source.height]);
-    const buf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const buf = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     const group = device.createBindGroup({
       layout: cardPipe.getBindGroupLayout(0),
       entries: [
@@ -696,9 +825,11 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   };
   let simAcc = 0;
   let simTime = 0;
-  const udata = new Float32Array(16);
+  const udata = new Float32Array((5 + 8 + MAX_RECTS) * 4);
+  // Les gerbes : au plus quatre à la fois ; la plus ancienne s'efface au lieu d'être coupée.
+  const bursts = new OneShots<{ x: number; y: number; w: number }>(4);
   const sdata = new Float32Array(16);
-  const cdata = new Float32Array(16);
+  const cdata = new Float32Array(20);
   /** Durée de la fin d'une carte (ms) : brûlée en 1,5 s, gelée puis brisée en 2,2 s. */
   const life = (reduced: boolean) => (reduced ? 500 : theme ? 2200 : 1500);
   let glowCard = { x0: 0, x1: 0, k: 0 };
@@ -733,6 +864,7 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
         if (b.touch < 0) {
           b.touch = now;
           ignite(b.x, b.x + b.w, now);
+          bursts.trigger(now / 1000, { x: b.x + b.w / 2, y: hor, w: b.w });
           b.vy = 0;
           b.y = hor - b.h + 3;
         }
@@ -747,6 +879,7 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
           b.touch = now;
           ignite(b.x, b.x + b.w, now);
           glowCard = { x0: b.x, x1: b.x + b.w, k: 1 };
+          bursts.trigger(now / 1000, { x: b.x + b.w / 2, y: hor, w: b.w });
           // La lave est épaisse : elle arrête la chute net, la carte s'y pose avant de s'enfoncer.
           b.vy = Math.min(b.vy, 30);
           b.y = Math.min(b.y, hor - b.h + 6);
@@ -816,6 +949,15 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
     udata.set([hor, fireTop, fireH, f.reduced ? 1 : 0], 4);
     udata.set([f.hot.x0, f.hot.x1, f.hot.k, 0.55 + 1.2 * burning + 0.5 * f.hot.k], 8);
     udata.set([glowCard.x0, glowCard.x1, glowCard.k, theme], 12);
+    // La lumière du sol : un fond, plus fort quand ça brûle et quand une carte chauffe au-dessus.
+    udata.set([Math.min(MAX_RECTS, f.nrects), theme ? 0.45 : 0.35 + 0.9 * burning + 0.6 * f.hot.k, 0, 0], 16);
+    udata.fill(0, 20, 52);
+    bursts.live(now / 1000, 1.6).forEach((s, i) => {
+      if (i >= 4) return;
+      udata.set([s.shot.data.x, s.shot.data.y, s.age, s.k], 20 + i * 4);
+      udata.set([s.shot.data.w, s.shot.seed, 0, 0], 36 + i * 4);
+    });
+    udata.set(f.rects.subarray(0, MAX_RECTS * 4), 52);
     device.queue.writeBuffer(uni, 0, udata);
 
     const pass = enc.beginRenderPass({ colorAttachments: [{ view: ctx.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
@@ -826,7 +968,11 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
         cdata.set([b.x, b.y, b.w, b.h], 0);
         cdata.set([p, heat, b.seed, 1], 4);
         cdata.set([W, H, dpr, 12], 8);
-        cdata.set([theme ? 110 : 0, theme, 0, 0], 12);
+        // Le flou d'obturateur a besoin de place autour de la carte qui bouge vite.
+        const shutter = Math.min(80, (Math.abs(b.vy) + Math.abs(b.vx)) / 120);
+        cdata.set([theme ? 110 : shutter, theme, 0, 0], 12);
+        const since = b.touch < 0 ? 0 : (now - b.touch) / 1000 - 0.78 * (life(f.reduced) / 1000);
+        cdata.set([theme ? b.vx : 0, theme ? 0 : b.vy, Math.max(0, since), 0], 16);
         device.queue.writeBuffer(b.buf, 0, cdata);
         pass.setPipeline(cardPipe);
         pass.setBindGroup(0, b.group);

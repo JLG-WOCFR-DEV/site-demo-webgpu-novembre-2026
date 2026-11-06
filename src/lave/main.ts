@@ -2,10 +2,12 @@ import "./style.css";
 import { getDevice } from "../components/device.ts";
 import { beginFrame, clockNow } from "../gpu/clock.ts";
 import { mountPagesNav } from "../pages-nav.ts";
-import { DECELERATION, elastiqueEntre, projette, REGLAGES, Ressort, Vitesse2 } from "../presse/gesture.ts";
+import { DECELERATION, elastiqueEntre, net, projette, REGLAGES, Ressort, Vitesse2 } from "../presse/gesture.ts";
+import { lintOn, lintSample } from "../presse/motion-lint.ts";
+import { roll } from "../presse/rolling.ts";
 import { printDom } from "../tissu/print.ts";
 import { knobs } from "../presse/knobs.ts";
-import { createLava, type Lava } from "./gpu.ts";
+import { createLava, MAX_RECTS, type Lava } from "./gpu.ts";
 
 /**
  * Page « Lave » : une liste de tâches HTML au-dessus d'un sol de lave WebGPU (src/lave/gpu.ts).
@@ -21,6 +23,9 @@ const app = document.querySelector<HTMLElement>("[data-lv]")!;
 const list = app.querySelector<HTMLOListElement>("[data-lv-list]")!;
 const floor = app.querySelector<HTMLElement>("[data-lv-floor]")!;
 const countEl = app.querySelector<HTMLElement>("[data-lv-count]")!;
+const numEl = app.querySelector<HTMLElement>("[data-lv-num]")!;
+const hazeTurb = document.querySelector<SVGFETurbulenceElement>("#lv-haze feTurbulence");
+const hazeMap = document.querySelector<SVGFEDisplacementMapElement>("#lv-haze feDisplacementMap");
 const emptyEl = app.querySelector<HTMLElement>("[data-lv-empty]")!;
 const live = app.querySelector<HTMLElement>("[data-lv-live]")!;
 const panel = document.querySelector<HTMLFormElement>("[data-lv-panel]")!;
@@ -124,7 +129,9 @@ function relayout() {
   });
   list.style.height = `${Math.max(0, cards.length * slot - GAP)}px`;
   const n = cards.length;
-  countEl.textContent = `${n} tâche${n > 1 ? "s" : ""} · ${WORDS[sol].floor}`;
+  // Le nombre roule (seuls les chiffres changés), le reste est du texte.
+  roll(numEl, String(n));
+  countEl.textContent = `tâche${n > 1 ? "s" : ""} · ${WORDS[sol].floor}`;
   emptyEl.hidden = n > 0;
 }
 
@@ -349,10 +356,24 @@ let visible = true;
 new IntersectionObserver(([e]) => (visible = !!e?.isIntersecting)).observe(app);
 let dirty = true;
 
-function write(c: Card) {
+function write(c: Card, moving: boolean, now: number) {
   const s = 1 + 0.03 * c.lift.x;
   const a = c.appear.x;
-  c.el.style.transform = `translate3d(${c.x.x.toFixed(2)}px, ${(c.y.x + (1 - a) * 10).toFixed(2)}px, 0) rotate(${c.tilt.x.toFixed(2)}deg) scale(${s.toFixed(4)})`;
+  // Texte net : y au pixel de l'écran, x au quart de pixel tant que ça bouge, au pixel entier une fois posé.
+  const x = net(c.x.x, "x", moving);
+  const y = net(c.y.x + (1 - a) * 10, "y", moving);
+  c.el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${c.tilt.x.toFixed(2)}deg) scale(${s.toFixed(4)})`;
+  if (lintOn()) {
+    lintSample(c.el, "y", c.y.x, now, c.y.x === slotY(cards.indexOf(c)) && !moving);
+    lintSample(c.el, "opacity", a, now);
+  }
+  // Au-dessus de la lave, la carte tenue tremble dans la brume de chaleur (un filtre SVG, sur le HTML lui-même).
+  const haze = sol === "lave" && c.heat > 0.2 && !reduced();
+  c.el.style.filter = haze ? "url(#lv-haze)" : "";
+  if (haze && hazeMap && hazeTurb) {
+    hazeMap.setAttribute("scale", (c.heat * 7).toFixed(2));
+    hazeTurb.setAttribute("baseFrequency", `0.012 ${(0.06 + 0.012 * Math.sin(now / 160)).toFixed(4)}`);
+  }
   c.el.style.opacity = a < 1 ? a.toFixed(3) : "";
   c.el.style.setProperty("--lift", c.lift.x.toFixed(3));
   c.el.style.setProperty("--heat", c.heat.toFixed(3));
@@ -369,7 +390,7 @@ function tick(t: number) {
     // Tous les ressorts avancent (pas de court-circuit : chacun doit faire son pas).
     const m = [c.y.pas(dt), c.x.pas(dt), c.tilt.pas(dt), c.lift.pas(dt), c.appear.pas(dt)].some(Boolean);
     // Une carte posée, ni tenue ni chaude, n'est pas réécrite.
-    if (m || c === drag?.card || c.heat > 0 || c.lift.x > 0 || dirty) write(c);
+    if (m || c === drag?.card || c.heat > 0 || c.lift.x > 0 || dirty) write(c, m || c === drag?.card, now);
     moving ||= m;
   }
   const held = drag?.started ? drag.card : null;
@@ -378,7 +399,7 @@ function tick(t: number) {
     hot = { x0, x1: x0 + held.el.offsetWidth, k: held.heat };
   } else hot.k *= Math.exp(-dt * 6);
   // Mouvement réduit : le sol est figé ; on ne redessine que ce qui change.
-  if (lava && visible && (!reduced() || moving || held || lava.burning || dirty)) lava.frame(now, dt, { hor, hot, reduced: reduced(), theme: sol === "glace" ? 1 : 0 });
+  if (lava && visible && (!reduced() || moving || held || lava.burning || dirty)) lava.frame(now, dt, { hor, hot, reduced: reduced(), theme: sol === "glace" ? 1 : 0, rects: rectsNow(), nrects: Math.min(MAX_RECTS, cards.length) });
   dirty = false;
   requestAnimationFrame(tick);
 }
@@ -468,3 +489,13 @@ function mountKnobs(l: Lava) {
   });
 }
 let lacher: { reponse: number; rebond: number } = { reponse: REGLAGES.lacher.reponse, rebond: REGLAGES.lacher.rebond };
+
+/** Les cartes, en px de la section, pour la lumière et les ombres du GPU (positions présentées, ressorts compris). */
+const rectBuf = new Float32Array(MAX_RECTS * 4);
+function rectsNow() {
+  const lt = listTop();
+  const ll = listLeft();
+  const w = list.clientWidth;
+  cards.slice(0, MAX_RECTS).forEach((c, i) => rectBuf.set([ll + c.x.x, lt + c.y.x, w, cardH], i * 4));
+  return rectBuf;
+}
