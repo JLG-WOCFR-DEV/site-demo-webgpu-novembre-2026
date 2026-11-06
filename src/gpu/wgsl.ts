@@ -2455,10 +2455,10 @@ fn in_screen(px: vec2f) -> bool {
 fn screen_warp(px: vec2f) -> vec3f {
   if (!in_screen(px) || u.matter.z > 1.5) {
     if (in_screen(px)) {
-      // Projecteur : la pellicule flotte dans le couloir (gate weave).
+      // Projecteur : la pellicule flotte dans le couloir (gate weave) — une dérive lente d'un demi-pixel, pas une
+      // secousse à chaque image.
       let t = u.res.w;
-      let f = floor(t * 24.0);
-      return vec3f(sin(t * 1.7) * 1.2 * u.res.z, (tr_hash(vec2f(f, 1.0)) - 0.5) * 2.0 * u.res.z + sin(t * 0.9) * 2.0 * u.res.z, 0.0);
+      return vec3f(sin(t * 0.7) * 0.5 * u.res.z, (sin(t * 0.43) * 0.6 + sin(t * 1.1 + 1.3) * 0.3) * u.res.z, 0.0);
     }
     return vec3f(0.0);
   }
@@ -2479,33 +2479,39 @@ fn screen_finish(c: vec3f, px: vec2f) -> vec3f {
   let q = (px - r.xy) / r.zw * 2.0 - 1.0;
   var col = c;
   if (u.matter.z < 1.5) {
-    // CRT : lignes de balayage, masque d'ouverture RVB, lueur et vignettage.
+    // CRT : lignes de balayage et masque d'ouverture discrets (un vrai tube ne se voit pas ligne à ligne à un mètre),
+    // lueur et vignettage. Pas de scintillement : à 60 Hz et plus, l'œil n'en voit pas.
     let line = 0.5 + 0.5 * cos((px.y / dpr) * 3.14159 * 1.0);
-    col *= 0.78 + 0.22 * line;
+    col *= 0.93 + 0.07 * line;
     let triad = i32(floor(px.x / max(1.0, dpr))) % 3;
-    var mask = vec3f(0.86);
-    if (triad == 0) { mask.r = 1.08; } else if (triad == 1) { mask.g = 1.08; } else { mask.b = 1.08; }
+    var mask = vec3f(0.975);
+    if (triad == 0) { mask.r = 1.025; } else if (triad == 1) { mask.g = 1.025; } else { mask.b = 1.025; }
     col *= mask;
-    col = col * 1.12 + vec3f(0.012, 0.016, 0.014);
-    let flick = 1.0 + 0.012 * sin(t * 60.0);
-    col *= flick * (1.0 - 0.38 * pow(length(q * vec2f(0.82, 0.9)), 3.0));
-    // Barre de rafraîchissement qui descend lentement.
-    let bar = fract(t * 0.12 - (px.y - r.y) / r.w);
-    col *= 1.0 + 0.035 * smoothstep(0.9, 1.0, bar);
+    col = col * 1.06 + vec3f(0.01, 0.013, 0.011);
+    col *= 1.0 - 0.34 * pow(length(q * vec2f(0.82, 0.9)), 3.0);
+    // Une barre de rafraîchissement très douce, qui descend lentement.
+    let bar = fract(t * 0.08 - (px.y - r.y) / r.w);
+    col *= 1.0 + 0.012 * smoothstep(0.92, 1.0, bar);
   } else {
-    // Projecteur : sépia, scintillement, poussières, rayures, vignette ronde.
-    let f = floor(t * 24.0);
+    // Projecteur : sépia, une respiration lente de la lampe (pas un clignotement image par image), de rares poussières
+    // qui restent quelques images, une rayure de temps en temps qui dérive, vignette ronde.
     let l = dot(col, vec3f(0.299, 0.587, 0.114));
     let sepia = vec3f(l * 1.07, l * 0.93, l * 0.74) + vec3f(0.03, 0.02, 0.0);
     col = mix(col, sepia, 0.78);
-    col *= 0.93 + 0.07 * tr_hash(vec2f(f, 7.0));
+    let ft = t * 3.0;
+    let fi = floor(ft);
+    let lamp = mix(tr_hash(vec2f(fi, 11.0)), tr_hash(vec2f(fi + 1.0, 11.0)), smoothstep(0.0, 1.0, fract(ft)));
+    col *= 0.985 + 0.015 * lamp;
     let local = (px - r.xy) / dpr;
-    let dust = step(0.9965, tr_hash(floor(local / 3.0) + vec2f(f * 1.7, f)));
-    col = mix(col, vec3f(0.12, 0.1, 0.08), dust * 0.8);
-    let sx = tr_hash(vec2f(f, 3.0)) * r.z / dpr;
-    let scratch = (1.0 - smoothstep(0.0, 1.2, abs(local.x - sx))) * step(0.6, tr_hash(vec2f(f, 5.0)));
-    col = mix(col, vec3f(0.96, 0.94, 0.88), scratch * 0.5);
-    col *= 1.0 - 0.55 * pow(length(q * vec2f(0.9, 1.05)), 2.4);
+    let f = floor(t * 8.0);
+    let dust = step(0.9993, tr_hash(floor(local / 3.0) + vec2f(f * 1.7, f)));
+    col = mix(col, vec3f(0.12, 0.1, 0.08), dust * 0.55);
+    let sc = floor(t * 0.7);
+    let on = step(0.7, tr_hash(vec2f(sc, 5.0)));
+    let sx = (tr_hash(vec2f(sc, 3.0)) + 0.02 * sin(t * 1.3)) * r.z / dpr;
+    let scratch = (1.0 - smoothstep(0.0, 1.0, abs(local.x - sx))) * on;
+    col = mix(col, vec3f(0.96, 0.94, 0.88), scratch * 0.28);
+    col *= 1.0 - 0.5 * pow(length(q * vec2f(0.9, 1.05)), 2.4);
   }
   return col;
 }

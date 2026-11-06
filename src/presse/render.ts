@@ -125,6 +125,8 @@ ${cards}
       <button type="button" class="lq-size" data-layout="flex" aria-pressed="false">Flex</button>
     </div>
     <button type="button" class="lq-btn" data-lq-sweep aria-pressed="false">Balayer</button>
+    <label class="lq-range"><span>Balayage</span><input type="range" name="sweep" min="8" max="60" step="1" value="24" aria-label="Durée d'un aller-retour du balayage" /><output>24 s</output></label>
+    <label class="lq-range"><span>Écart</span><input type="range" name="gap" min="0" max="64" step="1" value="20" aria-label="Écart entre les colonnes" /><output>auto</output></label>
     <output class="lq-size-out" data-lq-size></output>
   </div>`;
   return `<div class="x-liquide" data-presse-component="liquide"${a.full !== undefined ? " data-full" : ""}>

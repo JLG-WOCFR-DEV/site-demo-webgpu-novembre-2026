@@ -10,11 +10,14 @@ const UNITS: Record<string, (v: number) => string> = {
   size: (v) => `${fmt(v, 1)} px`,
   amp: (v) => `× ${fmt(v, 0)}`,
   threshold: (v) => `+${fmt(v, 3)}`,
-  // Amorti exponentiel : la demi-vie parle plus qu'un taux.
-  speed: (v) => `${fmt(Math.LN2 / v, 2)} s`,
+  // Transitions : le curseur règle la demi-vie de l'amorti (0,05 à 3 s), le moteur en reçoit le taux (ln 2 / demi-vie).
+  speed: (v) => `${fmt(v, 2)} s`,
   line: (v) => `${Math.round(v * 100)} %`,
   width: (v) => `${Math.round(v * 100)} %`,
 };
+
+/** Curseurs dont la valeur affichée n'est pas celle du réglage : la demi-vie des transitions devient un taux. */
+const TO_SETTING: Record<string, (v: number) => number> = { speed: (v) => Math.LN2 / Math.max(0.01, v) };
 
 /** Relie chaque formulaire [data-controls] à sa section de `settings`. */
 export function bindControls(onChange: () => void) {
@@ -31,7 +34,7 @@ export function bindControls(onChange: () => void) {
         if (input.checked) target[input.name] = Number(input.value);
       } else {
         const v = Number(input.value);
-        target[input.name] = v;
+        target[input.name] = key === "transition" && TO_SETTING[input.name] ? TO_SETTING[input.name]!(v) : v;
         const out = input.parentElement?.querySelector("output");
         if (out) out.textContent = (UNITS[input.name] ?? ((x: number) => fmt(x)))(v);
       }

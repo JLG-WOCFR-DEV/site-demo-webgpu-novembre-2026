@@ -370,7 +370,7 @@ export function mount(root: HTMLElement) {
     });
   }
 
-  for (const input of root.querySelectorAll<HTMLInputElement>(".lq-range input")) {
+  for (const input of root.querySelectorAll<HTMLInputElement>(".lq-tools .lq-range input")) {
     const set = () => {
       if (input.name === "fusion") look.fusion = Number(input.value);
       else look.refraction = Number(input.value);

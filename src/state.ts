@@ -65,7 +65,8 @@ export const settings: Settings = {
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },
-  transition: { style: 0, speed: 4.5, line: 0.86, width: 0.22 },
+  // speed : taux d'amorti du front (1/s) ; la demi-vie, ln 2 / speed, vaut 0,69 s par défaut.
+  transition: { style: 0, speed: 1, line: 0.86, width: 0.22 },
   matter: { intensity: 1 },
   layers: {
     order: ["glass", "flower", "spot"],

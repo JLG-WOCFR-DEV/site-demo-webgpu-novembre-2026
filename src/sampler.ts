@@ -348,7 +348,7 @@ const CATS: Category[] = [
         action: { label: "Ouvrir le sommaire", run: () => openSommaire(style!) },
       })),
       { id: "sommaire-crt", label: "Écran CRT", text: "Image bombée, lignes de balayage, masque RVB, sur la présentation Salle.", action: { label: "Ouvrir le sommaire", run: () => openSommaire("salle", "1") } },
-      { id: "sommaire-projecteur", label: "Projecteur", text: "Sépia, scintillement, poussières et rayures.", action: { label: "Ouvrir le sommaire", run: () => openSommaire("salle", "2") } },
+      { id: "sommaire-projecteur", label: "Projecteur", text: "Sépia, lampe qui respire, rares poussières et rayures.", action: { label: "Ouvrir le sommaire", run: () => openSommaire("salle", "2") } },
     ],
   },
   {

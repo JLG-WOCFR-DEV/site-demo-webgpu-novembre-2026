@@ -6,7 +6,8 @@
  * sur la fenêtre (ses écarts sont en cqi) : le cadre est une fenêtre miniature.
  */
 const MIN = 300;
-const SWEEP_S = 7;
+/** Un aller-retour du balayage, par défaut : lent, pour que la page ne batte pas (photosensibilité). */
+const SWEEP_S = 24;
 
 export function mountFrame(root: HTMLElement, relayout: (mutate: () => void) => void) {
   const frame = root.querySelector<HTMLElement>("[data-lq-frame]");
@@ -20,6 +21,18 @@ export function mountFrame(root: HTMLElement, relayout: (mutate: () => void) => 
   const sizes = [...frame.querySelectorAll<HTMLButtonElement>("button[data-w]")];
   const layouts = [...frame.querySelectorAll<HTMLButtonElement>("button[data-layout]")];
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  const sweepIn = frame.querySelector<HTMLInputElement>('input[name="sweep"]');
+  const gapIn = frame.querySelector<HTMLInputElement>('input[name="gap"]');
+  let sweepS = Number(sweepIn?.value ?? SWEEP_S) || SWEEP_S;
+  sweepIn?.addEventListener("input", () => {
+    sweepS = Number(sweepIn.value);
+    sweepIn.nextElementSibling!.textContent = `${sweepS} s`;
+  });
+  // L'écart entre les colonnes : la grille (et le flex) le prennent tel quel ; les cartes glissent à leur nouvelle place.
+  gapIn?.addEventListener("input", () => {
+    grid.style.gap = `${gapIn.value}px`;
+    gapIn.nextElementSibling!.textContent = `${gapIn.value} px`;
+  });
   bar.hidden = false;
   handle.hidden = false;
   frame.classList.add("is-live");
@@ -69,9 +82,12 @@ export function mountFrame(root: HTMLElement, relayout: (mutate: () => void) => 
     const span = () => max() - lo;
     const x0 = Math.min(1, Math.max(0, (now() - lo) / Math.max(1, span())));
     const phase = Math.acos(1 - 2 * x0);
-    const t0 = performance.now();
+    // La phase avance au rythme réglé, réglable en cours de balayage sans saut.
+    let a = phase;
+    let last = performance.now();
     const step = (t: number) => {
-      const a = phase + (((t - t0) / 1000) * 2 * Math.PI) / SWEEP_S;
+      a += (((t - last) / 1000) * 2 * Math.PI) / sweepS;
+      last = t;
       apply(lo + span() * (0.5 - 0.5 * Math.cos(a)));
       raf = requestAnimationFrame(step);
     };
@@ -120,6 +136,11 @@ export function mountFrame(root: HTMLElement, relayout: (mutate: () => void) => 
 
   for (const b of sizes) b.addEventListener("click", () => tween(b.dataset.w ? Number(b.dataset.w) : null));
   sweepBtn?.addEventListener("click", sweep);
+  // Mouvement réduit : pas de balayage automatique (la mise en page qui bat en continu est ce qu'on veut éviter).
+  if (sweepBtn && reduced.matches) {
+    sweepBtn.disabled = true;
+    sweepBtn.title = "Désactivé : mouvement réduit demandé";
+  }
   for (const b of layouts)
     b.addEventListener("click", () => {
       const v = b.dataset.layout === "flex" ? "flex" : "grid";
