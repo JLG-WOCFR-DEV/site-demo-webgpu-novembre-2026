@@ -9,7 +9,9 @@ export const SHOTS = [
   { page: "galerie", name: "anneau", frames: 90, before: () => document.querySelector("[data-gx-preset=ring], [data-arr=ring], button[value=ring]")?.click() },
   { page: "atelier", frames: 150 },
   { page: "orbite", frames: 90 },
-  { page: "presse", frames: 90 },
+  // Presse : l'intro et les révélations finissent avant la capture (à 90 images, elle tombait à mi-course ou finie selon
+  // la charge de la machine : capture instable).
+  { page: "presse", frames: 300 },
   { page: "matieres", name: "paillettes", frames: 150, before: () => document.querySelector("[data-mt=paillettes]").scrollIntoView(), settle: 6000 },
   { page: "matieres", name: "trio", frames: 30, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), settle: 3000, ready: ".x-matiere.is-gl ~ .x-matiere.is-gl ~ .x-matiere.is-gl", after: 90 },
   { page: "matieres", name: "phase", frames: 60, before: () => document.querySelector("[data-mt=phase]").scrollIntoView(), settle: 6000, after: 90 },

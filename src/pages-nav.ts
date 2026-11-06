@@ -13,6 +13,7 @@ import { initScroll } from "./presse/scroll.ts";
 import { initAnim } from "./presse/timeline.ts";
 import { initTokens } from "./presse/tokens.ts";
 import { initSweep } from "./presse/sweep.ts";
+import { mountScript } from "./presse/script.ts";
 
 export const PAGES = [
   { href: "index.html", name: "WebGPU-demo-UBS", text: "La presse WebGPU : le guide et la démo" },
@@ -88,6 +89,8 @@ const CSS = `
  * de la racine, « ../ » pour PLI v0, servie depuis legacy/).
  */
 export function mountPagesNav(base = "./") {
+  // Sur chaque page : l'arbre présenté (__presse.tree) et le joueur de scripts (?presse-script).
+  mountScript();
   // Entre les pages : la photo qui passe, le balayage ASCII (si la page le demande).
   initTokens();
   initLook();

@@ -59,9 +59,10 @@ body.lv {
 }
 .lv-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 4px 16px;
   margin-bottom: 22px;
 }
 .lv-h1 {
@@ -132,8 +133,9 @@ body.lv {
   flex: none;
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  /* 24 px : la cible minimale (WCAG 2.2) ; le cercle visible reste fin. */
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 1.5px solid #4a4752;
   border-radius: 50%;
@@ -265,8 +267,11 @@ body.lv {
 }
 .lv-field {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 .lv-field span {
   font: 500 11px/1 var(--f-mono);
@@ -275,7 +280,8 @@ body.lv {
   color: var(--ink-soft);
 }
 .lv-field input {
-  width: min(280px, 56vw);
+  width: min(280px, 100%);
+  min-width: 0;
   padding: 7px 10px;
   border: 1px solid #2c2a31;
   border-radius: 8px;
@@ -327,6 +333,10 @@ body.lv {
 }
 .lv-essay code {
   font: 0.86em var(--f-mono);
+  overflow-wrap: anywhere;
+}
+.lv-essay {
+  overflow-wrap: break-word;
 }
 .lv-essay a {
   color: #ffb27a;
@@ -349,6 +359,8 @@ body.lv {
 /* Le choix du sol. */
 .lv-seg {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 6px;
   margin: 0;

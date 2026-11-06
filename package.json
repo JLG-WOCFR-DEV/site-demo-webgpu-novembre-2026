@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test 'src/**/*.test.ts'",
     "images": "python3 tools/images.py",
-    "test:visual": "node tools/visual/run.mjs"
+    "test:visual": "node tools/visual/run.mjs",
+    "check": "node tools/presse-check.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

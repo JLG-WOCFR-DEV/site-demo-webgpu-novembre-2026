@@ -109,6 +109,16 @@
           incandescent, une bande charbonneuse, puis plus rien. Le sol est un plan en perspective découpé en cellules de
           Voronoï dont les bords rougeoient.
         </p>
+        <h3>La lumière</h3>
+        <p>
+          Le sol éclaire les cartes par en dessous (d'après rune-light) : chaque carte est un rectangle arrondi dont le
+          GPU connaît la place, image par image. Le bord tourné vers la lave s'allume, et chaque carte projette vers le
+          haut une ombre dont la pénombre s'élargit avec la distance — en forme close (la fonction d'erreur), sans lancer
+          de rayons. Au contact, une gerbe d'étincelles part d'un petit réservoir d'effets : quatre au plus, la plus
+          ancienne s'efface au lieu d'être coupée. La carte tenue au-dessus de la lave tremble dans une brume de chaleur
+          (un filtre SVG appliqué au HTML lui-même) ; celle qui tombe a un flou de mouvement calculé à partir de sa vitesse
+          réelle. Les réglages du feu, du brouillard et du geste s'ouvrent avec ⌘⇧K.
+        </p>
         <h3>La variante glace</h3>
         <p>
           Le même moteur, à l'envers. Le sol devient un lac gelé : des fissures blanches en surface, d'autres plus bas

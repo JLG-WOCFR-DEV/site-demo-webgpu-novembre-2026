@@ -164,7 +164,12 @@ function down(e: PointerEvent, c: Card) {
   const r = c.el.getBoundingClientRect();
   drag = { card: c, id: e.pointerId, sx: e.clientX, sy: e.clientY, gy: e.clientY - r.top, started: false, vel: new Vitesse2() };
   drag.vel.addEvent(e);
-  c.el.setPointerCapture(e.pointerId);
+  // Un pointeur rejoué (?presse-script) n'a pas de capture possible : on s'en passe.
+  try {
+    c.el.setPointerCapture(e.pointerId);
+  } catch {
+    /* pointeur synthétique */
+  }
   if ((e.target as Element).closest(".lv-grip")) start();
 }
 function start() {
