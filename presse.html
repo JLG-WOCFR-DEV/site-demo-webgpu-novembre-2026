@@ -199,6 +199,46 @@ timeline()
   .play();                                   // .reverse(), .seek(t), .progress(p), .finished()</code></pre>
       </section>
 
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-geste">
+        <h2 id="pd-geste" class="pd-h2" data-gl-text>Le geste</h2>
+        <p class="pd-p" data-gl-text>
+          Repris de Rune : la vitesse au lâcher (l'estimateur d'Android), le lancer projeté, l'élastique au bord, des
+          ressorts en forme exacte (<code>src/presse/gesture.ts</code>) ; un élément qui vole d'une mise en page à l'autre ;
+          des chiffres qui roulent ; et un linter qui regarde chaque valeur écrite.
+        </p>
+        <div class="pd-match" data-pd-match>
+          <ul class="pd-match-grid" aria-label="Quatre photos : cliquer pour agrandir sur place">
+            <li><button type="button" data-presse-match="m-dunes" data-pd-tile><img src="./img/dunes-480.webp" alt="Des dunes au soleil couchant." /></button></li>
+            <li><button type="button" data-presse-match="m-lac" data-pd-tile><img src="./img/lac-480.webp" alt="Un lac de montagne." /></button></li>
+            <li><button type="button" data-presse-match="m-pont" data-pd-tile><img src="./img/pont-480.webp" alt="Un pont dans la brume." /></button></li>
+            <li><button type="button" data-presse-match="m-flower" data-pd-tile><img src="./img/flower-480.webp" alt="Une fleur en gros plan." /></button></li>
+          </ul>
+          <div class="pd-match-stage" data-pd-stage hidden></div>
+        </div>
+        <p class="pd-p pd-note" data-gl-text>
+          Un clic : la photo vole vers la scène, mise à l'échelle sans être remise en page, découpée à son cadre. Un second
+          clic, ou Échap, la renvoie — on peut l'interrompre en vol, elle repart avec sa vitesse.
+        </p>
+        <div class="pd-anim-row pd-roll-row">
+          <span class="pd-roll"><span data-pd-roll>128</span> exemplaires</span>
+          <button type="button" class="pd-btn" data-pd-roll-step="1">+1</button>
+          <button type="button" class="pd-btn" data-pd-roll-step="-1">−1</button>
+          <button type="button" class="pd-btn" data-pd-roll-step="873">+873</button>
+        </div>
+        <div class="pd-anim-row">
+          <button type="button" class="pd-btn" data-pd-lint>Lancer le linter</button>
+          <span class="pd-lint-box" data-pd-lint-box aria-hidden="true"></span>
+        </div>
+        <ol class="pd-lint-log" data-pd-lint-log aria-live="polite"></ol>
+        <pre class="pd-code"><code>import { match } from "presse/match";       // &lt;img data-presse-match="photo-3"&gt; ici et là
+match(() =&gt; scene.append(photo));             // le DOM change ; la photo vole
+
+import { roll } from "presse/rolling";
+roll(compteur, "129");                         // seuls les chiffres changés roulent
+
+// ?presse-lint dans l'adresse : saut, apparition sèche, arrêt net, saut de vitesse, tremblement</code></pre>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-tambour">
         <h2 id="pd-tambour" class="pd-h2" data-gl-text>Un tambour, une érosion</h2>
         <p class="pd-p" data-gl-text data-gl-reveal="erosion">

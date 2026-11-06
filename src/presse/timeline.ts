@@ -25,6 +25,7 @@
  * survol, appui, chargement (après le rideau d'entrée). Options : data-anim-dur, -delay, -ease, -stagger, -repeat.
  */
 import { beginFrame, clockNow } from "../gpu/clock.ts";
+import { lintOn, lintSample } from "./motion-lint.ts";
 import { DUR, spring as springCurve, springStep, SPRINGS, type Spring } from "./tokens.ts";
 
 /* ───────────────────────── Courbes ───────────────────────── */
@@ -181,6 +182,11 @@ function set(t: Target, prop: string, v: Val) {
 const fmt = (v: Val | undefined, fallback: string) => (v ? `${+v.n.toFixed(4)}${v.unit}` : fallback);
 /** Écrit, une fois par image, ce qui a changé. */
 function flush() {
+  // Le linter de mouvement (?presse-lint) voit chaque valeur écrite, à l'heure de l'image.
+  if (lintOn()) {
+    const now = clockNow();
+    for (const t of dirty) for (const [k, v] of states.get(t)!) lintSample(t, k, v.n, now);
+  }
   for (const t of dirty) {
     const s = states.get(t)!;
     const st = t.style;

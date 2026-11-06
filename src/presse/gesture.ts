@@ -241,3 +241,15 @@ export class Ressort {
     this.hi = Math.max(this.x, this.cible);
   }
 }
+
+/* ───────────────────────── Texte net en mouvement ───────────────────────── */
+
+/**
+ * Où poser une position pour que le texte reste net (Rune, recherche 15) : en vertical, toujours sur un pixel de
+ * l'écran (une ligne de texte à cheval sur deux pixels bave) ; en horizontal, au quart de pixel pendant le mouvement
+ * (assez fin pour ne pas saccader), au pixel entier au repos (pas de scintillement une fois posé).
+ */
+export function net(v: number, axe: "x" | "y", bouge: boolean, dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1) {
+  const step = axe === "x" && bouge ? 4 * dpr : dpr;
+  return Math.round(v * step) / step;
+}
