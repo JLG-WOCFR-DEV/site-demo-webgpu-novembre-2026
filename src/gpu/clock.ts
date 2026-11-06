@@ -17,14 +17,22 @@ let anchorVirt = 0;
  * l'instant où l'image sera montrée — horodatage du rAF + un intervalle d'image — et non à « maintenant », qui
  * dépend du moment où le code tourne. Une image en retard montre alors la bonne position, sans à-coup de vitesse.
  * Hors image (un événement), c'est performance.now(), jamais en arrière de la dernière valeur rendue.
+ *
+ * Actif par défaut ; `?presse-heure=maintenant` (ou `setPresentTime(false)`) revient à performance.now().
  */
+let presentOn = true;
+/** Évaluer les animations à l'heure d'affichage (par défaut) ou à « maintenant ». */
+export function setPresentTime(on: boolean) {
+  presentOn = on;
+  if (!on) presentAt = -1;
+}
 let interval = 1000 / 60;
 let lastRaf = -1;
 let presentAt = -1;
 let lastOut = 0;
 /** À appeler en tête de chaque boucle rAF, avec son horodatage. Plusieurs boucles dans la même image : sans effet. */
 export function beginFrame(rafT: number) {
-  if (rafT === lastRaf) return;
+  if (!presentOn || rafT === lastRaf) return;
   // Un horodatage d'une autre base de temps (performance.now() simulé par un outil de test, par exemple) : on l'ignore,
   // l'horloge reste celle de performance.now().
   if (Math.abs(rafT - performance.now()) > 250) {
@@ -75,6 +83,7 @@ export function setClockSource(s: { readonly now: number } | null) {
 export const clockHeldBy = (s: object) => source === s;
 
 if (typeof location !== "undefined") {
+  if (new URLSearchParams(location.search).get("presse-heure") === "maintenant") presentOn = false;
   const k = Number(new URLSearchParams(location.search).get("presse-ralenti"));
   if (k > 0 && k !== 1) setTimeScale(k);
 }
