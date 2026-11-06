@@ -25,6 +25,13 @@ let lastOut = 0;
 /** À appeler en tête de chaque boucle rAF, avec son horodatage. Plusieurs boucles dans la même image : sans effet. */
 export function beginFrame(rafT: number) {
   if (rafT === lastRaf) return;
+  // Un horodatage d'une autre base de temps (performance.now() simulé par un outil de test, par exemple) : on l'ignore,
+  // l'horloge reste celle de performance.now().
+  if (Math.abs(rafT - performance.now()) > 250) {
+    presentAt = -1;
+    lastRaf = -1;
+    return;
+  }
   if (lastRaf > 0) {
     const d = rafT - lastRaf;
     // Intervalle d'image lissé ; les trous (onglet caché, gros retard) ne comptent pas.
