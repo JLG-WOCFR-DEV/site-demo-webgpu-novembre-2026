@@ -689,6 +689,11 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
 
   /* ───── Une image ───── */
 
+  /** Les paramètres du fluide, par sol (réglables en direct : src/presse/knobs.ts). */
+  const params = {
+    feu: { montee: 70, poussee: 300, refroid: 2.3, tourb: 8, balance: 700, fumee: 0.8 },
+    froid: { montee: 22, poussee: -140, refroid: 0.55, tourb: 6, balance: 380, fumee: 0 },
+  };
   let simAcc = 0;
   let simTime = 0;
   const udata = new Float32Array(16);
@@ -773,17 +778,12 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
         device.queue.writeBuffer(grid.fuel, 0, grid.fuelData);
         sdata.set([grid.nx, grid.ny, CELL, STEP], 0);
         // Montée 120 px/s, poussée 280 px/s², refroidissement 2,3/s : des flammes de 50 à 90 px, pas des colonnes.
-        if (theme) {
-          // Brouillard froid : une poussée négative (l'air froid retombe), il s'étale sur la glace et s'attarde.
-          sdata.set([simTime, 3.1, 3, 22], 4);
-          sdata.set([-140, 0.55, 6, 0], 8);
-          sdata.set([1, 380, 0.5, 0], 12);
-        } else {
-          sdata.set([simTime, 3.1, 3, 70], 4);
-          // Tourbillons : la force vaut ε·h·(N × ω), ω en 1/s ; il faut ε ≈ 8 pour qu'elle pèse face à la poussée.
-          sdata.set([300, 2.3, 8, 0.8], 8);
-          sdata.set([0.95, 700, 0.8, 0], 12);
-        }
+        // Feu : poussée positive. Brouillard froid : poussée négative (l'air froid retombe), il s'étale et s'attarde.
+        // Tourbillons : la force vaut ε·h·(N × ω), ω en 1/s ; il faut ε ≈ 8 pour qu'elle pèse face à la poussée.
+        const q = theme ? params.froid : params.feu;
+        sdata.set([simTime, 3.1, 3, q.montee], 4);
+        sdata.set([q.poussee, q.refroid, q.tourb, q.fumee], 8);
+        sdata.set([theme ? 1 : 0.95, q.balance, theme ? 0.5 : 0.8, 0], 12);
         device.queue.writeBuffer(simUni, 0, sdata);
         const gx = Math.ceil(grid.nx / 8);
         const gy = Math.ceil(grid.ny / 8);
@@ -860,6 +860,7 @@ export async function createLava(device: GPUDevice, canvas: HTMLCanvasElement) {
   };
 
   return {
+    params,
     resize,
     frame,
     addBurn,

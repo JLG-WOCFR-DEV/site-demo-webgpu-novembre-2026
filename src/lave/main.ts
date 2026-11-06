@@ -4,6 +4,7 @@ import { beginFrame, clockNow } from "../gpu/clock.ts";
 import { mountPagesNav } from "../pages-nav.ts";
 import { DECELERATION, elastiqueEntre, projette, REGLAGES, Ressort, Vitesse2 } from "../presse/gesture.ts";
 import { printDom } from "../tissu/print.ts";
+import { knobs } from "../presse/knobs.ts";
 import { createLava, type Lava } from "./gpu.ts";
 
 /**
@@ -212,7 +213,8 @@ const up = (e: PointerEvent) => {
   if (e.type !== "pointercancel" && (bottom > hor - 28 || (vy > 650 && landing > hor + 8))) return burn(c, vy, vx);
   c.heat = 0;
   if (reduced()) c.y.pose(slotY(cards.indexOf(c)));
-  else c.y.lacher(vy, slotY(cards.indexOf(c)));
+  // Au lâcher, la carte prend le ressort du geste (réglable) ; elle revient au ressort des voisines une fois posée.
+  else c.y.regle(lacher).lacher(vy, slotY(cards.indexOf(c)));
   if (reduced()) c.x.pose(0);
   else c.x.lacher(vx, 0);
   to(c.tilt, 0);
@@ -395,6 +397,7 @@ async function startGpu() {
   canvas.setAttribute("aria-hidden", "true");
   app.append(canvas);
   lava = await createLava(device, canvas);
+  mountKnobs(lava);
   lava.resize(app.clientWidth, app.clientHeight, readHor());
   app.classList.add("is-gl");
   status.textContent = WORDS[sol].gpu;
@@ -431,3 +434,37 @@ void main();
     return cards.length;
   },
 };
+
+/* ───────────────────────── Réglages live (⌘⇧K) ───────────────────────── */
+
+function mountKnobs(l: Lava) {
+  const fluid = (name: string, key: "feu" | "froid", target: () => Element | null) => {
+    const p = l.params[key];
+    const g = knobs.group(name, { target });
+    const k = {
+      montee: g.num("Montée", { min: 0, max: 220, value: p.montee, step: 1, unit: "px/s" }),
+      poussee: g.num("Poussée", { min: -400, max: 700, value: p.poussee, step: 5, unit: "px/s²" }),
+      refroid: g.num("Refroidissement", { min: 0.1, max: 5, value: p.refroid, step: 0.05, unit: "/s" }),
+      tourb: g.num("Tourbillons", { min: 0, max: 20, value: p.tourb, step: 0.5 }),
+      balance: g.num("Balancement", { min: 0, max: 1500, value: p.balance, step: 10, unit: "px/s²" }),
+      fumee: g.num("Fumée", { min: 0, max: 2, value: p.fumee, step: 0.05 }),
+    };
+    g.onChange(() => {
+      for (const [n, v] of Object.entries(k)) (p as Record<string, number>)[n] = v.value;
+    });
+  };
+  fluid("Feu (lave)", "feu", () => floor);
+  fluid("Brouillard (glace)", "froid", () => floor);
+  const g = knobs.group("Geste", { target: list, presets: { Franc: { "Réponse du lâcher": 0.3, "Rebond du lâcher": 0.1 }, Élastique: { "Réponse du lâcher": 0.5, "Rebond du lâcher": 0.45 } } });
+  const rep = g.num("Réponse du lâcher", { min: 0.12, max: 1, value: REGLAGES.lacher.reponse, step: 0.01, unit: "s" });
+  const reb = g.num("Rebond du lâcher", { min: 0, max: 0.8, value: REGLAGES.lacher.rebond, step: 0.01 });
+  const place = g.num("Réponse des voisines", { min: 0.12, max: 1, value: REGLAGES.place.reponse, step: 0.01, unit: "s" });
+  g.onChange(() => {
+    for (const c of cards) {
+      c.x.regle({ reponse: rep.value, rebond: reb.value });
+      c.y.regle({ reponse: place.value, rebond: 0 });
+    }
+    lacher = { reponse: rep.value, rebond: reb.value };
+  });
+}
+let lacher: { reponse: number; rebond: number } = { reponse: REGLAGES.lacher.reponse, rebond: REGLAGES.lacher.rebond };
