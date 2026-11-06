@@ -239,6 +239,23 @@ roll(compteur, "129");                         // seuls les chiffres changés ro
 // ?presse-lint dans l'adresse : saut, apparition sèche, arrêt net, saut de vitesse, tremblement</code></pre>
       </section>
 
+      <section class="pd-sec" aria-labelledby="pd-flou">
+        <h2 id="pd-flou" class="pd-h2" data-gl-text>Un flou qui ne saute pas</h2>
+        <p class="pd-p" data-gl-text>
+          Un flou en pyramide (Jimenez) : des niveaux à demi-résolution, puis les deux niveaux qui encadrent le rayon,
+          mélangés selon sa partie fractionnaire. Le rayon s'anime de 0 à 48 px sans marche, pour le coût de quelques
+          passes à basse résolution (<code>src/gpu/blur.ts</code>).
+        </p>
+        <div class="pd-blur" data-pd-blur>
+          <canvas class="pd-blur-canvas" width="960" height="540" aria-label="Une photo floutée par le GPU, du rayon choisi"></canvas>
+          <div class="pd-anim-row">
+            <label class="pd-blur-r">Rayon <input type="range" min="0" max="48" step="0.1" value="0" data-pd-blur-r /> <output data-pd-blur-out>0 px</output></label>
+            <button type="button" class="pd-btn" data-pd-blur-anim>Animer</button>
+          </div>
+          <p class="pd-p pd-note" data-pd-blur-status></p>
+        </div>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-tambour">
         <h2 id="pd-tambour" class="pd-h2" data-gl-text>Un tambour, une érosion</h2>
         <p class="pd-p" data-gl-text data-gl-reveal="erosion">

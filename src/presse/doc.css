@@ -461,3 +461,25 @@ body.pd {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.pd-blur {
+  margin-top: 22px;
+}
+.pd-blur-canvas {
+  display: block;
+  width: 100%;
+  max-width: 960px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border-radius: 10px;
+  background: #ddd8cc;
+}
+.pd-blur-r {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 500 12px/1 var(--f-mono, ui-monospace, monospace);
+}
+.pd-blur-r output {
+  min-width: 5em;
+}

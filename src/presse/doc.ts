@@ -140,3 +140,54 @@ document.querySelector("[data-pd-lint]")?.addEventListener("click", () => {
   };
   requestAnimationFrame(bad);
 });
+
+/* ───── Un flou qui ne saute pas : le flou en pyramide à rayon fractionnaire ───── */
+const blurRoot = document.querySelector<HTMLElement>("[data-pd-blur]");
+if (blurRoot) {
+  const status = blurRoot.querySelector<HTMLElement>("[data-pd-blur-status]")!;
+  const io = new IntersectionObserver(async ([e]) => {
+    if (!e?.isIntersecting) return;
+    io.disconnect();
+    if (!navigator.gpu) {
+      status.textContent = "Sans WebGPU : la démonstration du flou n'est pas disponible ici.";
+      return;
+    }
+    const [{ getDevice }, { createBlur }] = await Promise.all([import("../components/device.ts"), import("../gpu/blur.ts")]);
+    const device = await getDevice();
+    const canvas = blurRoot.querySelector<HTMLCanvasElement>("canvas")!;
+    const ctx = canvas.getContext("webgpu")!;
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    ctx.configure({ device, format, alphaMode: "premultiplied" });
+    const img = new Image();
+    img.src = "./img/lac-960.webp";
+    await img.decode();
+    const bmp = await createImageBitmap(img, { resizeWidth: canvas.width, resizeHeight: canvas.height, resizeQuality: "high" });
+    const tex = device.createTexture({ size: [canvas.width, canvas.height], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
+    device.queue.copyExternalImageToTexture({ source: bmp }, { texture: tex }, [canvas.width, canvas.height]);
+    const blur = createBlur(device, format, canvas.width, canvas.height);
+    const range = blurRoot.querySelector<HTMLInputElement>("[data-pd-blur-r]")!;
+    const out = blurRoot.querySelector<HTMLOutputElement>("[data-pd-blur-out]")!;
+    const draw = (r: number) => {
+      blur.render(tex, ctx.getCurrentTexture().createView(), r);
+      out.textContent = `${r.toFixed(1)} px`;
+    };
+    range.addEventListener("input", () => draw(Number(range.value)));
+    let raf = 0;
+    blurRoot.querySelector("[data-pd-blur-anim]")?.addEventListener("click", () => {
+      cancelAnimationFrame(raf);
+      const t0 = performance.now();
+      const tick = (t: number) => {
+        const k = ((t - t0) / 4000) % 1;
+        // Aller-retour doux : 0 → 48 → 0 px en 4 s.
+        const r = 24 - 24 * Math.cos(k * 2 * Math.PI);
+        range.value = String(r);
+        draw(r);
+        if (t - t0 < 8000) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    });
+    draw(Number(range.value));
+    status.textContent = `WebGPU : ${blur.levels} niveaux à demi-résolution ; le rayon choisit deux niveaux et les mélange.`;
+  });
+  io.observe(blurRoot);
+}
