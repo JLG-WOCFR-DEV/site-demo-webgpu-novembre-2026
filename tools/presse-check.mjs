@@ -122,7 +122,7 @@ const VARIANTS = {
   "texte 150 %": () => {
     for (const el of document.querySelectorAll("body *")) {
       const fs = parseFloat(getComputedStyle(el).fontSize);
-      if (fs) el.style.setProperty("font-size", `${fs * 1.5}px`, "important");
+      if (fs && typeof el.style?.setProperty === "function") el.style.setProperty("font-size", `${fs * 1.5}px`, "important");
     }
   },
   "allemand long": () => {
@@ -232,7 +232,7 @@ for (const name of PAGES) {
   await page.evaluate(() => (window.__cost = { raf: 0, submit: 0 }));
   await page.waitForTimeout(3000);
   const cost = await page.evaluate(() => window.__cost);
-  const con = await contrast(page);
+  const con = await contrast(page).catch((e) => ({ measured: 0, gpu: 0, fails: [`contraste non mesuré : ${String(e.message ?? e).slice(0, 120)}`] }));
   await ctx.close();
   // 4 : la mise en page, sans GPU (plus rapide ; c'est le DOM qui compte).
   const lay = [];
@@ -243,10 +243,14 @@ for (const name of PAGES) {
       await p2.addInitScript(NOGPU);
       await p2.goto(url, { waitUntil: "load" }).catch(() => {});
       await p2.waitForTimeout(400);
-      await p2.evaluate(fn);
-      await p2.waitForTimeout(150);
-      const r = await layout(p2);
-      for (const [k, list] of Object.entries(r)) if (list.length) lay.push({ width, vname, k, list });
+      try {
+        await p2.evaluate(fn);
+        await p2.waitForTimeout(150);
+        const r = await layout(p2);
+        for (const [k, list] of Object.entries(r)) if (list.length) lay.push({ width, vname, k, list });
+      } catch (e) {
+        errors.push(`contrôle ${width} px ${vname} : ${String(e.message ?? e).slice(0, 120)}`);
+      }
       await c2.close();
     }
   }
@@ -277,6 +281,8 @@ for (const name of PAGES) {
   section.push("", `(${((Date.now() - t0) / 1000).toFixed(0)} s)`, "");
   report.push(...section);
   console.log(section.join("\n"));
+  // Le rapport s'écrit au fil des pages : un arrêt en route n'efface pas ce qui est fait.
+  fs.writeFileSync(path.join(OUT, "rapport.md"), report.join("\n"));
 }
 await browser.close();
 fs.writeFileSync(path.join(OUT, "rapport.md"), report.join("\n"));
