@@ -704,11 +704,14 @@ function Le() {
 var L = 1, R = 0, Re = 0, z = 1e3 / 60, B = -1, V = -1, ze = 0;
 function Be(e) {
 	if (e !== B) {
-		if (B > 0) {
-			let t = e - B;
-			t > 3 && t < 50 && (z += (t - z) * .1);
+		if (Math.abs(e - performance.now()) > 250) V = -1, B = -1;
+		else {
+			if (B > 0) {
+				let t = e - B;
+				t > 3 && t < 50 && (z += (t - z) * .1);
+			}
+			B = e, V = e + z;
 		}
-		B = e, V = e + z;
 	}
 }
 var Ve = () => {
