@@ -6,6 +6,7 @@ import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
+import { chapterPaper, PAPER_FLOATS, paperPack } from "./paper.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 import { renderScale } from "./governor.ts";
 
@@ -55,9 +56,11 @@ const STAGE_KIND: Record<string, number> = {
   // Matières déclarées dans le HTML (data-gl-material) : n'importe quel élément.
   lentille: 10,
   poussiere: 11,
+  // Filtres d'image de Paper Shaders (data-gl-filter) : n'importe quel élément.
+  "paper-filtre": 12,
 };
 /** Nom de la plaque : data-gl-stage (démonstrations), sinon data-gl-material. */
-const stageName = (s: HTMLElement) => s.dataset.glStage ?? s.dataset.glMaterial ?? "";
+const stageName = (s: HTMLElement) => s.dataset.glStage ?? s.dataset.glMaterial ?? (s.dataset.glFilter !== undefined ? "paper-filtre" : "");
 /**
  * Mémoire du pointeur par matière : gain et oubli de la présence (b), gain et
  * oubli du vent ou de la peinture (rg), en 1/s. Les flammes et l'enveloppe
@@ -75,7 +78,7 @@ const TRACE_RATES: [number, number, number, number][] = [
 export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2 + 2 + MAX_RIPPLES;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2 + 2 + MAX_RIPPLES + MAX_STAGES / 4 + MAX_STAGES * 6;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
@@ -86,6 +89,9 @@ const LENSM_AT = CREASE_AT + 4;
 const TEAR_AT = LENSM_AT + 4;
 const GRID_AT = TEAR_AT + 4 + MAX_TEARS * 4;
 const CUI_AT = GRID_AT + 8;
+/** Filtres de Paper Shaders : leur numéro par plaque, puis 24 flottants de réglages par plaque (src/gpu/paper.ts). */
+const PFK_AT = CUI_AT + 8 + MAX_RIPPLES * 4;
+const PFX_AT = PFK_AT + MAX_STAGES;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -749,7 +755,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let pvx = 0;
   let pvy = 0;
 
-  const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage], [data-gl-material]")].filter((s) => stageName(s) !== "dechirure");
+  const stages = () => [...document.querySelectorAll<HTMLElement>("[data-gl-stage], [data-gl-material], [data-gl-filter]")].filter((s) => stageName(s) !== "dechirure");
   // Pointeur amorti de la matière lentille, et sa force au survol.
   const lensP = { x: 0, y: 0, k: 0 };
   // Le pointeur, suivi par le moteur lui-même : une page Presse n'a pas d'autre script pour le faire
@@ -994,7 +1000,15 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       if (si < MAX_STAGES && kind > 0 && r.bottom > 0 && r.top < cssH) {
         postData.set([r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr], 28 + si * 4);
         // Pour une matière, le type porte aussi sa couche de traces : type + 16 × couche.
-        postData[28 + MAX_STAGES * 4 + si] = kind >= 4 && kind <= 9 ? kind + 16 * Math.max(0, traceLayers.get(s) ?? 0) : kind;
+        let k = kind;
+        // Filtres de Paper : ceux d'un élément (data-gl-filter), ou ceux du chapitre 06 qui en viennent.
+        const pf = k === 12 ? paperPack(s.dataset.glFilter ?? "", s.dataset.glFilterOpts ?? "") : k === 3 ? chapterPaper(settings.filter, r.height * dpr) : null;
+        if (pf) {
+          k = 12;
+          postData[PFK_AT + si] = pf.id;
+          postData.set(pf.data, PFX_AT + si * PAPER_FLOATS);
+        }
+        postData[28 + MAX_STAGES * 4 + si] = k >= 4 && k <= 9 ? k + 16 * Math.max(0, traceLayers.get(s) ?? 0) : k;
         si++;
       }
     }

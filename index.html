@@ -502,7 +502,8 @@
               devient alors une animation en caractères.
             </p>
             <p>
-              Les cinq premiers reprennent ceux de Paper Shaders, réécrits en WGSL et branchés au même endroit de la
+              Trame, tramage, verre cannelé, CMJN, eau et dispersion sont les filtres d'image de Paper Shaders (version
+              0.0.82), portés de GLSL en WGSL avec leurs paramètres et leurs formules, et branchés au même endroit de la
               chaîne que la trame : après le bloom et le repérage, dans la passe composite. La photographie n'est
               envoyée qu'une fois au GPU ; seul le chemin de lecture change.
             </p>
@@ -525,11 +526,14 @@
             <fieldset class="choices">
               <legend class="sr-only">Filtre appliqué à la photo</legend>
               <label><input type="radio" name="kind" value="0" /> Trame noire</label>
-              <label><input type="radio" name="kind" value="1" /> Tramage riso</label>
+              <label><input type="radio" name="kind" value="1" /> Tramage</label>
               <label><input type="radio" name="kind" value="2" /> Verre cannelé</label>
               <label><input type="radio" name="kind" value="3" /> Lentille</label>
               <label><input type="radio" name="kind" value="4" /> Papier froissé</label>
               <label><input type="radio" name="kind" value="5" /> Casse de plomb</label>
+              <label><input type="radio" name="kind" value="6" /> CMJN</label>
+              <label><input type="radio" name="kind" value="7" /> Eau</label>
+              <label><input type="radio" name="kind" value="8" /> Dispersion</label>
             </fieldset>
             <label class="range"><span>Taille</span><input type="range" name="size" min="2" max="16" step="0.5" value="6" /><output>6,0 px</output></label>
             <label class="range"><span>Intensité</span><input type="range" name="amount" min="0" max="1" step="0.01" value="0.5" /><output>0,50</output></label>
@@ -1014,7 +1018,7 @@
           c'est une lecture indépendante de ses principes.
         </p>
         <p>
-          Trame quadrichromique et filtres du chapitre 06 (trame noire, tramage, verre cannelé, lentille, papier froissé) d'après les filtres d'image de Paper Shaders (licence Apache 2.0), réécrits en WGSL. L'épreuve qui se décolle, l'encre fraîche et les six matières de la leçon 06.1 s'inspirent des composants Peel, Liquid, Blaze, Clouds, Canvas, Droplets, Flame Wrap et Frost de canvasui.dev, réécrits sans reprendre leur code, la pile de calques du modèle de composition de la bibliothèque shaders (MIT). Fluides stables d'après Jos Stam (1999) ; simulation de vision d'après Machado, Oliveira et Fernandes (2009).
+          Trame quadrichromique et filtres du chapitre 06 : trame, CMJN, tramage, verre cannelé, eau et dispersion sont les filtres d'image de Paper Shaders 0.0.82 (© 2026 Paper, licence Apache 2.0, shaders.paper.design), portés en WGSL (src/gpu/paper.ts) ; lentille et papier froissé en sont inspirés. L'épreuve qui se décolle, l'encre fraîche et les six matières de la leçon 06.1 s'inspirent des composants Peel, Liquid, Blaze, Clouds, Canvas, Droplets, Flame Wrap et Frost de canvasui.dev, réécrits sans reprendre leur code, la pile de calques du modèle de composition de la bibliothèque shaders (MIT). Fluides stables d'après Jos Stam (1999) ; simulation de vision d'après Machado, Oliveira et Fernandes (2009).
           Archivo par Omnibus-Type, IBM Plex Mono par IBM, toutes deux sous licence SIL OFL, servies depuis ce site.
         </p>
         <p>

@@ -44,12 +44,15 @@ const TRANSITION_TEXT = [
   "Chaque colonne coule vers le bas : la ligne du front s'étire en traînées de longueurs inégales, comme un tri de pixels.",
 ];
 const FILTERS = [
-  ["Trame noire", "Une grille de points dont la taille porte la valeur."],
-  ["Tramage riso", "Un tramage ordonné de Bayer, en deux encres de risographe."],
-  ["Verre cannelé", "Des cannelures verticales qui réfractent ce qui est derrière."],
+  ["Trame noire", "Une grille de points dont la taille porte la valeur (halftone-dots de Paper Shaders)."],
+  ["Tramage", "Un tramage ordonné de Bayer 8 × 8 (image-dithering de Paper Shaders)."],
+  ["Verre cannelé", "Des cannelures qui réfractent ce qui est derrière (fluted-glass de Paper Shaders)."],
   ["Lentille", "Une distorsion en barillet sous le pointeur, avec aberration chromatique."],
   ["Papier froissé", "Un relief de bruit éclairé de biais, multiplié sur l'image."],
   ["Casse de plomb", "Chaque cellule devient le caractère dont la noirceur lui correspond : de l'ASCII typographique."],
+  ["CMJN", "Quatre trames tournées, cyan, magenta, jaune et noir, qui se mêlent comme l'encre (halftone-cmyk de Paper Shaders)."],
+  ["Eau", "Des caustiques qui ondulent sur l'image (water de Paper Shaders)."],
+  ["Dispersion", "Un éventail de prises décalées, teintées comme un prisme (lens-distortion de Paper Shaders)."],
 ];
 const SOURCES = [
   ["Dégradé maillé", "Cinq taches de couleur qui dérivent, mêlées à travers un champ déformé."],

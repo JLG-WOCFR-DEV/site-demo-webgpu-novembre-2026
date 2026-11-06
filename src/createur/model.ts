@@ -145,7 +145,9 @@ export const CUI_CHOICES = CUI_EFFECTS.map((t) => [t, t === "aucun" ? "Aucun" : 
 const MATERIALS = c(["", "Aucune"], ["lentille", "Lentille"], ["poussiere", "Poussière"], ["gouttes", "Gouttes"], ["toile", "Toile"], ["givre", "Givre"], ["nuages", "Brume"]);
 const STAGES = c(["", "Aucun"], ["flammes", "Flammes"], ["nuages", "Brume"], ["givre", "Givre"], ["toile", "Toile"]);
 const CARD_MATERIALS = c(["", "Aucune"], ["givre", "Givre"], ["nuages", "Brume"], ["flammes", "Flammes"], ["toile", "Toile (photo)"], ["gouttes", "Gouttes (photo)"]);
-const REVEALS = c(["", "Aucune"], ["rideau", "Rideau"], ["dissolution", "Dissolution"], ["pixels", "Pixels"], ["tri", "Tri de pixels"]);
+const REVEALS = c(["", "Aucune"], ["rideau", "Rideau"], ["dissolution", "Dissolution"], ["pixels", "Pixels"], ["tri", "Tri de pixels"], ["etirement", "Étirement"]);
+/** Filtres d'image de Paper Shaders (src/gpu/paper.ts), noms français. */
+const FILTERS = c(["", "Aucun"], ["trame", "Trame"], ["cmjn", "CMJN"], ["tramage", "Tramage"], ["cannele", "Verre cannelé"], ["eau", "Eau"], ["dispersion", "Dispersion"]);
 const HOVERS = c(["", "Aucun"], ["deplacement", "Bombé"], ["rvb", "RVB"], ["onde", "Onde"], ["pixels", "Pixels"]);
 const KINETICS = c(["", "Aucune"], ["respire", "Respire"], ["contour", "Contour"], ["vague", "Vague"], ["vitesse", "Vitesse"]);
 const SIZES = c(["l", "Grand"], ["xl", "Très grand"], ["xxl", "Immense"]);
@@ -196,10 +198,10 @@ function open(b: Block, ctx: RenderCtx, cls: string, extra = "", tag = "section"
 const kicker = (b: Block, ctx: RenderCtx) => (str(b.props.kicker) ? `<p class="ps-kicker" data-gl-text${ed(ctx, "kicker")}>${esc(b.props.kicker)}</p>` : "");
 const h2 = (b: Block, ctx: RenderCtx, key = "title") => (str(b.props[key]) ? `<h2 class="ps-h2" data-gl-text${ed(ctx, key)}>${esc(b.props[key])}</h2>` : "");
 /** Une image GPU dans son cadre : matière, révélation, survol, proportion. */
-function figure(src: Value | undefined, alt: Value | undefined, o: { material?: Value; reveal?: Value; hover?: Value; ratio?: Value; caption?: Value; cls?: string; ctx: RenderCtx; capKey?: string }) {
+function figure(src: Value | undefined, alt: Value | undefined, o: { material?: Value; reveal?: Value; hover?: Value; filter?: Value; ratio?: Value; caption?: Value; cls?: string; ctx: RenderCtx; capKey?: string }) {
   const ph = photo(str(src));
   const ratio = str(o.ratio);
-  return `<figure class="ps-fig${o.cls ? ` ${o.cls}` : ""}"${attr("data-flight-id", flightId(src))}${attr("data-gl-material", o.material)}${ratio ? ` data-ratio style="--ratio: ${esc(ratio)}"` : ""}><img data-gl-img${attr("data-gl-reveal", o.reveal)}${attr("data-gl-hover", o.hover)} src="${esc(src)}"${ph ? ` width="${ph.w}" height="${ph.h}"` : ""} alt="${esc(alt)}" />${str(o.caption) ? `<figcaption class="ps-cap"${ed(o.ctx, o.capKey ?? "caption")}>${esc(o.caption)}</figcaption>` : ""}</figure>`;
+  return `<figure class="ps-fig${o.cls ? ` ${o.cls}` : ""}"${attr("data-flight-id", flightId(src))}${attr("data-gl-material", o.material)}${ratio ? ` data-ratio style="--ratio: ${esc(ratio)}"` : ""}><img data-gl-img${attr("data-gl-reveal", o.reveal)}${attr("data-gl-hover", o.hover)}${attr("data-gl-filter", o.filter)} src="${esc(src)}"${ph ? ` width="${ph.w}" height="${ph.h}"` : ""} alt="${esc(alt)}" />${str(o.caption) ? `<figcaption class="ps-cap"${ed(o.ctx, o.capKey ?? "caption")}>${esc(o.caption)}</figcaption>` : ""}</figure>`;
 }
 /**
  * Une adresse de lien. Vers une page du site (`./projet.html`) : telle quelle à l'export ; dans l'aperçu, la même iframe
@@ -243,6 +245,7 @@ const gpuFields = (g = "Effets GPU"): Field[] => [
   { key: "material", label: "Matière", type: "select", choices: MATERIALS, group: g },
   { key: "reveal", label: "Révélation", type: "select", choices: REVEALS, group: g },
   { key: "hover", label: "Survol", type: "select", choices: HOVERS, group: g },
+  { key: "filter", label: "Filtre (Paper Shaders)", type: "select", choices: FILTERS, group: g },
 ];
 const photoItem = (extra: Field[] = []): ItemSpec => ({
   label: "Photos",
@@ -409,12 +412,12 @@ def({
     { key: "ratio", label: "Proportion", type: "select", choices: RATIOS, group: "Mise en page" },
     ...gpuFields(),
   ],
-  defaults: { src: "./plates/yosemite.jpg", alt: photo("./plates/yosemite.jpg")!.alt, caption: "Yosemite, au petit matin.", width: "contenue", ratio: "21/9", material: "lentille", reveal: "rideau", hover: "", space: "serre" },
+  defaults: { src: "./plates/yosemite.jpg", alt: photo("./plates/yosemite.jpg")!.alt, caption: "Yosemite, au petit matin.", width: "contenue", ratio: "21/9", material: "lentille", reveal: "rideau", hover: "", filter: "", space: "serre" },
   render: (b, ctx) => {
     const p = b.props;
     return `${open(b, ctx, "ps-image", attr("data-width", p.width))}
   <div class="ps-in">
-    ${figure(p.src, p.alt, { material: p.material, reveal: p.reveal, hover: p.hover, ratio: p.ratio, caption: p.caption, ctx })}
+    ${figure(p.src, p.alt, { material: p.material, reveal: p.reveal, hover: p.hover, filter: p.filter, ratio: p.ratio, caption: p.caption, ctx })}
   </div>
 </section>`;
   },
@@ -450,6 +453,7 @@ def({
     material: "poussiere",
     reveal: "",
     hover: "",
+    filter: "",
   },
   render: (b, ctx) => {
     const p = b.props;
@@ -461,7 +465,7 @@ def({
       <div class="ps-body">${paras(p.body, ctx, "body")}</div>
       ${str(p.cta) ? `<div class="ps-actions">${button(p.cta, p.ctaHref, false, ctx, "cta")}</div>` : ""}
     </div>
-    ${figure(p.src, p.alt, { material: p.material, reveal: p.reveal, hover: p.hover, ratio: p.ratio, ctx })}
+    ${figure(p.src, p.alt, { material: p.material, reveal: p.reveal, hover: p.hover, filter: p.filter, ratio: p.ratio, ctx })}
   </div>
 </section>`;
   },

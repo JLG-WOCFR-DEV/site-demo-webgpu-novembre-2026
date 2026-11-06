@@ -87,6 +87,23 @@
 &lt;!-- révélation : rideau, dissolution, pixels, tri · survol : deplacement, rvb, onde, pixels --&gt;</code></pre>
       </section>
 
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-paper">
+        <h2 id="pd-paper" class="pd-h2" data-gl-text>Les filtres de Paper Shaders</h2>
+        <p class="pd-p" data-gl-text>
+          Six filtres d'image de Paper Shaders, portés de GLSL en WGSL avec leurs paramètres et leurs formules : trame,
+          CMJN, tramage, verre cannelé, eau, dispersion. Un attribut sur n'importe quel élément ; les réglages gardent les
+          noms de Paper, un préréglage copié depuis shaders.paper.design se colle tel quel.
+        </p>
+        <div class="pd-fx-grid">
+          <figure class="pd-fx"><img data-gl-img data-gl-filter="halftone-dots" data-gl-filter-opts="type: gooey; grid: hex; size: .6; contrast: .55; grainMixer: 0; grainOverlay: 0; colorFront: #1d2bd8; colorBack: #efeee8" src="./plates/fig.jpg" alt="Une figue ouverte sur une pierre calcaire." /><figcaption><code>halftone-dots</code> · gooey</figcaption></figure>
+          <figure class="pd-fx"><img data-gl-img data-gl-filter="halftone-cmyk" data-gl-filter-opts="type: ink; size: .3" src="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." /><figcaption><code>halftone-cmyk</code> · ink</figcaption></figure>
+          <figure class="pd-fx"><img data-gl-img data-gl-filter="image-dithering" data-gl-filter-opts="type: 4x4; size: 3; colorSteps: 2; colorFront: #efeee8; colorBack: #121212; colorHighlight: #c8321c" src="./plates/steel.jpg" alt="Un cylindre d'acier brossé sur une ardoise sombre." /><figcaption><code>image-dithering</code> · 4×4</figcaption></figure>
+          <figure class="pd-fx"><img data-gl-img data-gl-filter="fluted-glass" data-gl-filter-opts="size: .8; distortion: .6; shape: wave; distortionShape: lens; highlights: .2" src="./plates/bowl.jpg" alt="Un bol de grès blanc sur une table claire." /><figcaption><code>fluted-glass</code> · wave</figcaption></figure>
+        </div>
+        <pre class="pd-code"><code>&lt;img data-gl-img data-gl-filter="halftone-dots" data-gl-filter-opts="type: gooey; grid: hex; size: .35; colorFront: #1d2bd8" …&gt;
+&lt;!-- halftone-dots (trame), halftone-cmyk (cmjn), image-dithering (tramage), fluted-glass (cannele), water (eau), lens-distortion (dispersion) --&gt;</code></pre>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-kin">
         <h2 id="pd-kin" class="pd-h2" data-gl-text>La typographie cinétique</h2>
         <p class="pd-p" data-gl-text>

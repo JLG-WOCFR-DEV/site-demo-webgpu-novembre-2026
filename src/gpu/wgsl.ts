@@ -7,6 +7,7 @@
  * valeur ici que dans la feuille de style. La cible de scène est en
  * rgba16float pour que les hautes lumières des photos puissent dépasser 1.
  */
+import { PAPER_WGSL } from "./paper.ts";
 import { CUI_WGSL, MAX_RIPPLES } from "./cui.ts";
 
 export const FRAME_STRUCT = /* wgsl */ `
@@ -1691,6 +1692,8 @@ struct Post {
   cui: vec4f,      // effet Canvas UI (0 aucun…10), intensité, taille, 0
   cui2: vec4f,     // pointeur amorti x, y (px), présent, défilement (px)
   ripples: array<vec4f, ${MAX_RIPPLES}>, // clics : x, y (px), départ (s), force
+  pfk: array<vec4f, ${MAX_STAGES / 4}>,      // filtre de Paper de chaque plaque (0 aucun, 1…6)
+  pfx: array<vec4f, ${MAX_STAGES * 6}>,      // ses réglages : 12 nombres et trois couleurs par plaque (src/gpu/paper.ts)
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -2521,6 +2524,8 @@ fn image_filter(px: vec2f, st: vec4f) -> vec3f {
 
 ${CUI_WGSL}
 
+${PAPER_WGSL}
+
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4f {
   let px = in.uv * u.res.xy;
@@ -2535,6 +2540,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   // Dans quelle plaque de démonstration est ce pixel ?
   var kind = 0.0;
   var stage = vec4f(0.0);
+  var stageIdx = 0;
   for (var i = 0; i < ${MAX_STAGES}; i++) {
     let s = u.stages[i];
     if (s.z > 0.0 && px.x >= s.x && px.y >= s.y && px.x < s.x + s.z && px.y < s.y + s.w) {
@@ -2543,6 +2549,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
       kind = raw - floor(raw / 16.0) * 16.0;
       tr_layer = i32(floor(raw / 16.0));
       stage = s;
+      stageIdx = i;
     }
   }
 
@@ -2605,6 +2612,8 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 
   if (kind > 2.5 && kind < 3.5) {
     col = image_filter(px, stage);
+  } else if (kind > 11.5 && kind < 12.5) {
+    col = paper_filter(px, stage, stageIdx);
   } else if (kind > 3.5 && kind < 9.5) {
     col = matter(kind, px, stage);
   } else if (kind > 10.5 && kind < 11.5 && u.matter.w > 0.001) {
