@@ -139,6 +139,9 @@ export function mount(root: HTMLElement) {
   const highlight = new Array<number>(MAX_SLOTS).fill(0);
   highlight[0] = 1;
   let opening: { k: number; t0: number } | null = null;
+  // Regarder de près : la caméra s'approche de la carte de devant, on reste dans le carrousel (0 → 1).
+  let peekTo = 0;
+  let peekK = 0;
   const pointer = { x: 0, y: 0, in: false };
   const tilt = { x: 0, y: 0 };
   let box = root.getBoundingClientRect();
@@ -228,10 +231,11 @@ export function mount(root: HTMLElement) {
     const el = Math.max(-1.45, Math.min(1.45, elev + tilt.y));
     let e: V3 = [Math.sin(phi) * D * Math.cos(el), D * Math.sin(el), Math.cos(phi) * D * Math.cos(el)];
     let at: V3 = [0, 0, 0];
-    if (opening && openK > 0 && cfg.dive) {
-      // Ouvrir : la caméra plonge vers la carte, la mise au point la suit.
-      const c = cardFrame(opening.k).c;
-      const k = ease(openK);
+    const near = opening && openK > 0 && cfg.dive ? ease(openK) : peekK > 0.001 ? 0.62 * ease(peekK) : 0;
+    if (near > 0) {
+      // Ouvrir : la caméra plonge vers la carte, la mise au point la suit. Regarder de près : à mi-chemin.
+      const c = cardFrame(opening ? opening.k : frontIndex()).c;
+      const k = near;
       const dir = norm(sub(e, c));
       const to: V3 = [c[0] + dir[0] * 9, c[1] + dir[1] * 9, c[2] + dir[2] * 9];
       e = [e[0] + (to[0] - e[0]) * k, e[1] + (to[1] - e[1]) * k, e[2] + (to[2] - e[2]) * k];
@@ -309,9 +313,28 @@ export function mount(root: HTMLElement) {
     vel = 0;
     lastInput = clockNow();
   };
+  /** Regarder la carte de devant de près, ou revenir ; on ne quitte pas la page. */
+  const peek = (on: boolean) => {
+    if ((peekTo > 0) === on) return;
+    peekTo = on ? 1 : 0;
+    if (reduced.matches) peekK = peekTo;
+    root.classList.toggle("or-peek", on);
+    const a = apps[appOf(frontIndex())]!;
+    say(on ? `${a.title}, de près. Échap pour revenir ; le lien « Entrer » ouvre l'application.` : "Retour au carrousel.");
+    lastInput = clockNow();
+  };
+  /** Un clic sur une carte : une carte de côté vient devant ; celle de devant se regarde de près. Jamais de départ. */
   const open = (k: number) => {
     if (opening) return;
-    if (frontIndex() !== k) return goSlot(k);
+    if (frontIndex() !== k) {
+      peek(false);
+      return goSlot(k);
+    }
+    peek(peekTo === 0);
+  };
+  /** Le lien « Entrer » : la plongée, puis la page de l'application (geste explicite). */
+  const enter = (k: number) => {
+    if (opening) return;
     opening = { k, t0: clockNow() };
     root.classList.add("or-opening");
     // La caméra plonge vers la carte, puis on part (lien réel : passage de la photo, balayage).
@@ -352,6 +375,7 @@ export function mount(root: HTMLElement) {
     drag.ly = e.clientY;
     drag.t = now;
     drag.moved += Math.hypot(dx, dy);
+    if (drag.moved >= 6) peek(false);
     lastInput = clockNow();
   });
   const end = (e: PointerEvent) => {
@@ -364,6 +388,7 @@ export function mount(root: HTMLElement) {
       const l = local(e);
       const { hit } = pick(l.x, l.y);
       if (hit >= 0) open(hit);
+      else peek(false);
       target = target ?? angleFor(frontIndex());
     } else {
       // Lancer : l'emplacement où l'élan mène.
@@ -397,6 +422,7 @@ export function mount(root: HTMLElement) {
       cfg.elevation = Math.round(elev / DEG);
       changed();
     } else if (e.key === "Enter" && (e.target === root || e.target === document.body)) open(frontIndex());
+    else if (e.key === "Escape" && peekTo > 0) peek(false);
     else return;
     e.preventDefault();
   };
@@ -409,7 +435,7 @@ export function mount(root: HTMLElement) {
     if (e.defaultPrevented) return;
     // L'ouverture mise en scène, puis le vrai lien (passage et balayage compris).
     e.preventDefault();
-    open(frontIndex());
+    enter(frontIndex());
   });
 
   /* ───── Le passage : la carte choisie est une photo à l'écran ───── */
@@ -628,7 +654,7 @@ export function mount(root: HTMLElement) {
       // La caméra : ressort vers l'emplacement visé, élan après un lancer, ou rotation seule au repos.
       const spin = num("autoRotate");
       if (!drag) {
-        if (spin && !calm && !opening && now - lastInput > 2500) {
+        if (spin && !calm && !opening && peekTo === 0 && now - lastInput > 2500) {
           target = null;
           theta += spin * DEG * dt;
           vel *= Math.exp(-dt * 2.5);
@@ -651,6 +677,8 @@ export function mount(root: HTMLElement) {
       tilt.x += (want[0]! - tilt.x) * kt;
       tilt.y += (want[1]! - tilt.y) * kt;
       const openK = opening ? Math.min(1, (now - opening.t0) / 650) : 0;
+      peekK += (peekTo - peekK) * (reduced.matches ? 1 : 1 - Math.exp(-dt * 5));
+      if (Math.abs(peekTo - peekK) < 1e-3) peekK = peekTo;
       camera(openK);
       const front = frontIndex();
       caption(appOf(front));

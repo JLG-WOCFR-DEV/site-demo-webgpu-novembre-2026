@@ -24,7 +24,7 @@
  * Déclencheurs : entree (par défaut, une fois, à 85 % de l'écran), defilement (piloté par la traversée de l'écran),
  * survol, appui, chargement (après le rideau d'entrée). Options : data-anim-dur, -delay, -ease, -stagger, -repeat.
  */
-import { clockNow } from "../gpu/clock.ts";
+import { beginFrame, clockNow } from "../gpu/clock.ts";
 import { DUR, spring as springCurve, springStep, SPRINGS, type Spring } from "./tokens.ts";
 
 /* ───────────────────────── Courbes ───────────────────────── */
@@ -86,8 +86,9 @@ let raf = 0;
 let last = 0;
 let manual = false;
 
-function frame() {
+function frame(rafT?: number) {
   raf = 0;
+  if (rafT !== undefined) beginFrame(rafT);
   const now = clockNow();
   let dt = (now - last) / 1000;
   last = now;
@@ -387,20 +388,29 @@ export const timeline = () => new Timeline();
 /**
  * Une propriété menée par un ressort : `r.set(cible)` à tout moment, la vitesse est gardée. Les ressorts de la maison
  * (vif, ouverture, ample) par leur nom, ou { k, zeta }.
+ *
+ * Deux classes (Material 3 Expressive, repris par Rune) : `espace` (position, taille, rotation) peut dépasser sa cible ;
+ * `effet` (opacité, flou, couleur) jamais — amorti critique au moins, et borné entre son départ et sa cible. Par défaut,
+ * `opacity` et `blur` sont des effets.
  */
-export function ressort(t: Target, prop: string, o: { spring?: keyof typeof SPRINGS | Spring; value?: number | string } = {}) {
-  const s: Spring = typeof o.spring === "object" ? o.spring : SPRINGS[o.spring ?? "vif"];
+export function ressort(t: Target, prop: string, o: { spring?: keyof typeof SPRINGS | Spring; value?: number | string; classe?: "espace" | "effet" } = {}) {
+  const base: Spring = typeof o.spring === "object" ? o.spring : SPRINGS[o.spring ?? "vif"];
+  const effet = (o.classe ?? (prop === "opacity" || prop === "blur" ? "effet" : "espace")) === "effet";
+  const s: Spring = effet ? { k: base.k, zeta: Math.max(1, base.zeta) } : base;
   const start = o.value !== undefined ? parse(o.value, prop) : current(t, prop);
   const unit = start.unit;
   let x = start.n;
   let v = 0;
   let target = x;
+  let lo = x;
+  let hi = x;
   set(t, prop, { n: x, unit });
   flush();
   const r: Ticking & { set(to: number | string): void; readonly value: number; readonly velocity: number } = {
     step(dt) {
       // Sous-pas fixes : le même mouvement à 60 ou 144 Hz.
       for (let left = dt; left > 1e-9; left -= 1 / 240) [x, v] = springStep(x, v, target, Math.min(1 / 240, left), s);
+      if (effet && (x < lo || x > hi)) ((x = Math.min(hi, Math.max(lo, x))), (v = 0));
       const rest = Math.abs(x - target) < 1e-3 && Math.abs(v) < 1e-2;
       if (rest) ((x = target), (v = 0));
       set(t, prop, { n: x, unit });
@@ -408,6 +418,8 @@ export function ressort(t: Target, prop: string, o: { spring?: keyof typeof SPRI
     },
     set(to) {
       target = parse(to, prop).n;
+      lo = Math.min(x, target);
+      hi = Math.max(x, target);
       if (reducedMotion()) {
         x = target;
         v = 0;

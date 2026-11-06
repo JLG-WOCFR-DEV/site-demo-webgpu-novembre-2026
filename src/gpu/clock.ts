@@ -11,7 +11,37 @@ let source: { readonly now: number } | null = null;
 let scale = 1;
 let anchorReal = 0;
 let anchorVirt = 0;
-const real = () => (source ? source.now : performance.now());
+
+/*
+ * L'heure d'affichage (Rune, recherche 15 ; Android, Chrome) : pendant une image, les animations sont évaluées à
+ * l'instant où l'image sera montrée — horodatage du rAF + un intervalle d'image — et non à « maintenant », qui
+ * dépend du moment où le code tourne. Une image en retard montre alors la bonne position, sans à-coup de vitesse.
+ * Hors image (un événement), c'est performance.now(), jamais en arrière de la dernière valeur rendue.
+ */
+let interval = 1000 / 60;
+let lastRaf = -1;
+let presentAt = -1;
+let lastOut = 0;
+/** À appeler en tête de chaque boucle rAF, avec son horodatage. Plusieurs boucles dans la même image : sans effet. */
+export function beginFrame(rafT: number) {
+  if (rafT === lastRaf) return;
+  if (lastRaf > 0) {
+    const d = rafT - lastRaf;
+    // Intervalle d'image lissé ; les trous (onglet caché, gros retard) ne comptent pas.
+    if (d > 3 && d < 50) interval += (d - interval) * 0.1;
+  }
+  lastRaf = rafT;
+  presentAt = rafT + interval;
+}
+/** L'intervalle entre deux images, estimé (ms). */
+export const frameInterval = () => interval;
+const wall = () => {
+  const n = performance.now();
+  // Dans l'image en cours : l'heure de son affichage. Après : l'heure réelle.
+  const t = presentAt > 0 && n - lastRaf < interval ? presentAt : n;
+  return (lastOut = Math.max(lastOut, t));
+};
+const real = () => (source ? source.now : wall());
 
 export function clockNow() {
   const r = real();

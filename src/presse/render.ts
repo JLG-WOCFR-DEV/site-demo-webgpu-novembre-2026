@@ -308,7 +308,7 @@ const orbite: Render = (a, children) => {
   const data = OR_ATTRS.filter((k) => a[k] !== undefined).map((k) => ` data-${k}="${esc(a[k]!)}"`).join("");
   const first = items[0];
   const hTag = a.full !== undefined ? "h1" : "h2";
-  return `<section class="x-orbite" data-presse-component="orbite"${data}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-roledescription="carrousel" aria-label="${esc(a.label ?? "Applications : flèches pour tourner, Entrée pour ouvrir")}">
+  return `<section class="x-orbite" data-presse-component="orbite"${data}${a.full !== undefined ? " data-full" : ""} tabindex="0" aria-roledescription="carrousel" aria-label="${esc(a.label ?? "Applications : flèches pour tourner, Entrée pour regarder de près")}">
   <canvas class="or-gl" aria-hidden="true"></canvas>
   <ol class="or-list" aria-label="Applications">
 ${items.map((it) => `    <li class="or-item" data-id="${esc(it.id)}" data-title="${esc(it.title)}" data-tag="${esc(it.tag)}"${it.color ? ` data-color="${esc(it.color)}"` : ""}><a href="${esc(it.href)}" data-flight="${esc(it.id)}"><img src="${esc(it.src)}" alt="${esc(it.alt)}" loading="lazy" sizes="(max-width: 760px) 90vw, 50vw" /><span class="or-name">${esc(it.title)}</span><span class="or-tagline">${esc(it.tag)}</span></a></li>`).join("\n")}
@@ -321,7 +321,7 @@ ${items.map((it) => `    <li class="or-item" data-id="${esc(it.id)}" data-title=
     <a class="or-open" data-intro data-magnet="0.25" data-or-open href="${esc(first?.href ?? "#")}" data-flight="${esc(first?.id ?? "")}">${esc(a.open ?? "Entrer")} <span aria-hidden="true">↗</span></a>
   </div>
   <div class="or-nav" data-intro><button type="button" data-magnet="0.35" data-or-prev aria-label="Application précédente">←</button><button type="button" data-magnet="0.35" data-or-next aria-label="Application suivante">→</button></div>
-  <p class="or-hint" aria-hidden="true">${esc(a.hint ?? "Glissez pour tourner autour du trou noir, ou ← →. La carte au point s’ouvre d’un clic.")}</p>
+  <p class="or-hint" aria-hidden="true">${esc(a.hint ?? "Glissez pour tourner autour du trou noir, ou ← →. Un clic sur la carte au point la montre de près ; « Entrer » ouvre l’application.")}</p>
   <p class="sr-only" aria-live="polite" data-or-live></p>
 </section>`;
 };

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>WebGPU-demo-UBS · Lave</title>
+    <meta name="description" content="Une liste de tâches au-dessus d'un sol de lave : on réordonne au glisser, et la tâche qu'on y jette brûle dans un feu simulé en WebGPU." />
+    <meta name="theme-color" content="#0c0b0f" />
+    <script type="module" src="/src/lave/main.ts"></script>
+  </head>
+  <body class="lv">
+    <main>
+      <section class="lv-app" data-lv aria-labelledby="lv-title">
+        <header class="lv-head">
+          <div>
+            <h1 id="lv-title" class="lv-h1">Aujourd'hui</h1>
+            <p class="lv-sub" data-lv-count>5 tâches · le sol est de lave</p>
+          </div>
+          <time class="lv-date" data-lv-date></time>
+        </header>
+
+        <ol class="lv-list" data-lv-list aria-label="Tâches du jour">
+          <li class="lv-card" data-id="notes">
+            <button type="button" class="lv-check" aria-pressed="false"><span class="sr-only">Fait</span></button>
+            <span class="lv-text"><span class="lv-title">Publier les notes de version</span><span class="lv-meta">Lancement · aujourd'hui</span></span>
+            <span class="lv-tag" data-tag="eng">Eng</span>
+            <button type="button" class="lv-grip" aria-label="Déplacer « Publier les notes de version »"><span aria-hidden="true">⠿</span></button>
+          </li>
+          <li class="lv-card" data-id="pr">
+            <button type="button" class="lv-check" aria-pressed="false"><span class="sr-only">Fait</span></button>
+            <span class="lv-text"><span class="lv-title">Relire la PR n° 842 : cache de mise en page</span><span class="lv-meta">Presse · 3 commentaires</span></span>
+            <span class="lv-tag" data-tag="eng">Eng</span>
+            <button type="button" class="lv-grip" aria-label="Déplacer « Relire la PR n° 842 »"><span aria-hidden="true">⠿</span></button>
+          </li>
+          <li class="lv-card" data-id="juridique">
+            <button type="button" class="lv-check" aria-pressed="false"><span class="sr-only">Fait</span></button>
+            <span class="lv-text"><span class="lv-title">Répondre au fil juridique</span><span class="lv-meta">Boîte de réception · depuis mardi</span></span>
+            <span class="lv-tag" data-tag="ops">Ops</span>
+            <button type="button" class="lv-grip" aria-label="Déplacer « Répondre au fil juridique »"><span aria-hidden="true">⠿</span></button>
+          </li>
+          <li class="lv-card" data-id="vide">
+            <button type="button" class="lv-check" aria-pressed="false"><span class="sr-only">Fait</span></button>
+            <span class="lv-text"><span class="lv-title">Refaire l'état vide</span><span class="lv-meta">Design · en cours</span></span>
+            <span class="lv-tag" data-tag="design">Design</span>
+            <button type="button" class="lv-grip" aria-label="Déplacer « Refaire l'état vide »"><span aria-hidden="true">⠿</span></button>
+          </li>
+          <li class="lv-card" data-id="vols">
+            <button type="button" class="lv-check" aria-pressed="false"><span class="sr-only">Fait</span></button>
+            <span class="lv-text"><span class="lv-title">Réserver les vols du séminaire</span><span class="lv-meta">Perso · cette semaine</span></span>
+            <span class="lv-tag" data-tag="perso">Perso</span>
+            <button type="button" class="lv-grip" aria-label="Déplacer « Réserver les vols du séminaire »"><span aria-hidden="true">⠿</span></button>
+          </li>
+        </ol>
+
+        <p class="lv-empty" data-lv-empty hidden>Plus rien. Le sol a tout pris.</p>
+        <div class="lv-floor" data-lv-floor aria-hidden="true"></div>
+        <p class="sr-only" aria-live="polite" data-lv-live></p>
+      </section>
+
+      <form class="lv-panel" data-lv-panel aria-label="Réglages de la liste">
+        <label class="lv-field"><span>Nouvelle tâche</span><input type="text" name="task" placeholder="Arroser le ficus" autocomplete="off" maxlength="80" /></label>
+        <button type="submit" class="lv-small">Ajouter</button>
+        <button type="button" class="lv-small" data-lv-reset>Remettre les tâches</button>
+        <p class="lv-hint">Glissez une tâche pour la ranger ; jetez-la dans la lave pour la brûler. Au clavier : la poignée, puis Alt + ↑ ↓ pour déplacer, Suppr pour jeter.</p>
+        <p class="lv-status" data-lv-status role="status"></p>
+      </form>
+
+      <section class="lv-essay" aria-labelledby="lv-how">
+        <h2 id="lv-how">Comment ça marche</h2>
+        <p>
+          La liste est du HTML ordinaire : des éléments de liste, des boutons, du texte que le navigateur met en page et que
+          les lecteurs d'écran lisent. Le sol, le feu, les braises et la carte qui brûle sont dessinés par-dessus en
+          WebGPU, dans un canvas qui laisse passer les clics.
+        </p>
+        <h3>Le glisser</h3>
+        <p>
+          Pendant le geste, rien n'anime la carte : elle suit la main au pixel près. La vitesse au lâcher vient de
+          l'estimateur « impulsion » d'Android (cent millisecondes d'historique ; arrêtée plus de quarante millisecondes,
+          elle vaut zéro). La carte part alors avec cette vitesse dans un ressort calculé en forme exacte, le même à 60 ou
+          à 144 images par seconde. Les voisines font place avec des ressorts sans rebond ; l'inclinaison suit la vitesse
+          horizontale. Un lancer vers le bas est projeté (la décélération d'iOS) : s'il finit dans la lave, la tâche y
+          va. Ces règles sont dans le framework : <code>src/presse/gesture.ts</code>.
+        </p>
+        <h3>Le feu</h3>
+        <p>
+          Les flammes ne sont pas un bruit animé : c'est un petit fluide simulé sur le GPU (fluides stables, Stam 1999),
+          une grille de cellules de quatre pixels le long de la ligne de lave. À chaque pas fixe d'un soixantième de
+          seconde : rotationnel, forces (l'air chaud monte, les tourbillons sont entretenus, un balancement), divergence,
+          quatorze itérations de Jacobi pour la pression, projection, puis advection. Le combustible est posé sur la
+          largeur de la carte quand elle touche la lave, puis s'étend et s'éteint. La température donne la couleur
+          (corps noir), le gaz refroidi devient fumée.
+        </p>
+        <h3>La carte qui brûle</h3>
+        <p>
+          Au lâcher, Presse imprime la carte — son fond, sa bordure, chaque lettre à sa place — dans une texture, et le
+          HTML disparaît. La texture tombe, s'enfonce, et un front de bruit la consume depuis le bas : un liseré
+          incandescent, une bande charbonneuse, puis plus rien. Le sol est un plan en perspective découpé en cellules de
+          Voronoï dont les bords rougeoient.
+        </p>
+        <p class="lv-credit">
+          D'après la démo de liste en feu de <a href="https://github.com/anomalyco/rune">Rune</a> (Anomaly, licence MIT),
+          dont la simulation de feu de <code>rune-fx</code> a servi de modèle.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

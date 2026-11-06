@@ -113,7 +113,11 @@ let pos = 0;
 let appear = 0;
 let appearTo = 0;
 let zoom = 0;
+/** Loupe : 1, la feuille choisie est agrandie dans le sommaire (on y reste) ; 0, la vue d'ensemble. */
+let zoomTo = 0;
 let goTo: string | null = null;
+let gotoBtn: HTMLButtonElement | null = null;
+let hint: HTMLElement | null = null;
 let lastT = 0;
 let lastStep = -1;
 let raf = 0;
@@ -146,6 +150,12 @@ export function setupMenu() {
   root.querySelector("[data-menu-close]")?.addEventListener("click", () => closeMenu());
   root.querySelector("[data-menu-prev]")?.addEventListener("click", () => shift(-1, false));
   root.querySelector("[data-menu-next]")?.addEventListener("click", () => shift(1, false));
+  gotoBtn = root.querySelector<HTMLButtonElement>("[data-menu-goto]");
+  hint = root.querySelector<HTMLElement>("[data-menu-hint]");
+  gotoBtn?.addEventListener("click", () => {
+    goTo = items[wrap(active)]?.id ?? null;
+    navigate();
+  });
   for (const r of root.querySelectorAll<HTMLInputElement>("input[name='menu-screen']")) {
     r.checked = Number(r.value) === menuGL.screen;
     r.addEventListener("change", () => {
@@ -161,6 +171,14 @@ export function setupMenu() {
   root.addEventListener("keydown", onKey);
   stage.addEventListener("wheel", onWheel, { passive: false });
   stage.addEventListener("pointerdown", onDown);
+  // À côté des feuilles : la loupe se repose ; sur l'épreuve de l'Index, elle s'agrandit.
+  stage.addEventListener("click", (e) => {
+    if (drag?.moved || (e.target as Element).closest(".sheet")) return;
+    if (zoomTo > 0) return loupe(false);
+    const pv = root?.querySelector<HTMLElement>("[data-menu-preview]");
+    const r = indexLike(style) ? pv?.getBoundingClientRect() : null;
+    if (r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) loupe(true);
+  });
   addEventListener("pointermove", onMove);
   addEventListener("pointerup", onUp);
   addEventListener("resize", () => menuGL.open && step(clockNow()));
@@ -252,6 +270,8 @@ export function openMenu(from?: HTMLElement) {
   appear = 0;
   appearTo = 1;
   zoom = 0;
+  zoomTo = 0;
+  loupe(false);
   goTo = null;
   printFor = -1;
   root.hidden = false;
@@ -291,12 +311,31 @@ export function closeMenu(then?: () => void) {
 }
 let closing: (() => void) | null = null;
 
+/**
+ * Un clic (ou Entrée) sur une feuille : une feuille de côté vient devant ; celle de devant s'agrandit dans le sommaire,
+ * qu'on ne quitte pas. Un second clic, Échap ou un clic à côté la reposent. Aller au chapitre est un bouton à part.
+ */
 function open(i: number) {
   if (wrap(active) !== i) {
     go(i, false);
+    return;
   }
-  goTo = items[i]!.id;
-  if (motion.reduced) navigate();
+  loupe(zoomTo < 0.5);
+}
+
+function loupe(on: boolean) {
+  zoomTo = on ? 1 : 0;
+  if (motion.reduced) zoom = zoomTo;
+  root?.classList.toggle("is-loupe", on);
+  if (gotoBtn) gotoBtn.hidden = !on;
+  if (hint)
+    hint.textContent = on
+      ? "Flèches pour feuilleter en grand · Clic, Entrée ou Échap pour revenir"
+      : "Flèches pour feuilleter · Clic ou Entrée pour agrandir · Échap pour fermer";
+  if (live && root && menuGL.open) {
+    const it = items[wrap(active)];
+    if (it) live.textContent = on ? `${it.title}, en grand. Échap pour revenir.` : "Vue d'ensemble.";
+  }
 }
 
 function navigate() {
@@ -314,6 +353,7 @@ function navigate() {
 
 function setStyle(s: MenuStyle) {
   style = s;
+  loupe(false);
   if (root) root.dataset.style = s;
   printFor = -1;
   for (const it of items) {
@@ -365,7 +405,8 @@ function announce() {
 function onKey(e: KeyboardEvent) {
   if (e.key === "Escape") {
     e.preventDefault();
-    closeMenu();
+    if (zoomTo > 0) loupe(false);
+    else closeMenu();
     return;
   }
   if (e.key === "Tab") {
@@ -497,11 +538,8 @@ function step(t: number) {
   vel += ((pos - lastPos) / dt - vel) * (1 - Math.exp(-dt * 12));
   lastPos = pos;
   appear += (appearTo - appear) * k(6);
-  if (goTo) zoom += (1 - zoom) * k(7);
-  if (goTo && zoom > 0.97) {
-    navigate();
-    return;
-  }
+  zoom += (zoomTo - zoom) * k(7);
+  if (Math.abs(zoomTo - zoom) < 1e-3) zoom = zoomTo;
   if (closing && appear < 0.02) {
     const f = closing;
     closing = null;
@@ -519,8 +557,10 @@ function step(t: number) {
   const sel = wrap(active);
   if (zoom > 0.001) {
     for (const p of placed) {
-      if (p.it === items[sel]) {
-        const s = Math.max(W / p.w, H / (p.qh ?? p.h));
+      // Index, Lettres : c'est l'épreuve de droite qui grandit ; les titres s'effacent tous.
+      if (p.it === items[sel] && !indexLike(style)) {
+        // En grand, entière (contenue, avec une marge) : on la regarde, on ne part pas.
+        const s = Math.min((W * 0.9) / p.w, (H * 0.9) / (p.qh ?? p.h));
         const target = mul(T((W - p.w * s) / 2, (H - (p.qh ?? p.h) * s) / 2, 0), new DOMMatrix().scale(s, s, 1));
         p.m = lerpM(p.m, target, zoom * zoom * (3 - 2 * zoom));
         p.z = 1e6;
@@ -577,7 +617,7 @@ function step(t: number) {
     const par = reduced || !pointer.inside ? [0, 0] : [(pointer.x - sr.left - W / 2) * -0.012, (pointer.y - sr.top - H / 2) * -0.012];
     let m = T(pv.x + par[0]!, pv.y + par[1]! + (1 - appear) * 40);
     if (zoom > 0.001) {
-      const s = Math.max(W / pv.w, H / pv.h);
+      const s = Math.min((W * 0.9) / pv.w, (H * 0.9) / pv.h);
       m = lerpM(m, mul(T((W - pv.w * s) / 2, (H - pv.h * s) / 2), new DOMMatrix().scale(s, s, 1)), zoom * zoom * (3 - 2 * zoom));
     }
     const preview = root.querySelector<HTMLImageElement>("[data-menu-preview]");

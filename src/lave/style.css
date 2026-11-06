@@ -1,0 +1,347 @@
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --bg: #0c0b0f;
+  --card: #17161b;
+  --card-hi: #1e1c23;
+  --line: rgb(255 255 255 / 0.07);
+  --ink: #ece9e4;
+  --ink-soft: #8f8b94;
+  --spot: #ff7a2a;
+  --f-text: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --floor: clamp(150px, 30svh, 340px);
+  color-scheme: dark;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  background: var(--bg);
+  color: var(--ink);
+}
+body.lv {
+  margin: 0;
+  font: 15px/1.5 var(--f-text);
+  background: var(--bg);
+  overflow-x: clip;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* L'application : un écran, la liste en haut, la lave en bas. */
+.lv-app {
+  position: relative;
+  /* Cinq tâches et un vide d'une carte au-dessus de la lave, toujours ; au-delà, la page s'allonge. */
+  min-height: max(100svh, calc(var(--floor) + 570px));
+  padding: 72px max(20px, env(safe-area-inset-right)) calc(var(--floor) + 70px) max(20px, env(safe-area-inset-left));
+  background: radial-gradient(120% 70% at 50% 0%, #17151c, var(--bg) 65%);
+  isolation: isolate;
+  overflow: hidden;
+}
+.lv-head,
+.lv-list,
+.lv-empty {
+  position: relative;
+  z-index: 2;
+  width: min(560px, 100%);
+  margin-inline: auto;
+}
+.lv-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.lv-h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.lv-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.lv-date {
+  padding-top: 6px;
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.lv-list {
+  margin-block: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+/* Avec le script : chaque carte est posée par un ressort (transform), la liste garde la hauteur de ses places. */
+.lv-list.is-live {
+  display: block;
+}
+.lv-list.is-live .lv-card {
+  position: absolute;
+  inset: 0 0 auto;
+}
+
+.lv-card {
+  --heat: 0;
+  --lift: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 10px 12px 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow:
+    0 calc(2px + var(--lift) * 22px) calc(6px + var(--lift) * 38px) rgb(0 0 0 / calc(0.35 + var(--lift) * 0.3)),
+    inset 0 -40px 36px -30px rgb(255 110 30 / calc(var(--heat) * 0.85));
+  border-color: rgb(255 140 60 / calc(0.07 + var(--heat) * 0.45));
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  will-change: transform;
+}
+.lv-card.is-held {
+  cursor: grabbing;
+  background: var(--card-hi);
+}
+.lv-card.is-done .lv-title {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: rgb(255 255 255 / 0.3);
+}
+.lv-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1.5px solid #4a4752;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.lv-check[aria-pressed="true"] {
+  border-color: var(--spot);
+  background: radial-gradient(circle, var(--spot) 0 4px, transparent 4.5px);
+}
+.lv-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.lv-title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.lv-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.lv-tag {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #9dbbff;
+  background: rgb(110 150 255 / 0.14);
+}
+.lv-tag[data-tag="ops"] {
+  color: #ffcf7a;
+  background: rgb(255 190 80 / 0.13);
+}
+.lv-tag[data-tag="design"] {
+  color: #f2a6ff;
+  background: rgb(220 120 255 / 0.13);
+}
+.lv-tag[data-tag="perso"] {
+  color: #9ee6a8;
+  background: rgb(120 220 140 / 0.13);
+}
+.lv-grip {
+  flex: none;
+  width: 28px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #5c5963;
+  font-size: 16px;
+  cursor: grab;
+}
+.lv-grip:hover {
+  color: var(--ink);
+}
+.lv-check:focus-visible,
+.lv-grip:focus-visible,
+.lv-small:focus-visible,
+.lv-field input:focus-visible {
+  outline: 2px solid var(--spot);
+  outline-offset: 2px;
+}
+.lv-empty {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+/* Le sol. Sans WebGPU : une lave dessinée en CSS ; avec, le canvas le peint par-dessus. */
+.lv-floor {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--floor);
+  border-top: 2px solid #ffb35a;
+  box-shadow: 0 -6px 30px rgb(255 120 30 / 0.45);
+  background:
+    radial-gradient(40% 30% at 20% 30%, rgb(255 90 20 / 0.35), transparent 70%),
+    radial-gradient(35% 26% at 75% 55%, rgb(255 120 30 / 0.3), transparent 70%),
+    repeating-conic-gradient(from 20deg at 40% 120%, #1a0f0b 0 7deg, #2a120a 7deg 8deg),
+    #150c09;
+}
+.lv-app.is-gl .lv-floor {
+  visibility: hidden;
+}
+.lv-gl {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+/* Sans GPU, une carte jetée tombe et se consume en CSS. */
+.lv-card.is-burning {
+  transition:
+    transform 0.9s cubic-bezier(0.5, 0, 0.9, 0.5),
+    opacity 0.9s,
+    filter 0.9s;
+  filter: sepia(1) saturate(4) brightness(0.6) blur(1px);
+  opacity: 0;
+}
+
+.lv-panel {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  width: min(760px, calc(100% - 24px));
+  margin: 18px auto 0;
+  padding: 14px 18px;
+  background: #141318;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 14px;
+}
+.lv-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lv-field span {
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.lv-field input {
+  width: min(280px, 56vw);
+  padding: 7px 10px;
+  border: 1px solid #2c2a31;
+  border-radius: 8px;
+  background: #0f0e12;
+  color: var(--ink);
+  font: inherit;
+}
+.lv-small {
+  padding: 7px 13px;
+  border: 1px solid #3a3740;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 11px/1 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.lv-small:hover {
+  border-color: var(--ink);
+}
+.lv-hint,
+.lv-status {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.lv-status {
+  font: 12px/1.45 var(--f-mono);
+}
+
+.lv-essay {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: 56px 20px 120px;
+  color: #cfcbc6;
+}
+.lv-essay h2 {
+  margin: 0 0 16px;
+  font-size: 30px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.lv-essay h3 {
+  margin: 28px 0 8px;
+  font-size: 16px;
+  color: var(--ink);
+}
+.lv-essay code {
+  font: 0.86em var(--f-mono);
+}
+.lv-essay a {
+  color: #ffb27a;
+}
+.lv-credit {
+  margin-top: 32px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 520px) {
+  .lv-tag {
+    display: none;
+  }
+  .lv-app {
+    padding-top: 64px;
+  }
+}

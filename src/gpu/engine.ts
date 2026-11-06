@@ -5,6 +5,7 @@ import { MAX_RIPPLES } from "./cui.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
+import { beginFrame } from "./clock.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
 import { chapterPaper, PAPER_FLOATS, paperPack } from "./paper.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
@@ -795,9 +796,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   const snapshot = new Snapshot(device, format);
   let gridCache: { gl: number; gr: number; gap: number; w: number } | null = null;
 
-  const frame = () => {
+  const frame = (rafT?: number) => {
     if (destroyed) return;
     raf = requestAnimationFrame(frame);
+    if (rafT !== undefined) beginFrame(rafT);
     if (paused) return;
     const cpuStart = performance.now();
     const cssW = canvas.clientWidth;

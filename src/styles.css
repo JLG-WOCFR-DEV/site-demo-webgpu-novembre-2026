@@ -1382,6 +1382,17 @@ html.gl-on .menu {
   min-height: 44px;
   font-size: 16px;
 }
+/* Loupe : la feuille agrandie dans le sommaire ; aller au chapitre est un geste à part. */
+.menu-foot .menu-goto {
+  padding: 0 18px;
+  font-size: 13px;
+}
+.menu-foot .menu-goto[hidden] {
+  display: none;
+}
+.menu.is-loupe .menu-stage {
+  cursor: zoom-out;
+}
 .menu-stage {
   position: relative;
   overflow: hidden;
