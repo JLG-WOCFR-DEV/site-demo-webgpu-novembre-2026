@@ -32,3 +32,22 @@ test("gouverneur : un chargement lent ne dégrade pas ; une page qui dort regagn
   }
   assert.equal(s, 1, "l'échelle doit revenir à 1 au fil des réveils");
 });
+
+test("gouverneur : l'heure de l'appel varie dans l'image, la cadence reste celle de l'écran", () => {
+  // 60 Hz tenu, mais la boucle qui appelle renderScale() démarre plus ou moins tard dans l'image (d'autres rappels
+  // rAF passent avant elle) : de 0 à 6 ms. Mesurées à l'heure de l'appel, deux images voisines semblent séparées de
+  // 10,7 ms — « un écran à 90 Hz » — et chaque image à 16,7 ms paraît en retard. Mesurées à l'horodatage de l'image
+  // (document.timeline), elles sont à 16,7 ms : rien à baisser.
+  const doc = g.document as { timeline?: { currentTime: number } };
+  let F = T;
+  doc.timeline = { currentTime: F };
+  let s = 1;
+  for (let i = 0; i < 900; i++) {
+    F += 16.67;
+    doc.timeline.currentTime = F;
+    T = F + (i % 2 ? 6 : 0);
+    s = renderScale();
+  }
+  delete doc.timeline;
+  assert.equal(s, 1, "60 Hz tenu : aucune raison de baisser l'échelle");
+});

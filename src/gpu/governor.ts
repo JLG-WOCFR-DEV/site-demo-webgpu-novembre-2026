@@ -40,8 +40,8 @@ let last = -1;
 function sample(now: number) {
   if (document.documentElement.dataset.presseQuality === "fixe") return;
   const dt = now - last;
-  // Plusieurs composants dans la même image : un seul échantillon.
-  if (last >= 0 && dt < 2) return;
+  // Plusieurs composants dans la même image : un seul échantillon (même horodatage d'image).
+  if (last >= 0 && dt < 1) return;
   last = now;
   {
     // Pause, onglet en arrière-plan, gros chargement, page endormie : ce n'est pas la cadence.
@@ -81,7 +81,11 @@ function sample(now: number) {
 
 /** Facteur d'échelle du rendu (multiplie devicePixelRatio) ; l'appel compte comme une image dessinée. */
 export function renderScale() {
-  sample(performance.now());
+  // L'horodatage de l'image (le même pour toutes les boucles rAF de cette image), pas l'heure de l'appel : sinon deux
+  // composants appelés à 5 ms d'écart dans une image lourde donnent un « intervalle » de 5 ms, le gouverneur croit
+  // l'écran à 144 Hz, juge toutes les images en retard et descend à la moitié de la netteté (texte pixellisé, v69–v71).
+  const t = typeof document !== "undefined" ? (document.timeline?.currentTime as number | null | undefined) : null;
+  sample(typeof t === "number" ? t : performance.now());
   return scale;
 }
 
