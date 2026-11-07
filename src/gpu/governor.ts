@@ -42,7 +42,13 @@ function sample(now: number) {
   last = now;
   {
     // Pause, onglet en arrière-plan, gros chargement, page endormie : ce n'est pas la cadence.
-    if (document.hidden || dt <= 0 || dt > 250) return;
+    // Le compte repart de zéro : sans quoi les quelques images de chaque réveil s'additionnent d'un sommeil à
+    // l'autre, l'échelle remonte « après quatre secondes fluides » qui n'en étaient pas, le canvas change de taille,
+    // ce qui réveille la boucle… (presse check : la galerie au repos demandait 17 images/s).
+    if (document.hidden || dt <= 0 || dt > 250) {
+      over = under = 0;
+      return;
+    }
     // La cadence de l'écran : le plus court des intervalles récents, arrondi à un écran connu.
     mins.push(dt);
     if (mins.length > 120) mins.shift();

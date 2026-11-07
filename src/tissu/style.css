@@ -72,7 +72,12 @@ body.ts {
 }
 .ts-bar-cta {
   margin-left: auto;
+  /* Une cible d'au moins 24 px de haut (WCAG 2.2). */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
+
 
 /* Le héros : la section HTML, et l'étoffe qui la porte. */
 .ts-hero {
@@ -230,6 +235,7 @@ body.ts {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: 24px;
 }
 .ts-small {
   padding: 6px 12px;

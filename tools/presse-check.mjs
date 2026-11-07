@@ -28,6 +28,11 @@ const GPU_ARGS = ["--enable-unsafe-webgpu", "--enable-features=Vulkan", "--use-a
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: GPU_ARGS });
 
 const COUNT = () => {
+  // Le rendu logiciel de la machine de contrôle est lent : le gouverneur y baisserait l'échelle palier par palier à
+  // chaque réveil (et chaque palier redimensionne les canvas, donc réveille la boucle). On mesure à échelle fixe.
+  const fixe = () => document.documentElement && (document.documentElement.dataset.presseQuality = "fixe");
+  fixe();
+  document.addEventListener("readystatechange", fixe);
   window.__cost = { raf: 0, submit: 0 };
   const raf = window.requestAnimationFrame.bind(window);
   window.requestAnimationFrame = (f) => raf((t) => {
@@ -252,6 +257,12 @@ for (const name of PAGES) {
   await page.addInitScript(COUNT);
   await page.goto(`${url}?presse-lint`, { waitUntil: "load" }).catch((e) => errors.push(String(e)));
   await page.waitForTimeout(3500);
+  // Au repos, avant tout geste (le pointeur n'est jamais entré) : le défilement à la molette qui suit lance les
+  // galeries (élan, puis dérive voulue), et un survol a ses propres transitions.
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => (window.__cost = { raf: 0, submit: 0 }));
+  await page.waitForTimeout(3000);
+  const cost = await page.evaluate(() => window.__cost);
   const H = await page.evaluate(() => document.documentElement.scrollHeight);
   for (let y = 0; y <= H; y += 600) {
     await page.mouse.wheel(0, 600);
@@ -264,12 +275,6 @@ for (const name of PAGES) {
   const treeFile = path.join(OUT, `${name}.tree.json`);
   const prev = fs.existsSync(treeFile) ? JSON.parse(fs.readFileSync(treeFile, "utf8")) : null;
   fs.writeFileSync(treeFile, JSON.stringify(tree, null, 1));
-  // Au repos : on laisse la page se poser, puis on compte trois secondes.
-  await page.mouse.move(5, 5);
-  await page.waitForTimeout(2500);
-  await page.evaluate(() => (window.__cost = { raf: 0, submit: 0 }));
-  await page.waitForTimeout(3000);
-  const cost = await page.evaluate(() => window.__cost);
   const con = await contrast(page).catch((e) => ({ measured: 0, gpu: 0, fails: [`contraste non mesuré : ${String(e.message ?? e).slice(0, 120)}`] }));
   await ctx.close();
   // 4 : la mise en page, sans GPU (plus rapide ; c'est le DOM qui compte).

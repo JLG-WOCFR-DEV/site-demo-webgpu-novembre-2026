@@ -305,7 +305,8 @@
   color: #3d3b36;
   position: relative;
   z-index: 1;
-  padding: 2px 6px;
+  /* 4 px en haut et en bas : une cible d'au moins 24 px (WCAG 2.2). */
+  padding: 4px 6px;
   margin-left: -4px;
   border-radius: 4px;
   background: color-mix(in srgb, var(--paper, #f4f3ef) 90%, transparent);
