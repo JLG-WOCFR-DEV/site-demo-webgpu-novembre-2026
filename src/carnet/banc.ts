@@ -14,6 +14,7 @@ import "@fontsource-variable/newsreader/opsz.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
+import { registerPwa } from "./pwa.ts";
 import "./banc.css";
 import { CUI_EFFECTS, governorState, presse, type Presse } from "../presse/lib.ts";
 
@@ -238,3 +239,5 @@ void presse({ onDemand: true, effects: ["grain"], motion: "normal", onTimings: (
   status.textContent = "Prêt.";
   (window as unknown as { __banc: object }).__banc = { runAll, rows, presse: x };
 });
+
+registerPwa();

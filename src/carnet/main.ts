@@ -18,6 +18,7 @@ import "@fontsource-variable/newsreader/opsz-italic.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
+import { registerPwa } from "./pwa.ts";
 import { presse, type Presse } from "../presse/lib.ts";
 import { addDays, dismiss, keep, load, makeEntry, migrate, migrationTarget, parseDay, parseLine, save, seed, today, weekStart, type Day, type Entry, type Store, type Suggestion } from "./model.ts";
 import { render, titleFor, type RenderCtx, type View } from "./view.ts";
@@ -216,3 +217,5 @@ void presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts: ["16p
   setInterval(tick, 500);
   (window as unknown as { __carnet: object }).__carnet = { presse: p, get store() { return st; }, ctx };
 });
+
+registerPwa();

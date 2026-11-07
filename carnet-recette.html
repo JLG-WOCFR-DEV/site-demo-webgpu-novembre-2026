@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Recette Carnet</title>
+    <meta name="description" content="Recette P1 de Carnet sur téléphone : installation, WebGPU, saisie, TalkBack, interruptions, photos." />
+    <meta name="theme-color" content="#f5f3ee" />
+    <link rel="manifest" href="./carnet/manifest.webmanifest" />
+    <link rel="icon" href="./carnet/icon-192.png" />
+    <script type="module" src="/src/carnet/recette.ts"></script>
+  </head>
+  <body class="cn rc">
+    <header class="cn-bar">
+      <div class="cn-brand"><b>Recette</b><span>Carnet · P1 · Android</span></div>
+      <nav class="cn-tools" aria-label="Pages">
+        <a class="cn-btn" href="./carnet.html">Carnet</a>
+        <a class="cn-btn" href="./carnet-banc.html">Banc</a>
+        <button class="cn-btn rc-primary" id="copy" type="button">Copier les résultats</button>
+      </nav>
+    </header>
+    <p class="rc-lede">
+      Déroule les sections dans l'ordre, sur le téléphone, depuis Carnet <strong>installé</strong> (menu de Chrome → « Installer l'application »).
+      Les mesures automatiques se font seules ; pour le reste, marque chaque point <em>OK</em>, <em>KO</em> ou <em>Sans objet</em>, avec une note si
+      quelque chose cloche. Tout est gardé dans ce navigateur jusqu'à ce que tu copies les résultats.
+    </p>
+    <div class="rc-update" id="update" hidden>
+      Une nouvelle version est prête. <button class="cn-btn" id="update-go" type="button">Recharger maintenant</button>
+    </div>
+    <main id="sections"></main>
+    <p class="rc-status" id="status" role="status" aria-live="polite"></p>
+  </body>
+</html>
