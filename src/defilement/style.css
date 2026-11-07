@@ -21,7 +21,7 @@ body.df {
   display: block;
   max-width: 100%;
 }
-.df button {
+:where(.df) button {
   font: inherit;
   color: inherit;
 }
@@ -616,7 +616,17 @@ body.df {
   object-fit: cover;
   transform-origin: 0 0;
 }
+/* Un voile sombre sous le nom : lisible même sur une photo claire. */
+.df-tile::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 50%;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.74));
+  pointer-events: none;
+}
 .df-tile > span:not(.df-tile-desc) {
+  z-index: 1;
   position: absolute;
   left: 16px;
   bottom: 14px;
@@ -625,6 +635,7 @@ body.df {
   text-shadow: 0 1px 12px rgb(0 0 0 / 0.4);
 }
 .df-tile-desc {
+  z-index: 1;
   position: absolute;
   inset: auto 0 0;
   padding: 80px 28px 26px;
@@ -658,7 +669,7 @@ body.df {
 .df-foot {
   padding: 64px var(--pad) 96px;
   border-top: 1px solid var(--line);
-  color: var(--mute);
+  color: #615e57;
   font-size: 14px;
   max-width: 70ch;
 }

@@ -22,6 +22,7 @@ import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { onSource } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { SPRINGS, ease, springStep } from "../../presse/tokens.ts";
+import { lintOn, lintSample } from "../../presse/motion-lint.ts";
 import { getDevice } from "../device.ts";
 import { COLOR_BY, type OrbiteConfig, PALETTES, PARAMS, coerce, defaults, fromDataset } from "./params.ts";
 import { DRAW, GRADE, MAX_CARDS, MAX_SLOTS, SCENE, SIM, UBYTES } from "./shaders.ts";
@@ -680,6 +681,9 @@ export function mount(root: HTMLElement) {
       peekK += (peekTo - peekK) * (reduced.matches ? 1 : 1 - Math.exp(-dt * 5));
       if (Math.abs(peekTo - peekK) < 1e-3) peekK = peekTo;
       camera(openK);
+      // Le linter de mouvement (?presse-lint) : la rotation, ramenée à l'arc parcouru par la carte de devant (px, à peu
+      // près : le rayon apparent de l'anneau) ; avec le mouvement réduit, le saut est voulu.
+      if (lintOn()) lintSample(root, "x", theta * Math.min(W(), H()) * 0.5, now, calm || !!drag);
       const front = frontIndex();
       caption(appOf(front));
 

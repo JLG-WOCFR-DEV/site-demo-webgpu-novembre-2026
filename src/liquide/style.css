@@ -49,12 +49,13 @@ header.lq-head,
 
 .lq-skip {
   position: absolute;
-  left: -9999px;
+  inset-inline-start: 16px;
+  top: 60px;
+  transform: translateY(-400%);
 }
 
 .lq-skip:focus {
-  left: 16px;
-  top: 60px;
+  transform: none;
   z-index: 60;
   background: var(--ink);
   color: var(--paper);

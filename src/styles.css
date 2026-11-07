@@ -225,6 +225,20 @@ body::before {
     text-align: left;
   }
 }
+/* Téléphone étroit : les trois boutons de la barre écrasaient le logo (6 px de large à 320 px, presse check) ;
+   il devient « UBS ▾ » (son nom complet reste dans aria-label), les boutons se resserrent. */
+@media (max-width: 480px) {
+  .mark-long {
+    display: none;
+  }
+  .bar .pause-btn {
+    padding-inline: 10px;
+    letter-spacing: 0.04em;
+  }
+  button.mark {
+    min-width: 48px;
+  }
+}
 /* Le logo ouvre le menu des pages. */
 button.mark {
   display: inline-flex;
@@ -818,6 +832,13 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* Tablette : la ligne d'état (« WebGPU natif · horodaté »…) poussait Transitions et Pause hors de l'écran
+   (presse check, 768 px) ; elle cède la place, le sommaire de la barre garde la sienne. */
+@media (max-width: 1100px) {
+  .bar .status {
+    display: none;
+  }
+}
 @media (max-width: 640px) {
   .bar {
     grid-template-columns: minmax(0, 1fr) auto auto auto;
@@ -989,7 +1010,8 @@ html.gl-on[data-transition="fondu"] .colophon a {
 .lesson-num {
   font: 500 13px/1 var(--f-mono);
   letter-spacing: 0.06em;
-  color: var(--spot);
+  /* Le rouge de la maison, plus profond pour du petit texte sur papier (contraste ≥ 4,5:1). */
+  color: #a52714;
 }
 
 .contrast {

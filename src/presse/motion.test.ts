@@ -33,6 +33,20 @@ test("linter : un saut, une apparition sèche, un arrêt net, rien sur un ressor
   assert.deepEqual(m.findings, []);
 });
 
+test("linter : à 30 images par seconde, un départ rapide n'est pas un saut ; une téléportation, si", () => {
+  const l = new MotionLint();
+  // 1 800 px/s dès le départ : 60 px par image de 33 ms (30 px à 60 Hz) — un départ vif, pas un saut.
+  l.sample("lent", "y", 0, 0);
+  l.sample("lent", "y", 0, 33);
+  l.sample("lent", "y", 60, 66);
+  // La même image lente qui fait 200 px : un saut.
+  l.sample("tp", "y", 0, 0);
+  l.sample("tp", "y", 0, 33);
+  l.sample("tp", "y", 200, 66);
+  const rules = l.findings.map((f) => `${f.id}:${f.rule}`);
+  assert.deepEqual(rules, ["tp:saut"]);
+});
+
 test("réservoir d'effets : le plus ancien s'efface au lieu d'être coupé", () => {
   const p = new OneShots<number>(2);
   p.trigger(0, 1);

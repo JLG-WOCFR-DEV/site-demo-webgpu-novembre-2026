@@ -60,7 +60,8 @@ export class MotionLint {
     // Une image « normale » : au plus 50 ms (un onglet revenu de l'arrière-plan n'est pas un saut).
     const frame = dt <= 0.05;
     if (!intent && frame) {
-      if (spatial && Math.abs(dv) > this.o.jump && Math.abs(c.vel) < 1) this.add("saut", id, prop, t, `${dv.toFixed(1)} px en une image`);
+      // Le seuil est par image à 60 Hz : une image lente (30 Hz, un GPU logiciel) en parcourt deux fois plus sans sauter.
+      if (spatial && Math.abs(dv) > this.o.jump * Math.max(1, dt * 60) && Math.abs(c.vel) < 1) this.add("saut", id, prop, t, `${dv.toFixed(1)} px en une image`);
       if (opacity && Math.abs(dv) > this.o.opacityStep) this.add(dv > 0 ? "apparition-seche" : "disparition-seche", id, prop, t, `${c.v.toFixed(2)} → ${v.toFixed(2)} en une image`);
       // Seuil d'arrêt : en px/s pour une position, en unités d'opacité par seconde (3 : le tiers d'une seconde).
       const stopThr = opacity ? 3 : this.o.stopSpeed;

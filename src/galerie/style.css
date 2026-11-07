@@ -275,6 +275,14 @@ body[data-preset="film"] .x-galerie {
   text-transform: uppercase;
   cursor: pointer;
 }
+/* Téléphone : en bas, le bouton des options couvrait les boutons de zoom (presse check, 320 px) ; il monte en haut à droite. */
+@media (max-width: 520px) {
+  .gp-toggle {
+    top: max(10px, env(safe-area-inset-top));
+    bottom: auto;
+    right: 12px;
+  }
+}
 .gp-panel {
   position: fixed;
   z-index: 5;

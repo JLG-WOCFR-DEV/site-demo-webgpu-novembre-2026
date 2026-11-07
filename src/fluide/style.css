@@ -74,7 +74,7 @@ body.fl[data-fl-light="1"] .fl-head::before {
   font: 500 12px/1.4 "IBM Plex Mono", monospace;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--spot);
+  color: #f06a4b;
 }
 .fl-title {
   margin: 0;
@@ -233,7 +233,7 @@ body.fl[data-fl-light="1"] .fl-panel button[aria-pressed="true"] {
   border-top: 1px dashed var(--rule);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--spot);
+  color: #f06a4b;
 }
 .fl-actions {
   display: flex;

@@ -36,6 +36,16 @@ export const PAGES = [
 ];
 
 const CSS = `
+/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles
+   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne
+   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */
+@layer presse-base {
+  h1, h2, h3, h4 { overflow-wrap: break-word; hyphens: auto; }
+  code, kbd, samp, .code-inline { overflow-wrap: anywhere; }
+  pre { max-width: 100%; min-width: 0; }
+  input[type="range"] { min-height: 24px; }
+  table { max-width: 100%; }
+}
 .pages-pop {
   inset: auto;
   margin: 0;
@@ -76,7 +86,7 @@ const CSS = `
   padding: 0 14px;
   border: 1px solid currentColor;
   border-radius: 999px;
-  background: rgba(22, 17, 13, 0.72);
+  background: rgba(22, 17, 13, 0.9);
   color: #efe6d2;
   font: 500 15px/1 inherit;
   backdrop-filter: blur(6px);

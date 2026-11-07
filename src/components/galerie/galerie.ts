@@ -23,6 +23,7 @@ import { claimFlight, type Flight, onArrive, onLeave, onSource, type Source } fr
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { renderScale } from "../../gpu/governor.ts";
 import { SPRINGS, springStep } from "../../presse/tokens.ts";
+import { lintOn, lintSample } from "../../presse/motion-lint.ts";
 import { getDevice } from "../device.ts";
 import { ARRANGEMENTS, apply, type ArrangeName, type Ctx, DEG, type Inst, mod, OPTIONS, type Pose, pose, rotation, stackDir } from "./arrange.ts";
 import { BACKDROP, GALERIE, MAX_ITEMS, STRIDE } from "./shader.ts";
@@ -841,6 +842,13 @@ export function mount(root: HTMLElement) {
     seen.vx += (ex - seen.vx) * ks;
     seen.vy += (ey - seen.vy) * ks;
     const unit = a.space === "1d" ? 1 : a.space === "plane" ? c.iw + c.gap : 1 / Math.max(1, a.unit(c) / (c.iw + c.gap));
+    // Le linter de mouvement (?presse-lint) : le décalage, en px à l'écran ; un changement d'arrangement est voulu.
+    if (lintOn()) {
+      const k = (c.iw + c.gap) / unit;
+      // Sous le doigt, la valeur suit la main au pixel près : ce n'est pas une animation à juger.
+      lintSample(root, "x", off.x * k, now, jumped || !!drag);
+      lintSample(root, "y", off.y * k, now, jumped || !!drag);
+    }
     const v = Math.hypot(seen.vx, seen.vy) / unit;
     speed += (v - speed) * (1 - Math.exp(-dt * 8));
     if (Math.abs(seen.vx) > 1e-3) dir = Math.sign(seen.vx);

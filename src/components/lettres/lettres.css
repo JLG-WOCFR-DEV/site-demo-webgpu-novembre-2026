@@ -29,7 +29,8 @@
   color: var(--spot, #c8321c);
 }
 .x-lettres .xl-title {
-  font-size: clamp(28px, 5vw, 56px);
+  /* Chaque mot est un bloc de lettres insécable : à 320 px, un mot long doit tenir dans la colonne. */
+  font-size: clamp(21px, 5vw, 56px);
   font-weight: 800;
   font-stretch: 112%;
   line-height: 1;

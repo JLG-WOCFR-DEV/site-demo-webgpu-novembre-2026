@@ -120,8 +120,16 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+.x-orbite .or-kicker {
+  /* Posé sur l'image de fond, qui peut être claire sous ces petites capitales : une plaque sombre garantit ≥ 4,5:1. */
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgb(8 8 10 / 0.62);
+}
 .x-orbite .or-num {
-  color: var(--or-color);
+  /* La couleur de l'application, éclaircie : lisible sur le noir quel que soit l'app (≥ 4,5:1). */
+  color: color-mix(in oklab, var(--or-color) 45%, #fff);
   transition: color 0.4s;
 }
 .x-orbite .or-title {

@@ -21,6 +21,7 @@ import { renderScale } from "../../gpu/governor.ts";
 import { sommeil, type Sommeil } from "../../gpu/sommeil.ts";
 import { getDevice } from "../device.ts";
 import { hot } from "../../presse/components.ts";
+import { lintOn, lintSample } from "../../presse/motion-lint.ts";
 
 // Rechargement à chaud : le module (ou un shader dont il dépend) changé, les grilles de la page sont remontés.
 if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "grille"));
@@ -1326,10 +1327,14 @@ export function mount(root: HTMLElement) {
           rot = lerp(from.rot, to.rot, t);
         }
         const fromItem = flying.ref.item !== undefined;
+        // Le vol d'une photo : chaque vol est un canal neuf pour le linter (son départ n'est pas un saut).
+        if (lintOn() && fly) (lintSample(fly, "x", r.x, now), lintSample(fly, "y", r.y, now), lintSample(fly, "width", r.w, now));
         put(r.x, r.y, r.w, r.h, flying.photo, 1, lerp(fromItem ? 2 : 10, 18, detailK), fly ? Math.sin(Math.PI * flyT) * 5 * m * dpr : 0, rot, fromItem ? Math.min(9, 0.04 * Math.min(r.w, r.h)) * (1 - detailK) : 0, fromItem ? 1 : 0);
         if (fly && fly.dir === 1 && flyT >= 1) fly = null;
       }
 
+      // Le linter de mouvement (?presse-lint) : la caméra du mur (px) ; un motif refait garde la place à l'écran.
+      if (lintOn()) (lintSample(root, "x", cam.x, now, !!drag), lintSample(root, "y", cam.y, now, !!drag));
       // Rien n'a changé depuis l'image précédente (le shader ne dépend pas du temps) : ni écriture, ni soumission.
       if (rec.busy) sleep?.wake();
       else if (sleep?.idem(tdata.subarray(0, n * 16), [PW, PH, dpr, wire ? 1 : 0, n])) return;

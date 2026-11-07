@@ -11,6 +11,13 @@
   pointer-events: none;
   z-index: 2;
 }
+/* Sur un téléphone, le verre ne déborde pas sur les côtés (la page défilerait de travers). */
+@media (max-width: 600px) {
+  .x-liquide:not([data-full]) .lq-gl {
+    inset: -60px 0;
+    width: 100%;
+  }
+}
 .x-liquide[data-full] .lq-gl {
   position: fixed;
   inset: 0;
@@ -294,7 +301,14 @@
   font: 500 12px/1.4 var(--f-mono, "IBM Plex Mono", ui-monospace, monospace);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-soft, #55534d);
+  /* Plus sombre (≥ 6:1), et une plaque de papier : la légende reste lisible si une photo passe derrière. */
+  color: #3d3b36;
+  position: relative;
+  z-index: 1;
+  padding: 2px 6px;
+  margin-left: -4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--paper, #f4f3ef) 90%, transparent);
 }
 a.lq-cap {
   text-decoration: none;

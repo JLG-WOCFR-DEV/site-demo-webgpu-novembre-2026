@@ -92,6 +92,8 @@ textarea {
   display: flex;
   align-items: center;
   gap: 9px;
+  /* Cible de 24 px au moins (WCAG 2.2). */
+  min-height: 28px;
   color: var(--fg);
   font: 800 15px/1 var(--sans);
   font-variation-settings: "wdth" 112;

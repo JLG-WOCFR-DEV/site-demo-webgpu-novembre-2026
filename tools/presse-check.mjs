@@ -62,6 +62,7 @@ async function contrast(page) {
     await page.waitForTimeout(700);
     const items = await page.evaluate(() => {
       const out = [];
+      const px = Object.assign(document.createElement("canvas"), { width: 1, height: 1 }).getContext("2d", { willReadFrequently: true });
       const vis = (el) => {
         for (let e = el; e; e = e.parentElement) {
           const cs = getComputedStyle(e);
@@ -75,10 +76,18 @@ async function contrast(page) {
         const r = el.getBoundingClientRect();
         if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
         if (!vis(el)) continue;
+        // Recouvert par autre chose (une pastille fixe, un panneau) : le fond mesuré serait celui du couvercle.
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (top && top !== el && !el.contains(top) && !top.contains(el) && !top.closest("canvas, [aria-hidden=true]") && getComputedStyle(top).pointerEvents !== "none") continue;
         const cs = getComputedStyle(el);
-        const m = cs.color.match(/rgba?\(([^)]+)\)/);
-        const fill = cs.webkitTextFillColor?.match(/rgba?\(([^)]+)\)/);
-        const c = (fill && !/,\s*0\)$/.test(fill[0]) ? fill[1] : m?.[1] ?? "0,0,0").split(",").map(Number);
+        // N'importe quelle couleur CSS (rgb, oklab, color-mix, color(…)) : on la peint sur un pixel et on la relit.
+        const fillColor = cs.webkitTextFillColor && !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.webkitTextFillColor) ? cs.webkitTextFillColor : cs.color;
+        px.clearRect(0, 0, 1, 1);
+        px.fillStyle = "#000";
+        px.fillStyle = fillColor;
+        px.fillRect(0, 0, 1, 1);
+        const d = px.getImageData(0, 0, 1, 1).data;
+        const c = [d[0], d[1], d[2], d[3] / 255];
         out.push({ sel: `${el.tagName.toLowerCase()}${el.className && typeof el.className === "string" ? "." + el.className.split(/\s+/)[0] : ""}`, text: el.textContent.trim().slice(0, 40), r: [r.left, r.top, r.width, r.height], c, size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight) || 400 });
       }
       return out;
@@ -155,6 +164,9 @@ async function layout(page) {
     for (const el of document.querySelectorAll("body *")) {
       const cs = getComputedStyle(el);
       if (!/(hidden|clip)/.test(cs.overflowX) || cs.textOverflow === "ellipsis" || el.closest(".sr-only, [aria-hidden=true]")) continue;
+      // Le motif « visuellement caché » (texte pour lecteurs d'écran) : découpé exprès.
+      const rb = el.getBoundingClientRect();
+      if (cs.clipPath !== "none" || (cs.clip && cs.clip !== "auto") || (rb.width <= 2 && rb.height <= 2)) continue;
       const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.data.trim());
       if (own && el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) res.clipped.push(`${desc(el)} « ${el.textContent.trim().slice(0, 30)} »`);
     }
@@ -162,6 +174,17 @@ async function layout(page) {
       const r = e.getBoundingClientRect();
       // Un champ rendu invisible (opacité nulle) dont l'étiquette est la cible n'est pas une cible.
       const cs = getComputedStyle(e);
+      // Découpé par un ancêtre (overflow) : hors de sa boîte, il n'est ni visible ni cliquable.
+      for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) {
+        if (getComputedStyle(p).overflowX === "visible") continue;
+        const q = p.getBoundingClientRect();
+        if (Math.min(r.right, q.right) - Math.max(r.left, q.left) < 4 || Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) < 4) return false;
+      }
+      // Le contenu d'un <details> fermé n'est ni visible ni cliquable.
+      const det = e.closest("details");
+      if (det && !det.open && !e.closest("summary")) return false;
+      // Entièrement au-dessus de la page (un lien d'évitement qui n'apparaît qu'au focus) : pas une cible tant qu'il est caché.
+      if (r.bottom <= 0 && window.scrollY === 0) return false;
       return r.width > 0 && r.height > 0 && !e.closest("[hidden], .sr-only") && cs.visibility !== "hidden" && Number(cs.opacity) >= 0.05;
     });
     if (narrow)
@@ -169,18 +192,21 @@ async function layout(page) {
         const r = e.getBoundingClientRect();
         // Exception WCAG : un lien dans une phrase.
         const inline = e.tagName === "A" && getComputedStyle(e).display === "inline" && e.parentElement && /^(P|LI|SPAN|TD)$/.test(e.parentElement.tagName);
-        if (!inline && (r.width < 24 || r.height < 24)) res.small.push(`${desc(e)} ${Math.round(r.width)}×${Math.round(r.height)}`);
+        // Une case ou un bouton radio : c'est son étiquette qu'on vise (un clic dessus coche).
+        const lab = /^(checkbox|radio)$/.test(e.type) ? (e.closest("label") ?? (e.id ? document.querySelector(`label[for="${e.id}"]`) : null)) : null;
+        const rr = lab ? lab.getBoundingClientRect() : r;
+        if (!inline && (rr.width < 24 || rr.height < 24)) res.small.push(`${desc(e)} ${Math.round(rr.width)}×${Math.round(rr.height)}`);
       }
     for (let i = 0; i < targets.length; i++)
       for (let j = i + 1; j < targets.length; j++) {
         const a = targets[i];
         const b = targets[j];
         if (a.contains(b) || b.contains(a)) continue;
-        const p = a.getBoundingClientRect();
-        const q = b.getBoundingClientRect();
-        const ix = Math.min(p.right, q.right) - Math.max(p.left, q.left);
-        const iy = Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top);
-        if (ix > 4 && iy > 4) res.overlap.push(`${desc(a)} / ${desc(b)}`);
+        // Un lien sur deux lignes : on compare ses morceaux de ligne, pas son rectangle englobant.
+        const hit = [...a.getClientRects()].some((p) =>
+          [...b.getClientRects()].some((q) => Math.min(p.right, q.right) - Math.max(p.left, q.left) > 4 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 4),
+        );
+        if (hit) res.overlap.push(`${desc(a)} / ${desc(b)}`);
       }
     for (const k of Object.keys(res)) res[k] = [...new Set(res[k])];
     return res;

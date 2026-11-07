@@ -96,8 +96,13 @@ body.pd {
 .pd-table code {
   font: 0.9em "IBM Plex Mono", monospace;
 }
+/* Une colonne de grille ne doit pas s'élargir à la ligne de code la plus longue : le bloc défile à l'intérieur. */
+.pd-sec > * {
+  min-width: 0;
+}
 .pd-code {
   overflow-x: auto;
+  max-width: 100%;
   margin: 16px 0 0;
   padding: 18px 20px;
   border: 1px solid var(--rule);

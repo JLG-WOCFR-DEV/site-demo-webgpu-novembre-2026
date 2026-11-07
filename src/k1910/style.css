@@ -39,14 +39,15 @@ body.k {
 .k-skip {
   position: absolute;
   left: 16px;
-  top: -60px;
+  top: 12px;
+  transform: translateY(calc(-100% - 24px));
   padding: 8px 14px;
   background: var(--k-paper);
   color: var(--k-ink);
   z-index: 10;
 }
 .k-skip:focus {
-  top: 12px;
+  transform: none;
 }
 
 .k-sr {

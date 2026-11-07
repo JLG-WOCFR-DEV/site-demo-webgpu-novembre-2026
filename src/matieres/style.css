@@ -25,7 +25,8 @@ body.mt {
   font: 500 12px/1.4 "IBM Plex Mono", monospace;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--spot);
+  /* Sur la nuit, un rouge éclairci (6,4:1). */
+  color: #f06a4b;
 }
 .mt-title {
   margin: 0;
@@ -79,7 +80,7 @@ body.mt {
 }
 .mt-credit {
   font: 11px/1.4 "IBM Plex Mono", monospace !important;
-  color: #8d8a82 !important;
+  color: #625f58 !important;
   margin: 10px 0 0 !important;
 }
 .mt-tools {
