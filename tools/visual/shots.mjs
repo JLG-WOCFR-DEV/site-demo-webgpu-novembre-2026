@@ -2,7 +2,9 @@
 // SwiftShader, une page lourde coûte environ une seconde par image, d'où des comptes modestes. `before` est joué dans la page (défilement, clic, réglage) avant les dernières
 // images ; `frames` : images d'horloge factice avant cela (60 = 1 s).
 export const SHOTS = [
-  { page: "index", frames: 90 },
+  // Index : l'intro imprime le titre lettre à lettre, et son instant dépend du temps réel (atlas, fontes) — la capture
+  // tombait tantôt à mi-course, tantôt avant l'impression. Mouvement réduit : l'état final, sans intro, à coup sûr.
+  { page: "index", frames: 90, reducedMotion: true },
   { page: "liquide", frames: 60 },
   { page: "grille", frames: 120 },
   { page: "galerie", frames: 120 },
@@ -11,7 +13,9 @@ export const SHOTS = [
   { page: "orbite", frames: 90 },
   // Presse : l'intro et les révélations finissent avant la capture (à 90 images, elle tombait à mi-course ou finie selon
   // la charge de la machine : capture instable).
-  { page: "presse", frames: 300 },
+  // Presse : l'impression du titre attend son atlas (temps réel) ; on le laisse se faire horloge arrêtée, puis l'intro
+  // se déroule entière. (Le mouvement réduit n'irait pas : la page reste alors en HTML, comme sans WebGPU.)
+  { page: "presse", frames: 60, settle: 5000, after: 240 },
   { page: "matieres", name: "paillettes", frames: 150, before: () => document.querySelector("[data-mt=paillettes]").scrollIntoView(), settle: 6000 },
   { page: "matieres", name: "trio", frames: 30, before: () => document.querySelector(".mt-trio").scrollIntoView({ block: "center" }), settle: 3000, ready: ".x-matiere.is-gl ~ .x-matiere.is-gl ~ .x-matiere.is-gl", after: 90 },
   { page: "matieres", name: "phase", frames: 60, before: () => document.querySelector("[data-mt=phase]").scrollIntoView(), settle: 6000, after: 90 },
