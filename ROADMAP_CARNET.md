@@ -1,29 +1,34 @@
 # Carnet — roadmap technique
 
-> Statut : proposition à relire (revue Codex demandée). Rédigée le 7 novembre 2026.
+> Statut : **v2**, après la contre-revue de Codex du 7 novembre 2026 (suivi point par point en annexe A).
 > Branche : `carnet/v0`. Code existant : `carnet.html`, `carnet-banc.html`, `src/carnet/`, `src/presse/lib.ts`.
 > Brief produit (positionnement, esthétique, features) : document « Carnet — brief produit », hors dépôt.
 
 ## 0. En une phrase
 
-Carnet est un bullet journal à l'esthétique papier, Web + Android d'abord, écrit **en Rust à environ 90 %** :
-le modèle et la logique dans `carnet-core`, le rendu GPU dans `presse-rs` (portage de Presse sur wgpu), les effets en
-WGSL partagés ; seule la saisie de texte reste au DOM sur web et Android, parce que c'est la seule façon aujourd'hui
-d'avoir le clavier natif (accents, dictée, correction) sans réécrire un éditeur de texte mobile.
+Carnet est un bullet journal à l'esthétique papier, Web + Android d'abord. La logique et les données sont en Rust
+(`carnet-core`), le rendu GPU est un portage de Presse sur wgpu (`presse-rs`), les effets sont en WGSL ; **la saisie est
+confiée au navigateur, dans un vrai champ visible pendant l'édition**. La priorité de la première itération n'est pas
+le portage : c'est un carnet utilisable chaque jour sur Android, dont les modifications annoncées comme enregistrées
+survivent aux interruptions, dont la sauvegarde se restaure, et dont la chaîne de rendu Rust a fait ses preuves sur le
+texte réel du projet.
 
-## 1. Décisions prises
+« Rust à environ 90 % » et « une couche TS mince » sont des **intentions**, pas des critères de sortie : une couche
+d'adaptation de 1 500 lignes bien délimitée vaut mieux que 500 lignes qui mêlent édition, accessibilité et synchro.
+
+## 1. Décisions
 
 | # | Décision | Raison | Écarté |
 |---|---|---|---|
 | D1 | Cibles : **Web + Android** d'abord ; desktop ensuite ; iOS plus tard | Priorité produit | — |
-| D2 | Android = **PWA installée** depuis Chrome, puis **TWA** (Bubblewrap) pour le Play Store | Pas de couche native à maintenir | Capacitor (choix produit : non) |
-| D3 | **Rust ≈ 90 %** : `carnet-core` (logique, données), `presse-rs` (rendu), WGSL partagé | Un seul moteur de rendu pour web, Android et desktop | Tout-Rust strict : la saisie mobile dans une UI dessinée par le GPU (IME Android, textarea caché sur le web) n'est résolue par personne aujourd'hui |
-| D4 | **Saisie au DOM** sur web/Android (champs `input` / `contenteditable`), relus et repeints par le moteur | Clavier natif garanti, accessibilité et sélection du navigateur | Champ de texte maison en GPU |
-| D5 | Données en **CRDT yrs** (port Rust de Yjs), compilé en wasm | Local-first, synchro sans serveur qui lit, format Yjs interopérable | Journal d'opérations LWW maison ; y-octo (encore v0.1, sous-documents en cours) |
-| D6 | **Desktop : Rune** (wgpu), qui accueille `presse-rs` par son hook `Compositor` | Rendu GPU, texte et ressorts maison, accès wgpu complet | GPUI + GPUI Kit (pas d'effets intégrés) ; NSH (shaders limités à un `shade(uv)` sans textures) |
-| D7 | Effets en **WGSL**, contrat déterministe `(temps, graine, paramètres)` | Écrits une fois, joués par Presse TS, `presse-rs` et Rune | Three.js + TSL (second moteur à côté de Presse) |
-| D8 | Rendu **à la demande** : aucune image quand rien ne bouge | Application ouverte toute la journée sur un téléphone | Boucle permanente |
-| D9 | Pas de React pour l'instant : réconciliation par clé faite main (`src/carnet/view.ts`) | Presse rejoue l'apparition à l'encre de tout élément neuf : il faut contrôler l'identité des éléments | À réévaluer en P4 si la vue grossit |
+| D2 | Android = **PWA installée** depuis Chrome, puis **TWA** pour le Play Store | Pas de seconde interface native. La TWA reste un projet Android généré par Bubblewrap, à construire, signer et lier au site (Digital Asset Links) : une maintenance de distribution, pas de code applicatif | Capacitor (choix produit : non) |
+| D3 | Logique et données en **Rust** (`carnet-core`), rendu en **Rust** (`presse-rs`), effets en WGSL | Un seul moteur de rendu pour web, Android et desktop | — |
+| D4 | **Saisie au navigateur** sur web et Android pour le MVP | La saisie entièrement dessinée par le GPU n'est pas validée pour nos versions et nos claviers : winit 0.30 ne livre pas `WindowEvent::Ime` sur Android ; `android-activity` expose l'état de texte, de sélection et de composition, mais le raccordement reste à écrire et à tester (spike S1). Déléguer à des champs natifs depuis Rust est possible (NSH le fait avec `EditText`) : c'est une option pour un futur client natif, pas pour le MVP | Champ de texte dessiné par le GPU sur mobile |
+| D5 | Données en **CRDT yrs**, **un document logique pour les entrées** ; documents séparés pour les pages graphiques ; médias hors CRDT (§ 3.2) | Une entrée garde son identité quand elle change de jour ou apparaît dans plusieurs vues ; la migration devient une transaction dans un seul document | Un document par semaine et par mois (v1 de ce plan) : migration entre documents non atomique, voir annexe A, Q3 |
+| D6 | **Desktop : Rune**, candidat à prototyper, révision figée | Le hook `Compositor` donne device, queue, encodeur et cible : on peut y jouer les passes de `presse-rs`, compute compris | GPUI + GPUI Kit (pas de passes GPU d'application documentées) ; NSH : ses shaders lisent le contenu et l'arrière-plan des vues (`sample_content`, `sample_backdrop`, `sample_from`, `sample_to`, v0.4.0) mais rien ne montre qu'il accueille un pipeline compute arbitraire |
+| D7 | Effets en **WGSL**, contrat versionné (§ 3.5) | Écrits une fois, joués par Presse TS, `presse-rs` et Rune | Three.js + TSL (second moteur) |
+| D8 | Rendu **à la demande** ; on mesure aussi les réveils CPU, capteurs et tâches de fond | Application ouverte toute la journée sur un téléphone | Boucle permanente |
+| D9 | Vues sans React pour l'instant | Une pile de moins. L'argument « contrôler l'identité des éléments » ne suffit pas : React conserve les éléments par type, position et clé. **À comparer en P4a** sur nos transitions (migration, vol, encre) avant de figer | — |
 
 ## 2. État actuel (P0, fait)
 
@@ -31,320 +36,383 @@ d'avoir le clavier natif (accents, dictée, correction) sans réécrire un édit
 |---|---|---|
 | Semaine en double page, vue jour, saisie par signifiants, cycle d'état, rature | `src/carnet/view.ts`, `main.ts` | Playwright, SwiftShader |
 | Migration : morphing des lettres d'un jour à l'autre | `data-gl-morph-id` / `data-gl-morph-from`, `src/gpu/text.ts` | Vidéo à horloge virtuelle |
-| Suggestions au crayon (veille, agenda d'exemple), crayon → encre | `src/carnet/model.ts` | Playwright |
-| Vol semaine ↔ jour (lignes + contour + titre) | `src/carnet/flight.ts` | Vidéo à horloge virtuelle |
-| Mode à la demande du moteur, `data-gl-ignore` | `src/gpu/engine.ts`, `governor.ts`, `src/presse/index.ts` | **0 image demandée en 3 s de repos** |
+| Suggestions au crayon, crayon → encre | `src/carnet/model.ts` | Playwright |
+| Vol semaine ↔ jour | `src/carnet/flight.ts` | Vidéo à horloge virtuelle |
+| Mode à la demande du moteur, `data-gl-ignore` | `src/gpu/engine.ts`, `governor.ts`, `src/presse/index.ts` | 0 image demandée en 3 s de repos (SwiftShader) ; réveils CPU non mesurés |
 | API publique de Presse | `src/presse/lib.ts` | Typage |
-| Banc de mesure Android | `carnet-banc.html`, `src/carnet/banc.ts` | **Non** : en rendu logiciel le compositeur tombe à quelques images/s ; chiffres réels attendus d'un appareil |
-| Données | `localStorage` (`carnet.v0`) | — |
+| Banc de mesure | `carnet-banc.html` | **Non** : chiffres attendus d'un appareil |
+| Données | `localStorage` (`carnet.v0`), saisie en `contenteditable` transparent | — |
 
-Prototype HTML de design (autocollants, mois, semaine) : hors dépôt, sert de référence visuelle.
+Ce qui n'est pas établi à ce stade : performances sur téléphone, comportement de la saisie avec un clavier mobile,
+TalkBack, tenue des données à une interruption.
 
 ## 3. Architecture cible
 
 ```text
-                ┌──────────────────────── web / Android (PWA, TWA) ────────────────────────┐
-                │  DOM : vues, champs de saisie, accessibilité        TS mince (≈ 500 lignes) │
-                │        │ commandes / modèles de vue                     │ boîtes, glyphes   │
-                │  carnet-wasm ── carnet-core ──┐                 presse-rs (wasm, WebGPU)  │
-                └───────────────────────────────┼──────────────────────────┼───────────────┘
-                                                │                          │
-   shaders/ (WGSL, contrat temps+graine) ───────┼──────────────────────────┤
-                                                │                          │
-                ┌───────────────────────────────┼──────── desktop ─────────┼───────────────┐
-                │  carnet-desktop (Rune) ── carnet-core            presse-rs (natif, wgpu) │
-                │  saisie, mise en page : Rune              hôte : Rune Compositor         │
-                └──────────────────────────────────────────────────────────────────────────┘
-                                   relais de synchro : mises à jour yrs chiffrées (P6)
+                ┌──────────────────────── web / Android (PWA, TWA) ───────────────────────────┐
+                │  DOM : vues, champ d'édition visible, accessibilité          coquille TS        │
+                │      │ commandes ⇄ modèles de vue (serde)        │ scène (tampons typés)        │
+                │  carnet-core.wasm ◄── effets d'E/S ──► hôte    presse-rs.wasm (WebGPU),         │
+                │                                                chargé après le core             │
+                └──────────────────────────────────────────────────────────────────────────────┘
+   shaders/ (WGSL, contrat versionné) ── partagé par Presse TS, presse-rs, Rune
+                ┌──────────────────────────────── desktop (P7) ──────────────────────────────────┐
+                │  carnet-desktop (Rune) ── carnet-core            presse-rs (wgpu) via Compositor │
+                └──────────────────────────────────────────────────────────────────────────────┘
+                     relais de synchro (P6) : journal chiffré, application sur les appareils
 ```
 
 ### 3.1 Dépôt
 
-P1 à P3 dans ce dépôt, workspace Cargo sous `crates/` (Presse TS y vit déjà et sert de référence de parité).
-Extraction en deux dépôts (`presse`, `carnet`) à la fin de P3, quand `presse-rs` tient seul. *Question Q1.*
+Un seul dépôt et un workspace Cargo (`crates/`) pendant P1 à P3 : le modèle, les interfaces, le rendu, les shaders et
+les tests changent ensemble. **Revue de l'opportunité d'extraire Presse à la fin de P3**, sur quatre conditions :
+son interface ne dépend plus d'aucun concept de Carnet ; un exemple autonome l'exerce ; ses tests tournent sans charger
+l'application ; son évolution justifie un cycle de publication distinct.
 
 ```text
 crates/
-  carnet-core/      logique pure, sans E/S
-  carnet-wasm/      frontière wasm-bindgen, persistance navigateur
-  presse-rs/        moteur de rendu (wgpu), sans dépendance au DOM
-  presse-web/       hôte web de presse-rs (web-sys) : lecture des boîtes et glyphes, boucle d'images
+  carnet-core/      logique, modèle yrs, règles produit ; produit des décisions et des effets d'E/S
+  carnet-wasm/      frontière wasm-bindgen (serde-wasm-bindgen), un .wasm
+  presse-rs/        moteur de rendu (wgpu), sans dépendance au DOM ni à Carnet
+  presse-web/       hôte web de presse-rs, un second .wasm chargé après le core
   carnet-desktop/   application Rune (P7)
   spike-textfield/  spike S1 (jetable)
-shaders/            WGSL partagé + manifeste des effets
-src/carnet/         coquille web (TS) : vues DOM, saisie, service worker
+shaders/            WGSL + manifeste des effets
+src/carnet/         coquille web : vues DOM, édition, stockage, service worker
 ```
 
-### 3.2 `carnet-core`
+Deux crates ne font pas forcément deux fichiers wasm : on garde explicitement **deux modules** pour charger le rendu
+après le core, sans mémoire partagée entre eux.
 
-**Modèle de documents yrs.** Un document par page, pour charger et synchroniser par morceaux :
+### 3.2 Modèle de données
 
-| Document | Clé | Contenu |
+**Documents.**
+
+| Document | Contenu | Pourquoi séparé |
 |---|---|---|
-| Index | `root` | liste des pages, réglages, suggestions écartées (`dedupeKey`), collections |
-| Semaine | `w:<lundi AAAA-MM-JJ>` | entrées des 7 jours, notes de semaine, blocs, autocollants, traits |
-| Mois | `m:<AAAA-MM>` | page libre du mois (entrées datées ou non), couverture, autocollants |
-| Collection | `c:<ulid>` | blocs libres |
+| `notebook` (un seul Y.Doc) | entrées (tâches, événements, notes), notes de semaine et de mois, collections (métadonnées), suggestions écartées, réglages | Identité stable, migration atomique, vues multiples |
+| `page:<clé>` (un Y.Doc par page graphique) | traits, autocollants, tirages, ancrés aux blocs de la page | Lourds, liés à une page, ne migrent pas |
+| Médias | fichiers dans OPFS, adressés par SHA-256 | Hors CRDT ; le document ne porte que la référence |
 
-- Les entrées sont dans une `Y.Map` indexée par ULID, **pas dans un `Y.Array`** : l'ordre se calcule (heure, puis
-  `createdAt`), ce qui évite les conflits d'insertions concurrentes.
-- Champs d'une entrée : `kind`, `state`, `marks`, `text`, `time`, `day` | `date`, `createdAt`, `migratedTo`, `origin`,
-  `sticker`. Suppression douce (`deletedAt`).
-- Traits : `Y.Array` de blobs par bloc (points quantifiés en dixièmes de case, delta-encodés, pression sur 8 bits).
-- Autocollants : `Y.Map` par ULID, **ancrés à un bloc** (`anchor`, `dx`, `dy` locaux, `rot`, `size`, `sym`, `season`).
-- **Migration entre deux semaines** = deux documents. Pas d'atomicité entre documents : on écrit d'abord la copie
-  (ULID dérivé de l'original, donc idempotente), puis `migratedTo` sur l'original. Un état intermédiaire montre au
-  pire la tâche deux fois, jamais zéro. *Question Q3.*
+On ne découpe `notebook` par période qu'après mesure d'un besoin réel (mémoire, temps de chargement, taille de synchro)
+sur un carnet de référence (§ 5).
 
-**API.** Commandes (`add_entry`, `edit_text`, `cycle_state`, `migrate`, `keep_suggestion`, `dismiss`,
-`place_sticker`, `move_sticker`, `add_stroke`…), requêtes qui rendent des **modèles de vue** (`week_view(lundi)`,
-`day_view(jour)`, `month_view(mois)`), événements (pages changées). Aucune E/S : traits `Storage`, `Clock`,
-`PhotoSource`, `WeatherSource`, `CalendarSource` fournis par l'hôte.
+**Une entrée** est une `Y.Map` indexée par ULID dans `entries`, dont chaque champ fusionne indépendamment :
 
-**Suggestions.** Moteur dans le core : sources branchables, normalisation, dédoublonnage (`dedupeKey`), score,
-5 par jour au plus (3 par jour en vue semaine). Sources P2 : veille, prévu ce mois, il y a un an. P4 : photos EXIF,
-météo (Open-Meteo, coordonnées arrondies à ≈ 100 m), ICS.
+| Champ | Type yrs | Règle |
+|---|---|---|
+| `text` | `Y.Text` (`TextRef`), offsets **UTF-16** (`OffsetKind::Utf16`, convention du DOM) | Modifié par insertions et suppressions calculées depuis les événements d'entrée, **jamais en remplaçant toute la chaîne** |
+| `kind`, `state`, `marks` | valeurs simples, une clé chacune | Dernier écrivain gagnant (règle de `MapRef`), assumée |
+| `day` | date de journal `AAAA-MM-JJ`, sans fuseau | Idem |
+| `time` | heure murale `HH:MM`, optionnelle | Idem |
+| `scope` | `day` / `week:<lundi>` / `month:<AAAA-MM>` / `collection:<ulid>` | Où l'entrée vit |
+| `createdAt` | instant UTC (ms) | Sert à l'ordre seulement |
+| `trail` | `Y.Array` de `{ day, at }` | Historique des placements : la vue dessine une ligne « > » sur chaque jour quitté |
+| `deletedAt` | instant ou absent | Corbeille de 30 jours, puis purge (politique § 3.7) |
 
-**EXIF.** `kamadak-exif` (pur Rust). Regroupement des photos par heure (écart < 90 min), puis par lieu si le GPS est
-présent.
+- **Ordre affiché** : tri total `(time présent d'abord, time, createdAt, id)` ; l'identifiant départage.
+- **Migration** = une transaction dans `notebook` : `trail.push({ day: ancien, at })`, puis `day = cible`. Plus de
+  copie : l'entrée garde son texte, ses marques et ses éditions. Le rituel du bullet journal (la trace dans la page
+  d'origine) est rendu par la vue à partir de `trail`.
+- **Destinations concurrentes** (téléphone → lundi, ordinateur → mercredi) : `day` converge sur une seule valeur (règle
+  de la map, déterministe) ; les deux placements restent dans `trail`. Comportement accepté, documenté, testé.
+- **Annulation** : `UndoManager` de yrs, limité aux transactions locales ; une suppression passe par la corbeille.
 
-**Tests.** Unitaires ; **proptest** de convergence (deux répliques, mêmes commandes dans un ordre aléatoire avec
-échanges de mises à jour partiels → mêmes modèles de vue) ; idempotence de la migration ; import des données v0.
+**Le core produit des décisions, l'hôte exécute les E/S.** `carnet-core` ne lit ni n'écrit rien : il renvoie des
+effets (« écrire ces mises à jour », « demander la météo du 7 novembre ») ; l'hôte les exécute et lui rend les
+résultats. Testable sans navigateur, portable vers Rune.
 
-### 3.3 `carnet-wasm` (frontière)
+**Règles produit tranchées en P2** (elles touchent le modèle et les sauvegardes) :
 
-- `wasm-bindgen` ; modèles de vue par `serde-wasm-bindgen` ; commandes en appels courts.
-- Persistance : chaque mise à jour yrs est ajoutée à un journal IndexedDB par document ; compaction (fusion des
-  mises à jour) au-delà de N entrées ou à la fermeture. Photos et miniatures dans OPFS.
-- Import unique des données `localStorage` de la v0.
-- Budget : taille du wasm à mesurer dès la semaine 1 de P2 (cible ≤ 400 Ko gzip pour le core seul). *Question Q4.*
-
-### 3.4 `presse-rs`
-
-**Périmètre : ce que Carnet utilise de Presse, rien d'autre.**
-
-| Porté | Pas porté |
+| Sujet | Proposition |
 |---|---|
-| Boucle à la demande, gouverneur de cadence | Plans d'images à matières (lentille, flammes, fluide…) sauf les tirages photo |
-| Atlas SDF (texte courant, précalculé) et MTSDF (titres) | Effets Canvas UI (vhs, glitch, tissu…) |
-| Instances de glyphes, apparition à l'encre, morphing intra- et inter-éléments | Galerie, grille, liquide, orbite, objet |
-| Papier, grain, composition | Transitions d'impression, balayage ASCII |
-| Perte d'appareil GPU et reprise | Capture vidéo (reste dans Presse TS) |
+| Date, heure, instant | Date de journal et heure murale en texte ; instant UTC seulement pour l'ordre et l'audit |
+| Changement de fuseau | Rien ne bouge : une entrée du 7 novembre à 14:00 le reste |
+| « Il y a un an » un 29 février | Les années non bissextiles, le 28 février montre aussi le 29 |
+| Annuler une suppression ou une migration | Annulation immédiate (UndoManager) ; corbeille 30 jours ; une migration se défait par une migration inverse |
+| Entrée affichée dans plusieurs vues | Même ULID partout ; éditer dans la semaine modifie la vue jour |
+| Photo sans date EXIF exploitable | Date du fichier, marquée « date approximative » dans la suggestion |
+| ICS | Import ponctuel d'un fichier pour le MVP ; abonnement actualisé plus tard |
 
-- **Trait d'hôte** :
-  ```rust
-  trait Host {
-      fn scene(&mut self) -> Scene;          // boîtes d'éléments, runs de glyphes (position, couleur, police), ids de morphing
-      fn element_boxes(&mut self, out: &mut [Rect]); // relu à chaque image : seules les boîtes bougent
-      fn request_frame(&mut self);
-      fn now(&self) -> f64;
-  }
-  ```
-  `presse-web` l'implémente sur le DOM, Rune (P7) sur sa propre mise en page.
-- **Mesure des glyphes sur le web.** Aujourd'hui un `Range` par caractère, en TS. Première version : on garde cette
-  mesure en TS et on passe un `Float32Array` à `presse-rs` (zéro copie). La passer en `web-sys` n'a d'intérêt que si
-  le profil le montre. *Question Q5.*
-- **WGSL.** Les gabarits de `src/gpu/wgsl.ts` utilisent des interpolations `${…}` : on les convertit en fichiers
-  `.wgsl` avec constantes `override` ou `const`, validés par naga au build (`build.rs`).
-- **Parité.** `tools/visual` (pixelmatch, SwiftShader, horloge factice, `Math.random` à graine) compare Presse TS et
-  `presse-rs` sur les pages de Carnet. Seuil : ≤ 0,5 % de pixels différents, aucune région > 16 × 16 px.
+### 3.3 Persistance et sauvegarde (P2, avant tout usage réel)
 
-### 3.5 `shaders/` : contrat des effets
+**Contrat d'enregistrement**, affiché tel quel dans l'interface :
+
+| État | Signification | Affichage |
+|---|---|---|
+| modifié | en mémoire | rien |
+| en cours | écriture demandée | rien sous 300 ms, puis discret |
+| enregistré | transaction IndexedDB terminée (`complete`) | discret |
+| échec | transaction en erreur ou quota | visible, avec action |
+| synchronisé (P6) | relais a accusé réception | indicateur de synchro |
+
+- Écriture **pendant l'usage**, transaction par lot de 250 ms au plus : la page peut être gelée ou éliminée en arrière-plan
+  sans traitement final garanti. Évaluer `durability: "strict"` pour les écritures essentielles sur Chrome Android.
+- **Journal + checkpoint** : on compacte un préfixe identifié du journal, puis, dans une seule transaction, on écrit le
+  checkpoint et on supprime ce préfixe seulement. Les mises à jour arrivées pendant le calcul restent.
+- **Plusieurs onglets et PWA + onglet** : un seul écrivain du journal par carnet (Web Locks) ; les autres envoient leurs
+  mises à jour à l'écrivain (BroadcastChannel) et les reçoivent de lui.
+- `navigator.storage.persist()` demandé et son résultat vérifié ; `estimate()` suivi. Ce n'est pas une sauvegarde.
+- **Médias** : écrire le fichier, confirmer l'écriture, puis publier la référence. Un balayage au démarrage repère les
+  références manquantes et les fichiers orphelins.
+- **Sauvegarde restaurable versionnée** (`.carnet`, zip : document yrs complet, pages, médias, manifeste avec versions) et
+  **import**. Test : restauration dans un environnement vide, comparaison des modèles de vue.
+- **Import v0** : on garde l'original `localStorage` tant que la nouvelle représentation n'est pas enregistrée et vérifiée.
+- **Mises à jour de l'application** : versions du service worker, du JS, des wasm et du schéma liées par un manifeste ; pas
+  de `skipWaiting()` forcé pendant qu'une page écrit ; migrations de schéma vers l'avant seulement. Tests : mise à jour avec
+  une page ouverte, saut de plusieurs versions, redémarrage hors ligne.
+
+### 3.4 Frontière wasm
+
+- `serde-wasm-bindgen` pour les commandes, modèles de vue et événements, **par lot** : une vue ou un changement par appel,
+  jamais un appel par élément, jamais toute l'année reconstruite après une frappe.
+- Tampons typés pour les données denses (positions, instances de glyphes, points de traits). Pas de promesse de
+  « zéro copie » : avec des paramètres de type tranche, wasm-bindgen copie dans la mémoire wasm ; une vue sur une
+  allocation déjà dans cette mémoire évite la copie, avec des contraintes de durée de vie et de croissance. On mesure le
+  nombre de copies et leur coût.
+- Mesure des glyphes en TS au départ ; `web-sys` seulement si le profil montre que le gain est là.
+
+### 3.5 `presse-rs`
+
+**Périmètre** : ce que Carnet utilise de Presse (boucle à la demande, gouverneur, atlas SDF/MTSDF, instances de glyphes,
+apparition, morphing intra- et inter-éléments, papier, grain, composition, perte d'appareil). Le reste de Presse n'est pas porté.
+
+**Chaîne de texte : le risque principal.** Un `Range` donne des rectangles, pas des identifiants de glyphes ni le placement
+du moteur typographique ; une plage qui coupe une unité typographique peut rendre les limites de l'unité entière. Le contrat
+« l'hôte fournit des runs de glyphes » doit être prouvé sur : `é` précomposé et `e` + accent combiné ; `œ`, ligatures ;
+espace insécable et fine insécable ; emoji composés ; polices de secours ; lignes longues et changement de largeur.
+Ce que l'atlas ne sait pas représenter correctement est laissé **au DOM** (rendu de secours par élément). Une nouvelle mise
+en page invalide les positions internes des glyphes, pas seulement la boîte.
+
+**Saisie** : pendant l'édition, le navigateur affiche le texte, le curseur et la sélection dans un `<textarea>` visible,
+stylé comme l'encre (même police, même couleur) ; le rendu GPU reprend à la sortie du champ, avec l'apparition à l'encre
+des caractères nouveaux. Pendant une composition, le nœud actif et sa sélection ne sont jamais touchés par la vue.
+`contenteditable` seulement si un besoin produit l'exige (texte riche).
+
+**WGSL** : les gabarits interpolés de `src/gpu/wgsl.ts` deviennent des fichiers `.wgsl` :
+
+| Contenu interpolé | Traitement |
+|---|---|
+| Temps, progression, intensité, paramètres animés | uniforms ou buffers |
+| Valeur fixe du programme | `const` |
+| Variante scalaire fixée par pipeline | `override` |
+| Fonctions, structures, bindings, formats différents | variantes assemblées au build |
+
+Chaque variante est validée par naga au build, puis par la création effective des pipelines dans le navigateur cible
+(ressources, limites, mode compatibilité).
+
+**Parité TS / Rust** : comparaison stricte dans un environnement figé (`tools/visual`, SwiftShader, horloge factice,
+aléatoire à graine). Seuils **calibrés en P3a** sur des paires connues bonnes, complétés par des vérifications
+structurelles (chaque élément a ses glyphes ; aucun élément absent ; alignement texte/DOM à 1 px). Entre appareils, on ne
+promet pas l'identité des pixels (WGSL autorise réassociations et fusions flottantes) : on vérifie alignement, éléments
+présents, lisibilité.
+
+### 3.6 Effets (`shaders/`)
 
 ```wgsl
 struct Fx {
-  time: f32,        // secondes depuis le début de l'effet (horloge virtuelle en capture)
-  seed: f32,        // graine stockée avec l'objet : même rendu sur tous les appareils
-  progress: f32,    // 0 → 1 pour un effet ponctuel ; 1 = état final (mouvement réduit)
+  time: f32,          // secondes depuis le début, horloge virtuelle en capture
+  progress: f32,      // 0 → 1 pour un effet ponctuel
   intensity: f32,
+  seed: u32,          // graine entière
+  version: u32,       // version de l'algorithme
   params: array<vec4f, 4>,
 }
 ```
 
-- Effets de surface : fonction `fn shade(uv: vec2f, fx: Fx) -> vec4f` (compatible avec le contrat `shade(uv)` de
-  NSH et les fills de `rune-fx`).
-- Effets à état (diffusion d'encre, aquarelle) : passes compute avec textures ping-pong, état final précalculable.
-- Manifeste `shaders/effects.toml` : nom, type (`surface` | `compute`), schéma des paramètres, coût mesuré par le banc.
-- On ne stocke jamais de pixels : paramètres + graine, rendu mis en cache localement.
+- Contrat écrit : unités (points ou pixels physiques), espace colorimétrique et alpha (sRGB, **non prémultiplié** en
+  sortie de `shade`), ressources accessibles (textures de contenu, d'arrière-plan), coût maximal.
+- Effets à état (diffusion d'encre, aquarelle) : **pas de simulation fixe**, indépendants du nombre d'images affichées.
+  Mouvement réduit : chemin explicite vers un état final au coût borné (`progress = 1` ne calcule pas les étapes manquantes).
+- Cache : pendant l'animation, textures de travail des blocs concernés ; à la fin, résultat aplati, textures temporaires
+  libérées ; mémoire totale bornée ; éviction des pages éloignées ; **reconstruction** depuis les données enregistrées
+  après éviction ou perte de l'appareil. Clé de cache : contenu (traits et leur ordre), version de l'effet, graine,
+  paramètres, résolution de simulation.
 
-### 3.6 Coquille web / Android
+### 3.7 Synchro chiffrée (P6) : protocole à spécifier avant d'écrire du code
 
-- TS mince : vues DOM (réconciliation par clé), champs de saisie, routage hash, service worker (hors ligne),
-  manifeste PWA. Appelle `carnet-wasm` et `presse-rs`.
-- Sans WebGPU : la page reste son HTML, l'application fonctionne sans effets.
-- TWA (Bubblewrap) en fin de P4 si la publication sur le Play Store est voulue.
+Un relais qui ne voit que des enveloppes chiffrées ne peut pas calculer de différence yrs. Premier protocole :
 
-### 3.7 Synchro (P6)
+- **Relais** : journal chiffré append-only par carnet, curseurs de livraison par appareil. Il ne déchiffre rien.
+- **Appareils** : déchiffrent, appliquent, produisent périodiquement un **snapshot chiffré** qui permet de tronquer le journal.
+- **Nouvel appareil** : dernier snapshot + journal depuis ce point.
+- **Médias** : transfert distinct, chiffré, par empreinte.
+- **Clés** : une **clé de carnet aléatoire** chiffre les données ; elle est protégée par une clé dérivée de la phrase
+  secrète (Argon2id, sel par carnet, paramètres choisis pour les téléphones cibles et versionnés). On peut changer la
+  protection sans rechiffrer le carnet. Clé de récupération imprimable.
+- **Enveloppe** : version de format, identifiant et version de clé, nonce, données associées authentifiées (carnet,
+  document, numéro de séquence, appareil auteur), texte chiffré. Unicité du couple clé/nonce garantie (compteur par appareil
+  ou XChaCha20-Poly1305 à nonce de 192 bits : à trancher dans la spec).
+- **Ce que voit le relais** : identifiants de carnet et de documents, tailles, horaires, adresses réseau des appareils.
+- **Récupération indépendante** : la synchro propage aussi les erreurs ; les sauvegardes `.carnet` restent la parade.
+- La spec (`docs/carnet/sync.md`) est relue avant implémentation.
 
-Relais minimal (Rust, axum) qui stocke des **mises à jour yrs chiffrées** par document ; clé dérivée d'une phrase
-secrète (Argon2id), AES-GCM par mise à jour ; le relais ne voit que des identifiants de documents opaques et des tailles.
+### 3.8 Recette TalkBack et clavier (P1, puis à chaque phase)
 
-## 4. Phases
+| Situation | Résultat attendu |
+|---|---|
+| Exploration tactile | Texte et commandes annoncés à leur emplacement visible |
+| Changement d'état d'une tâche | État annoncé en mots, pas seulement par le symbole |
+| Migration, placement d'un autocollant | Disponibles par boutons ou choix explicite, sans glisser (WCAG 2.5.7) |
+| Saisie | Curseur, sélection, correction, composition utilisables |
+| Clavier physique | Ordre logique, focus visible et jamais masqué (WCAG 2.4.11) |
+| Agrandissement du texte | Mise en page et rendu GPU restent alignés |
+| Perte de WebGPU | Retour immédiat à une interface lisible et opérable |
 
-Estimations pour un développeur assisté d'agents, en semaines de travail. Les portes (critères de sortie) sont
-mesurables ; on ne passe pas une porte « presque ».
+## 4. Itérations et phases
 
-```mermaid
-gantt
-  dateFormat YYYY-MM-DD
-  axisFormat %d/%m
-  section Terrain
-  P1 Validation Android        :p1, 2026-11-09, 7d
-  S1 Spike saisie Rust Android :s1, 2026-12-07, 7d
-  section Fondations
-  P2 carnet-core + wasm        :p2, 2026-11-09, 28d
-  P3 presse-rs                 :p3, after p2, 42d
-  section Produit
-  P4 MVP fonctionnel           :p4, after p3, 35d
-  P5 Effets                    :p5, after p4, 21d
-  P6 Synchro chiffrée          :p6, after p5, 28d
-  section Desktop
-  P7 Rune (spike + appli)     :p7, after p6, 35d
-```
+### 4.1 Itération 1 — « un carnet de confiance sur Android »
 
-Total : ≈ 27 semaines jusqu'au desktop ; ≈ 15 semaines jusqu'au MVP Web + Android en Rust (P2 + P3 + P4).
-P1 et S1 sont dessinés en parallèle mais prennent le même développeur : compter une semaine de plus chacun.
+Objectifs, dans l'ordre :
 
-### P1 — Validation terrain Android (1 semaine, en parallèle de P2)
+1. Trancher le modèle d'entrée (§ 3.2) : identité stable, texte partagé, migrations concurrentes.
+2. Installer une version sur un téléphone réel ; vérifier saisie, sélection et TalkBack.
+3. Construire journal, reprise et restauration, **avant** les 14 jours d'usage.
+4. Réaliser P3a sur une scène représentative : vrai texte, une transition, reprise après perte GPU.
+5. Réviser les estimations à partir des résultats.
 
-But : remplacer les hypothèses par des mesures sur un vrai téléphone avant d'investir.
+**Jalon** : un carnet utilisable chaque jour sur Android, dont les modifications annoncées comme enregistrées survivent
+aux interruptions testées, dont la sauvegarde se restaure, et dont la chaîne de rendu Rust a fait ses preuves sur le texte
+réel du projet.
 
-- [ ] Manifeste PWA + service worker minimal : Carnet v0 installable depuis Chrome Android
-- [ ] Banc (`carnet-banc.html`) sur un Android milieu de gamme : 5 tests sur secteur, batterie sur 2 min
-- [ ] Photos : la date EXIF et le **GPS** survivent-ils au sélecteur de fichiers dans la PWA installée ?
-- [ ] Recette de saisie (reprise de la recette web de Rune) : accents, composition, remplacement prédictif,
-      correction automatique, dictée, Entrée sur mobile, collage, sélection, dans les champs DOM sous le canvas
-- [ ] WebGPU disponible ? Mode compatibilité nécessaire ?
+#### P1 — Terrain Android, renforcé (1,5 semaine)
 
-**Sortie** : `docs/carnet/terrain-android.json` (résultats du banc) + verdicts. Budget d'effets fixé (temps GPU par
-image disponible pour P5). Décision sur le regroupement des photos (heure seule ou heure + lieu).
+- [ ] Manifeste PWA + service worker minimal ; installation depuis Chrome Android
+- [ ] Banc sur un Android milieu de gamme (protocole § 5)
+- [ ] **WebGPU** : capacités réellement fournies (cœur ou mode compatibilité, limites) ; chemin offert par la version de
+      wgpu retenue
+- [ ] **Saisie** (champ DOM) : accents, composition, remplacement prédictif, correction automatique, dictée, Entrée,
+      collage, sélection
+- [ ] **TalkBack** : recette du § 3.8
+- [ ] **Interruptions** : passage en arrière-plan, élimination de la page par le système, coupure pendant une écriture,
+      redémarrage hors ligne
+- [ ] Photos : date EXIF et GPS après le sélecteur de fichiers, dans la PWA installée
 
-### P2 — `carnet-core` + `carnet-wasm` (4 semaines)
+**Sortie** : `docs/carnet/terrain-android.json` + verdicts ; budget d'effets ; liste des défauts de saisie et d'accessibilité
+à corriger en P2.
 
-- [ ] Workspace Cargo, CI (fmt, clippy, tests, `wasm-pack test --headless`)
-- [ ] Modèle yrs (§ 3.2), commandes, modèles de vue semaine / jour / mois
+#### P2 — `carnet-core`, persistance, sauvegarde (4 à 6 semaines)
+
+- [ ] Workspace, CI (fmt, clippy, tests natifs et wasm)
+- [ ] Modèle § 3.2, règles produit, commandes, modèles de vue semaine / jour / mois
+- [ ] Édition : `<textarea>` visible pendant l'édition, diff → opérations `Y.Text`, offsets UTF-16
 - [ ] Suggestions : veille, prévu ce mois, il y a un an
-- [ ] Persistance IndexedDB (journal + compaction), import `localStorage` v0
-- [ ] Frontière wasm ; la coquille TS de la v0 passe sur `carnet-wasm` (plus aucune logique métier en TS)
-- [ ] Tests : unitaires, proptest de convergence, idempotence de migration
-- [ ] Taille du wasm et temps de démarrage mesurés
+- [ ] Persistance § 3.3 complète (contrat, journal, compaction, verrou multi-onglets, médias, mises à jour)
+- [ ] Sauvegarde `.carnet` et restauration ; import v0 conservateur
+- [ ] Tests de convergence reformulés (§ 4.3)
 
-**Sortie** : v0 identique à l'œil, mais toute la logique en Rust ; 2 répliques convergent sous proptest
-(≥ 10 000 cas) ; démarrage à froid ≤ 300 ms sur l'Android de P1 ; **14 jours d'usage réel** par Jérôme (porte du
-brief : le rituel tient).
+**Sortie** : la v0 tourne sur `carnet-core` sans régression visible ; tests § 4.3 verts ; restauration vérifiée dans un
+environnement vide ; protocole d'interruptions de P1 rejoué sans perte ; **puis 14 jours d'usage réel** (en parallèle de P3a
+et P4a).
 
-### S1 — Spike « champ de texte Rust sur Android » (1 semaine, jetable)
+#### P3a — Chemin de rendu Rust, court (2 semaines)
 
-But : savoir si le tout-Rust strict devient atteignable, sans le payer maintenant.
+- [ ] `presse-rs` + `presse-web` sur WebGPU (wasm), chargés après le core
+- [ ] Scène représentative : une semaine réelle avec le corpus typographique du § 3.5, rendu de secours DOM
+- [ ] Une transition : le morphing de migration
+- [ ] Perte d'appareil et reconstruction
+- [ ] Mesures § 5 ; calibration des seuils de parité
 
-- [ ] winit + `android-activity` + wgpu + parley : un champ de texte multiligne dessiné par le GPU
-- [ ] Recette de P1 rejouée dans ce champ
+**Sortie** : la chaîne de texte tient sur le corpus (ou son périmètre de secours est connu) ; taille, initialisation et
+temps par image mesurés sur le téléphone de P1 ; **réestimation de P3b**.
 
-**Sortie** : tableau réussi / échoué par point de la recette. Tout vert → la question du 100 % Rust revient en
-fin de P4. Un seul rouge sur accents, dictée ou correction → on n'y revient pas avant que Rune ou winit le règlent.
+### 4.2 Suite
 
-### P3 — `presse-rs` (6 semaines)
+| Phase | Contenu | Charge | Dépend de |
+|---|---|---|---|
+| P4a — Essentiel | Semaine, jour, mois (calendrier + page libre), migrations avec `trail`, collections prioritaires, alternatives aux glisser-déposer ; comparaison React / vues maison (D9) | 3 sem. | P2 |
+| P3b — Portage du rendu | Reste du périmètre § 3.5 ; Presse TS n'est plus chargé par Carnet | 4 à 8 sem. (à réestimer après P3a) | P3a |
+| P4b — Enrichissements | Dessin à la pression, pages graphiques, autocollants ancrés, photos, météo, ICS (import), tracker, TWA | 3 à 4 sem. | P4a, P3b |
+| P5 — Effets | Contrat § 3.6, P0 (encre, crayon → encre, papier éclairé), P1 selon budget, cache et reconstruction | 3 sem. | P3b |
+| P6 — Synchro | Spec § 3.7 relue (1 sem.), puis implémentation | 5 à 7 sem. | P4b, modèle économique tranché |
+| P7 — Desktop Rune | Prototype d'intégration (1 sem.), puis application | 5 sem. | P5, P6 |
+| S1 — Spike saisie Rust Android | winit + `android-activity` (état texte, sélection, composition) + wgpu + parley ; recette de P1 | 1 sem. | — (quand un créneau se libère) |
 
-- [ ] Semaine 1 : squelette wgpu sur wasm (WebGPU), triangle + papier ; **taille du wasm et temps d'init mesurés**
-      (porte intermédiaire : si l'ensemble dépasse 1,5 Mo gzip ou 500 ms d'init sur l'Android de P1, on revoit le
-      périmètre avant d'aller plus loin)
-- [ ] Trait `Host`, `presse-web`, boucle à la demande, gouverneur
-- [ ] Conversion des gabarits WGSL utilisés (§ 3.4) en `.wgsl` validés par naga
-- [ ] Atlas SDF/MTSDF (fichiers précalculés de `tools/bake.mjs`, `tools/msdf.py`), instances de glyphes, apparition
-- [ ] Morphing intra-élément et inter-éléments, y compris la survie à une nouvelle mise en page
-- [ ] Perte d'appareil et reprise
-- [ ] Banc rejoué sur `presse-rs`
+**Sortie P4b (MVP)** : **30 jours d'usage réel** sur Android, aucune perte de données, restauration testée chaque semaine,
+recette TalkBack et clavier verte.
 
-**Sortie** : parité visuelle (§ 3.4) sur semaine, jour, migration, vol ; temps par image ≤ Presse TS sur l'Android
-de P1 ; 0 image au repos ; Carnet tourne sur `presse-rs`, Presse TS n'est plus chargé par Carnet.
+### 4.3 Tests de convergence (P2)
 
-### P4 — MVP fonctionnel (5 semaines)
+On génère des **commandes valides** sur plusieurs répliques (chacune sur son état observé), puis on perturbe la livraison
+des **mises à jour produites** : ordre aléatoire, doublons, retards, coupures. Après échange complet, on vérifie séparément :
 
-- [ ] Mois en double page : calendrier + page libre ; entrées datées qui remontent au crayon ; migration mensuelle
-- [ ] Vue jour complète ; index ; collections (blocs libres)
-- [ ] Canevas + blocs ancrés : traits à la pression (Pointer Events), autocollants ancrés aux blocs (fin du
-      problème de placement sur mobile du prototype)
-- [ ] Planches d'autocollants (saisons, activités, rendez-vous) ; mini-autocollant deviné sur les événements
-- [ ] Suggestions photos EXIF (selon P1), météo, ICS
-- [ ] Tracker dessiné, colorié selon les données (sans aquarelle : elle arrive en P5)
-- [ ] Export Markdown + JSON ; hors ligne complet ; TWA si voulu
+1. convergence des données (états yrs identiques) ;
+2. règles métier (une entrée a un seul `day` ; `trail` contient tous les placements) ;
+3. visibilité (aucune entrée vivante absente de toutes les vues) ;
+4. pas d'écrasement lors d'une reprise (réappliquer un lot ne remet rien à zéro).
 
-**Sortie** : **30 jours d'usage réel** sur Android ; aucune perte de données (journal IndexedDB vérifié à chaque
-démarrage) ; tâches courantes faisables au clavier et au lecteur d'écran sur le web.
+Cas imposés : migrations concurrentes vers deux jours ; édition de texte concurrente ; suppression pendant une édition ;
+reprise après interruption au milieu d'un lot.
 
-### P5 — Effets (3 semaines)
+### 4.4 Planning : charge, dépendances, usage
 
-- [ ] `shaders/` + manifeste + contrat `Fx` ; hôte d'effets dans `presse-rs`
-- [ ] P0 : l'encre boit le papier (compute), crayon → encre, papier éclairé selon l'heure
-- [ ] P1, dans le budget de P1 : autocollants holographiques (orientation de l'appareil), aquarelle du tracker,
-      photos qui se développent, ambiance de saison (2–3 s), miettes de gomme
-- [ ] Mouvement réduit : états finaux directs ; économie d'énergie : effets à état précalculés
+Trois choses distinctes :
 
-**Sortie** : chaque effet passe le banc (« Tenu ») sur l'Android de P1 ; aucun effet ne garde le moteur éveillé
-après sa fin.
+- **Charge de développement** : itération 1 ≈ 7,5 à 9,5 sem. ; jusqu'au MVP (P4b) ≈ 18 à 25 sem. ; jusqu'au desktop ≈ 31 à
+  41 sem. Fourchettes de planification, pas des mesures, révisées après P3a.
+- **Périodes d'usage** : 14 jours après P2 (en parallèle de P3a/P4a), 30 jours après P4b (en parallèle de P5).
+- **Réserve de correction** : 15 % de la charge, posée après chaque période d'usage, pour traiter ce qu'elle révèle.
 
-### P6 — Synchro chiffrée (4 semaines)
+## 5. Protocole de mesure
 
-**Pré-requis** : modèle économique tranché (décision ouverte n° 5 du brief).
+Appareil de référence : l'Android milieu de gamme de P1. Carnet de référence : un an synthétique (≈ 3 000 entrées,
+50 pages graphiques, 200 photos).
 
-- [ ] Relais (axum) : stockage des mises à jour par document, aucune donnée en clair
-- [ ] Clés : phrase secrète → Argon2id → clé de chiffrement ; récupération documentée
-- [ ] Synchro différentielle par vecteur d'état yrs ; reprise après coupure
-- [ ] Tests : 3 répliques, réseau coupé et rétabli dans le désordre
+| Mesure | Définition | Cible provisoire (à calibrer en P1) |
+|---|---|---|
+| Ouverture | Lancement de la PWA installée, service worker en cache, carnet de référence local → semaine courante lisible | ≤ 1 s |
+| Saisie disponible | → premier champ utilisable | ≤ 300 ms après l'ouverture |
+| Première image GPU | → première image de `presse-rs` | ≤ 1,5 s, sans bloquer la saisie |
+| Interaction | Frappe, migration, changement de vue : délai jusqu'à l'image suivante | p95 ≤ 100 ms |
+| Tâches longues | > 50 ms sur le fil principal pendant un scénario fixe | 0 pendant la saisie |
+| Animation | Temps par image pendant un effet | p95 ≤ budget de l'écran × 1,25 |
+| Repos | Images, réveils CPU, capteurs actifs pendant 60 s sans interaction | 0 image, 0 capteur |
+| Batterie | 2 min (contrôle), puis scénario de 30 min reproductible : luminosité fixe, température relevée, comparaison effets coupés | Écart effets/sans effets ≤ 10 % |
 
-**Sortie** : deux appareils (Android + web) convergent après 48 h de modifications hors ligne de part et d'autre.
-
-### P7 — Desktop Rune (4 semaines, après un spike d'une semaine)
-
-- [ ] Spike : semaine en double page dans Rune, sur `carnet-core` ; `presse-rs` dans le `Compositor`
-- [ ] Application : semaine, jour, mois, saisie Rune, synchro P6
-- [ ] Révision de Rune figée ; anomalies remontées par issues (le projet n'accepte pas de PR)
-
-**Sortie** : même carnet sur desktop et Android, synchronisé ; effets identiques à l'image près (mêmes WGSL,
-mêmes graines).
-
-### Plus tard — décision 100 % Rust, iOS
-
-Revue au début de P7 : résultat de S1, état de Rune sur Android (saisie vérifiée sur appareil ?), état de winit.
-iOS : NSH (UIKit) ou Rune selon qui livre d'abord une saisie fiable et des composants hôtes.
-
-## 5. Risques
+## 6. Risques
 
 | Risque | Probabilité | Impact | Signal précoce | Parade |
 |---|---|---|---|---|
-| Taille et démarrage du wasm (yrs + wgpu) sur Android | Moyenne | Fort | Mesures semaine 1 de P2 et P3 | Chargement différé de `presse-rs` (page lisible sans lui), découpage, `wasm-opt -Oz` |
-| Mesure des glyphes par `Range` trop chère sur une longue semaine | Moyenne | Moyen | Profil P3 | Cache par élément (déjà : seules les boîtes sont relues par image), mesure incrémentale |
-| WebGPU absent ou en mode compatibilité sur l'Android cible | Faible à moyenne | Moyen | P1 | La page reste son HTML ; effets coupés proprement |
-| GPS retiré des photos dans la PWA | Moyenne | Faible | P1 | Regroupement par heure seule |
-| Migration entre documents interrompue | Faible | Faible | Tests P2 | Copie d'abord, ULID dérivé, idempotence |
-| Rune : API instable, pas de PR | Forte | Moyen (desktop seulement) | Changelog | Révision figée ; desktop hors chemin critique |
-| Deux interfaces (TS mince + Rune) à maintenir | Certaine | Moyen | — | Toute la logique dans `carnet-core`, vues réduites à de l'affichage |
-| Batterie (effets, rendu) | Moyenne | Fort | Banc P1, P5 | Rendu à la demande, budget par effet, états finaux précalculés |
-| Débit d'un seul développeur | Certaine | Fort | Retard de porte | Portes strictes ; P6 et P7 déplaçables sans toucher au MVP |
-
-## 6. Questions pour la revue
-
-1. **Q1 — Dépôt.** Workspace dans ce dépôt jusqu'à P3, puis extraction : ou dépôts séparés tout de suite ?
-2. **Q2 — Ordre P3 / P4.** Porter le rendu (P3) avant le MVP (P4) retarde la valeur produit de 6 semaines mais évite
-   d'écrire deux fois l'intégration des features avec le moteur. Faut-il inverser, ou entrelacer ?
-3. **Q3 — Granularité yrs.** Un document par semaine et par mois : bon compromis entre taille de synchro et
-   opérations multi-documents (migration) ? Faut-il des sous-documents yrs dans un document racine ?
-4. **Q4 — Frontière wasm.** `serde-wasm-bindgen` pour les modèles de vue suffit-il, ou faut-il des tampons typés
-   (comme pour les glyphes) dès P2 ?
-5. **Q5 — Mesure des glyphes.** Garder la mesure DOM en TS et passer un `Float32Array`, ou tout faire en `web-sys` ?
-6. **Q6 — WGSL.** Conversion des gabarits interpolés en `.wgsl` + `override` : y a-t-il des cas où le
-   remplacement à la construction (préprocesseur) reste nécessaire ?
-7. **Q7 — Effets à état.** Où vit l'état des effets compute (diffusion d'encre) quand le moteur s'endort : rendu
-   final mis en cache dans une texture par bloc, ou recalcul à la demande à partir de la graine ?
-8. **Q8 — Accessibilité.** Le texte repeint par le GPU reste en DOM transparent : suffisant pour les lecteurs
-   d'écran sur Android (TalkBack) ? Que faut-il tester en P4 ?
-9. **Q9 — Estimations.** Les durées de P2 (4 sem.) et P3 (6 sem.) sont-elles crédibles au regard du code existant
-   (`src/gpu/engine.ts` 1 755 lignes, `src/gpu/text.ts` 456, `src/gpu/wgsl.ts` 2 629, dont seule une partie est
-   portée) ?
-10. **Q10 — Angles morts.** Qu'est-ce qui manque à cette roadmap pour qu'un MVP Android tienne 30 jours sans perte
-    de données ?
+| Chaîne de texte (glyphes, emoji, secours) incorrecte | Moyenne | Fort | P3a | Rendu de secours DOM par élément ; périmètre typographique explicite |
+| Perte de données (interruption, quota, mise à jour) | Moyenne | Très fort | P1, P2 | Contrat d'enregistrement, journal, persistance, sauvegarde restaurable, tests d'interruption |
+| Saisie mobile dégradée par la vue (composition interrompue) | Moyenne | Fort | P1 | Champ visible, nœud actif jamais touché pendant la composition |
+| Accessibilité structurelle (TalkBack, focus masqué) | Moyenne | Fort | P1 | Recette dès P1, alternatives aux gestes |
+| Taille et démarrage des deux wasm | Moyenne | Moyen | P3a | Rendu chargé après le core ; page lisible sans lui |
+| WebGPU en mode compatibilité ou absent | Faible à moyenne | Moyen | P1 | Rendu DOM complet sans effets |
+| Migrations concurrentes mal comprises par l'utilisateur | Faible | Moyen | Usage 30 jours | `trail` visible, annulation |
+| Protocole de synchro mal conçu | Moyenne | Très fort | Revue de spec | Spec relue avant code ; sauvegardes indépendantes |
+| Rune instable, sans PR | Forte | Moyen (desktop) | Changelog | Révision figée ; prototype avant engagement |
+| Débit d'un seul développeur | Certaine | Fort | Retard de jalon | Itérations courtes, réserve 15 %, P6/P7 déplaçables |
 
 ## 7. Hors champ
 
-iOS, collaboration à plusieurs sur un même carnet, IA générative, import depuis d'autres applications de journal,
-version payante (dépend de la décision n° 5 du brief), Rune sur Android (dépend du projet Rune).
+iOS, collaboration à plusieurs, IA générative, import depuis d'autres applications, version payante (dépend de la
+décision n° 5 du brief), Rune sur Android, abonnement ICS.
+
+## Annexe A — Suivi de la contre-revue (Codex, 7 novembre 2026)
+
+| Point de la revue | Décision | Où |
+|---|---|---|
+| « 90 % Rust » et « 500 lignes TS » ne sont pas des critères de sortie | Retenu | § 0 |
+| NSH : « `shade(uv)` sans textures » est faux depuis la v0.4.0 | Retenu, vérifié dans le dépôt NSH | D6 |
+| « Le DOM est la seule façon » : trop absolu (champs natifs depuis Rust, winit/android-activity) | Retenu | D4 |
+| TWA : projet Android à signer et à lier | Retenu | D2 |
+| React : l'identité des éléments ne suffit pas à l'écarter | Retenu : comparaison en P4a | D9 |
+| Q1 — extraction conditionnelle | Retenu, quatre conditions | § 3.1 |
+| Q2 — entrelacer P3a court, P4 essentiel, P3b | Retenu | § 4 |
+| Q3 — champs d'entrée, `Y.Text`, migration entre documents non sûre | Retenu : un document logique, migration par `trail` | § 3.2 |
+| Q3 — test de convergence mal posé | Retenu | § 4.3 |
+| Q4 — serde pour le métier, tampons pour le dense ; core sans E/S = décisions | Retenu | § 3.2, § 3.4 |
+| Q5 — pas de « zéro copie » ; chaîne typographique ; offsets UTF-16 | Retenu | § 3.4, § 3.5 |
+| Q6 — `override` ne remplace pas tout ; validation dans le navigateur | Retenu | § 3.5 |
+| Q7 — cache borné, reconstruction, déterminisme réduit, graine `u32` + version + pas fixe | Retenu | § 3.6 |
+| Q8 — TalkBack dès P1, champ DOM visible pendant l'édition | Retenu, avec un champ stylé comme l'encre pour adoucir le passage | § 3.5, § 3.8 |
+| Q9 — fourchettes, P4 à scinder, arithmétique (≈ 29 sem.), protocoles de mesure | Retenu | § 4.4, § 5 |
+| Q10-A — sauvegarde et restauration avant l'usage | Retenu | § 3.3, P2 |
+| Q10-B à E — contrat d'enregistrement, compaction, multi-onglets, médias, mises à jour | Retenu | § 3.3 |
+| Q10-F — synchro chiffrée : protocole complet, clé de carnet, ce que voit le relais | Retenu | § 3.7 |
+| Q10-G — règles produit qui touchent les données | Retenu, propositions à valider par Jérôme | § 3.2 |
+| Première itération en cinq objectifs | Retenu tel quel | § 4.1 |
+
+Rien n'est rejeté. Une nuance : le champ visible pendant l'édition coupe l'effet d'encre le temps de la saisie ; on le
+stylera comme l'encre pour que le passage ne se voie presque pas, et l'apparition à l'encre se jouera à la sortie du champ.
