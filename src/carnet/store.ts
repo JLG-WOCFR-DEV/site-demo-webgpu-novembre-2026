@@ -107,10 +107,14 @@ export class Store {
 
   /** Prend les mises à jour produites par le core et programme leur écriture. À appeler après chaque commande. */
   commit() {
-    const ups = this.core.takeUpdates();
-    if (!ups.length) return;
-    this.pending.push(...ups);
-    this.channel?.postMessage(ups);
+    this.append(this.core.takeUpdates());
+  }
+
+  /** Mises à jour venues d'ailleurs (sauvegarde restaurée), déjà appliquées au core : à enregistrer et diffuser. */
+  append(updates: Uint8Array[]) {
+    if (!updates.length) return;
+    this.pending.push(...updates);
+    this.channel?.postMessage(updates);
     this.setState("saving");
     if (!this.timer) this.timer = setTimeout(() => void this.flush(), BATCH_MS) as unknown as number;
   }

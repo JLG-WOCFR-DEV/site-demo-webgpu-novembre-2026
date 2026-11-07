@@ -298,7 +298,7 @@ réel du projet.
 - [ ] Édition : `<textarea>` visible pendant l'édition, diff → opérations `Y.Text`, offsets UTF-16
 - [x] Suggestions : veille, prévu ce mois, il y a un an
 - [ ] Persistance § 3.3 complète — fait : contrat affiché, journal par lots de 250 ms, compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché. Reste : médias, `storage.persist()` dans l'app, tests de mise à jour avec page ouverte
-- [ ] Sauvegarde `.carnet` et restauration — import v0 conservateur fait (original renommé `carnet.v0.importé` après relecture)
+- [x] Sauvegarde `.carnet` (zip : manifeste + document yrs, empreintes SHA-256) et restauration par fusion, vérifiée dans un carnet vide ; import v0 conservateur (original renommé `carnet.v0.importé` après relecture). Pages et médias s'ajouteront au même format
 - [x] Tests de convergence reformulés (§ 4.3)
 
 **Sortie** : la v0 tourne sur `carnet-core` sans régression visible ; tests § 4.3 verts ; restauration vérifiée dans un

@@ -27,6 +27,7 @@ import { presse, type Presse } from "../presse/lib.ts";
 import { createCore, dayPlace, weekPlace, type Core, type Suggestion } from "./core.ts";
 import { addDays, isSample, migrationTarget, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
 import { Store, type SaveState } from "./store.ts";
+import { backup, backupName, restore } from "./backup.ts";
 import { render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
@@ -272,6 +273,36 @@ $("#cn-reset").addEventListener("click", () => {
 });
 $("#cn-reseed").addEventListener("click", () => void freshCore(true));
 
+/* ───── Sauvegarde .carnet ───── */
+$("#cn-backup").addEventListener("click", async () => {
+  await store.flush().catch(() => undefined);
+  const { bytes, manifest } = await backup(core);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" }));
+  a.download = backupName();
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  toast(`Sauvegarde prête : ${manifest.entries} entrée${manifest.entries > 1 ? "s" : ""}`);
+});
+$("#cn-restore").addEventListener("click", () => $<HTMLInputElement>("#cn-restore-file").click());
+$<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) => {
+  const input = ev.target as HTMLInputElement;
+  const f = input.files?.[0];
+  input.value = "";
+  if (!f) return;
+  try {
+    // Fusion : la sauvegarde s'ajoute au carnet ouvert, rien n'est effacé.
+    const before = core.all().length;
+    const { manifest, update } = await restore(core, new Uint8Array(await f.arrayBuffer()));
+    store.append([update]);
+    draw();
+    const added = core.all().length - before;
+    toast(`Sauvegarde du ${new Date(manifest.createdAt).toLocaleDateString("fr-FR")} importée : ${added} entrée${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}`);
+  } catch (e) {
+    toast(e instanceof Error ? e.message : String(e));
+  }
+});
+
 /* ───── Démarrage ───── */
 const V0 = "carnet.v0";
 async function boot() {
@@ -319,7 +350,7 @@ async function boot() {
     if (document.hidden) void store.flush();
   });
   draw();
-  (window as unknown as { __carnet: object }).__carnet = { core, store, ctx, get presse() { return engine; } };
+  (window as unknown as { __carnet: object }).__carnet = { get core() { return core; }, get store() { return store; }, ctx, get presse() { return engine; } };
 }
 
 await boot();
