@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3f00e8b58ee1267a249a184f375d62496ce9907b185aca8e8ca8f4e2029ec47f # shrinks to script = [(0, Add { kind: 0, day: 1, word: 0 }), (1, Add { kind: 0, day: 1, word: 0 }), (1, Deliver { n: 2, seed: 61 }), (2, Deliver { n: 1, seed: 35120 }), (0, Edit { pick: 0, at: 0, word: 0 }), (2, Edit { pick: 0, at: 60831, word: 2 }), (0, Edit { pick: 0, at: 0, word: 0 }), (2, Cycle { pick: 0 }), (0, Edit { pick: 0, at: 0, word: 0 }), (0, Edit { pick: 0, at: 0, word: 0 }), (1, Deliver { n: 4, seed: 23556 }), (2, Add { kind: 0, day: 0, word: 0 }), (0, Add { kind: 0, day: 0, word: 0 }), (2, Add { kind: 0, day: 0, word: 0 }), (0, Add { kind: 0, day: 0, word: 0 }), (1, Deliver { n: 1, seed: 4782 }), (1, Delete { pick: 22983 }), (1, Edit { pick: 632, at: 35040, word: 0 })]
