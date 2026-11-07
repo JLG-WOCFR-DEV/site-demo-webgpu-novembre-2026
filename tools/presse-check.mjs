@@ -197,14 +197,26 @@ async function layout(page) {
         const rr = lab ? lab.getBoundingClientRect() : r;
         if (!inline && (rr.width < 24 || rr.height < 24)) res.small.push(`${desc(e)} ${Math.round(rr.width)}×${Math.round(rr.height)}`);
       }
+    // La part visible d'une cible : ses morceaux de ligne, rognés par les ancêtres qui découpent (une barre de liens
+    // qui défile ne fait pas déborder ses liens sur le bouton voisin).
+    const visible = (e) => {
+      let c = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+      for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) {
+        if (getComputedStyle(p).overflowX === "visible") continue;
+        const q = p.getBoundingClientRect();
+        c = { left: Math.max(c.left, q.left), top: Math.max(c.top, q.top), right: Math.min(c.right, q.right), bottom: Math.min(c.bottom, q.bottom) };
+      }
+      return [...e.getClientRects()].map((p) => ({ left: Math.max(p.left, c.left), top: Math.max(p.top, c.top), right: Math.min(p.right, c.right), bottom: Math.min(p.bottom, c.bottom) }));
+    };
+    const parts = new Map(targets.map((e) => [e, visible(e)]));
     for (let i = 0; i < targets.length; i++)
       for (let j = i + 1; j < targets.length; j++) {
         const a = targets[i];
         const b = targets[j];
         if (a.contains(b) || b.contains(a)) continue;
         // Un lien sur deux lignes : on compare ses morceaux de ligne, pas son rectangle englobant.
-        const hit = [...a.getClientRects()].some((p) =>
-          [...b.getClientRects()].some((q) => Math.min(p.right, q.right) - Math.max(p.left, q.left) > 4 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 4),
+        const hit = parts.get(a).some((p) =>
+          parts.get(b).some((q) => Math.min(p.right, q.right) - Math.max(p.left, q.left) > 4 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 4),
         );
         if (hit) res.overlap.push(`${desc(a)} / ${desc(b)}`);
       }

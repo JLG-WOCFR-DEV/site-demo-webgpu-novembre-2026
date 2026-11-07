@@ -238,6 +238,21 @@ body::before {
   button.mark {
     min-width: 48px;
   }
+  /* L'état et le débogage sont masqués : sans leurs pistes, la grille rend leurs deux gouttières (16 px). */
+  .bar {
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  }
+}
+@media (max-width: 400px) {
+  .bar {
+    column-gap: 6px;
+    padding-inline: 12px;
+  }
+  .bar .pause-btn {
+    padding-inline: 8px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
 }
 /* Le logo ouvre le menu des pages. */
 button.mark {
@@ -1230,7 +1245,9 @@ html.gl-on .stage--layers {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: 32px;
   margin-right: auto;
+  cursor: pointer;
 }
 .btn-mini {
   min-width: 32px;
