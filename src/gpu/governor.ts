@@ -30,6 +30,9 @@ let ema = interval;
 let over = 0;
 let under = 0;
 let lastChange = 0;
+/** Temps d'images mesuré (ms) ; on ne baisse pas l'échelle avant WARMUP. */
+let warm = 0;
+const WARMUP = 2500;
 const subs = new Set<(s: number) => void>();
 
 const mins: number[] = [];
@@ -42,13 +45,15 @@ function sample(now: number) {
   last = now;
   {
     // Pause, onglet en arrière-plan, gros chargement, page endormie : ce n'est pas la cadence.
-    // Le compte repart de zéro : sans quoi les quelques images de chaque réveil s'additionnent d'un sommeil à
-    // l'autre, l'échelle remonte « après quatre secondes fluides » qui n'en étaient pas, le canvas change de taille,
-    // ce qui réveille la boucle… (presse check : la galerie au repos demandait 17 images/s).
+    // Une série lente ne se prolonge pas d'un réveil à l'autre (`over` repart de zéro) ; les images fluides, elles,
+    // s'additionnent : une page qui dort presque tout le temps doit pouvoir regagner sa netteté. (Remettre aussi
+    // `under` à zéro la bloquait à l'échelle réduite pour toujours : texte flou au repos, v70.)
     if (document.hidden || dt <= 0 || dt > 250) {
-      over = under = 0;
+      over = 0;
       return;
     }
+    // Les premières secondes (pipelines compilés, images décodées, fontes) ne disent rien de la cadence.
+    warm += dt;
     // La cadence de l'écran : le plus court des intervalles récents, arrondi à un écran connu.
     mins.push(dt);
     if (mins.length > 120) mins.shift();
@@ -58,10 +63,12 @@ function sample(now: number) {
     const secs = dt / 1000;
     if (ema > interval * 1.35) ((over += secs), (under = 0));
     else if (ema < interval * 1.08) ((under += secs), (over = 0));
-    else over = under = 0;
+    // Entre les deux : ni lent ni fluide — la série lente s'interrompt, les secondes fluides acquises restent.
+    else over = 0;
+    if (warm <= WARMUP) over = 0;
     if (now - lastChange < 1000) return;
     let next = scale;
-    if (over > 0.6 && scale > MIN) next = Math.max(MIN, scale * DOWN);
+    if (over > 0.6 && scale > MIN && warm > WARMUP) next = Math.max(MIN, scale * DOWN);
     else if (under > 4 && scale < 1) next = Math.min(1, scale * UP);
     if (next !== scale) {
       scale = Math.round(next * 100) / 100;
