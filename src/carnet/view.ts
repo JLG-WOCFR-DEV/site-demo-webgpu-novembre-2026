@@ -7,30 +7,37 @@
  * une ligne qui s'imprime (apparition à l'encre) : refaire toute la liste à
  * chaque frappe rejouerait l'impression de tout le carnet.
  *
+ * Les lignes viennent des modèles de vue de carnet-core (une vue par rendu, un seul appel).
+ *
  * Morphing : chaque texte porte data-gl-morph-id (« e:ID » pour une entrée,
- * « g:CLÉ » pour une suggestion). Une ligne qui naît d'une autre (migration,
+ * « d:ID:PLACE » pour la trace « > » qu'elle laisse là où elle était, « g:CLÉ »
+ * pour une suggestion). Une ligne qui naît d'une autre (migration,
  * suggestion gardée, vol entre les vues) reçoit une fois data-gl-morph-from :
  * ses lettres partent de la source.
  */
-import { addDays, entriesOf, isoWeek, parseDay, suggestionsFor, weekNotes, weekStart, type Day, type Entry, type Store, type Suggestion } from "./model.ts";
+import type { Core, DayView, Line, Suggestion } from "./core.ts";
+import { addDays, isoWeek, parseDay, weekStart, type Day } from "./model.ts";
 
 export type View = "week" | "day";
 export type RenderCtx = {
-  st: Store;
+  core: Core;
   view: View;
   cur: Day;
   now: Day;
   /** Lignes à faire partir d'une source au prochain rendu : clé de la ligne → identifiant de morphing de la source. */
   from: Map<string, string>;
+  /** Place du bloc en cours de rendu (clé des traces « > »). */
+  placeKey?: string;
 };
 
 const fWeek = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
 const fLong = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
 const fShort = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
-const GLYPH: Record<Entry["state"], string> = { open: "•", done: "×", migrated: ">", cancelled: "•" };
-const STATE_LABEL: Record<Entry["state"], string> = { open: "ouverte", done: "faite", migrated: "migrée", cancelled: "annulée" };
-const glyphOf = (e: Entry) => (e.kind === "event" ? "○" : e.kind === "note" ? "–" : GLYPH[e.state]);
+const GLYPH: Record<Line["state"], string> = { open: "•", done: "×", cancelled: "•" };
+const STATE_LABEL: Record<Line["state"], string> = { open: "ouverte", done: "faite", cancelled: "annulée" };
+const glyphOf = (e: Line) => (e.departedTo ? ">" : e.kind === "event" ? "○" : e.kind === "note" ? "–" : GLYPH[e.state]);
+const stateClass = (e: Line) => (e.departedTo ? "migrated" : e.state);
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string) => {
   const n = document.createElement(tag);
@@ -88,8 +95,9 @@ function strike(id: string) {
   return svg;
 }
 
-function entrySpec(e: Entry, ctx: RenderCtx): RowSpec {
-  const key = `e:${e.id}`;
+function entrySpec(e: Line, ctx: RenderCtx): RowSpec {
+  // Une trace « > » est une autre ligne que l'entrée vivante : sa propre clé, son propre morphing.
+  const key = e.departedTo ? `d:${e.id}:${ctx.placeKey}` : `e:${e.id}`;
   return {
     key,
     make: () => {
@@ -123,24 +131,34 @@ function entrySpec(e: Entry, ctx: RenderCtx): RowSpec {
       del.setAttribute("aria-label", "Supprimer l’entrée");
       ops.append(mig, del);
       li.append(mark, b, time, body, ops);
+      if (e.departedTo) {
+        // La trace d'une migration : lisible, pas éditable ; le texte reste celui, vivant, de l'entrée.
+        t.contentEditable = "false";
+        t.removeAttribute("role");
+        delete t.dataset.act;
+        ops.hidden = true;
+      }
       // Ligne née d'une autre : ses lettres partent de la source, une fois.
       const src = ctx.from.get(key);
       if (src) t.dataset.glMorphFrom = src;
       return li;
     },
     update: (li) => {
-      li.className = `cn-row kind-${e.kind} state-${e.state}`;
+      li.className = `cn-row kind-${e.kind} state-${stateClass(e)}`;
       const [mark, b, time, body, ops] = [...li.children] as HTMLElement[];
-      mark!.textContent = e.marks.includes("priority") ? "*" : e.marks.includes("idea") ? "!" : "";
+      mark!.textContent = e.priority ? "*" : e.idea ? "!" : "";
       b!.textContent = glyphOf(e);
-      (b as HTMLButtonElement).disabled = e.kind !== "task";
-      b!.setAttribute("aria-label", e.kind === "task" ? `Tâche ${STATE_LABEL[e.state]}, changer l’état` : e.kind === "event" ? "Événement" : "Note");
-      time!.textContent = e.time;
+      (b as HTMLButtonElement).disabled = e.kind !== "task" || !!e.departedTo;
+      b!.setAttribute(
+        "aria-label",
+        e.departedTo ? `Tâche migrée vers ${placeLabel(e.departedTo.day)}` : e.kind === "task" ? `Tâche ${STATE_LABEL[e.state]}, changer l’état` : e.kind === "event" ? "Événement" : "Note",
+      );
+      time!.textContent = e.time ?? "";
       const t = body!.firstElementChild as HTMLElement;
       if (document.activeElement !== t && t.firstChild?.textContent !== e.text) {
         t.replaceChildren(document.createTextNode(e.text));
       }
-      const struck = e.kind === "task" && (e.state === "done" || e.state === "cancelled");
+      const struck = !e.departedTo && e.kind === "task" && (e.state === "done" || e.state === "cancelled");
       const has = t.querySelector(".cn-strike");
       if (struck && !has) t.append(strike(e.id));
       if (!struck && has) has.remove();
@@ -149,7 +167,20 @@ function entrySpec(e: Entry, ctx: RenderCtx): RowSpec {
   };
 }
 
-function ghostSpec(s: Suggestion): RowSpec {
+const placeLabel = (day: Day | null) => (day ? fLong.format(parseDay(day)) : "une autre page");
+
+/** D'où vient une suggestion, en mots. */
+function sourceOf(s: Suggestion, day: Day) {
+  if (s.kind === "plan") return "prévu ce mois";
+  if (s.kind === "yearAgo") return "il y a un an";
+  if (s.kind === "monthCarry") return "mois dernier";
+  const from = s.from.day;
+  if (!from) return "reportée";
+  const n = Math.round((parseDay(day).getTime() - parseDay(from).getTime()) / 864e5);
+  return n === 1 ? "reportée d’hier" : `reportée il y a ${n} jours`;
+}
+
+function ghostSpec(s: Suggestion, day: Day): RowSpec {
   const key = `g:${s.key}`;
   return {
     key,
@@ -158,13 +189,13 @@ function ghostSpec(s: Suggestion): RowSpec {
       li.tabIndex = 0;
       li.dataset.sug = s.key;
       li.setAttribute("aria-label", `Suggestion au crayon : ${s.text}. Entrée pour garder, Suppr pour écarter.`);
-      const b = el("span", "cn-bullet", s.kind === "event" ? "○" : s.kind === "note" ? "–" : "•");
-      const time = el("span", "cn-time", s.time);
+      const b = el("span", "cn-bullet", s.entryKind === "event" ? "○" : s.entryKind === "note" ? "–" : "•");
+      const time = el("span", "cn-time", s.time ?? "");
       const body = el("span", "cn-body");
       const t = el("span", "cn-text", s.text);
       t.dataset.glText = "";
       t.dataset.glMorphId = key;
-      body.append(t, el("span", "cn-src", s.src));
+      body.append(t, el("span", "cn-src", sourceOf(s, day)));
       const ops = el("span", "cn-gops");
       const k = el("button", "cn-gbtn cn-keep", "Garder");
       k.type = "button";
@@ -181,7 +212,8 @@ function ghostSpec(s: Suggestion): RowSpec {
 }
 
 /* ───── Blocs ───── */
-function dayBlock(host: HTMLElement, k: Day, ctx: RenderCtx, sugIndex: Map<string, Suggestion>, big = false) {
+function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<string, Suggestion>, big = false) {
+  const k = v.day;
   let sec = host.querySelector<HTMLElement>(`:scope > .cn-day[data-day="${k}"]`);
   if (!sec) {
     sec = el("section", "cn-day");
@@ -215,14 +247,16 @@ function dayBlock(host: HTMLElement, k: Day, ctx: RenderCtx, sugIndex: Map<strin
   input.placeholder = big ? "Écris une ligne…  « . appeler Marc »  « o 14:00 dentiste »" : "ajouter une ligne";
   input.setAttribute("aria-label", `Nouvelle entrée, ${fWeek.format(d)}`);
 
-  const sugs = suggestionsFor(ctx.st, k, ctx.now);
-  for (const s of sugs) sugIndex.set(s.key, s);
-  const specs = [...sugs.map(ghostSpec), ...entriesOf(ctx.st, k).map((e) => entrySpec(e, ctx))];
+  for (const s of v.suggestions) sugIndex.set(s.key, s);
+  ctx.placeKey = k;
+  // Les traces « > » d'abord, à leur place dans la journée : ce qui a été fait ici avant de partir.
+  const lines = [...v.departed, ...v.lines];
+  const specs = [...v.suggestions.map((s) => ghostSpec(s, k)), ...lines.map((e) => entrySpec(e, ctx))];
   syncList(sec.querySelector("ol")!, specs);
   return sec;
 }
 
-function notesBlock(host: HTMLElement, ws: Day, ctx: RenderCtx) {
+function notesBlock(host: HTMLElement, ws: Day, notes: Line[], ctx: RenderCtx) {
   let sec = host.querySelector<HTMLElement>(":scope > .cn-notes");
   if (!sec) {
     sec = el("section", "cn-day cn-notes");
@@ -243,7 +277,8 @@ function notesBlock(host: HTMLElement, ws: Day, ctx: RenderCtx) {
     host.append(sec);
   }
   sec.querySelector<HTMLFormElement>("form")!.dataset.week = ws;
-  syncList(sec.querySelector("ol")!, weekNotes(ctx.st, ws).map((e) => entrySpec(e, ctx)));
+  ctx.placeKey = `week:${ws}`;
+  syncList(sec.querySelector("ol")!, notes.map((e) => entrySpec(e, ctx)));
 }
 
 /** Rend la double page. Renvoie l'index des suggestions visibles. */
@@ -254,23 +289,23 @@ export function render(root: HTMLElement, ctx: RenderCtx): Map<string, Suggestio
   root.dataset.view = ctx.view;
   if (ctx.view === "week") {
     const ws = weekStart(ctx.cur);
-    const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
     // Une autre semaine, ou un retour de la vue jour : on repart de pages vides.
     if (root.dataset.ws !== ws || left.querySelector(".is-big")) {
       left.replaceChildren();
       right.replaceChildren();
     }
     root.dataset.ws = ws;
-    days.slice(0, 4).forEach((k) => dayBlock(left, k, ctx, sugIndex));
-    days.slice(4).forEach((k) => dayBlock(right, k, ctx, sugIndex));
-    notesBlock(right, ws, ctx);
+    const w = ctx.core.weekView(ws, ctx.now);
+    w.days.slice(0, 4).forEach((v) => dayBlock(left, v, ctx, sugIndex));
+    w.days.slice(4).forEach((v) => dayBlock(right, v, ctx, sugIndex));
+    notesBlock(right, ws, [...w.departedNotes, ...w.notes], ctx);
   } else {
     if (!left.querySelector(`.is-big[data-day="${ctx.cur}"]`)) {
       left.replaceChildren();
       right.replaceChildren();
     }
     delete root.dataset.ws;
-    dayBlock(left, ctx.cur, ctx, sugIndex, true);
+    dayBlock(left, ctx.core.dayView(ctx.cur, ctx.now, 5), ctx, sugIndex, true);
   }
   ctx.from.clear();
   return sugIndex;

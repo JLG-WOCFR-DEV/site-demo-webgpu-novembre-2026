@@ -565,3 +565,20 @@ body > .cn-flysheet.cn-flysheet.cn-flysheet {
   position: absolute;
   z-index: 3;
 }
+
+/* Annuler depuis le toast (corbeille) : un lien sur fond d'encre. */
+.cn-toast .cn-toast-act {
+  color: var(--paper);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: 0;
+  padding: 0 0 0 6px;
+  cursor: pointer;
+}
+/* État d'enregistrement (§ 3.3) : discret ; l'échec garde son bouton. */
+.cn-save {
+  color: var(--ink-soft);
+  min-width: 9em;
+}

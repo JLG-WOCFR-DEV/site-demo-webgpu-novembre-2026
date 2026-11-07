@@ -293,13 +293,13 @@ réel du projet.
 
 #### P2 — `carnet-core`, persistance, sauvegarde (4 à 6 semaines)
 
-- [ ] Workspace, CI (fmt, clippy, tests natifs et wasm)
-- [ ] Modèle § 3.2, règles produit, commandes, modèles de vue semaine / jour / mois
+- [x] Workspace, CI (fmt, clippy, tests natifs et wasm) — `carnet-wasm`, `tools/carnet-wasm.sh`
+- [x] Modèle § 3.2, règles produit, commandes, modèles de vue semaine / jour / mois — la coquille v0 tourne dessus
 - [ ] Édition : `<textarea>` visible pendant l'édition, diff → opérations `Y.Text`, offsets UTF-16
-- [ ] Suggestions : veille, prévu ce mois, il y a un an
-- [ ] Persistance § 3.3 complète (contrat, journal, compaction, verrou multi-onglets, médias, mises à jour)
-- [ ] Sauvegarde `.carnet` et restauration ; import v0 conservateur
-- [ ] Tests de convergence reformulés (§ 4.3)
+- [x] Suggestions : veille, prévu ce mois, il y a un an
+- [ ] Persistance § 3.3 complète — fait : contrat affiché, journal par lots de 250 ms, compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché. Reste : médias, `storage.persist()` dans l'app, tests de mise à jour avec page ouverte
+- [ ] Sauvegarde `.carnet` et restauration — import v0 conservateur fait (original renommé `carnet.v0.importé` après relecture)
+- [x] Tests de convergence reformulés (§ 4.3)
 
 **Sortie** : la v0 tourne sur `carnet-core` sans régression visible ; tests § 4.3 verts ; restauration vérifiée dans un
 environnement vide ; protocole d'interruptions de P1 rejoué sans perte ; **puis 14 jours d'usage réel** (en parallèle de P3a

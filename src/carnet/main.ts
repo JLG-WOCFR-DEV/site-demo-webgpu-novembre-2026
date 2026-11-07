@@ -1,6 +1,10 @@
 /**
  * Carnet — application de bullet journal sur Presse.
  *
+ * Le modèle est carnet-core (Rust, yrs) chargé en wasm ; chaque commande rend des mises à jour que
+ * store.ts écrit au journal IndexedDB. Au premier lancement, le carnet v0 (localStorage) est importé
+ * et l'original gardé tant que l'import n'est pas enregistré et relu.
+ *
  * Presse tourne en mode à la demande : il ne peint que lorsque quelque chose
  * bouge (frappe, migration, défilement), puis s'endort. Sans WebGPU, la page
  * reste son HTML et l'application fonctionne à l'identique, sans effets.
@@ -20,7 +24,9 @@ import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
 import { registerPwa } from "./pwa.ts";
 import { presse, type Presse } from "../presse/lib.ts";
-import { addDays, dismiss, keep, load, makeEntry, migrate, migrationTarget, parseDay, parseLine, save, seed, today, weekStart, type Day, type Entry, type Store, type Suggestion } from "./model.ts";
+import { createCore, dayPlace, weekPlace, type Core, type Suggestion } from "./core.ts";
+import { addDays, isSample, migrationTarget, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
+import { Store, type SaveState } from "./store.ts";
 import { render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
@@ -29,33 +35,77 @@ const spread = $("#spread");
 const title = $("#cn-title");
 const fLong = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
 
-let st: Store = load();
-const ctx: RenderCtx = { st, view: "week", cur: today(), now: today(), from: new Map() };
+let core: Core;
+let store: Store;
+let ctx: RenderCtx;
 let sugIndex = new Map<string, Suggestion>();
 let engine: Presse | null = null;
 
 function draw() {
-  ctx.st = st;
+  ctx.core = core;
   ctx.now = today();
   sugIndex = render(spread, ctx);
   title.textContent = titleFor(ctx.view, ctx.cur);
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === ctx.view));
   $("#prev").setAttribute("aria-label", ctx.view === "week" ? "Semaine précédente" : "Jour précédent");
   $("#next").setAttribute("aria-label", ctx.view === "week" ? "Semaine suivante" : "Jour suivant");
-  $("#cn-sample").hidden = !st.sample;
-  save(st);
+  $("#cn-sample").hidden = !isSample();
+}
+
+/** Une commande sur le carnet : exécutée, enregistrée, redessinée. Une erreur du core s'affiche. */
+function act<T>(fn: () => T): T | undefined {
+  try {
+    const r = fn();
+    store.commit();
+    draw();
+    return r;
+  } catch (e) {
+    console.warn("[carnet]", e);
+    toast(e instanceof Error ? e.message : String(e));
+    return undefined;
+  }
+}
+
+/* ───── Enregistrement : le contrat de § 3.3 ───── */
+let saveT = 0;
+function showSave(s: SaveState) {
+  const n = $("#cn-save");
+  clearTimeout(saveT);
+  if (s === "saving") {
+    // Rien sous 300 ms : une écriture rapide ne doit pas faire clignoter l'interface.
+    saveT = window.setTimeout(() => (n.textContent = "Enregistrement…"), 300);
+  } else if (s === "saved") n.textContent = "Enregistré";
+  else if (s === "error") {
+    n.replaceChildren(document.createTextNode("Échec de l’enregistrement · "));
+    const retry = document.createElement("button");
+    retry.className = "cn-link";
+    retry.type = "button";
+    retry.textContent = "Réessayer";
+    retry.addEventListener("click", () => void store.flush().catch(() => undefined));
+    n.append(retry);
+  } else n.textContent = "";
 }
 
 let toastT = 0;
-function toast(msg: string) {
+function toast(msg: string, action?: { label: string; run: () => void }) {
   const t = $("#cn-toast");
-  t.textContent = msg;
+  t.replaceChildren(document.createTextNode(msg));
+  if (action) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cn-link cn-toast-act";
+    b.textContent = action.label;
+    b.addEventListener("click", () => {
+      t.hidden = true;
+      action.run();
+    });
+    t.append(" ", b);
+  }
   t.hidden = false;
   clearTimeout(toastT);
-  toastT = window.setTimeout(() => (t.hidden = true), 3200);
+  toastT = window.setTimeout(() => (t.hidden = true), action ? 6000 : 3200);
 }
 
-const byId = (id: string) => st.entries.find((e) => e.id === id);
 const focusById = (id: string) => document.getElementById(id)?.focus({ preventScroll: true });
 
 /* ───── Saisie ───── */
@@ -66,24 +116,23 @@ spread.addEventListener("submit", (ev) => {
   const input = f.querySelector("input")!;
   const p = parseLine(input.value);
   if (!p.text) return;
-  const o: Partial<Entry> = { time: p.time, marks: p.marks };
-  st.entries.push(f.dataset.day ? makeEntry(f.dataset.day, p.kind, p.text, o) : makeEntry(null, p.kind, p.text, { ...o, week: f.dataset.week ?? null }));
+  const place = f.dataset.day ? dayPlace(f.dataset.day) : weekPlace(f.dataset.week!);
+  const id = act(() => core.add(place, { kind: p.kind, text: p.text, time: p.time || null, priority: p.marks.includes("priority"), idea: p.marks.includes("idea") }));
+  if (id === undefined) return;
   input.value = "";
-  draw();
   focusById(input.id);
 });
 
 /* ───── Actions sur les lignes ───── */
 function keepSuggestion(s: Suggestion) {
-  const n = keep(st, s);
-  // Le crayon devient encre : les lettres de la nouvelle ligne partent de la suggestion.
-  ctx.from.set(`e:${n.id}`, `g:${s.key}`);
-  draw();
+  const day = spread.querySelector<HTMLElement>(`.cn-ghost[data-sug="${CSS.escape(s.key)}"]`)?.closest<HTMLElement>(".cn-day")?.dataset.day ?? ctx.now;
+  // Le crayon devient encre : les lettres de la ligne partent de la suggestion.
+  ctx.from.set(`e:${s.entryId}`, `g:${s.key}`);
+  act(() => core.keep(s.key, day));
   focusNextGhost();
 }
 function dropSuggestion(s: Suggestion) {
-  dismiss(st, s);
-  draw();
+  act(() => core.dismiss(s.key));
   focusNextGhost();
 }
 function focusNextGhost() {
@@ -105,23 +154,22 @@ spread.addEventListener("click", (ev) => {
   }
   const a = t.closest<HTMLElement>("[data-act]");
   if (!a || a.dataset.act === "edit") return;
-  const e = byId(a.closest<HTMLElement>(".cn-row")?.dataset.id ?? "");
-  if (!e) return;
+  const row = a.closest<HTMLElement>(".cn-row");
+  const id = row?.dataset.id ?? "";
+  const e = core.get(id);
+  if (!e || row?.dataset.key?.startsWith("d:")) return;
   if (a.dataset.act === "cycle" && e.kind === "task") {
-    e.state = ({ open: "done", done: "cancelled", cancelled: "open", migrated: "open" } as const)[e.state];
-    draw();
+    act(() => core.cycleState(id));
   } else if (a.dataset.act === "migrate") {
-    const target = migrationTarget(e, ctx.now);
-    const n = migrate(st, e, target);
-    // Les lettres voyagent de la tâche d'origine (qui reste, marquée « > ») au jour cible.
-    ctx.from.set(`e:${n.id}`, `e:${e.id}`);
-    draw();
+    const target = migrationTarget(e.place.day, ctx.now);
+    // Même entrée, nouvelle place : ses lettres voyagent ; la place quittée garde la trace « > ».
+    ctx.from.set(`e:${id}`, `e:${id}`);
+    act(() => core.migrate(id, dayPlace(target)));
     const visible = ctx.view === "week" ? weekStart(target) === weekStart(ctx.cur) : target === ctx.cur;
     if (!visible) toast(`Migrée au ${fLong.format(parseDay(target))}`);
   } else if (a.dataset.act === "delete") {
-    st.entries = st.entries.filter((x) => x !== e);
-    draw();
-    toast("Entrée supprimée");
+    act(() => core.delete(id));
+    toast("Entrée mise à la corbeille", { label: "Annuler", run: () => act(() => core.restore(id)) });
   }
 });
 
@@ -141,15 +189,35 @@ spread.addEventListener("keydown", (ev) => {
   }
 });
 
+// Édition en place : le texte part au core par remplacement minimal (préfixe et suffixe communs
+// gardés), pendant la frappe et à la sortie. L'édition en <textarea> avec diff par événement (§ P2)
+// remplacera ce chemin.
+let editT = 0;
+const pushText = (t: HTMLElement) => {
+  const id = t.closest<HTMLElement>(".cn-row")?.dataset.id ?? "";
+  const e = core.get(id);
+  if (!e) return false;
+  const v = (t.firstChild?.textContent ?? "").replace(/\n/g, " ");
+  if (v.trim() === e.text) return false;
+  if (!v.trim()) {
+    act(() => core.delete(id));
+    return true;
+  }
+  core.setText(id, v.trim());
+  store.commit();
+  return true;
+};
+spread.addEventListener("input", (ev) => {
+  const t = ev.target as HTMLElement;
+  if (t.dataset.act !== "edit") return;
+  clearTimeout(editT);
+  editT = window.setTimeout(() => pushText(t), 400);
+});
 spread.addEventListener("focusout", (ev) => {
   const t = ev.target as HTMLElement;
   if (t.dataset.act !== "edit") return;
-  const e = byId(t.closest<HTMLElement>(".cn-row")?.dataset.id ?? "");
-  if (!e) return;
-  const v = (t.firstChild?.textContent ?? "").trim();
-  if (v === e.text) return;
-  if (v) e.text = v;
-  else st.entries = st.entries.filter((x) => x !== e);
+  clearTimeout(editT);
+  pushText(t);
   draw();
 });
 
@@ -163,7 +231,7 @@ async function openView(view: View, cur: Day) {
   // Les lignes du jour s'envolent avec leur bloc : chacune part de sa place actuelle.
   const flyDay = view === "day" ? cur : ctx.cur;
   if (fromBlock && !reduced) {
-    for (const e of st.entries) if (e.day === flyDay) ctx.from.set(`e:${e.id}`, `e:${e.id}`);
+    for (const e of core.dayView(flyDay, ctx.now, 0).lines) ctx.from.set(`e:${e.id}`, `e:${e.id}`);
   }
   ctx.view = view;
   ctx.cur = cur;
@@ -188,18 +256,73 @@ document.addEventListener("keydown", (ev) => {
   if (ev.key === "[") step(-1);
   else if (ev.key === "]") step(1);
 });
+async function freshCore(sample: boolean) {
+  await store.flush().catch(() => undefined);
+  core.free();
+  core = await createCore();
+  await store.clear(core);
+  setSample(sample);
+  if (sample) seed(core);
+  store.commit();
+  ctx.from.clear();
+  draw();
+}
 $("#cn-reset").addEventListener("click", () => {
-  st = { v: 1, entries: [], dismissed: [], sample: false };
-  draw();
-  toast("Carnet vidé. Page blanche.");
+  void freshCore(false).then(() => toast("Carnet vidé. Page blanche."));
 });
-$("#cn-reseed").addEventListener("click", () => {
-  st = seed();
-  draw();
-});
+$("#cn-reseed").addEventListener("click", () => void freshCore(true));
 
 /* ───── Démarrage ───── */
-draw();
+const V0 = "carnet.v0";
+async function boot() {
+  core = await createCore();
+  const opened = await Store.open(core, { onRemote: () => draw(), onState: showSave });
+  store = opened.store;
+  ctx = { core, view: "week", cur: today(), now: today(), from: new Map() };
+  if (opened.empty) {
+    let v0: string | null = null;
+    try {
+      v0 = localStorage.getItem(V0);
+    } catch {
+      /* stockage bloqué */
+    }
+    if (v0) {
+      // Import conservateur (§ 3.3) : l'original reste en place jusqu'à ce que l'import soit écrit
+      // et relu ; il est alors renommé, jamais effacé.
+      const sample = (JSON.parse(v0) as { sample?: boolean }).sample === true;
+      const r = core.importV0(v0);
+      store.commit();
+      await store.flush();
+      const check = await createCore();
+      const back = await Store.open(check, {});
+      const ok = check.all().length >= r.imported;
+      back.store.close();
+      check.free();
+      if (ok) {
+        try {
+          localStorage.setItem(`${V0}.importé`, v0);
+          localStorage.removeItem(V0);
+        } catch {
+          /* rien */
+        }
+        setSample(sample);
+        toast(`Carnet v0 importé : ${r.imported} entrée${r.imported > 1 ? "s" : ""}${r.merged_copies ? `, ${r.merged_copies} copie${r.merged_copies > 1 ? "s" : ""} de migration fusionnée${r.merged_copies > 1 ? "s" : ""}` : ""}`);
+      }
+    } else {
+      setSample(true);
+      seed(core);
+      store.commit();
+    }
+  }
+  addEventListener("pagehide", () => void store.flush());
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) void store.flush();
+  });
+  draw();
+  (window as unknown as { __carnet: object }).__carnet = { core, store, ctx, get presse() { return engine; } };
+}
+
+await boot();
 void presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts: ["16px 'Newsreader Variable'", "12px 'IBM Plex Mono'"] }).then((p) => {
   engine = p;
   const badge = $("#cn-gpu");
@@ -215,7 +338,6 @@ void presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts: ["16p
   };
   tick();
   setInterval(tick, 500);
-  (window as unknown as { __carnet: object }).__carnet = { presse: p, get store() { return st; }, ctx };
 });
 
 registerPwa();

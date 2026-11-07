@@ -1,44 +1,11 @@
 /**
- * Carnet — le modèle : entrées du log, saisie rapide, suggestions au crayon.
- *
- * Pur (aucun accès au DOM) : la vue le lit, main.ts le modifie et l'enregistre.
- * Le format restera compatible avec le passage à Yjs prévu par le brief :
- * des enregistrements plats, identifiés, sans référence à des objets.
+ * Carnet — ce que la coquille web garde en TypeScript : dates locales, saisie rapide, carnet
+ * d'exemple. Le modèle lui-même (entrées, migrations, suggestions, vues) vit dans carnet-core.
  */
+import { dayPlace, weekPlace, type Core, type Day, type Kind } from "./core.ts";
 
-export type Day = string; // date locale ISO, AAAA-MM-JJ
-export type Kind = "task" | "event" | "note";
-export type State = "open" | "done" | "migrated" | "cancelled";
+export type { Day, Kind };
 export type Mark = "priority" | "idea";
-
-export type Entry = {
-  id: string;
-  day: Day | null;
-  /** Lundi de la semaine pour une note de semaine (day: null). */
-  week: Day | null;
-  kind: Kind;
-  state: State;
-  marks: Mark[];
-  text: string;
-  time: string;
-  createdAt: number;
-  migratedTo?: string;
-  /** Entrée d'où celle-ci provient (migration, suggestion gardée). */
-  origin?: { kind: "migration" | "suggestion"; ref: string };
-};
-
-export type Suggestion = {
-  key: string;
-  day: Day;
-  type: "carry" | "example";
-  kind: Kind;
-  text: string;
-  time: string;
-  src: string;
-  ref?: Entry;
-};
-
-export type Store = { v: 1; entries: Entry[]; dismissed: string[]; sample: boolean };
 
 /* ───── Dates ───── */
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -65,18 +32,6 @@ export const isoWeek = (k: Day) => {
   return 1 + Math.round(((t.getTime() - y0.getTime()) / 864e5 - 3 + ((y0.getUTCDay() + 6) % 7)) / 7);
 };
 export const today = () => dayKey(new Date());
-const clock = (ts: number) => {
-  const d = new Date(ts);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
-/* ───── Entrées ───── */
-let seq = 0;
-export const uid = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 6);
-
-export function makeEntry(day: Day | null, kind: Kind, text: string, o: Partial<Entry> = {}): Entry {
-  return { id: uid(), day, week: null, kind, state: "open", marks: [], text, time: "", createdAt: Date.now() + seq, ...o };
-}
 
 /** Saisie rapide : `. tâche`, `o événement`, `- note`, `* ` priorité, `! ` idée, `14:00` heure. */
 export function parseLine(raw: string): { kind: Kind; time: string; marks: Mark[]; text: string } {
@@ -110,98 +65,43 @@ export function parseLine(raw: string): { kind: Kind; time: string; marks: Mark[
   return { kind, time, marks, text: s.trim() };
 }
 
-/** Ordre d'une journée : l'heure si elle est donnée, sinon l'heure de saisie. */
-export const sortKey = (e: Entry) => e.time || clock(e.createdAt);
-export const entriesOf = (st: Store, day: Day) =>
-  st.entries.filter((e) => e.day === day).sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : sortKey(a) > sortKey(b) ? 1 : a.createdAt - b.createdAt));
-export const weekNotes = (st: Store, ws: Day) => st.entries.filter((e) => !e.day && e.week === ws).sort((a, b) => a.createdAt - b.createdAt);
+/** Migration d'une tâche : vers aujourd'hui si elle est en retard, sinon au lendemain. */
+export const migrationTarget = (day: Day | null, now: Day) => (day && day < now ? now : addDays(day ?? now, 1));
 
-/** Migration : une copie au jour cible, l'original passe à « migrée » (jamais déplacé). */
-export function migrate(st: Store, e: Entry, target: Day): Entry {
-  const n = makeEntry(target, e.kind, e.text, { marks: [...e.marks], origin: { kind: "migration", ref: e.id } });
-  e.state = "migrated";
-  e.migratedTo = n.id;
-  st.entries.push(n);
-  return n;
-}
-export const migrationTarget = (e: Entry, now: Day) => (e.day && e.day < now ? now : addDays(e.day ?? now, 1));
-
-/* ───── Suggestions au crayon ───── */
-export function suggestionsFor(st: Store, day: Day, now: Day): Suggestion[] {
-  const dis = new Set(st.dismissed);
-  const out: Suggestion[] = [];
-  if (day === now) {
-    for (const e of st.entries) {
-      if (!e.day || e.kind !== "task" || e.state !== "open" || e.day >= day || e.day < addDays(day, -14)) continue;
-      const key = `carry:${e.id}`;
-      if (dis.has(key)) continue;
-      const n = Math.round((parseDay(day).getTime() - parseDay(e.day).getTime()) / 864e5);
-      out.push({ key, day, type: "carry", kind: "task", text: e.text, time: "", src: n === 1 ? "reportée d’hier" : `reportée il y a ${n} jours`, ref: e });
-    }
-  }
-  if (st.sample && day === now && !dis.has("ex:agenda")) {
-    out.push({ key: "ex:agenda", day, type: "example", kind: "event", text: "Dentiste", time: "14:00", src: "agenda · exemple" });
-  }
-  return out.slice(0, 3);
-}
-
-/** Garder une suggestion : l'entrée à l'encre naît, la suggestion disparaît. */
-export function keep(st: Store, s: Suggestion): Entry {
-  let n: Entry;
-  if (s.type === "carry" && s.ref) {
-    n = makeEntry(s.day, "task", s.ref.text, { marks: [...s.ref.marks], origin: { kind: "suggestion", ref: s.key } });
-    s.ref.state = "migrated";
-    s.ref.migratedTo = n.id;
-  } else {
-    n = makeEntry(s.day, s.kind, s.text, { time: s.time, origin: { kind: "suggestion", ref: s.key } });
-  }
-  st.entries.push(n);
-  if (!st.dismissed.includes(s.key)) st.dismissed.push(s.key);
-  return n;
-}
-export function dismiss(st: Store, s: Suggestion) {
-  if (!st.dismissed.includes(s.key)) st.dismissed.push(s.key);
-}
-
-/* ───── Stockage ───── */
-const KEY = "carnet.v0";
-export function load(): Store {
+/* ───── Carnet d'exemple ───── */
+const SAMPLE_KEY = "carnet.sample";
+export const isSample = () => {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as Store;
+    return localStorage.getItem(SAMPLE_KEY) === "1";
   } catch {
-    /* stockage indisponible : carnet d'exemple en mémoire */
+    return false;
   }
-  return seed();
-}
-export function save(st: Store) {
+};
+export const setSample = (v: boolean) => {
   try {
-    localStorage.setItem(KEY, JSON.stringify(st));
+    if (v) localStorage.setItem(SAMPLE_KEY, "1");
+    else localStorage.removeItem(SAMPLE_KEY);
   } catch {
-    /* rien : le carnet vit le temps de la page */
+    /* rien */
   }
-}
+};
 
-export function seed(): Store {
+/** Remplit un carnet vide avec quelques jours d'exemple, autour d'aujourd'hui. */
+export function seed(core: Core) {
   const now = today();
-  const at = (h: number, m: number) => {
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    return d.getTime();
-  };
   const y = addDays(now, -1);
   const y2 = addDays(now, -2);
-  const st: Store = { v: 1, entries: [], dismissed: [], sample: true };
-  st.entries.push(
-    makeEntry(y2, "event", "Dîner avec les voisins", { time: "19:30" }),
-    makeEntry(y2, "task", "Renouveler la carte de bibliothèque", { state: "done", createdAt: at(8, 5) }),
-    makeEntry(y, "event", "Réunion d’équipe, point budget", { time: "09:30" }),
-    makeEntry(y, "task", "Rappeler le plombier", { createdAt: at(8, 40) }),
-    makeEntry(y, "task", "Acheter du café", { state: "done", createdAt: at(8, 41) }),
-    makeEntry(y, "note", "Un carnet qui se remplit avec la journée", { marks: ["idea"], createdAt: at(21, 10) }),
-    makeEntry(now, "event", "Course, 6 km", { time: "07:45" }),
-    makeEntry(now, "task", "Finir le brief de Carnet", { marks: ["priority"], createdAt: at(8, 20) }),
-    makeEntry(null, "note", "Garder le jeudi soir libre", { week: weekStart(now), createdAt: at(7, 8) }),
-  );
-  return st;
+  const add = (day: Day, kind: Kind, text: string, o: { time?: string; priority?: boolean; idea?: boolean } = {}) =>
+    core.add(dayPlace(day), { kind, text, time: o.time ?? null, priority: !!o.priority, idea: !!o.idea });
+  add(y2, "event", "Dîner avec les voisins", { time: "19:30" });
+  core.setState(add(y2, "task", "Renouveler la carte de bibliothèque"), "done");
+  add(y, "event", "Réunion d’équipe, point budget", { time: "09:30" });
+  add(y, "task", "Rappeler le plombier");
+  core.setState(add(y, "task", "Acheter du café"), "done");
+  add(y, "note", "Un carnet qui se remplit avec la journée", { idea: true });
+  add(now, "event", "Course, 6 km", { time: "07:45" });
+  add(now, "task", "Finir le brief de Carnet", { priority: true });
+  core.add(weekPlace(weekStart(now)), { kind: "note", text: "Garder le jeudi soir libre" });
+  // Un rendez-vous noté sur la page du mois : il revient au crayon le jour dit (« prévu ce mois »).
+  core.add({ scope: `month:${now.slice(0, 7)}`, day: now }, { kind: "event", text: "Dentiste", time: "14:00" });
 }

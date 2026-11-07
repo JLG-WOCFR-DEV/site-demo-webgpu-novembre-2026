@@ -2,9 +2,9 @@ name: carnet-core
 
 on:
   push:
-    paths: ["crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/carnet-core.yml"]
+    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "src/carnet/**", "tools/carnet-wasm.sh", ".github/workflows/carnet-core.yml"]
   pull_request:
-    paths: ["crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/carnet-core.yml"]
+    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "src/carnet/**", "tools/carnet-wasm.sh", ".github/workflows/carnet-core.yml"]
 
 jobs:
   check:
@@ -19,10 +19,19 @@ jobs:
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy
-        run: cargo clippy -p carnet-core --all-targets -- -D warnings
+        run: cargo clippy -p carnet-core -p carnet-wasm --all-targets -- -D warnings
       - name: Tests (convergence : 2 000 scénarios)
         run: cargo test -p carnet-core --release
         env:
           PROPTEST_CASES: "2000"
-      - name: Compilation WebAssembly
-        run: cargo build -p carnet-core --target wasm32-unknown-unknown --release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli --version 0.2.100 --locked
+      - name: Module wasm (le même script qu'en local)
+        run: ./tools/carnet-wasm.sh
+      - name: Tests de la coquille (core wasm + IndexedDB simulé)
+        run: npm test

@@ -1,0 +1,19 @@
+[package]
+name = "carnet-wasm"
+version = "0.1.0"
+description = "Carnet : frontière wasm-bindgen de carnet-core (un .wasm pour la coquille web)"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+carnet-core = { path = "../carnet-core" }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+# Version figée : elle doit être celle de wasm-bindgen-cli (tools/carnet-wasm.sh).
+wasm-bindgen = "=0.2.100"
+js-sys = "0.3"
