@@ -53,4 +53,9 @@ describe("tierFor", () => {
     assert.equal(tierFor(24, 2).fontSize, 96);
     assert.equal(tierFor(40, 1).fontSize, 42);
   });
+  test("petit palier sous 25 px physiques (texte courant en densité 1)", () => {
+    assert.equal(tierFor(16, 1).fontSize, 26);
+    assert.equal(tierFor(12, 2).fontSize, 26);
+    assert.equal(tierFor(13, 2).fontSize, 42);
+  });
 });

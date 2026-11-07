@@ -33,6 +33,9 @@ let idle = false;
 let ticking = false;
 let tick: ((now: number) => void) | null = null;
 let last = 0;
+// Images ignorées au réveil : elles portent la mise en page et les envois au GPU, pas la cadence.
+const WARMUP = 8;
+let warm = 0;
 
 function start() {
   started = true;
@@ -49,6 +52,10 @@ function start() {
     requestAnimationFrame(tick!);
     // Pause, onglet en arrière-plan, gros chargement : ce n'est pas la cadence.
     if (document.hidden || dt <= 0 || dt > 250) return;
+    if (warm > 0) {
+      warm--;
+      return;
+    }
     // La cadence de l'écran : le plus court des intervalles récents, arrondi à un écran connu.
     mins.push(dt);
     if (mins.length > 120) mins.shift();
@@ -83,9 +90,29 @@ export function setGovernorIdle(v: boolean) {
   idle = v;
   if (!v && tick && !ticking) {
     ticking = true;
+    warm = WARMUP;
+    ema = interval;
+    over = under = 0;
     last = performance.now();
     requestAnimationFrame(tick);
   }
+}
+
+/**
+ * Net au repos : la baisse d'échelle n'achète de la fluidité que pendant le mouvement. Le moteur à la
+ * demande l'appelle avant de s'endormir ; si l'échelle était réduite, elle revient à 1 et il peint une
+ * dernière image pleine définition (rend vrai si cette image est nécessaire). Sans cela, une page
+ * réduite pendant une animation restait floue jusqu'à 4 s d'animation fluide, qui n'arrivent jamais
+ * quand le moteur dort entre deux gestes.
+ */
+export function restFullScale() {
+  if (scale >= 1) return false;
+  scale = 1;
+  lastChange = performance.now();
+  over = under = 0;
+  ema = interval;
+  for (const fn of subs) fn(scale);
+  return true;
 }
 
 /** Facteur d'échelle du rendu (multiplie devicePixelRatio). */

@@ -94,7 +94,10 @@ export function stretchKeyword(stretch: string): string {
 
 /** Paliers de champ de distance : grand pour l'affichage, petit pour le texte courant. */
 export function tierFor(cssSize: number, dpr: number) {
-  return cssSize * dpr >= 44
-    ? { fontSize: 96, buffer: 14, radius: 18 }
-    : { fontSize: 42, buffer: 6, radius: 8 };
+  const px = cssSize * dpr;
+  // Un champ de distance lu trop réduit perd ses traits fins (la barre du « e » à 16 px sur un écran
+  // de densité 1, lue dans un glyphe de 42 px) : un palier petit garde la réduction sous ×1,7.
+  if (px >= 44) return { fontSize: 96, buffer: 14, radius: 18 };
+  if (px >= 25) return { fontSize: 42, buffer: 6, radius: 8 };
+  return { fontSize: 26, buffer: 4, radius: 6 };
 }

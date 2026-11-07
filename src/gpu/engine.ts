@@ -7,7 +7,7 @@ import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
-import { renderScale, setGovernorIdle } from "./governor.ts";
+import { renderScale, restFullScale, setGovernorIdle } from "./governor.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -816,6 +816,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     if (destroyed) return;
     // Mode à la demande : passé la fenêtre d'éveil, cette image est la dernière (elle fige l'état final).
     if (!onDemand || recorder || performance.now() < awakeUntil) raf = requestAnimationFrame(frame);
+    // L'image figée doit être nette : si le gouverneur avait réduit l'échelle, une image de plus, pleine définition.
+    else if (restFullScale()) raf = requestAnimationFrame(frame);
     else {
       asleep = true;
       setGovernorIdle(true);

@@ -634,6 +634,10 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
   return out;
 }
 
+fn sdf_cov(uv: vec2f, edge: f32, w: f32) -> f32 {
+  return smoothstep(edge - w, edge + w, textureSampleLevel(atlas, samp, uv, 0.0).r);
+}
+
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4f {
   // Les deux atlas sont lus sans condition (contrôle uniforme pour les
@@ -646,7 +650,17 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   let d = select(single, med, isMulti);
   let edge = select(in.edge, 0.5 + (in.edge - 0.75) * 0.85, isMulti);
   let w = max(fwidth(d) * 0.75, 0.002);
-  var a = smoothstep(edge - w, edge + w, d) * in.color.a;
+  // Texte courant (champ simple) : quatre lectures en grille tournée dans le pixel. Une seule lecture
+  // d'un champ réduit saute les traits plus fins qu'un pixel (barres, empattements) et fait baver le
+  // reste ; la moyenne de quatre couvertures garde le dessin. Lectures au niveau 0 : contrôle uniforme.
+  let gx = dpdx(in.uv);
+  let gy = dpdy(in.uv);
+  let ws = max(w * 0.6, 0.002);
+  let ss = sdf_cov(in.uv + gx * -0.125 + gy * -0.375, edge, ws)
+    + sdf_cov(in.uv + gx * 0.375 + gy * -0.125, edge, ws)
+    + sdf_cov(in.uv + gx * 0.125 + gy * 0.375, edge, ws)
+    + sdf_cov(in.uv + gx * -0.375 + gy * 0.125, edge, ws);
+  var a = select(ss * 0.25, smoothstep(edge - w, edge + w, d), isMulti) * in.color.a;
   if (in.kin.x > 2.5 && in.kin.x < 3.5) {
     // Contour : une bande autour du bord, qui devient le plein près du pointeur.
     let band = 1.0 - smoothstep(0.035 - w, 0.035 + w, abs(d - edge));
