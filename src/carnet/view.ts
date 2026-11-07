@@ -112,11 +112,10 @@ function entrySpec(e: Line, ctx: RenderCtx): RowSpec {
       const t = el("span", "cn-text");
       t.dataset.glText = "";
       t.dataset.glMorphId = key;
-      t.contentEditable = "plaintext-only";
-      t.spellcheck = true;
+      // Un appui ouvre l'éditeur (un <textarea>, edit.ts) ; au clavier, Entrée ou Espace.
+      t.tabIndex = 0;
       t.dataset.act = "edit";
-      t.setAttribute("role", "textbox");
-      t.setAttribute("aria-label", "Texte de l’entrée");
+      t.setAttribute("role", "button");
       body.append(t);
       const ops = el("span", "cn-ops");
       const mig = el("button", "cn-op", "›");
@@ -133,7 +132,7 @@ function entrySpec(e: Line, ctx: RenderCtx): RowSpec {
       li.append(mark, b, time, body, ops);
       if (e.departedTo) {
         // La trace d'une migration : lisible, pas éditable ; le texte reste celui, vivant, de l'entrée.
-        t.contentEditable = "false";
+        t.removeAttribute("tabindex");
         t.removeAttribute("role");
         delete t.dataset.act;
         ops.hidden = true;
@@ -155,9 +154,11 @@ function entrySpec(e: Line, ctx: RenderCtx): RowSpec {
       );
       time!.textContent = e.time ?? "";
       const t = body!.firstElementChild as HTMLElement;
-      if (document.activeElement !== t && t.firstChild?.textContent !== e.text) {
+      // Pendant l'édition, le champ fait foi : le texte imprimé se met à jour à la fermeture.
+      if (!t.hidden && t.firstChild?.textContent !== e.text) {
         t.replaceChildren(document.createTextNode(e.text));
       }
+      if (!e.departedTo) t.setAttribute("aria-label", `Modifier : ${e.text}`);
       const struck = !e.departedTo && e.kind === "task" && (e.state === "done" || e.state === "cancelled");
       const has = t.querySelector(".cn-strike");
       if (struck && !has) t.append(strike(e.id));

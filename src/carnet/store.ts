@@ -95,14 +95,37 @@ export class Store {
   /** Ouvre le stockage et charge le carnet dans `core` : checkpoint, puis journal. */
   static async open(core: Core, o: StoreOptions = {}): Promise<{ store: Store; empty: boolean }> {
     const db = await openDb(o.name);
-    const tx = db.transaction(["checkpoint", "journal"], "readonly");
+    const store = new Store(db, core, o);
+    const empty = await store.load();
+    return { store, empty };
+  }
+
+  /** Relit checkpoint et journal et les applique (idempotent). Rend vrai si le stockage est vide. */
+  async load(): Promise<boolean> {
+    const tx = this.db.transaction(["checkpoint", "journal"], "readonly");
     const cp = await req(tx.objectStore("checkpoint").get("main") as IDBRequest<Checkpoint | undefined>);
     const lines = await req(tx.objectStore("journal").getAll() as IDBRequest<Uint8Array[]>);
-    if (cp) core.apply([cp.state]);
-    if (lines.length) core.apply(lines);
-    const store = new Store(db, core, o);
-    store.journalSize = lines.length;
-    return { store, empty: !cp && lines.length === 0 };
+    if (cp) this.core.apply([cp.state]);
+    if (lines.length) this.core.apply(lines);
+    this.journalSize = lines.length;
+    return !cp && lines.length === 0;
+  }
+
+  /**
+   * Premier lancement : `init` remplit le carnet (exemple, import v0) une seule fois, même si deux
+   * onglets s'ouvrent ensemble. Sous verrou, on relit le stockage ; s'il est encore vide, on remplit
+   * et on écrit avant de rendre la main.
+   */
+  async initOnce(init: () => void | Promise<void>): Promise<boolean> {
+    const run = async () => {
+      if (!(await this.load())) return false;
+      await init();
+      this.commit();
+      await this.flush();
+      return true;
+    };
+    const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+    return locks ? locks.request(`${this.o.name ?? DB}:init`, run) : run();
   }
 
   /** Prend les mises à jour produites par le core et programme leur écriture. À appeler après chaque commande. */

@@ -295,9 +295,9 @@ réel du projet.
 
 - [x] Workspace, CI (fmt, clippy, tests natifs et wasm) — `carnet-wasm`, `tools/carnet-wasm.sh`
 - [x] Modèle § 3.2, règles produit, commandes, modèles de vue semaine / jour / mois — la coquille v0 tourne dessus
-- [ ] Édition : `<textarea>` visible pendant l'édition, diff → opérations `Y.Text`, offsets UTF-16
+- [x] Édition : `<textarea>` visible pendant l'édition, diff → opérations `Y.Text`, offsets UTF-16 (paires de substitution jamais coupées, composition attendue) — à valider au clavier Android (recette P1)
 - [x] Suggestions : veille, prévu ce mois, il y a un an
-- [ ] Persistance § 3.3 complète — fait : contrat affiché, journal par lots de 250 ms, compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché. Reste : médias, `storage.persist()` dans l'app, tests de mise à jour avec page ouverte
+- [ ] Persistance § 3.3 complète — fait : contrat affiché, journal par lots de 250 ms, compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché. `storage.persist()` demandé, premier lancement unique entre onglets (Web Locks). Reste : médias, tests de mise à jour avec page ouverte
 - [x] Sauvegarde `.carnet` (zip : manifeste + document yrs, empreintes SHA-256) et restauration par fusion, vérifiée dans un carnet vide ; import v0 conservateur (original renommé `carnet.v0.importé` après relecture). Pages et médias s'ajouteront au même format
 - [x] Tests de convergence reformulés (§ 4.3)
 

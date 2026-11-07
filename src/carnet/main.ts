@@ -28,6 +28,7 @@ import { createCore, dayPlace, weekPlace, type Core, type Suggestion } from "./c
 import { addDays, isSample, migrationTarget, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
 import { Store, type SaveState } from "./store.ts";
 import { backup, backupName, restore } from "./backup.ts";
+import { openEditor } from "./edit.ts";
 import { render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
@@ -184,42 +185,43 @@ spread.addEventListener("keydown", (ev) => {
     else if (ev.key === "Delete" || ev.key === "Backspace") (ev.preventDefault(), dropSuggestion(s));
     return;
   }
-  if (t.dataset.act === "edit" && (ev.key === "Enter" || ev.key === "Escape")) {
+  if (t.dataset.act === "edit" && (ev.key === "Enter" || ev.key === " ")) {
     ev.preventDefault();
-    t.blur();
+    startEdit(t);
   }
 });
 
-// Édition en place : le texte part au core par remplacement minimal (préfixe et suffixe communs
-// gardés), pendant la frappe et à la sortie. L'édition en <textarea> avec diff par événement (§ P2)
-// remplacera ce chemin.
-let editT = 0;
-const pushText = (t: HTMLElement) => {
+// Édition : un <textarea> à la place du texte imprimé, chaque changement envoyé au core comme une
+// opération Y.Text (edit.ts). Un texte vidé met l'entrée à la corbeille.
+let editing: { id: string; close: () => void } | null = null;
+function startEdit(t: HTMLElement) {
   const id = t.closest<HTMLElement>(".cn-row")?.dataset.id ?? "";
   const e = core.get(id);
-  if (!e) return false;
-  const v = (t.firstChild?.textContent ?? "").replace(/\n/g, " ");
-  if (v.trim() === e.text) return false;
-  if (!v.trim()) {
-    act(() => core.delete(id));
-    return true;
-  }
-  core.setText(id, v.trim());
-  store.commit();
-  return true;
-};
-spread.addEventListener("input", (ev) => {
-  const t = ev.target as HTMLElement;
-  if (t.dataset.act !== "edit") return;
-  clearTimeout(editT);
-  editT = window.setTimeout(() => pushText(t), 400);
-});
-spread.addEventListener("focusout", (ev) => {
-  const t = ev.target as HTMLElement;
-  if (t.dataset.act !== "edit") return;
-  clearTimeout(editT);
-  pushText(t);
-  draw();
+  if (!e || editing?.id === id) return;
+  editing?.close();
+  const close = openEditor(t, e.text, {
+    splice: (start, del, ins) => {
+      try {
+        core.spliceText(id, start, del, ins);
+        store.commit();
+      } catch (err) {
+        console.warn("[carnet] édition", err);
+      }
+    },
+    done: (text) => {
+      editing = null;
+      if (!text) {
+        act(() => core.delete(id));
+        toast("Entrée mise à la corbeille", { label: "Annuler", run: () => act(() => core.restore(id)) });
+      } else draw();
+      t.focus({ preventScroll: true });
+    },
+  });
+  editing = { id, close };
+}
+spread.addEventListener("click", (ev) => {
+  const t = (ev.target as HTMLElement).closest<HTMLElement>('[data-act="edit"]');
+  if (t) startEdit(t);
 });
 
 /* ───── Navigation ───── */
@@ -317,15 +319,20 @@ async function boot() {
     } catch {
       /* stockage bloqué */
     }
-    if (v0) {
+    let report: { imported: number; merged_copies: number } | null = null;
+    const filled = await store.initOnce(() => {
+      if (v0) report = core.importV0(v0);
+      else {
+        setSample(true);
+        seed(core);
+      }
+    });
+    if (filled && v0 && report) {
       // Import conservateur (§ 3.3) : l'original reste en place jusqu'à ce que l'import soit écrit
       // et relu ; il est alors renommé, jamais effacé.
-      const sample = (JSON.parse(v0) as { sample?: boolean }).sample === true;
-      const r = core.importV0(v0);
-      store.commit();
-      await store.flush();
+      const r: { imported: number; merged_copies: number } = report;
       const check = await createCore();
-      const back = await Store.open(check, {});
+      const back = await Store.open(check, { broadcast: false });
       const ok = check.all().length >= r.imported;
       back.store.close();
       check.free();
@@ -336,15 +343,14 @@ async function boot() {
         } catch {
           /* rien */
         }
-        setSample(sample);
+        setSample((JSON.parse(v0) as { sample?: boolean }).sample === true);
         toast(`Carnet v0 importé : ${r.imported} entrée${r.imported > 1 ? "s" : ""}${r.merged_copies ? `, ${r.merged_copies} copie${r.merged_copies > 1 ? "s" : ""} de migration fusionnée${r.merged_copies > 1 ? "s" : ""}` : ""}`);
       }
-    } else {
-      setSample(true);
-      seed(core);
-      store.commit();
     }
   }
+  // Protection contre l'éviction (§ 3.3). Chrome l'accorde sans demander à une application installée
+  // ou souvent utilisée ; ce n'est pas une sauvegarde.
+  void navigator.storage?.persist?.().catch(() => false);
   addEventListener("pagehide", () => void store.flush());
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) void store.flush();

@@ -582,3 +582,25 @@ body > .cn-flysheet.cn-flysheet.cn-flysheet {
   color: var(--ink-soft);
   min-width: 9em;
 }
+
+/* Éditeur d'une ligne : un champ natif à la place du texte imprimé, même typographie. */
+.cn-edit {
+  display: block;
+  width: 100%;
+  min-height: 1.4em;
+  margin: 0 0 0 -3px;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--hover);
+  color: var(--ink);
+  font: inherit;
+  line-height: inherit;
+  resize: none;
+  overflow: hidden;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.cn-text[role="button"] {
+  cursor: text;
+}
