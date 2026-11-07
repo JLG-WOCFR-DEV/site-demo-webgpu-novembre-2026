@@ -180,6 +180,10 @@ export function recordable(device: GPUDevice, canvas: HTMLCanvasElement, format:
       rec.afterSubmit();
       if (rec.done) rec = null;
     },
+    /** Une capture (vidéo ou instantané) attend des images : la boucle ne doit ni sauter d'image ni s'endormir. */
+    get busy() {
+      return !!rec || snap.busy;
+    },
     caps: {
       snapshot: (cb: (png: Blob | null) => void) => snap.request(cb),
       record: (o: RecordOptions) => {
@@ -206,6 +210,9 @@ export class Snapshot {
   ) {}
   request(cb: (png: Blob | null) => void) {
     this.want = cb;
+  }
+  get busy() {
+    return !!this.want || !!this.pending;
   }
   copy(enc: GPUCommandEncoder, tex: GPUTexture) {
     if (!this.want) return;

@@ -14,6 +14,10 @@
  *
  * Mieux vaut une image un peu plus douce que des images qui sautent : un site
  * qui saccade paraît cassé, un site un peu moins net ne se remarque pas.
+ *
+ * Sans boucle à lui (zéro coût au repos) : il mesure la cadence des images que
+ * les composants dessinent vraiment — chaque appel à renderScale() d'une image
+ * est un échantillon. Une page endormie ne mesure rien, et n'en a pas besoin.
  */
 
 const MIN = 0.5;
@@ -21,7 +25,6 @@ const DOWN = 0.85;
 const UP = 1.1;
 
 let scale = 1;
-let started = false;
 let interval = 1000 / 60;
 let ema = interval;
 let over = 0;
@@ -29,16 +32,16 @@ let under = 0;
 let lastChange = 0;
 const subs = new Set<(s: number) => void>();
 
-function start() {
-  started = true;
+const mins: number[] = [];
+let last = -1;
+function sample(now: number) {
   if (document.documentElement.dataset.presseQuality === "fixe") return;
-  const mins: number[] = [];
-  let last = performance.now();
-  const tick = (now: number) => {
-    const dt = now - last;
-    last = now;
-    requestAnimationFrame(tick);
-    // Pause, onglet en arrière-plan, gros chargement : ce n'est pas la cadence.
+  const dt = now - last;
+  // Plusieurs composants dans la même image : un seul échantillon.
+  if (last >= 0 && dt < 2) return;
+  last = now;
+  {
+    // Pause, onglet en arrière-plan, gros chargement, page endormie : ce n'est pas la cadence.
     if (document.hidden || dt <= 0 || dt > 250) return;
     // La cadence de l'écran : le plus court des intervalles récents, arrondi à un écran connu.
     mins.push(dt);
@@ -60,13 +63,12 @@ function start() {
       over = under = 0;
       for (const fn of subs) fn(scale);
     }
-  };
-  requestAnimationFrame(tick);
+  }
 }
 
-/** Facteur d'échelle du rendu (multiplie devicePixelRatio). */
+/** Facteur d'échelle du rendu (multiplie devicePixelRatio) ; l'appel compte comme une image dessinée. */
 export function renderScale() {
-  if (!started) start();
+  sample(performance.now());
   return scale;
 }
 

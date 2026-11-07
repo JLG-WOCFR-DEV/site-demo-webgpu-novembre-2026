@@ -190,13 +190,19 @@ const progress = (el: HTMLElement) => {
   }
 }
 
-/* La boucle : progression lue, ressort, dessin — seulement pour les sections proches de l'écran. */
+/*
+ * La boucle : progression lue, ressort, dessin — seulement pour les sections proches de l'écran, et seulement tant
+ * que quelque chose bouge. Au repos (ressorts posés, pas de défilement), elle s'endort ; le défilement, un
+ * redimensionnement ou un composant qui se monte la réveillent (zéro image demandée au repos).
+ */
 let last = performance.now();
+let loopRaf = 0;
 const loop = () => {
-  requestAnimationFrame(loop);
+  loopRaf = 0;
   const now = performance.now();
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  let moving = false;
   for (const s of scrubs) {
     const r = s.el.getBoundingClientRect();
     if (r.bottom < -innerHeight || r.top > innerHeight * 2) continue;
@@ -204,10 +210,22 @@ const loop = () => {
     const target = p * (s.steps - 1);
     if (reduced()) ((s.f = target), (s.v = 0));
     else [s.f, s.v] = springStep(s.f, s.v, target, dt, SPRINGS.vif);
+    if (Math.abs(s.f - target) < 1e-3 && Math.abs(s.v) < 1e-3) ((s.f = target), (s.v = 0));
+    else moving = true;
     s.draw(clamp(s.f, 0, s.steps - 1), p);
   }
+  if (moving) loopRaf = requestAnimationFrame(loop);
 };
-requestAnimationFrame(loop);
+const wakeLoop = () => {
+  if (loopRaf) return;
+  last = performance.now();
+  loopRaf = requestAnimationFrame(loop);
+};
+addEventListener("scroll", wakeLoop, { passive: true });
+addEventListener("resize", wakeLoop);
+// Le dessin au bruit arrive après coup (GPU) : un passage quand il est prêt.
+new MutationObserver(wakeLoop).observe(document.body, { attributes: true, subtree: true, attributeFilter: ["class"] });
+wakeLoop();
 
 /* 4. Liste qui se transforme */
 {
@@ -233,8 +251,15 @@ requestAnimationFrame(loop);
     });
     list.addEventListener("pointerleave", () => aim(null));
     let pt = performance.now();
+    let pillRaf = 0;
+    // La pastille ne tourne que pendant son mouvement ; un survol la réveille.
+    const wakePill = () => {
+      if (pillRaf) return;
+      pt = performance.now();
+      pillRaf = requestAnimationFrame(tick);
+    };
     const tick = () => {
-      requestAnimationFrame(tick);
+      pillRaf = 0;
       const now = performance.now();
       const dt = Math.min(0.05, (now - pt) / 1000);
       pt = now;
@@ -244,7 +269,14 @@ requestAnimationFrame(loop);
       pill.style.transform = `translateY(${st.y}px)`;
       pill.style.height = `${st.h}px`;
       pill.style.opacity = st.o.toFixed(3);
+      const rest = Math.abs(st.y - st.ty) < 0.05 && Math.abs(st.vy) < 0.05 && Math.abs(st.h - st.th) < 0.05 && Math.abs(st.vh) < 0.05 && Math.abs(st.o - st.to) < 0.002;
+      if (!rest) pillRaf = requestAnimationFrame(tick);
     };
+    rows.forEach((r) => {
+      r.addEventListener("pointerenter", wakePill);
+      r.addEventListener("focus", wakePill);
+    });
+    list.addEventListener("pointerleave", wakePill);
     tick();
 
     // Un clic : la ligne s'ouvre en fiche (la fiche part du rectangle de la ligne, en masque).

@@ -16,6 +16,7 @@
  */
 import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { loadPhotoArray } from "../../gpu/photos.ts";
+import { sommeil, type Sommeil } from "../../gpu/sommeil.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { claimFlight, type Flight, onArrive, onLeave, onSource, type Source } from "../../presse/flight.ts";
@@ -647,7 +648,10 @@ export function mount(root: HTMLElement) {
     vel.x = vel.y = 0;
     lastInput = clockNow();
     clearTimeout(wheelTimer);
-    wheelTimer = window.setTimeout(settle, 140);
+    wheelTimer = window.setTimeout(() => {
+      settle();
+      sleep?.wake();
+    }, 140);
   };
   root.addEventListener("wheel", onWheel, { passive: false });
 
@@ -783,6 +787,8 @@ export function mount(root: HTMLElement) {
   const io = new IntersectionObserver(([e]) => (onScreen = !!e?.isIntersecting), { rootMargin: "150px" });
   io.observe(root);
   let stopped = false;
+  // Zéro coût au repos (src/gpu/sommeil.ts) — sauf avec un fond animé, qui vit par définition.
+  let sleep: Sommeil | null = null;
   let unwire = () => {};
   let wire = false;
 
@@ -1193,7 +1199,6 @@ export function mount(root: HTMLElement) {
 
     const frame = () => {
       if (stopped) return;
-      requestAnimationFrame(frame);
       const now = clockNow();
       const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
@@ -1208,6 +1213,7 @@ export function mount(root: HTMLElement) {
           const a_ = arrival;
           void a_.f.land(src.rect, src.radius).then(() => {
             a_.landed = true;
+            sleep?.wake();
             if (arrival === a_) finishArrival();
           });
         }
@@ -1250,6 +1256,9 @@ export function mount(root: HTMLElement) {
         const held = arrival && !arrival.landed && d.idx === arrival.idx && !d.key.includes("@");
         idata.set([held ? 0 : clamp(d.p.o, 0, 1), d.p.shade, d.chroma, d.hl], o + 20);
       }
+      // Rien n'a changé (et pas de fond animé, pas de capture) : ni écriture, ni soumission.
+      if (rec.busy || (cfg.backdrop > 0 && !reduced.matches)) sleep?.wake();
+      else if (sleep?.idem(idata.subarray(0, count * STRIDE), [b.W, b.H, dpr, cfg.perspective, count, wire ? 1 : 0, cfg.shadow])) return;
       device.queue.writeBuffer(ibuf, 0, idata, 0, count * STRIDE);
       udata.set([b.W, b.H, dpr, cfg.perspective, count, wire ? 1 : 0, now / 1000, cfg.shadow]);
       device.queue.writeBuffer(ubuf, 0, udata);
@@ -1277,13 +1286,14 @@ export function mount(root: HTMLElement) {
       painted(root);
       if (full) rec.after();
     };
-    requestAnimationFrame(frame);
+    sleep = sommeil(frame, root);
   };
 
   start().catch(fallback);
 
   return () => {
     stopped = true;
+    sleep?.stop();
     io.disconnect();
     unwire();
     unsource();

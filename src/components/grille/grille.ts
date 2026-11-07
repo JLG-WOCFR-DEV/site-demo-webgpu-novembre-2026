@@ -18,6 +18,7 @@ import { clockNow, recordable } from "../../gpu/recorder.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { renderScale } from "../../gpu/governor.ts";
+import { sommeil, type Sommeil } from "../../gpu/sommeil.ts";
 import { getDevice } from "../device.ts";
 import { hot } from "../../presse/components.ts";
 
@@ -1011,6 +1012,8 @@ export function mount(root: HTMLElement) {
   const io = new IntersectionObserver(([e]) => (onScreen = !!e?.isIntersecting), { rootMargin: "100px" });
   io.observe(root);
   let stopped = false;
+  // Zéro coût au repos (src/gpu/sommeil.ts) : la boucle s'endort quand l'image ne change plus.
+  let sleep: Sommeil | null = null;
   let unwire = () => {};
 
   /* ───── Le passage : une photo qui arrive d'une autre page ───── */
@@ -1032,6 +1035,7 @@ export function mount(root: HTMLElement) {
     // Sa photo HTML s'efface le temps du vol ; posée, elle (ou le GPU) prend le relais.
     root.classList.add("gr-arriving");
     void f.land({ x: r.left, y: r.top, w: r.width, h: r.height }, 18).then(() => {
+      sleep?.wake();
       if (landing?.id === p.id) landing.landed = true;
       finishLanding();
     });
@@ -1139,6 +1143,7 @@ export function mount(root: HTMLElement) {
       }
       const into = tex;
       await Promise.all(ps.map((p) => fromImage(device, into, p.img, p.layer, TW, TH, MIPS)));
+      sleep?.invalidate();
     };
     // Des photos déposées pendant le chargement.
     if (photos.length > loaded) await gpuAdd(photos.slice(loaded));
@@ -1152,7 +1157,6 @@ export function mount(root: HTMLElement) {
 
     const frame = () => {
       if (stopped) return;
-      requestAnimationFrame(frame);
       const now = clockNow();
       const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
@@ -1326,6 +1330,9 @@ export function mount(root: HTMLElement) {
         if (fly && fly.dir === 1 && flyT >= 1) fly = null;
       }
 
+      // Rien n'a changé depuis l'image précédente (le shader ne dépend pas du temps) : ni écriture, ni soumission.
+      if (rec.busy) sleep?.wake();
+      else if (sleep?.idem(tdata.subarray(0, n * 16), [PW, PH, dpr, wire ? 1 : 0, n])) return;
       device.queue.writeBuffer(tbuf, 0, tdata, 0, n * 16);
       udata.set([PW, PH, dpr, now / 1000, wire ? 1 : 0, 0, 0, 0]);
       device.queue.writeBuffer(ubuf, 0, udata);
@@ -1342,7 +1349,7 @@ export function mount(root: HTMLElement) {
       painted(root);
       if (full) rec.after();
     };
-    requestAnimationFrame(frame);
+    sleep = sommeil(frame, root);
   };
 
   start().catch((e) => {
@@ -1356,6 +1363,7 @@ export function mount(root: HTMLElement) {
 
   return () => {
     stopped = true;
+    sleep?.stop();
     io.disconnect();
     unleave();
     unarrive();
