@@ -7,7 +7,9 @@
 export function registerPwa(onUpdate?: (activate: () => void) => void) {
   if (!("serviceWorker" in navigator) || !isSecureContext) return;
   const url = new URL("./carnet-sw.js", document.baseURI);
-  void navigator.serviceWorker.register(url, { scope: "./" }).then((reg) => {
+  // Refusé dans un cadre isolé (aperçu, artifact) ou sans le fichier : la page marche sans hors-ligne.
+  navigator.serviceWorker.register(url, { scope: "./" }).catch(() => null).then((reg) => {
+    if (!reg) return;
     const offer = (w: ServiceWorker | null) => {
       if (!w || !navigator.serviceWorker.controller) return;
       onUpdate?.(() => {
