@@ -13,8 +13,9 @@
   --line-2: #3a3a42;
   --fg: #ecebe6;
   --dim: #9a9890;
-  --faint: #6a6862;
-  --accent: #2f6bff;
+  /* ≥ 4,5:1 sur les panneaux (#151518, #1c1c20) : c'est du texte (aides, « Enregistré »), pas un filet. */
+  --faint: #8c8a83;
+  --accent: #2a63f2; /* le blanc dessus : 5:1 (#2f6bff donnait 4,499) */
   --accent-soft: color-mix(in srgb, #2f6bff 22%, transparent);
   --spot: #ff5a36;
   --warn: #ffb02e;

@@ -83,6 +83,10 @@ body.mt {
   color: #625f58 !important;
   margin: 10px 0 0 !important;
 }
+/* La section des éléments est sur fond noir : le crédit s'éclaircit (7:1). */
+.mt-elements .mt-credit {
+  color: #a29d92 !important;
+}
 .mt-tools {
   display: flex;
   flex-wrap: wrap;

@@ -235,7 +235,7 @@ html:not([data-cr-edit]) .cr-overlay { display: none; }
 .cr-box.is-on { display: block; }
 .cr-hover { outline: 1px dashed color-mix(in srgb, #2f6bff 80%, transparent); outline-offset: -1px; }
 .cr-sel { outline: 2px solid #2f6bff; outline-offset: -2px; }
-.cr-tag { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 2px; padding: 0 2px 0 8px; height: 24px; transform: translateY(-100%); border-radius: 4px 4px 0 0; background: #2f6bff; color: #fff; letter-spacing: .04em; white-space: nowrap; }
+.cr-tag { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 2px; padding: 0 2px 0 8px; height: 24px; transform: translateY(-100%); border-radius: 4px 4px 0 0; background: #2a63f2; color: #fff; letter-spacing: .04em; white-space: nowrap; }
 .cr-box.is-top .cr-tag { transform: none; border-radius: 0 0 4px 0; }
 .cr-hover .cr-tag { padding-right: 8px; background: color-mix(in srgb, #2f6bff 80%, transparent); }
 .cr-sel .cr-tag b { font-weight: 500; margin-right: 6px; }

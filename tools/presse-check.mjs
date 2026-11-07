@@ -99,7 +99,12 @@ async function contrast(page) {
     });
     await page.addStyleTag({ content: "*{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;caret-color:transparent!important}", }).then((h) => h.evaluate((e) => (e.dataset.checkHide = "")));
     await page.waitForTimeout(250);
-    const png = PNG.sync.read(await page.screenshot());
+    // Capture directe (CDP) : la capture de Playwright attend une image « stable » qu'une page GPU lourde, sous rendu
+    // logiciel, ne donne pas toujours en 30 s (matières, créateur, Kerguéhennec).
+    const cdp = await page.context().newCDPSession(page);
+    const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+    await cdp.detach();
+    const png = PNG.sync.read(Buffer.from(shot.data, "base64"));
     await page.evaluate(() => document.querySelectorAll("style[data-check-hide]").forEach((s) => s.remove()));
     for (const it of items) {
       const a = it.c[3] ?? 1;
