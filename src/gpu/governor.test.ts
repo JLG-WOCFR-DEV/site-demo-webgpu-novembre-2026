@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 let T = 0;
 const g = globalThis as unknown as Record<string, unknown>;
 g.document = { hidden: false, documentElement: { dataset: {} } };
+g.devicePixelRatio = 2;
 Object.defineProperty(globalThis, "performance", { value: { now: () => T }, configurable: true });
 const { renderScale } = await import("./governor.ts");
 
@@ -50,4 +51,13 @@ test("gouverneur : l'heure de l'appel varie dans l'image, la cadence reste celle
   }
   delete doc.timeline;
   assert.equal(s, 1, "60 Hz tenu : aucune raison de baisser l'échelle");
+});
+
+test("gouverneur : sur un écran à densité 1, jamais sous un pixel par pixel CSS", () => {
+  g.devicePixelRatio = 1;
+  T += 5000;
+  frames(200, 16.67);
+  const s = frames(400, 45);
+  g.devicePixelRatio = 2;
+  assert.equal(s, 1, "le texte resterait sans ses traits");
 });

@@ -21,6 +21,15 @@
  */
 
 const MIN = 0.5;
+/**
+ * Le plancher : jamais moins d'un pixel d'écran par pixel CSS. Sur un écran Retina, on peut descendre à la moitié
+ * (le texte reste à la densité d'un écran ordinaire) ; sur un écran à densité 1, on ne descend pas du tout — sous un
+ * pixel par pixel CSS, le texte imprimé par le GPU perd ses traits (vu sur un Mac à densité 1, v72).
+ */
+const floor = () => {
+  const d = Math.min((typeof devicePixelRatio === "number" && devicePixelRatio) || 1, 2);
+  return Math.min(1, Math.max(MIN, 1 / d));
+};
 const DOWN = 0.85;
 const UP = 1.1;
 
@@ -68,7 +77,8 @@ function sample(now: number) {
     if (warm <= WARMUP) over = 0;
     if (now - lastChange < 1000) return;
     let next = scale;
-    if (over > 0.6 && scale > MIN && warm > WARMUP) next = Math.max(MIN, scale * DOWN);
+    const low = floor();
+    if (over > 0.6 && scale > low && warm > WARMUP) next = Math.max(low, scale * DOWN);
     else if (under > 4 && scale < 1) next = Math.min(1, scale * UP);
     if (next !== scale) {
       scale = Math.round(next * 100) / 100;
