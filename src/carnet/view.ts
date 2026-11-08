@@ -17,6 +17,7 @@
  */
 import type { CollectionView, Core, DayView, Line, MonthView, Suggestion } from "./core.ts";
 import { addDays, isoWeek, parseDay, weekStart, type Day } from "./model.ts";
+import { describe, skyIcon } from "./weather.ts";
 
 export type View = "week" | "day" | "month" | "collections";
 export type RenderCtx = {
@@ -32,6 +33,8 @@ export type RenderCtx = {
   col: string | null;
   /** Page du mois : la colonne d'heure porte aussi le jour du rendez-vous. */
   dated?: boolean;
+  /** Météo d'un jour (notée, ou prévue) ; absente si la météo n'est pas activée. */
+  weather?: (day: Day) => { code: number; max: number; min: number; forecast: boolean } | null;
 };
 
 const fWeek = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
@@ -240,7 +243,9 @@ function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<s
     const nm = el("button", "cn-dname");
     nm.type = "button";
     nm.dataset.open = k;
-    head.append(nm);
+    const wx = el("span", "cn-wx");
+    wx.dataset.glIgnore = "";
+    head.append(nm, wx);
     const ol = el("ol", "cn-log");
     const f = el("form", "cn-form");
     f.dataset.day = k;
@@ -262,6 +267,25 @@ function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<s
   nm.replaceChildren(document.createTextNode(fWeek.format(d)), el("b", "", String(d.getDate())));
   nm.setAttribute("aria-label", big ? `Retour à la semaine` : `Ouvrir le ${fWeek.format(d)} ${fLong.format(d)}`);
   nm.dataset.open = big ? "week" : k;
+  const wx = sec.querySelector<HTMLElement>(".cn-wx")!;
+  const w = ctx.weather?.(k) ?? null;
+  const sig = w ? `${w.code}|${Math.round(w.max)}|${Math.round(w.min)}|${w.forecast}` : "";
+  if (wx.dataset.sig !== sig) {
+    wx.dataset.sig = sig;
+    if (w) {
+      const dsc = describe(w.code);
+      wx.innerHTML = `${skyIcon(dsc.sky)}<span>${Math.round(w.max)}° <small>${Math.round(w.min)}°</small></span>`;
+      wx.title = `${dsc.label}${w.forecast ? " (prévision)" : ""}`;
+      wx.setAttribute("aria-label", `${w.forecast ? "Prévision : " : ""}${dsc.label}, ${Math.round(w.max)} degrés, minimum ${Math.round(w.min)}`);
+      wx.setAttribute("role", "img");
+      wx.classList.toggle("is-forecast", w.forecast);
+    } else {
+      wx.replaceChildren();
+      wx.removeAttribute("role");
+      wx.removeAttribute("aria-label");
+      wx.title = "";
+    }
+  }
   const input = sec.querySelector("input")!;
   input.placeholder = big ? "Écris une ligne…  « . appeler Marc »  « o 14:00 dentiste »" : "ajouter une ligne";
   input.setAttribute("aria-label", `Nouvelle entrée, ${fWeek.format(d)}`);

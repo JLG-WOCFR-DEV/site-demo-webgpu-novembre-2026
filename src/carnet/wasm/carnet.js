@@ -536,6 +536,36 @@ export class Carnet {
         }
     }
     /**
+     * Note la météo d'un jour passé ou d'aujourd'hui ; rend vrai si quelque chose a été écrit.
+     * @param {string} on
+     * @param {number} code
+     * @param {number} max
+     * @param {number} min
+     * @param {string} today
+     * @returns {boolean}
+     */
+    setWeather(on, code, max, min, today) {
+        const val3 = +code;
+        const val4 = +max;
+        const val5 = +min;
+        let ptr0, len0, ptr1, len1;
+        try {
+            ptr0 = passStringToWasm0(on, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            len0 = WASM_VECTOR_LEN;
+            ptr1 = passStringToWasm0(today, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            len1 = WASM_VECTOR_LEN;
+        } catch (e) {
+            if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 1, 1); }
+            if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 1, 1); }
+            throw e;
+        }
+        const ret = wasm.carnet_setWeather(this.__wbg_ptr, ptr0, len0, val3, val4, val5, ptr1, len1);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] !== 0;
+    }
+    /**
      * Une modification telle que le navigateur la décrit, en offsets UTF-16.
      * @param {string} id
      * @param {number} start
@@ -622,6 +652,29 @@ export class Carnet {
         const ptr0 = passStringToWasm0(month, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.carnet_trackers(this.__wbg_ptr, ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @param {string} from
+     * @param {string} to
+     * @returns {any}
+     */
+    weather(from, to) {
+        let ptr0, len0, ptr1, len1;
+        try {
+            ptr0 = passStringToWasm0(from, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            len0 = WASM_VECTOR_LEN;
+            ptr1 = passStringToWasm0(to, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            len1 = WASM_VECTOR_LEN;
+        } catch (e) {
+            if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 1, 1); }
+            if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 1, 1); }
+            throw e;
+        }
+        const ret = wasm.carnet_weather(this.__wbg_ptr, ptr0, len0, ptr1, len1);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }

@@ -1146,3 +1146,45 @@ body.is-drawing .cn-spread * {
 .cn-photo:focus-visible {
   box-shadow: 0 0 0 2px var(--accent), 0 6px 14px rgba(0, 0, 0, 0.12);
 }
+
+/* Météo : à côté du jour, au trait ; une prévision est plus pâle. */
+.cn-wx {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--ink-soft);
+  font: 11px / var(--g) var(--mono);
+}
+.cn-wx small {
+  font-size: 10px;
+  opacity: 0.75;
+}
+.cn-wx.is-forecast {
+  opacity: 0.55;
+}
+.cn-wx-intro {
+  margin: 6px 10px;
+  max-width: 22em;
+  font: 13px/1.45 var(--serif);
+  color: var(--ink-soft);
+}
+.cn-wx-form input {
+  margin: 4px 10px 6px;
+  width: calc(100% - 20px);
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: none;
+  color: var(--ink);
+  font: 15px var(--serif);
+}
+.cn-wx-results {
+  display: grid;
+  font: 12px var(--mono);
+  color: var(--ink-soft);
+}
+body > .cn-wxpanel.cn-wxpanel.cn-wxpanel {
+  position: absolute;
+  z-index: 20;
+}

@@ -10,6 +10,7 @@ pub mod notebook;
 pub mod page;
 mod tracker;
 pub mod view;
+mod weather;
 
 pub use collection::{Collection, CollectionView};
 pub use date::{Day, Month};
@@ -21,3 +22,4 @@ pub use notebook::{
 pub use page::{Anchor, Item, Page};
 pub use tracker::TrackerRow;
 pub use view::{CalendarDay, DayView, Line, MonthView, Suggestion, SuggestionKind, WeekView};
+pub use weather::Weather;

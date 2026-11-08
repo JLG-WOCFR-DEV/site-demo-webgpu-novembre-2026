@@ -578,3 +578,43 @@ fn trackers_tick_days_and_converge() {
     a.rename_tracker(&run, "Courir 30 min").unwrap();
     assert_eq!(a.trackers(m)[1].name, "Courir 30 min");
 }
+
+#[test]
+fn weather_is_kept_as_a_memory() {
+    use carnet_core::Weather;
+    let c = clock(1_700_000_000_000.0);
+    let mut a = notebook(1, &c);
+    let today = d("2026-11-08");
+    let w = |day: &str, code: u8, max: f64, min: f64| Weather {
+        day: d(day),
+        code,
+        max,
+        min,
+    };
+    assert!(a
+        .set_weather(w("2026-11-07", 61, 12.34, 6.0), today)
+        .unwrap());
+    assert!(
+        !a.set_weather(w("2026-11-07", 3, 15.0, 9.0), today).unwrap(),
+        "un jour passé ne change plus"
+    );
+    assert!(a.set_weather(w("2026-11-08", 2, 11.0, 5.0), today).unwrap());
+    assert!(
+        a.set_weather(w("2026-11-08", 61, 10.0, 5.0), today)
+            .unwrap(),
+        "aujourd'hui se met à jour"
+    );
+    assert!(
+        !a.set_weather(w("2026-11-08", 61, 10.0, 5.0), today)
+            .unwrap(),
+        "rien de neuf : rien n'est écrit"
+    );
+    assert!(
+        a.set_weather(w("2026-11-09", 0, 14.0, 4.0), today).is_err(),
+        "une prévision ne s'écrit pas"
+    );
+    let v = a.weather(d("2026-11-01"), d("2026-11-30"));
+    assert_eq!(v.len(), 2);
+    assert_eq!((v[0].code, v[0].max), (61, 12.3));
+    assert_eq!(v[1].code, 61);
+}

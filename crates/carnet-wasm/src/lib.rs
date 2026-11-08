@@ -6,7 +6,7 @@
 //!
 //! Le core ne fait aucune E/S : la coquille lit et écrit le stockage, et rend au core ce qu'elle lit.
 
-use carnet_core::{Anchor, Day, Env, Month, NewEntry, Notebook, Page, Place, State};
+use carnet_core::{Anchor, Day, Env, Month, NewEntry, Notebook, Page, Place, State, Weather};
 use js_sys::{Array, Uint8Array};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -274,6 +274,35 @@ impl Carnet {
             .parse()
             .map_err(|_| err(format!("mois illisible : {month}")))?;
         to_js(&self.nb.trackers(m))
+    }
+
+    /* ───── Météo ───── */
+
+    /// Note la météo d'un jour passé ou d'aujourd'hui ; rend vrai si quelque chose a été écrit.
+    #[wasm_bindgen(js_name = setWeather)]
+    pub fn set_weather(
+        &mut self,
+        on: &str,
+        code: u8,
+        max: f64,
+        min: f64,
+        today: &str,
+    ) -> Result<bool, JsError> {
+        self.nb
+            .set_weather(
+                Weather {
+                    day: day(on)?,
+                    code,
+                    max,
+                    min,
+                },
+                day(today)?,
+            )
+            .map_err(err)
+    }
+
+    pub fn weather(&self, from: &str, to: &str) -> Result<JsValue, JsError> {
+        to_js(&self.nb.weather(day(from)?, day(to)?))
     }
 
     /* ───── Vues ───── */

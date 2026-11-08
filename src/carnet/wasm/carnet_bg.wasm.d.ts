@@ -37,6 +37,7 @@ export const carnet_setMarks: (a: number, b: number, c: number, d: number, e: nu
 export const carnet_setState: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const carnet_setText: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const carnet_setTime: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+export const carnet_setWeather: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number];
 export const carnet_spliceText: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
 export const carnet_stampSchema: (a: number) => [number, number];
 export const carnet_stateVector: (a: number) => [number, number];
@@ -44,6 +45,7 @@ export const carnet_supportedSchema: (a: number) => number;
 export const carnet_takeUpdates: (a: number) => any;
 export const carnet_toggleTracker: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
 export const carnet_trackers: (a: number, b: number, c: number) => [number, number, number];
+export const carnet_weather: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
 export const carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
 export const carnet_writable: (a: number) => number;
 export const carnetpage_addPhoto: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];

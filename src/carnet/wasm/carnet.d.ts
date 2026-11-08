@@ -78,6 +78,10 @@ export class Carnet {
     setText(id: string, text: string): void;
     setTime(id: string, time?: string | null): void;
     /**
+     * Note la météo d'un jour passé ou d'aujourd'hui ; rend vrai si quelque chose a été écrit.
+     */
+    setWeather(on: string, code: number, max: number, min: number, today: string): boolean;
+    /**
      * Une modification telle que le navigateur la décrit, en offsets UTF-16.
      */
     spliceText(id: string, start: number, _delete: number, insert: string): void;
@@ -90,6 +94,7 @@ export class Carnet {
     takeUpdates(): Array<any>;
     toggleTracker(id: string, on: string): boolean;
     trackers(month: string): any;
+    weather(from: string, to: string): any;
     weekView(any_day: string, today: string): any;
     writable(): boolean;
 }
@@ -159,6 +164,7 @@ export interface InitOutput {
     readonly carnet_setState: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setText: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setTime: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly carnet_setWeather: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number];
     readonly carnet_spliceText: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
     readonly carnet_stampSchema: (a: number) => [number, number];
     readonly carnet_stateVector: (a: number) => [number, number];
@@ -166,6 +172,7 @@ export interface InitOutput {
     readonly carnet_takeUpdates: (a: number) => any;
     readonly carnet_toggleTracker: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_trackers: (a: number, b: number, c: number) => [number, number, number];
+    readonly carnet_weather: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_writable: (a: number) => number;
     readonly carnetpage_addPhoto: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];

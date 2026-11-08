@@ -34,6 +34,7 @@ import { Pages } from "./pages.ts";
 import { Decor } from "./decor.ts";
 import { icsKey, parseIcs } from "./ics.ts";
 import { getMedia, mediaAvailable, prepare, putMedia, restoreMedia, sweep } from "./media.ts";
+import { fetchDaily, isStale, locate, savedPlace, savePlace, searchPlaces, type Daily, type Place as WxPlace } from "./weather.ts";
 import { addMonths, monthOf, render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
@@ -431,6 +432,116 @@ $<HTMLInputElement>("#cn-photo-file").addEventListener("change", async (ev) => {
   toast(msg.join(" · "), first ? { label: "Voir", run: () => void openView("day", first) } : undefined);
 });
 
+/* ───── Météo : activée à la demande, notée chaque jour ───── */
+const forecasts = new Map<string, Daily>();
+function weatherOf(day: Day) {
+  if (!savedPlace()) return null;
+  const f = forecasts.get(day);
+  if (day > ctx.now) return f ? { ...f, forecast: true } : null;
+  const w = core.weather(day, day)[0];
+  return w ? { ...w, forecast: false } : f ? { ...f, forecast: false } : null;
+}
+async function refreshWeather(force = false) {
+  const p = savedPlace();
+  if (!p || readOnly || (!force && !isStale(p))) return;
+  try {
+    const days = await fetchDaily(p);
+    let wrote = false;
+    for (const d of days) {
+      if (d.day <= ctx.now) wrote = core.setWeather(d.day, d.code, d.max, d.min, ctx.now) || wrote;
+      else forecasts.set(d.day, d);
+    }
+    if (wrote) store.commit();
+    savePlace({ ...p, at: Date.now() });
+    draw();
+  } catch (e) {
+    console.warn("[carnet] météo", e);
+  }
+}
+function openWeatherPanel(anchor: HTMLElement) {
+  document.querySelector(".cn-wxpanel")?.remove();
+  const panel = document.createElement("div");
+  panel.className = "cn-move cn-wxpanel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "Météo");
+  panel.dataset.glIgnore = "";
+  const cur = savedPlace();
+  const intro = document.createElement("p");
+  intro.className = "cn-wx-intro";
+  intro.textContent = cur ? `Météo de : ${cur.name}. Le lieu reste sur cet appareil.` : "La météo de chaque jour, notée dans le carnet. Le lieu reste sur cet appareil.";
+  const use = (pl: WxPlace) => {
+    savePlace(pl);
+    close();
+    toast(`Météo : ${pl.name}`);
+    void refreshWeather(true);
+  };
+  const here = document.createElement("button");
+  here.type = "button";
+  here.className = "cn-move-item";
+  here.textContent = "Utiliser ma position";
+  here.addEventListener("click", () => void locate().then(use, (e: Error) => toast(`Météo : ${e.message}`)));
+  const form = document.createElement("form");
+  form.className = "cn-wx-form";
+  const q = document.createElement("input");
+  q.type = "search";
+  q.placeholder = "ou une ville : Lorient, Lyon…";
+  q.setAttribute("aria-label", "Ville");
+  const list = document.createElement("div");
+  list.className = "cn-wx-results";
+  list.setAttribute("aria-live", "polite");
+  form.append(q);
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!q.value.trim()) return;
+    list.textContent = "Recherche…";
+    try {
+      const found = await searchPlaces(q.value);
+      list.replaceChildren();
+      if (!found.length) list.textContent = "Aucune ville trouvée.";
+      for (const pl of found) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "cn-move-item";
+        b.textContent = pl.name;
+        b.addEventListener("click", () => use(pl));
+        list.append(b);
+      }
+    } catch (e) {
+      list.textContent = `Recherche impossible : ${e instanceof Error ? e.message : String(e)}`;
+    }
+  });
+  panel.append(intro, here, form, list);
+  if (cur) {
+    const off = document.createElement("button");
+    off.type = "button";
+    off.className = "cn-move-item";
+    off.textContent = "Désactiver la météo";
+    off.addEventListener("click", () => {
+      savePlace(null);
+      forecasts.clear();
+      close();
+      draw();
+      toast("Météo désactivée. Ce qui a été noté reste dans le carnet.");
+    });
+    panel.append(off);
+  }
+  document.body.append(panel);
+  const r = anchor.getBoundingClientRect();
+  panel.style.left = `${Math.max(8, Math.min(innerWidth - panel.offsetWidth - 8, r.left)) + scrollX}px`;
+  panel.style.top = `${Math.max(8, r.top - panel.offsetHeight - 6) + scrollY}px`;
+  here.focus();
+  const onDown = (ev: PointerEvent) => !panel.contains(ev.target as Node) && ev.target !== anchor && close();
+  const onKey = (ev: KeyboardEvent) => ev.key === "Escape" && (close(), anchor.focus());
+  function close() {
+    panel.remove();
+    removeEventListener("pointerdown", onDown, true);
+    removeEventListener("keydown", onKey, true);
+  }
+  addEventListener("pointerdown", onDown, true);
+  addEventListener("keydown", onKey, true);
+}
+$("#cn-meteo").addEventListener("click", (ev) => openWeatherPanel(ev.currentTarget as HTMLElement));
+
 /* ───── Agenda .ics : import ponctuel ───── */
 $("#cn-ics").addEventListener("click", () => $<HTMLInputElement>("#cn-ics-file").click());
 $<HTMLInputElement>("#cn-ics-file").addEventListener("change", async (ev) => {
@@ -516,7 +627,7 @@ async function boot() {
   decor = new Decor(spread, { pages, today, toast, readOnly: () => readOnly });
   $("#cn-stickers").addEventListener("click", () => decor!.toggleTray());
   $("#cn-draw").addEventListener("click", () => decor!.toggleDraw());
-  ctx = { core, view: "week", cur: today(), now: today(), from: new Map(), col: null };
+  ctx = { core, view: "week", cur: today(), now: today(), from: new Map(), col: null, weather: (d) => weatherOf(d) };
   if (opened.empty) {
     let v0: string | null = null;
     try {
@@ -568,6 +679,10 @@ async function boot() {
     if (document.hidden) void store.flush();
   });
   draw();
+  void refreshWeather();
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void refreshWeather();
+  });
   // Balayage des médias, au calme : références sans fichier, fichiers sans référence (§ 3.3).
   if (mediaAvailable()) {
     setTimeout(async () => {
