@@ -7,7 +7,7 @@
  *   fermées, pour ne jamais faire tourner une page ouverte avec un worker plus récent qu'elle
  *   (roadmap § 3.3). La page propose de recharger quand une version attend.
  */
-const VERSION = "carnet-p5-1";
+const VERSION = "carnet-p3b-1";
 const SHELL = ["./carnet.html", "./carnet-recette.html", "./carnet-banc.html", "./carnet/manifest.webmanifest", "./carnet/icon-192.png", "./sdf/text.json", "./sdf/text.png", "./msdf/display.json", "./msdf/display.png"];
 
 // Les noms des fichiers construits changent à chaque build : on les lit dans les pages, puis dans leurs
@@ -25,11 +25,35 @@ async function precache() {
   const first = [...new Set(pages.flat())];
   await c.addAll(first);
   const css = await Promise.all(first.filter((u) => u.endsWith(".css")).map(async (u) => refs(await (await c.match(u)).text(), u)));
-  // Le module wasm du core est nommé dans le JS (new URL(`carnet_bg-….wasm`, import.meta.url)).
-  const wasm = await Promise.all(
-    first.filter((u) => u.endsWith(".js")).map(async (u) => [...(await (await c.match(u)).text()).matchAll(/[`"']([\w.-]+\.wasm)[`"']/g)].map((m) => new URL(m[1], u).href)),
-  );
-  await c.addAll([...new Set([...css.flat(), ...wasm.flat()])].filter((u) => !first.includes(u)));
+  // Modules chargés à la demande (le rendu presse-rs, P3b), leurs feuilles de style et les modules wasm : nommés dans le JS
+  // (import("./rs-host-….js"), new URL("presse_web_bg-….wasm", import.meta.url)). On suit les imports
+  // jusqu'au bout, pour que le rendu s'ouvre hors ligne lui aussi.
+  const seen = new Set(first);
+  const extra = new Set(css.flat().filter((u) => !seen.has(u)));
+  let todo = first.filter((u) => u.endsWith(".js"));
+  while (todo.length) {
+    const found = await Promise.all(
+      todo.map(async (u) => {
+        let hit = await c.match(u);
+        if (!hit) {
+          // Un nom trouvé dans le texte n'est pas forcément un fichier : ce qui manque est ignoré.
+          const r = await fetch(u).catch(() => null);
+          if (!r?.ok) return [];
+          await c.put(u, r.clone());
+          hit = r;
+        }
+        return [...(await hit.text()).matchAll(/[`"'](?:\.\/|assets\/)?([\w.-]+\.(?:js|css|wasm))[`"']/g)].map((m) => new URL(m[1], u).href);
+      }),
+    );
+    todo = [];
+    for (const u of found.flat()) {
+      if (seen.has(u) || !/\/assets\//.test(new URL(u).pathname)) continue;
+      seen.add(u);
+      if (u.endsWith(".js")) todo.push(u);
+      else extra.add(u); // feuilles de style des modules (presse.css), wasm
+    }
+  }
+  await Promise.all([...extra].map((u) => c.add(u).catch(() => undefined)));
 }
 
 self.addEventListener("install", (event) => {

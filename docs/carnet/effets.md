@@ -1,6 +1,6 @@
 # Effets de Carnet (P5) — contrat
 
-Source unique : `crates/presse-rs/shaders/carnet-fx.wgsl`, incluse telle quelle par les deux moteurs
+Source unique : `crates/presse-rs/shaders/carnet-fx.wgsl` (version 2), incluse telle quelle par les deux moteurs
 (TypeScript : `src/gpu/wgsl.ts`, import `?raw` ; Rust : `include_str!`, validée par naga dans
 `cargo test -p presse-rs`). Changer une formule = incrémenter `CFX_VERSION`.
 
@@ -8,7 +8,7 @@ Source unique : `crates/presse-rs/shaders/carnet-fx.wgsl`, incluse telle quelle 
 
 | Effet | Quand | Ce que l'on voit | Durée |
 | --- | --- | --- | --- |
-| **Crayon** | suggestions (reportée, prévue ce mois, il y a un an) | graphite gris qui n'accroche que la dent du papier, trait un peu plus fin | permanent |
+| **Crayon** | suggestions (reportée, prévue ce mois, il y a un an) | graphite qui n'accroche que la dent du papier, trait un peu plus fin ; gris sur papier clair, argenté sur papier sombre | permanent |
 | **Crayon → encre** | « Garder » une suggestion | la plume repasse la ligne de gauche à droite (fondu sur quatre lettres), l'encre arrive mouillée | 0,7 s de tracé, puis séchage |
 | **Encre fraîche** | ligne écrite ou migrée à l'instant | encre plus sombre, un peu bleutée, étalée le long des fibres, reflet sur le bord tourné vers la lumière ; elle sèche jusqu'à la lettre normale | 2,6 s |
 | **Papier éclairé** | toujours (bouton « Lumière de l'heure ») | relief de la fibre sous une lumière rasante, pente douce à travers la page, teinte de l'heure ; la nuit, flaque d'une lampe de bureau | relu toutes les 5 min |

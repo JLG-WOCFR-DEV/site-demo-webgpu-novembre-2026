@@ -124,11 +124,13 @@ export async function presseRs(o: { onDemand?: boolean; fonts?: string[]; grain?
     console.warn("[presse-rs] atlas MTSDF indisponible", e);
   }
 
-  const paper = readPaper();
+  let paper = readPaper();
   let layoutMs = 0;
   const uploadGlyphs = () => pw.setGlyphs(new Uint8Array(text.glyphData, 0, text.glyphCount * GLYPH_STRIDE));
   const relayoutNow = () => {
     const t = performance.now();
+    // Le papier a pu changer (thème clair ou sombre) : relu à chaque mise en page, comme le moteur TypeScript.
+    paper = readPaper();
     text.layout(dprNow());
     uploadGlyphs();
     layoutMs = performance.now() - t;
@@ -234,6 +236,8 @@ export async function presseRs(o: { onDemand?: boolean; fonts?: string[]; grain?
     if (!document.hidden) wake(WAKE_LAYOUT_MS);
   });
   new ResizeObserver(relayout).observe(document.body);
+  // Thème clair ↔ sombre : couleurs de l'encre et du papier relues (aucune mutation du DOM ne le signale).
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", relayout);
   document.fonts.addEventListener("loadingdone", relayout);
   const ignored = (r: MutationRecord) => {
     const n = r.target instanceof Element ? r.target : r.target.parentElement;

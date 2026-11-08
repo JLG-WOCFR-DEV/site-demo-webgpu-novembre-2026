@@ -9,6 +9,9 @@
  *   Tenu         p95 ≤ 1,25 × budget d'une image
  *   Limite       p95 ≤ 2 × budget
  *   Trop lourd   au-delà
+ *
+ * Rendu : presse-rs, celui de Carnet (P3b). `?rendu=ts` mesure le moteur TypeScript de Presse, avec
+ * en plus ses matières (poussière, tissu, particules), candidates aux effets P1 et non portées.
  */
 import { paperLight } from "./light.ts";
 import "@fontsource-variable/newsreader/opsz.css";
@@ -17,7 +20,12 @@ import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
 import { registerPwa } from "./pwa.ts";
 import "./banc.css";
-import { CUI_EFFECTS, governorState, presse, type Presse } from "../presse/lib.ts";
+import { governorState } from "../gpu/governor.ts";
+import { setMotionLevel } from "../motion-scale.ts";
+import type { Presse } from "../presse/lib.ts";
+import type { PresseRs } from "../presse/rs-host.ts";
+
+const TS = new URLSearchParams(location.search).get("rendu") === "ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
 const status = $("#status");
@@ -26,7 +34,9 @@ const tbody = $("#results");
 type Row = { test: string; fps: number; p95: number; jank: number; gpu: number | null; scale: number; verdict: string; note?: string };
 const rows: Row[] = [];
 let timings: { total: number; gpu: boolean }[] = [];
-let p: Presse | null = null;
+let p: Presse | PresseRs | null = null;
+/** Le moteur TypeScript seulement (matières, Canvas UI). */
+let pts: Presse | null = null;
 
 // Images demandées par d'autres que le banc (le moteur, le gouverneur) : pour le test de sommeil.
 let foreignRafs = 0;
@@ -139,7 +149,11 @@ async function testMorph() {
   migrateAll(20, 1);
   show(row("Migration ×20", await measure(2000)));
 }
+function tsOnly(test: string) {
+  show({ test, fps: 0, p95: 0, jank: 0, gpu: null, scale: governorState().scale, verdict: "—", note: "moteur TypeScript seulement : ?rendu=ts" });
+}
 async function testDust() {
+  if (!TS) return tsOnly("Matière poussière");
   status.textContent = "Poussière : 4 s…";
   $("#dust").dataset.glMaterial = "poussiere";
   p?.relayout();
@@ -148,10 +162,12 @@ async function testDust() {
   delete $("#dust").dataset.glMaterial;
   p?.relayout();
 }
-async function testCui(name: (typeof CUI_EFFECTS)[number], label: string) {
+async function testCui(name: "tissu" | "particules", label: string) {
+  if (!TS) return tsOnly(label);
   status.textContent = `${label} : 4 s, pointeur simulé…`;
-  if (!p) return;
-  p.settings.cui.effect = CUI_EFFECTS.indexOf(name);
+  if (!pts) return;
+  const { CUI_EFFECTS } = await import("../presse/lib.ts");
+  pts.settings.cui.effect = CUI_EFFECTS.indexOf(name);
   const w = innerWidth;
   const h = innerHeight;
   const dts = await measure(4000, (t) => {
@@ -160,7 +176,7 @@ async function testCui(name: (typeof CUI_EFFECTS)[number], label: string) {
     const y = h / 2 + Math.sin(t / 210) * h * 0.3;
     dispatchEvent(new PointerEvent("pointermove", { clientX: x, clientY: y, pointerType: "mouse", bubbles: true }));
   });
-  p.settings.cui.effect = 0;
+  pts.settings.cui.effect = 0;
   show(row(label, dts));
 }
 /** P5 : papier éclairé (lampe du soir, le cas le plus cher) et 20 lignes à l'encre fraîche, dont 10 repassées du crayon. */
@@ -230,7 +246,7 @@ async function runBattery() {
 $("#run-all").addEventListener("click", () => void runAll());
 $("#run-battery").addEventListener("click", () => void runBattery());
 $("#copy").addEventListener("click", () => {
-  const data = JSON.stringify({ device: $("#device").textContent, ua: navigator.userAgent, dpr: devicePixelRatio, screen: [screen.width, screen.height], governor: governorState(), rows }, null, 2);
+  const data = JSON.stringify({ device: $("#device").textContent, rendu: TS ? "ts" : "rs", ua: navigator.userAgent, dpr: devicePixelRatio, screen: [screen.width, screen.height], governor: governorState(), rows }, null, 2);
   navigator.clipboard.writeText(data).then(
     () => (status.textContent = "Résultats copiés."),
     () => (status.textContent = "Copie refusée par le navigateur."),
@@ -248,8 +264,14 @@ async function describeDevice() {
   return `WebGPU · ${name || "adaptateur sans nom"} · ${a?.features.has("timestamp-query") ? "temps GPU mesurés" : "temps GPU non exposés"} · ${base}`;
 }
 void describeDevice().then((d) => ($("#device").textContent = `Appareil : ${d}`));
-void presse({ onDemand: true, effects: ["grain"], motion: "normal", onTimings: (t) => timings.push({ total: t.total, gpu: t.gpu }) }).then((x) => {
+setMotionLevel("normal");
+const started: Promise<Presse | PresseRs> = TS
+  ? import("../presse/lib.ts").then((m) => m.presse({ onDemand: true, effects: ["grain"], motion: "normal", onTimings: (t) => timings.push({ total: t.total, gpu: t.gpu }) }))
+  : import("../presse/rs-host.ts").then((m) => m.presseRs({ onDemand: true }));
+$("#rendu").textContent = TS ? "Rendu : moteur TypeScript de Presse (comparaison)" : "Rendu : presse-rs, celui de Carnet";
+void started.then((x) => {
   p = x;
+  if (TS) pts = x as Presse;
   if (!x.engine) {
     status.textContent = "WebGPU indisponible : Carnet tournera sans effets sur cet appareil (la page reste son HTML).";
     for (const b of document.querySelectorAll<HTMLButtonElement>("#run-all, #run-battery")) b.disabled = true;

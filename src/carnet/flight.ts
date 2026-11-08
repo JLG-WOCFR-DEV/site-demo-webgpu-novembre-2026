@@ -10,7 +10,7 @@
  *
  * Mêmes courbe et durée que le morphing de Presse, pour un seul geste.
  */
-import { DUR, EASE } from "../presse/lib.ts";
+import { DUR, EASE } from "../presse/tokens.ts";
 
 export function flyBetween(first: DOMRect, to: HTMLElement) {
   const last = to.getBoundingClientRect();

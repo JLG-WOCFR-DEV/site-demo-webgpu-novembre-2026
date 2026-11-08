@@ -14,9 +14,9 @@
 //   - coût : matières, deux bruits de valeur par fragment de lettre ; lumière, sept bruits par pixel
 //     d'écran, une fois par image peinte (le moteur dort entre deux changements).
 //
-// Version de l'algorithme : 1 (changer les formules = changer ce numéro, roadmap § 3.6).
+// Version de l'algorithme : 2 (graphite argenté sur papier sombre ; changer les formules = changer ce numéro, roadmap § 3.6).
 
-const CFX_VERSION: u32 = 1u;
+const CFX_VERSION: u32 = 2u;
 const CFX_GRAPHITE: vec3f = vec3f(0.36, 0.37, 0.40);
 
 fn cfx_hash(p: vec2f) -> f32 {
@@ -54,15 +54,18 @@ fn cfx_edge(pencil: f32, wet: f32, p: vec2f) -> f32 {
 }
 
 // Après la couverture : opacité et couleur. `d` champ de distance, `edge` seuil final,
-// `grad` gradient écran du champ (normalisé ou nul), `lightDir` d'où vient la lumière (écran).
-fn cfx_mat(pencil: f32, wet: f32, p: vec2f, col: vec3f, d: f32, edge: f32, grad: vec2f, lightDir: vec2f) -> CfxMat {
+// `grad` gradient écran du champ (normalisé ou nul), `lightDir` d'où vient la lumière (écran),
+// `paper` clarté du papier (0 nuit … 1 blanc).
+fn cfx_mat(pencil: f32, wet: f32, p: vec2f, col: vec3f, d: f32, edge: f32, grad: vec2f, lightDir: vec2f, paper: f32) -> CfxMat {
   var m: CfxMat;
   m.edge = 0.0;
   // Crayon : le graphite n'accroche que les sommets de la dent du papier.
   let tooth = cfx_noise(p * 0.55) * 0.6 + cfx_noise(p * 1.7 + vec2f(3.1, 7.7)) * 0.4;
   let grain = clamp(0.42 + 0.8 * smoothstep(0.28, 0.78, tooth), 0.0, 1.0);
   m.alpha = mix(1.0, grain, pencil);
-  var c = mix(col, CFX_GRAPHITE, pencil * 0.6);
+  // Sur papier sombre, l'encre est claire : le graphite y est argenté, pas sombre (sinon illisible).
+  let graphite = select(CFX_GRAPHITE, vec3f(0.62, 0.63, 0.66), paper < 0.5);
+  var c = mix(col, graphite, pencil * 0.6);
   // Encre fraîche : plus sombre, un peu bleutée, et brillante sur le bord tourné vers la lumière.
   // Le reflet suit le gradient du champ : il dessine le relief de la goutte, pas un contour.
   c = c * (1.0 - 0.2 * wet) + vec3f(0.0, 0.008, 0.04) * wet;

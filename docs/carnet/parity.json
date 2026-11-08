@@ -1,8 +1,8 @@
 {
   "format": "carnet-parity/1",
-  "at": "2026-11-08T15:17:27.358Z",
+  "at": "2026-11-08T18:15:50.873Z",
   "env": "SwiftShader, mouvement réduit",
-  "pass": false,
+  "pass": true,
   "results": [
     {
       "dpr": 1,
@@ -10,7 +10,7 @@
         1200,
         860
       ],
-      "maxDiff": 1,
+      "maxDiff": 0,
       "over8": 0
     },
     {
@@ -19,7 +19,7 @@
         2400,
         1720
       ],
-      "maxDiff": 1,
+      "maxDiff": 0,
       "over8": 0
     }
   ]

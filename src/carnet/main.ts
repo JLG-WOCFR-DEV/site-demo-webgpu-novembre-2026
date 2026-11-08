@@ -5,9 +5,10 @@
  * store.ts écrit au journal IndexedDB. Au premier lancement, le carnet v0 (localStorage) est importé
  * et l'original gardé tant que l'import n'est pas enregistré et relu.
  *
- * Presse tourne en mode à la demande : il ne peint que lorsque quelque chose
- * bouge (frappe, migration, défilement), puis s'endort. Sans WebGPU, la page
- * reste son HTML et l'application fonctionne à l'identique, sans effets.
+ * Le rendu est presse-rs (P3b) : le module Rust, chargé après le core. Il tourne en mode à la
+ * demande : il ne peint que lorsque quelque chose bouge (frappe, migration, défilement), puis
+ * s'endort. Sans WebGPU, la page reste son HTML et l'application fonctionne à l'identique, sans
+ * effets. Le moteur TypeScript de Presse n'est plus chargé, sauf `?rendu=ts` (comparaison, parité).
  *
  * Effets portés par le moteur :
  *   - une ligne neuve s'imprime à l'encre (apparition du texte de Presse) ;
@@ -23,7 +24,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
 import { registerPwa } from "./pwa.ts";
-import { presse } from "../presse/lib.ts";
+import { setMotionLevel } from "../motion-scale.ts";
 import { hourOf, LIGHT_OFF, lightChanged, paperLight, type PaperLight } from "./light.ts";
 import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core, type Place, type Suggestion } from "./core.ts";
 import { moveChoices, openMoveMenu } from "./move.ts";
@@ -721,34 +722,33 @@ try {
   b.hidden = false;
   $("#cn-reload").addEventListener("click", () => location.reload());
 }
-// Rendu : Presse en TypeScript (par défaut) ou presse-rs, le module Rust (P3a) : ?rendu=rs, gardé.
-const RENDU_KEY = "carnet.rendu";
-const q = new URLSearchParams(location.search).get("rendu");
+// Rendu : presse-rs, le module Rust (P3b). `?rendu=ts` charge à la place le moteur TypeScript de Presse,
+// pour comparer (outil de parité, recette) ; ce choix n'est pas gardé : la page suivante revient au Rust.
+const rendu = new URLSearchParams(location.search).get("rendu") === "ts" ? "ts" : "rs";
 try {
-  if (q === "rs" || q === "ts") localStorage.setItem(RENDU_KEY, q);
+  localStorage.removeItem("carnet.rendu"); // ancien choix gardé (P3a)
 } catch {
   /* rien */
 }
-const rendu = q ?? (() => {
-  try {
-    return localStorage.getItem(RENDU_KEY);
-  } catch {
-    return null;
-  }
-})();
 const fonts = ["16px 'Newsreader Variable'", "12px 'IBM Plex Mono'"];
-const started: Promise<Renderer> =
-  rendu === "rs"
-    ? import("../presse/rs-host.ts").then((m) => m.presseRs({ onDemand: true, fonts }))
-    : presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts });
+setMotionLevel("normal");
+const started: Promise<Renderer> = (
+  rendu === "ts"
+    ? import("../presse/lib.ts").then((m) => m.presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts }))
+    : import("../presse/rs-host.ts").then((m) => m.presseRs({ onDemand: true, fonts }))
+).catch((e): Renderer => {
+  // Module introuvable (hors ligne avant la première mise en cache, par exemple) : la page reste son HTML.
+  console.warn("[carnet] rendu", e);
+  return { engine: null, wake: () => {} };
+});
 void started.then((p) => {
   engine = p;
   const badge = $("#cn-gpu");
   if (!p.engine) {
-    badge.textContent = "Sans WebGPU : la page reste son HTML";
+    badge.textContent = (navigator as Navigator & { gpu?: unknown }).gpu ? "Rendu GPU indisponible : la page reste son HTML" : "Sans WebGPU : la page reste son HTML";
     return;
   }
-  const who = rendu === "rs" ? "GPU (Rust)" : "GPU";
+  const who = rendu === "ts" ? "GPU (TypeScript)" : "GPU";
   // Indicateur de sommeil du moteur : lu deux fois par seconde, sans image demandée. Il n'écrit que
   // lorsque l'état change : toute mutation du DOM relance la mise en page de Presse, donc le réveille.
   const tick = () => {

@@ -685,7 +685,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
   let dg = vec2f(dpdx(d), dpdy(d));
   let gl = length(dg);
   let la = frame.motion.w;
-  let cm = cfx_mat(in.mat.x, in.mat.y, in.mpos, col, d, edge, select(vec2f(0.0), dg / gl, gl > 1e-6), vec2f(cos(la), sin(la)));
+  let cm = cfx_mat(in.mat.x, in.mat.y, in.mpos, col, d, edge, select(vec2f(0.0), dg / gl, gl > 1e-6), vec2f(cos(la), sin(la)), frame.misc.z);
   if (in.mat.x + in.mat.y > 0.001) {
     a *= cm.alpha;
     col = cm.col;

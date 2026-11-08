@@ -330,7 +330,7 @@ temps par image mesurés sur le téléphone de P1 ; **réestimation de P3b**.
 | Phase | Contenu | Charge | Dépend de |
 |---|---|---|---|
 | P4a — Essentiel | Semaine, jour, mois (calendrier + page libre), migrations avec `trail`, collections prioritaires, alternatives aux glisser-déposer ; comparaison React / vues maison (D9) | 3 sem. | P2 |
-| P3b — Portage du rendu | Reste du périmètre § 3.5 ; Presse TS n'est plus chargé par Carnet | 4 à 8 sem. (à réestimer après P3a) | P3a |
+| P3b — Portage du rendu | Reste du périmètre § 3.5 ; Presse TS n'est plus chargé par Carnet | 4 à 8 sem. (à réestimer après P3a) → réduit à une bascule, voir l'avancement | P3a |
 | P4b — Enrichissements | Dessin à la pression, pages graphiques, autocollants ancrés, photos, météo, ICS (import), tracker, TWA | 3 à 4 sem. | P4a, P3b |
 | P5 — Effets | Contrat § 3.6, P0 (encre, crayon → encre, papier éclairé), P1 selon budget, cache et reconstruction | 3 sem. | P3b |
 | P6 — Synchro | Spec § 3.7 relue (1 sem.), puis implémentation | 5 à 7 sem. | P4b, modèle économique tranché |
@@ -348,6 +348,24 @@ temps par image mesurés sur le téléphone de P1 ; **réestimation de P3b**.
       exemples : films et séries, recettes
 - [x] D9 tranché (vues maison)
 - [ ] Recette TalkBack et clavier sur le téléphone pour ces écrans
+
+#### P3b — avancement
+
+Réestimé après P3a, P4b et P5 : de 4 à 8 semaines à une bascule. Ce que Carnet demande au rendu tenait déjà dans
+presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, et à rendre le Rust autonome.
+
+- [x] **presse-rs par défaut** ; le moteur TypeScript de Presse n'est plus chargé par Carnet (import dynamique,
+      seulement `?rendu=ts`, non gardé : outil de parité et comparaison). Démarrage mesuré (SwiftShader, sans cache,
+      octets transférés) : JS 96 Ko au lieu de 163 Ko ; le module wasm du rendu (150 Ko) remplace le moteur
+- [x] Hors ligne : le service worker suit les imports dynamiques, leurs feuilles de style et les wasm (le rendu Rust
+      s'ouvre hors ligne dès la première visite) ; échec de chargement du rendu → la page reste son HTML
+- [x] Thème clair ↔ sombre : papier et encre relus à la mise en page et au changement de thème (corrigé aussi le
+      crayon sur papier sombre : graphite argenté, `CFX_VERSION` 2)
+- [x] Banc sur presse-rs par défaut (sommeil, migration, encre et lumière) ; matières non portées (poussière, tissu,
+      particules) mesurées avec `?rendu=ts`
+- [x] Parité TS / Rust maintenue (`docs/carnet/parity.json`), WGSL du périmètre en fichiers validés par naga
+- [ ] Temps GPU par passe dans presse-rs (timestamp-query) : la colonne « GPU » du banc reste vide en Rust
+- [ ] Mesures sur le téléphone (P3a) : taille, initialisation, temps par image — avec le banc
 
 #### P4b — avancement
 
