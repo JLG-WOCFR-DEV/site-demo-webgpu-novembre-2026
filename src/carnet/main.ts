@@ -55,7 +55,12 @@ function draw() {
 }
 
 /** Une commande sur le carnet : exécutée, enregistrée, redessinée. Une erreur du core s'affiche. */
+let readOnly: string | null = null;
 function act<T>(fn: () => T): T | undefined {
+  if (readOnly) {
+    toast(readOnly);
+    return undefined;
+  }
   try {
     const r = fn();
     store.commit();
@@ -66,6 +71,15 @@ function act<T>(fn: () => T): T | undefined {
     toast(e instanceof Error ? e.message : String(e));
     return undefined;
   }
+}
+
+/** Lecture seule : le bandeau le dit, et chaque commande le rappelle au lieu d'écrire. */
+function setReadOnly(msg: string) {
+  readOnly = msg;
+  editing?.close();
+  const b = $("#cn-readonly");
+  b.querySelector("span")!.textContent = msg;
+  b.hidden = false;
 }
 
 /* ───── Enregistrement : le contrat de § 3.3 ───── */
@@ -198,6 +212,7 @@ function startEdit(t: HTMLElement) {
   const id = t.closest<HTMLElement>(".cn-row")?.dataset.id ?? "";
   const e = core.get(id);
   if (!e || editing?.id === id) return;
+  if (readOnly) return void toast(readOnly);
   editing?.close();
   const close = openEditor(t, e.text, {
     splice: (start, del, ins) => {
@@ -309,7 +324,12 @@ $<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) =>
 const V0 = "carnet.v0";
 async function boot() {
   core = await createCore();
-  const opened = await Store.open(core, { onRemote: () => draw(), onState: showSave });
+  $("#cn-reload").addEventListener("click", () => location.reload());
+  const opened = await Store.open(core, {
+    onRemote: () => draw(),
+    onState: showSave,
+    onVersionChange: () => setReadOnly("Carnet a été mis à jour dans un autre onglet. Recharge la page pour continuer à écrire."),
+  });
   store = opened.store;
   ctx = { core, view: "week", cur: today(), now: today(), from: new Map() };
   if (opened.empty) {
@@ -348,6 +368,13 @@ async function boot() {
       }
     }
   }
+  // Schéma (§ 3.3, vers l'avant seulement) : un carnet écrit par une version plus récente se lit
+  // mais ne s'écrit plus ici ; sinon, on le marque du schéma de ce code.
+  if (!core.writable()) setReadOnly(`Ce carnet vient d'une version plus récente de Carnet (schéma ${core.schema()}). Mets l'application à jour pour le modifier.`);
+  else if (core.schema() < core.supportedSchema()) {
+    core.stampSchema();
+    store.commit();
+  }
   // Protection contre l'éviction (§ 3.3). Chrome l'accorde sans demander à une application installée
   // ou souvent utilisée ; ce n'est pas une sauvegarde.
   void navigator.storage?.persist?.().catch(() => false);
@@ -359,7 +386,17 @@ async function boot() {
   (window as unknown as { __carnet: object }).__carnet = { get core() { return core; }, get store() { return store; }, ctx, get presse() { return engine; } };
 }
 
-await boot();
+try {
+  await boot();
+} catch (e) {
+  // Stockage illisible ou pris par une version plus récente : on le dit, sans rien écrire.
+  console.error("[carnet] démarrage", e);
+  readOnly = e instanceof Error ? e.message : String(e);
+  const b = $("#cn-readonly");
+  b.querySelector("span")!.textContent = `Carnet ne peut pas ouvrir ton carnet : ${readOnly}`;
+  b.hidden = false;
+  $("#cn-reload").addEventListener("click", () => location.reload());
+}
 void presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts: ["16px 'Newsreader Variable'", "12px 'IBM Plex Mono'"] }).then((p) => {
   engine = p;
   const badge = $("#cn-gpu");

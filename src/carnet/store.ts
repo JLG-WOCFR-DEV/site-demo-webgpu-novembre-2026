@@ -38,7 +38,10 @@ function done(tx: IDBTransaction): Promise<void> {
   });
 }
 
-export function openDb(name = DB): Promise<IDBDatabase> {
+/** La base a été ouverte par une version plus récente de Carnet (autre onglet déjà mis à jour). */
+export class NewerVersionError extends Error {}
+
+export function openDb(name = DB, onVersionChange?: () => void): Promise<IDBDatabase> {
   return new Promise((res, rej) => {
     const r = indexedDB.open(name, VERSION);
     r.onupgradeneeded = () => {
@@ -46,8 +49,16 @@ export function openDb(name = DB): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("journal")) db.createObjectStore("journal", { autoIncrement: true });
       if (!db.objectStoreNames.contains("checkpoint")) db.createObjectStore("checkpoint");
     };
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      // Une version plus récente demande la base (mise à jour dans un autre onglet) : on la lui
+      // laisse, après avoir prévenu la page, qui cesse d'écrire et propose de recharger.
+      r.result.onversionchange = () => {
+        r.result.close();
+        onVersionChange?.();
+      };
+      res(r.result);
+    };
+    r.onerror = () => rej(r.error?.name === "VersionError" ? new NewerVersionError("Carnet a été mis à jour dans un autre onglet : recharge cette page") : r.error);
     r.onblocked = () => rej(new Error("base Carnet bloquée par un autre onglet"));
   });
 }
@@ -57,6 +68,8 @@ export type StoreOptions = {
   /** Appelé quand un autre onglet a écrit : la vue se redessine. */
   onRemote?: () => void;
   onState?: (s: SaveState, error?: unknown) => void;
+  /** Une version plus récente de Carnet a pris la base : la page ne peut plus écrire. */
+  onVersionChange?: () => void;
   durability?: "relaxed" | "strict" | "default";
   /** Diffuser ses mises à jour aux autres onglets (par défaut oui). */
   broadcast?: boolean;
@@ -94,7 +107,7 @@ export class Store {
 
   /** Ouvre le stockage et charge le carnet dans `core` : checkpoint, puis journal. */
   static async open(core: Core, o: StoreOptions = {}): Promise<{ store: Store; empty: boolean }> {
-    const db = await openDb(o.name);
+    const db = await openDb(o.name, o.onVersionChange);
     const store = new Store(db, core, o);
     const empty = await store.load();
     return { store, empty };

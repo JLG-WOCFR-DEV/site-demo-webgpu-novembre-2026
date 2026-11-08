@@ -238,6 +238,25 @@ impl Carnet {
         to_js(&self.nb.all())
     }
 
+    /// Schéma qui a écrit ce carnet, et celui que ce module sait écrire.
+    pub fn schema(&self) -> u32 {
+        self.nb.schema()
+    }
+
+    #[wasm_bindgen(js_name = supportedSchema)]
+    pub fn supported_schema(&self) -> u32 {
+        carnet_core::SCHEMA
+    }
+
+    pub fn writable(&self) -> bool {
+        self.nb.writable()
+    }
+
+    #[wasm_bindgen(js_name = stampSchema)]
+    pub fn stamp_schema(&mut self) -> Result<(), JsError> {
+        self.nb.stamp_schema().map_err(err)
+    }
+
     #[wasm_bindgen(js_name = isDismissed)]
     pub fn is_dismissed(&self, key: &str) -> bool {
         self.nb.is_dismissed(key)

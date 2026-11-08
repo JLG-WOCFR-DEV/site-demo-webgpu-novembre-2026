@@ -277,7 +277,7 @@ réel du projet.
 
 #### P1 — Terrain Android, renforcé (1,5 semaine)
 
-- [ ] Manifeste PWA + service worker minimal ; installation depuis Chrome Android
+- [x] Manifeste PWA + service worker (hors ligne dès la première visite, mise à jour proposée, jamais imposée) — installation sur le téléphone à vérifier dans la recette
 - [ ] Banc sur un Android milieu de gamme (protocole § 5)
 - [ ] **WebGPU** : capacités réellement fournies (cœur ou mode compatibilité, limites) ; chemin offert par la version de
       wgpu retenue
@@ -297,7 +297,8 @@ réel du projet.
 - [x] Modèle § 3.2, règles produit, commandes, modèles de vue semaine / jour / mois — la coquille v0 tourne dessus
 - [x] Édition : `<textarea>` visible pendant l'édition, diff → opérations `Y.Text`, offsets UTF-16 (paires de substitution jamais coupées, composition attendue) — à valider au clavier Android (recette P1)
 - [x] Suggestions : veille, prévu ce mois, il y a un an
-- [ ] Persistance § 3.3 complète — fait : contrat affiché, journal par lots de 250 ms, compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché. `storage.persist()` demandé, premier lancement unique entre onglets (Web Locks). Reste : médias, tests de mise à jour avec page ouverte
+- [x] Persistance § 3.3 — contrat affiché, journal par lots de 250 ms, compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché, `storage.persist()`, premier lancement unique entre onglets. Mises à jour : base reprise par une version plus récente → page en lecture seule avec « Recharger » ; schéma du document marqué, vers l'avant seulement (un carnet d'un schéma plus récent se lit sans s'écrire). Interruptions automatisées sur ordinateur (`tools/carnet-interruptions.mjs`, navigateur tué par SIGKILL : tout ce qui était annoncé enregistré revient) → `docs/carnet/interruptions-desktop.json`. **Médias reportés à P4b** (pas de consommateur avant les photos ; le contrat « fichier écrit, confirmé, puis référence » reste la règle)
+- [x] Carnet de référence (§ 5) mesuré dans le core : `tools/carnet-bench-core.ts` → `docs/carnet/bench-core.json` (≈ 3 000 entrées : checkpoint 0,8 Mo, ouverture 40 ms, vue semaine 4 ms sur ordinateur ; à multiplier pour le téléphone). Pas de découpage de `notebook` nécessaire à ce stade
 - [x] Sauvegarde `.carnet` (zip : manifeste + document yrs, empreintes SHA-256) et restauration par fusion, vérifiée dans un carnet vide ; import v0 conservateur (original renommé `carnet.v0.importé` après relecture). Pages et médias s'ajouteront au même format
 - [x] Tests de convergence reformulés (§ 4.3)
 

@@ -24,11 +24,13 @@ export class Carnet {
    */
   encodeState(): Uint8Array;
   isDismissed(key: string): boolean;
+  stampSchema(): void;
   stateVector(): Uint8Array;
   /**
    * Mises à jour produites par les commandes locales depuis le dernier appel, dans l'ordre.
    */
   takeUpdates(): Array<any>;
+  supportedSchema(): number;
   /**
    * `place` : `{ scope: "day" | "week:AAAA-MM-JJ" | "month:AAAA-MM" | "collection:<id>", day: "AAAA-MM-JJ" | null }`.
    * `entry` : `{ kind?: "task" | "event" | "note", text, time?: "HH:MM", priority?, idea? }`. Rend l'identifiant.
@@ -52,6 +54,10 @@ export class Carnet {
    */
   purge(): number;
   delete(id: string): void;
+  /**
+   * Schéma qui a écrit ce carnet, et celui que ce module sait écrire.
+   */
+  schema(): number;
   dismiss(key: string): void;
   migrate(id: string, to: any): void;
   restore(id: string): void;
@@ -61,6 +67,7 @@ export class Carnet {
    */
   setText(id: string, text: string): void;
   setTime(id: string, time?: string | null): void;
+  writable(): boolean;
   /**
    * Importe le carnet v0 (`localStorage["carnet.v0"]`). Idempotent.
    */
@@ -94,14 +101,18 @@ export interface InitOutput {
   readonly carnet_new: () => number;
   readonly carnet_purge: (a: number) => [number, number, number];
   readonly carnet_restore: (a: number, b: number, c: number) => [number, number];
+  readonly carnet_schema: (a: number) => number;
   readonly carnet_setMarks: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly carnet_setState: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly carnet_setText: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly carnet_setTime: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly carnet_spliceText: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
+  readonly carnet_stampSchema: (a: number) => [number, number];
   readonly carnet_stateVector: (a: number) => [number, number];
+  readonly carnet_supportedSchema: (a: number) => number;
   readonly carnet_takeUpdates: (a: number) => any;
   readonly carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
+  readonly carnet_writable: (a: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;

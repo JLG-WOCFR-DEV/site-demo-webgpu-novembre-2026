@@ -12,6 +12,6 @@ pub use date::{Day, Month};
 pub use import::ImportReport;
 pub use notebook::{
     text_splice, Departure, Entry, Env, Error, Kind, NewEntry, Notebook, Place, Scope, State,
-    TRASH_MS,
+    SCHEMA, TRASH_MS,
 };
 pub use view::{CalendarDay, DayView, Line, MonthView, Suggestion, SuggestionKind, WeekView};

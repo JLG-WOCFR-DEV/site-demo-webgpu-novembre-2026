@@ -169,8 +169,14 @@ pub struct NewEntry {
     pub idea: bool,
 }
 
+/// Version du schéma du document que ce code sait écrire. Les migrations vont vers l'avant seulement :
+/// un carnet marqué d'un schéma plus récent se lit, mais ne s'écrit plus (roadmap § 3.3).
+pub const SCHEMA: u32 = 1;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
+    /// Le carnet a été écrit par une version plus récente de Carnet.
+    NewerSchema(u32),
     NotFound(String),
     Deleted(String),
     Invalid(String),
@@ -180,6 +186,10 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Error::NewerSchema(n) => write!(
+                f,
+                "carnet enregistré par une version plus récente de Carnet (schéma {n}) : mets l'application à jour pour le modifier"
+            ),
             Error::NotFound(id) => write!(f, "entrée introuvable : {id}"),
             Error::Deleted(id) => write!(f, "entrée à la corbeille : {id}"),
             Error::Invalid(m) => write!(f, "{m}"),
@@ -479,6 +489,11 @@ impl Notebook {
     ) -> Result<R, Error> {
         let (entries, meta) = (self.entries.clone(), self.meta.clone());
         let mut txn = self.doc.transact_mut();
+        if let Some(n) = get_num(&meta, &txn, "schema").map(|n| n as u32) {
+            if n > SCHEMA {
+                return Err(Error::NewerSchema(n));
+            }
+        }
         let r = f(&mut txn, &entries, &meta);
         let update = txn.encode_update_v1();
         drop(txn);
@@ -738,7 +753,37 @@ impl Notebook {
         })
     }
 
+    /// Marque le carnet du schéma de ce code s'il porte un schéma plus ancien (ou aucun).
+    pub fn stamp_schema(&mut self) -> Result<(), Error> {
+        if self.schema() >= SCHEMA {
+            return Ok(());
+        }
+        self.write(|txn, _, meta| {
+            meta.insert(txn, "schema", SCHEMA as f64);
+            Ok(())
+        })
+    }
+
+    /// Tests : simule un carnet écrit par une version future.
+    #[doc(hidden)]
+    pub fn force_schema_for_tests(&mut self, n: u32) {
+        let mut txn = self.doc.transact_mut();
+        self.meta.insert(&mut txn, "schema", n as f64);
+        drop(txn);
+    }
+
     /* ───── Lecture ───── */
+
+    /// Schéma qui a écrit ce carnet (0 : avant le marquage).
+    pub fn schema(&self) -> u32 {
+        let t = self.doc.transact();
+        get_num(&self.meta, &t, "schema").map_or(0, |n| n as u32)
+    }
+
+    /// Ce code peut-il modifier ce carnet ?
+    pub fn writable(&self) -> bool {
+        self.schema() <= SCHEMA
+    }
 
     /// Relit dans le document les entrées touchées depuis la dernière lecture.
     fn refresh(&self) {

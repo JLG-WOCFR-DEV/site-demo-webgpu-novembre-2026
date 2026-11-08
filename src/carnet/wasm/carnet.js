@@ -280,6 +280,12 @@ export class Carnet {
         const ret = wasm.carnet_isDismissed(this.__wbg_ptr, ptr0, len0);
         return ret !== 0;
     }
+    stampSchema() {
+        const ret = wasm.carnet_stampSchema(this.__wbg_ptr);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
     /**
      * @returns {Uint8Array}
      */
@@ -296,6 +302,13 @@ export class Carnet {
     takeUpdates() {
         const ret = wasm.carnet_takeUpdates(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    supportedSchema() {
+        const ret = wasm.carnet_supportedSchema(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * `place` : `{ scope: "day" | "week:AAAA-MM-JJ" | "month:AAAA-MM" | "collection:<id>", day: "AAAA-MM-JJ" | null }`.
@@ -428,6 +441,14 @@ export class Carnet {
         }
     }
     /**
+     * Schéma qui a écrit ce carnet, et celui que ce module sait écrire.
+     * @returns {number}
+     */
+    schema() {
+        const ret = wasm.carnet_schema(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * @param {string} key
      */
     dismiss(key) {
@@ -506,6 +527,13 @@ export class Carnet {
         if (ret[1]) {
             throw takeFromExternrefTable0(ret[0]);
         }
+    }
+    /**
+     * @returns {boolean}
+     */
+    writable() {
+        const ret = wasm.carnet_writable(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Importe le carnet v0 (`localStorage["carnet.v0"]`). Idempotent.

@@ -459,3 +459,28 @@ fn big_checkpoint_fills_the_cache() {
     assert_eq!(b.get(&ids[1]).unwrap().text, "renommée");
     assert_eq!(b.all(), b.all_uncached());
 }
+
+#[test]
+fn newer_schema_is_read_only() {
+    let c = clock(1_700_000_000_000.0);
+    let mut a = notebook(1, &c);
+    a.stamp_schema().unwrap();
+    assert_eq!(a.schema(), carnet_core::SCHEMA);
+    let id = a.add(Place::day(d("2026-11-08")), task("lire")).unwrap();
+    // Une version future marque le document d'un schéma plus récent (simulé en écrivant la clé).
+    let mut b = notebook(2, &c);
+    b.apply_update(&a.encode_state()).unwrap();
+    b.force_schema_for_tests(carnet_core::SCHEMA + 1);
+    a.apply_update(&b.encode_state()).unwrap();
+    assert!(!a.writable());
+    assert!(matches!(
+        a.set_text(&id, "écrire"),
+        Err(carnet_core::Error::NewerSchema(_))
+    ));
+    assert_eq!(a.get(&id).unwrap().text, "lire"); // la lecture reste possible
+    assert!(a
+        .week_view(d("2026-11-08"), d("2026-11-08"))
+        .days
+        .iter()
+        .any(|v| !v.lines.is_empty()));
+}

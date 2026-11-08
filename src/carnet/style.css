@@ -604,3 +604,7 @@ body > .cn-flysheet.cn-flysheet.cn-flysheet {
 .cn-text[role="button"] {
   cursor: text;
 }
+.cn-readonly {
+  border-color: var(--accent);
+  border-style: solid;
+}

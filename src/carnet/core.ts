@@ -75,6 +75,12 @@ export interface Core {
   get(id: string): Entry | null;
   all(): Entry[];
   isDismissed(key: string): boolean;
+  /** Schéma qui a écrit ce carnet (0 : jamais marqué) et schéma que ce module sait écrire. */
+  schema(): number;
+  supportedSchema(): number;
+  /** Faux si le carnet vient d'une version plus récente : lecture seule. */
+  writable(): boolean;
+  stampSchema(): void;
   free(): void;
 }
 
