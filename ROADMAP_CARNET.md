@@ -231,6 +231,11 @@ struct Fx {
 
 ### 3.7 Synchro chiffrée (P6) : protocole à spécifier avant d'écrire du code
 
+**Spécifié** : `docs/carnet/sync.md` (v2, relue) fait foi et précise ce résumé d'origine. Principaux écarts : un
+journal **par appareil** en création seule (aucune écriture concurrente, donc un simple stockage de fichiers suffit),
+nonces aléatoires XChaCha20-Poly1305, coffre lisible par la phrase (`T_kb`), rotation à borne, instantanés en corps +
+fiche, troncature à deux instantanés vérifiés. Résumé d'origine :
+
 Un relais qui ne voit que des enveloppes chiffrées ne peut pas calculer de différence yrs. Premier protocole :
 
 - **Relais** : journal chiffré append-only par carnet, curseurs de livraison par appareil. Il ne déchiffre rien.
@@ -333,7 +338,7 @@ temps par image mesurés sur le téléphone de P1 ; **réestimation de P3b**.
 | P3b — Portage du rendu | Reste du périmètre § 3.5 ; Presse TS n'est plus chargé par Carnet | 4 à 8 sem. (à réestimer après P3a) → réduit à une bascule, voir l'avancement | P3a |
 | P4b — Enrichissements | Dessin à la pression, pages graphiques, autocollants ancrés, photos, météo, ICS (import), tracker, TWA | 3 à 4 sem. | P4a, P3b |
 | P5 — Effets | Contrat § 3.6, P0 (encre, crayon → encre, papier éclairé), P1 selon budget, cache et reconstruction | 3 sem. | P3b |
-| P6 — Synchro | Spec § 3.7 relue (1 sem.), puis implémentation | 5 à 7 sem. | P4b, modèle économique tranché |
+| P6 — Synchro | Spec § 3.7 relue (1 sem.), puis implémentation | 5 à 7 sem. | P4b, modèle économique tranché (le cœur, sans stockage, n'en dépend pas : fait) |
 | P7 — Desktop Rune | Prototype d'intégration (1 sem.), puis application | 5 sem. | P5, P6 |
 | S1 — Spike saisie Rust Android | winit + `android-activity` (état texte, sélection, composition) + wgpu + parley ; recette de P1 | 1 sem. | — (quand un créneau se libère) |
 
@@ -366,6 +371,24 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
 - [x] Parité TS / Rust maintenue (`docs/carnet/parity.json`), WGSL du périmètre en fichiers validés par naga
 - [ ] Temps GPU par passe dans presse-rs (timestamp-query) : la colonne « GPU » du banc reste vide en Rust
 - [ ] Mesures sur le téléphone (P3a) : taille, initialisation, temps par image — avec le banc
+
+#### P6 — avancement
+
+- [x] Spec `docs/carnet/sync.md` v1, relue par un agent indépendant (25 constats dont 9 bloquants : écho, écrivains
+      multiples, mises à jour en attente perdues, création seule contournée, rotation sans barrière, retrait qui ne coupe
+      ni lecture ni écriture, instantanés concurrents, coffre inaccessible par phrase), puis **v2** qui les traite tous
+      (annexe B de la spec)
+- [x] `crates/carnet-sync`, sans entrées-sorties, indépendant du stockage : XChaCha20-Poly1305 (nonces aléatoires,
+      AAD reconstruite à la lecture), HKDF, Argon2id `p1`, coffre versionné, rotation à borne, clé de récupération,
+      journaux par appareil en création seule, vecteur `seen`, mise de côté des dépendances, fourches, instantanés
+      (corps + fiche) et troncature à deux instantanés vérifiés. 18 tests sur de vrais carnets, dont une convergence
+      chiffrée (proptest, 3 000 cas) ; compile pour wasm
+- [ ] Contre-revue Codex de la spec v2
+- [ ] **[produit]** Hébergement : relais Carnet (recommandé) ou stockage personnel à création conditionnelle ; quotas
+      et modèle économique
+- [ ] Liaison wasm, hôte TypeScript (origine des mises à jour dans `Store`, verrou d'envoyeur, transactions `strict`,
+      file et attente persistées), relais, appairage X25519, interface, mesures Argon2id au banc
+- [ ] carnet-core : `Page` vérifie le schéma (§ 10 de la spec) ; noms d'appareils dans `meta.devices`
 
 #### P4b — avancement
 

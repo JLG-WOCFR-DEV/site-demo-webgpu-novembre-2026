@@ -470,7 +470,12 @@ impl Notebook {
 
     /// Des mises à jour reçues attendent-elles encore celles dont elles dépendent ?
     pub fn has_pending(&self) -> bool {
-        self.doc.transact().has_missing_updates()
+        !self.deferred.is_empty() || self.doc.transact().has_missing_updates()
+    }
+
+    /// Nombre de mises à jour reçues mises de côté (la synchro ne fait pas avancer son curseur au-delà).
+    pub fn pending_count(&self) -> usize {
+        self.deferred.len()
     }
 
     pub fn state_vector(&self) -> Vec<u8> {

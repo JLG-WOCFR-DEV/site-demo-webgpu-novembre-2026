@@ -273,7 +273,11 @@ impl Page {
     }
 
     pub fn has_pending(&self) -> bool {
-        self.doc.transact().has_missing_updates()
+        !self.deferred.is_empty() || self.doc.transact().has_missing_updates()
+    }
+
+    pub fn pending_count(&self) -> usize {
+        self.deferred.len()
     }
 
     /* ───── Commandes ───── */

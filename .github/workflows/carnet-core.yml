@@ -2,9 +2,9 @@ name: carnet-core
 
 on:
   push:
-    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "src/carnet/**", "src/presse/rs-host.ts", "src/gpu/text.ts", "tools/carnet-wasm.sh", ".github/workflows/carnet-core.yml"]
+    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "src/carnet/**", "src/presse/rs-host.ts", "src/gpu/text.ts", "tools/carnet-wasm.sh", "docs/carnet/sync.md", ".github/workflows/carnet-core.yml"]
   pull_request:
-    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "src/carnet/**", "src/presse/rs-host.ts", "src/gpu/text.ts", "tools/carnet-wasm.sh", ".github/workflows/carnet-core.yml"]
+    paths: ["crates/**", "Cargo.toml", "Cargo.lock", "src/carnet/**", "src/presse/rs-host.ts", "src/gpu/text.ts", "tools/carnet-wasm.sh", "docs/carnet/sync.md", ".github/workflows/carnet-core.yml"]
 
 jobs:
   check:
@@ -20,10 +20,10 @@ jobs:
         run: cargo fmt --all --check
       - name: Clippy
         run: |
-          cargo clippy -p carnet-core -p carnet-wasm -p presse-rs --all-targets -- -D warnings
+          cargo clippy -p carnet-core -p carnet-sync -p carnet-wasm -p presse-rs --all-targets -- -D warnings
           cargo clippy -p presse-web --target wasm32-unknown-unknown -- -D warnings
       - name: Tests (convergence : 2 000 scénarios)
-        run: cargo test -p carnet-core -p presse-rs --release
+        run: cargo test -p carnet-core -p carnet-sync -p presse-rs --release
         env:
           PROPTEST_CASES: "2000"
       - uses: actions/setup-node@v4
