@@ -4,6 +4,7 @@
  * « Pages » en haut à gauche. API popover : Échap et clic extérieur ferment.
  */
 
+import { CSS as SETTINGS_CSS, mountSettings } from "./presse/presentation.ts";
 import { openDebugPanel } from "./debug-panel.ts";
 import { initFlights } from "./presse/flight.ts";
 import { initCursor } from "./presse/cursor.ts";
@@ -53,10 +54,15 @@ const CSS = `
   min-width: min(340px, calc(100vw - 32px));
   border: 1px solid currentColor;
   border-radius: 6px;
-  background: var(--paper, #f6f1e4);
-  color: var(--ink, #16110d);
+  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait
+     illisible (texte crème sur fond crème). */
+  background: #f6f1e4;
+  color: #16110d;
   box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);
   font-family: inherit;
+  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .pages-pop ul { list-style: none; margin: 0; padding: 0; }
 .pages-pop a {
@@ -111,7 +117,7 @@ export function mountPagesNav(base = "./") {
   initAnim();
   initCursor();
   const style = document.createElement("style");
-  style.textContent = CSS;
+  style.textContent = CSS + SETTINGS_CSS;
   document.head.append(style);
 
   let trigger = document.querySelector<HTMLButtonElement>("[data-pages-trigger]");
@@ -151,6 +157,8 @@ export function mountPagesNav(base = "./") {
     openDebugPanel(trigger!);
   });
   pop.append(dbg);
+  // Animations (rallumer malgré le système) et mode présentation : des réglages de visite, pour tout le site.
+  mountSettings(pop, PAGES, base);
   document.body.append(pop);
   trigger.setAttribute("popovertarget", "pages-pop");
   trigger.setAttribute("aria-haspopup", "true");
@@ -161,5 +169,6 @@ export function mountPagesNav(base = "./") {
     const r = trigger!.getBoundingClientRect();
     pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8))}px`;
     pop.style.top = `${r.bottom + 8}px`;
+    pop.style.maxHeight = `${Math.max(200, innerHeight - r.bottom - 24)}px`;
   });
 }

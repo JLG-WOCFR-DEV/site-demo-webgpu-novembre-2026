@@ -211,19 +211,53 @@ body.df {
   backface-visibility: hidden;
   will-change: transform, opacity;
 }
-.df-dots {
+/* Le repère d'une scène épinglée : « 03 / 09 » et un point-bouton par cran (main.ts, mountNav). */
+.df-nav {
   position: absolute;
-  bottom: 40px;
+  z-index: 3;
+  bottom: 28px;
   left: 50%;
   display: flex;
+  align-items: center;
   gap: 10px;
+  padding: 2px 8px 2px 14px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--paper, #f1efe9) 82%, transparent);
+  backdrop-filter: blur(6px);
+  transform: translateX(-50%);
+}
+.df-count {
+  white-space: nowrap;
+  font: 500 12px/1 "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  color: #57544d;
+  font-variant-numeric: tabular-nums;
+}
+.df-count b {
+  font-weight: 500;
+  color: var(--ink);
+}
+.df-dots {
+  display: flex;
   margin: 0;
   padding: 0;
   list-style: none;
-  transform: translateX(-50%);
 }
-.df-dots {
-  gap: 0;
+.df-nav--light {
+  background: rgb(10 10 12 / 0.55);
+}
+.df-nav--light .df-count {
+  color: #c9c6be;
+}
+.df-nav--light .df-count b {
+  color: #fff;
+}
+.df-nav--light .df-dot::before {
+  background: rgb(255 255 255 / 0.45);
+}
+.df-nav--light .df-dots li.is-on .df-dot::before,
+.df-nav--light .df-dot:hover::before {
+  background: #fff;
 }
 /* Chaque point est un bouton de 24 px de haut (WCAG 2.2) ; le point visible fait 7 px. */
 .df-dot {
@@ -749,4 +783,28 @@ body.df {
   .df-tile-desc {
     transition: none;
   }
+}
+.df-nav--light .df-dot:focus-visible {
+  outline-color: #fff;
+}
+/* Téléphone : la légende des images au bruit passe au-dessus du repère. */
+@media (max-width: 640px) {
+  .df-noise-cap {
+    bottom: 76px;
+  }
+}
+@media (max-width: 360px) {
+  .df-count {
+    display: none;
+  }
+  .df-nav {
+    padding-left: 8px;
+  }
+}
+/* Images au bruit : la légende dit déjà « 03 / 05 — Le verre » ; le repère garde ses points. */
+.df-nav--light .df-count {
+  display: none;
+}
+.df-nav--light {
+  padding-left: 8px;
 }

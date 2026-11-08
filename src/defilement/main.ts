@@ -37,7 +37,7 @@ const notch = (f: number) => Math.floor(f) + smooth(0.3, 0.7, f - Math.floor(f))
 
 /* ───── Les sections épinglées : progression + ressort ───── */
 
-type Scrub = { el: HTMLElement; steps: number; f: number; v: number; draw: (f: number, p: number) => void };
+type Scrub = { el: HTMLElement; steps: number; f: number; v: number; draw: (f: number, p: number) => void; nav?: (k: number) => void };
 const scrubs: Scrub[] = [];
 const pinned = (name: string, draw: Scrub["draw"]) => {
   const el = document.querySelector<HTMLElement>(`[data-df=${name}]`);
@@ -46,6 +46,39 @@ const pinned = (name: string, draw: Scrub["draw"]) => {
   scrubs.push(s);
   return s;
 };
+/*
+ * Le repère de chaque scène épinglée : « 03 / 09 » et un point par cran. Les points sont des boutons (24 px) qui
+ * mènent au cran ; le cran courant est annoncé (aria-current). Les libellés viennent de la scène (noms, mots, étapes).
+ */
+const mountNav = (s: Scrub, labels: string[], light = false) => {
+  const stage = s.el.querySelector<HTMLElement>(".df-stage") ?? s.el;
+  const nav = document.createElement("nav");
+  nav.className = `df-nav${light ? " df-nav--light" : ""}`;
+  nav.setAttribute("aria-label", `${s.el.querySelector(".df-label")?.textContent?.replace(/^\d+\s*·\s*/, "").trim() ?? "Scène"} : aller à`);
+  const n = s.steps;
+  const pad = (i: number) => String(i).padStart(2, "0");
+  nav.innerHTML = `<span class="df-count" aria-hidden="true"><b>01</b> / ${pad(n)}</span><ol class="df-dots">${Array.from({ length: n }, (_, i) => `<li><button type="button" class="df-dot"></button></li>`).join("")}</ol>`;
+  const btns = [...nav.querySelectorAll<HTMLButtonElement>(".df-dot")];
+  btns.forEach((b, i) => {
+    b.setAttribute("aria-label", labels[i] ?? `Cran ${i + 1}`);
+    b.addEventListener("click", () => goStep(s, i));
+  });
+  const count = nav.querySelector("b")!;
+  let shown = -1;
+  s.nav = (k) => {
+    if (k === shown) return;
+    shown = k;
+    count.textContent = pad(k + 1);
+    btns.forEach((b, i) => {
+      b.parentElement!.classList.toggle("is-on", i === k);
+      if (i === k) b.setAttribute("aria-current", "step");
+      else b.removeAttribute("aria-current");
+    });
+  };
+  s.nav(0);
+  stage.append(nav);
+};
+const texts = (el: HTMLElement | null, sel: string) => [...(el?.querySelectorAll<HTMLElement>(sel) ?? [])].map((x) => (x.getAttribute("alt") || x.textContent || "").trim());
 const progress = (el: HTMLElement) => {
   const r = el.getBoundingClientRect();
   return clamp(-r.top / Math.max(1, r.height - innerHeight));
@@ -120,13 +153,7 @@ const engaged = () =>
   const el = document.querySelector<HTMLElement>("[data-df=drum]");
   if (el) {
     const words = [...el.querySelectorAll<HTMLElement>(".df-drum-words li")];
-    const dots = el.querySelector<HTMLElement>(".df-dots")!;
-    // Les points sont des boutons : un clic (ou Entrée) mène au mot ; la cible fait 24 px, le point en dessine 7.
-    dots.removeAttribute("aria-hidden");
-    dots.setAttribute("aria-label", "Aller à un mot");
-    dots.innerHTML = words.map((w) => `<li><button type="button" class="df-dot" aria-label="${w.textContent!.trim().replace(/"/g, "&quot;")}"></button></li>`).join("");
-    const dl = [...dots.children] as HTMLElement[];
-    const drum = pinned("drum", (f) => {
+    pinned("drum", (f) => {
       const g = notch(f);
       // Le rayon du tambour suit la taille du texte : un mot par cran, sans chevauchement.
       const R = parseFloat(getComputedStyle(words[0]!).fontSize) * 2.3;
@@ -138,15 +165,7 @@ const engaged = () =>
         w.style.opacity = String(Math.abs(a) > 1.4 ? 0 : clamp(Math.cos(a) * 1.3 - 0.35, 0, 1) * (0.35 + 0.65 * close));
         w.style.fontVariationSettings = `"wght" ${Math.round(400 + 450 * close)}`;
       });
-      const k = Math.round(g);
-      dl.forEach((d, i) => {
-        d.classList.toggle("is-on", i === k);
-        const b = d.firstElementChild as HTMLElement;
-        if (i === k) b.setAttribute("aria-current", "true");
-        else b.removeAttribute("aria-current");
-      });
     });
-    dl.forEach((d, i) => d.firstElementChild!.addEventListener("click", () => drum && goStep(drum, i)));
   }
 }
 
@@ -212,6 +231,19 @@ const engaged = () =>
   }
 }
 
+/* Les repères des scènes (après leur création : les crans sont connus). */
+for (const s of scrubs) {
+  const name = s.el.dataset.df;
+  const labels =
+    name === "wheel" ? texts(s.el, ".df-wheel-names li")
+    : name === "roller" ? texts(s.el, ".df-roller-words li")
+    : name === "drum" ? texts(s.el, ".df-drum-words li")
+    : name === "noise" ? texts(s.el, ".df-noise-imgs img")
+    : name === "rail" ? texts(s.el, ".df-rail-steps h3")
+    : [];
+  mountNav(s, labels, name === "noise");
+}
+
 /*
  * La boucle : progression lue, ressort, dessin — seulement pour les sections proches de l'écran, et seulement tant
  * que quelque chose bouge. Au repos (ressorts posés, pas de défilement), elle s'endort ; le défilement, un
@@ -235,6 +267,7 @@ const loop = () => {
     if (Math.abs(s.f - target) < 1e-3 && Math.abs(s.v) < 1e-3) ((s.f = target), (s.v = 0));
     else moving = true;
     s.draw(clamp(s.f, 0, s.steps - 1), p);
+    s.nav?.(Math.round(clamp(target, 0, s.steps - 1)));
   }
   if (moving) loopRaf = requestAnimationFrame(loop);
 };

@@ -33,21 +33,54 @@ function fallback(reason: string) {
 
 const forced = matchMedia("(forced-colors: active)");
 
+/*
+ * Un démarrage qui traîne (GPU occupé, pilote qui compile, onglet revenu d'arrière-plan) : au bout de 8 s, on le dit,
+ * au lieu de laisser « Démarrage » sans explication. La page reste lisible : c'est du HTML. Deux sorties : recharger,
+ * ou fermer l'avis (le GPU prendra la main s'il finit par démarrer).
+ */
+function slowStart() {
+  let note: HTMLElement | null = null;
+  const t = setTimeout(() => {
+    note = document.createElement("div");
+    note.className = "slow-start";
+    note.setAttribute("role", "status");
+    note.innerHTML =
+      '<p>Le GPU met du temps à démarrer. La page reste lisible : c\'est du HTML ; l\'impression arrivera dès qu\'il sera prêt.</p><div><button type="button" data-slow="reload">Recharger</button><button type="button" data-slow="close">Fermer</button></div>';
+    note.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-slow]");
+      if (b?.dataset.slow === "reload") location.reload();
+      else if (b) note?.remove();
+    });
+    document.body.append(note);
+  }, 8000);
+  return {
+    done() {
+      clearTimeout(t);
+      note?.remove();
+    },
+  };
+}
+
 async function start() {
   if (forced.matches) {
     // Le système impose ses couleurs : un canvas les ignorerait.
     fallback("couleurs forcées par le système");
     return;
   }
-  setStatus("Démarrage");
+  setStatus("Démarrage · fontes");
+  const slow = slowStart();
   try {
-    // Les glyphes sont mesurés et dessinés avec la vraie fonte : on l'attend.
-    await Promise.all([
+    // Les glyphes sont mesurés et dessinés avec la vraie fonte : on l'attend, mais pas plus de 3 s (une fonte qui
+    // arrive plus tard fait remesurer le texte ; un réseau lent ne doit pas retenir le GPU).
+    const fonts = Promise.all([
       document.fonts.load('900 125% 96px "Archivo Variable"'),
       document.fonts.load('400 16px "Archivo Variable"'),
       document.fonts.load('500 12px "IBM Plex Mono"'),
-    ]).catch(() => undefined);
-    await document.fonts.ready;
+    ])
+      .catch(() => undefined)
+      .then(() => document.fonts.ready);
+    await Promise.race([fonts, new Promise((r) => setTimeout(r, 3000))]);
+    setStatus("Démarrage · GPU");
     engine = await createEngine(canvas, {
       onTimings: showTimings,
       onLayout: showLayout,
@@ -66,6 +99,7 @@ async function start() {
     });
     engine.pause(settings.dom.hideGpu);
     if (!settings.dom.hideGpu) root.classList.add("gl-on");
+    slow.done();
     setStatus(`WebGPU natif${engine.canTime ? " · horodaté" : ""}`);
     const eng = engine;
     setDebugCaps({
@@ -82,6 +116,7 @@ async function start() {
     const btn = document.querySelector<HTMLButtonElement>("[data-action='toggle-gpu']");
     if (btn) btn.textContent = "Couper WebGPU";
   } catch (err) {
+    slow.done();
     console.warn("[pli]", err);
     fallback(err instanceof Error ? err.message.slice(0, 80) : "échec");
   }
@@ -135,9 +170,10 @@ forced.addEventListener("change", () => {
 });
 for (const b of document.querySelectorAll("[data-action='pause']")) {
   b.addEventListener("click", () => {
-    // Système en mouvement réduit : le bouton rallume les animations pour cette page (choix explicite, jamais par
-    // défaut) ; sinon c'est la pause ordinaire.
-    if (motion.system) motion.allowed = !motion.allowed;
+    // Système en mouvement réduit : « Animer » rallume les animations pour tout le site (le même réglage que le menu
+    // Pages) ; le changement revient par matchMedia, comme si le système l'avait annoncé.
+    const api = (window as unknown as { __presseMotion?: { set(v: boolean): void } }).__presseMotion;
+    if (motion.system && api) api.set(true);
     else motion.paused = !motion.paused;
     showMotion();
   });

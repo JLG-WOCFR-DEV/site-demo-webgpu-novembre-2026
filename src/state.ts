@@ -85,11 +85,9 @@ export const motion = {
   system: typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches,
   /** Bouton Pause de la page (critère 2.2.2). */
   paused: false,
-  /** Le système demande moins d'animations, mais la personne les a rallumées pour cette page (bouton « Animer »). */
-  allowed: false,
-  /** Ce que lit le moteur : le système (sauf accord explicite) ou la pause. */
+  /** Ce que lit le moteur : l'un ou l'autre suffit. (« Animer » lève `system` pour tout le site : presse/build/head.ts.) */
   get reduced() {
-    return (this.system && !this.allowed) || this.paused;
+    return this.system || this.paused;
   },
 };
 
