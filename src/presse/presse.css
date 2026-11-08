@@ -23,7 +23,8 @@ html.gl-on body > :not(.presse-canvas) {
 html.gl-on body {
   background: transparent;
 }
-html.gl-on [data-gl-text] {
+/* [data-gl-dom] : élément que l'atlas ne sait pas dessiner (emoji, écritures à mise en forme), laissé au DOM. */
+html.gl-on [data-gl-text]:not([data-gl-dom]) {
   color: transparent;
 }
 html.gl-on [data-gl-text] a {

@@ -1,27 +1,27 @@
 {
   "format": "carnet-interruptions/1",
-  "at": "2026-11-08T09:28:35.454Z",
+  "at": "2026-11-08T09:48:05.571Z",
   "pass": true,
   "results": [
     {
       "name": "navigateur tué pendant l'usage",
       "pass": true,
-      "detail": "annoncées 20, retrouvées 20 (dont du lot en cours : 0 / 5)"
+      "detail": "annoncées 20, retrouvées 25 (dont du lot en cours : 5 / 5)"
     },
     {
       "name": "onglet fermé pendant un lot",
       "pass": true,
-      "detail": "avant 20, +10 tapées, retrouvées 30"
+      "detail": "avant 25, +10 tapées, retrouvées 35"
     },
     {
       "name": "navigateur fermé et rouvert",
       "pass": true,
-      "detail": "avant 30, retrouvées 30"
+      "detail": "avant 35, retrouvées 35"
     },
     {
       "name": "compaction puis navigateur tué",
       "pass": true,
-      "detail": "avant 30, retrouvées 30"
+      "detail": "avant 35, retrouvées 35"
     }
   ]
 }

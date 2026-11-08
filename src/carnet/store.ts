@@ -1,8 +1,9 @@
 /**
  * Carnet — persistance (roadmap § 3.3) : journal de mises à jour yrs + checkpoint, dans IndexedDB.
  *
- *   - Chaque commande produit des mises à jour ; elles partent au journal par lots (250 ms au plus),
- *     une transaction par lot, pendant l'usage : une page gelée ou tuée en arrière-plan n'a pas de
+ *   - Chaque commande produit des mises à jour ; elles partent au journal tout de suite, une
+ *     transaction à la fois ; ce qui arrive pendant une écriture forme le lot suivant. Pendant
+ *     l'usage, jamais « à la fermeture » : une page gelée ou tuée en arrière-plan n'a pas de
  *     traitement final garanti.
  *   - Compaction : dans UNE transaction, on relit tout le journal, on l'applique au document (il peut
  *     contenir des lignes écrites par un autre onglet que celui-ci n'a pas encore reçues), on écrit le
@@ -21,7 +22,6 @@ type Checkpoint = { state: Uint8Array; upTo: number; at: number };
 
 const DB = "carnet";
 const VERSION = 1;
-const BATCH_MS = 250;
 const COMPACT_AFTER = 400; // lignes de journal
 
 function req<T>(r: IDBRequest<T>): Promise<T> {
@@ -77,7 +77,6 @@ export type StoreOptions = {
 
 export class Store {
   private pending: Uint8Array[] = [];
-  private timer = 0;
   private flushing: Promise<void> | null = null;
   private channel: BroadcastChannel | null = null;
   private journalSize = 0;
@@ -152,13 +151,14 @@ export class Store {
     this.pending.push(...updates);
     this.channel?.postMessage(updates);
     this.setState("saving");
-    if (!this.timer) this.timer = setTimeout(() => void this.flush(), BATCH_MS) as unknown as number;
+    // Écriture immédiate : une transaction part tout de suite ; ce qui arrive pendant qu'elle
+    // s'écrit forme le lot suivant (pendant la frappe, les lots se font d'eux-mêmes). Attendre 250 ms
+    // perdait l'entrée qu'on venait de taper si la page était rechargée aussitôt.
+    if (!this.flushing) void this.flush().catch(() => undefined);
   }
 
   /** Écrit tout ce qui attend, maintenant (avant de quitter, avant une sauvegarde). */
   async flush(): Promise<void> {
-    clearTimeout(this.timer);
-    this.timer = 0;
     while (this.flushing) await this.flushing;
     if (!this.pending.length) return;
     const batch = this.pending;
@@ -167,6 +167,9 @@ export class Store {
       const tx = this.db.transaction("journal", "readwrite", { durability: this.o.durability ?? "relaxed" });
       const st = tx.objectStore("journal");
       for (const u of batch) st.add(u);
+      // Demande l'écriture sans attendre la fin de la tâche : une page qui se ferme juste après garde
+      // sa transaction (sinon elle est annulée avec le document).
+      tx.commit?.();
       try {
         await done(tx);
         this.journalSize += batch.length;
@@ -184,6 +187,7 @@ export class Store {
     } finally {
       this.flushing = null;
     }
+    if (this.pending.length) return this.flush();
     if (this.journalSize >= COMPACT_AFTER) void this.compact();
   }
 
@@ -210,8 +214,6 @@ export class Store {
 
   /** Efface le carnet stocké (« Vider le carnet »). Le core doit être remplacé par un neuf. */
   async clear(core: Core): Promise<void> {
-    clearTimeout(this.timer);
-    this.timer = 0;
     this.pending = [];
     const tx = this.db.transaction(["journal", "checkpoint"], "readwrite");
     tx.objectStore("journal").clear();
@@ -227,7 +229,6 @@ export class Store {
   }
 
   close() {
-    clearTimeout(this.timer);
     this.channel?.close();
     this.db.close();
   }

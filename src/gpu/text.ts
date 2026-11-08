@@ -63,6 +63,22 @@ export type TextElem = {
   revealStart: number;
 };
 
+/** Où vont les pixels de l'atlas SDF (r8, une ligne = `w` octets). */
+export interface AtlasSink {
+  write(x: number, y: number, w: number, h: number, data: Uint8Array | Uint8ClampedArray): void;
+}
+
+/**
+ * Ce que l'atlas SDF ne sait pas dessiner juste (roadmap § 3.5, corpus de P3a) : emoji (couleur,
+ * séquences ZWJ, drapeaux, teintes de peau) et écritures dont les lettres changent de forme selon
+ * leurs voisines (arabe, hébreu, écritures indiennes, thaï…), que le placement lettre à lettre
+ * casse. L'élément entier reste alors au DOM : lisible, simplement sans effet.
+ */
+const NEEDS_DOM =
+  /[\p{Emoji_Presentation}\u200D\uFE0F\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Devanagari}\p{Script=Bengali}\p{Script=Gurmukhi}\p{Script=Gujarati}\p{Script=Oriya}\p{Script=Tamil}\p{Script=Telugu}\p{Script=Kannada}\p{Script=Malayalam}\p{Script=Sinhala}\p{Script=Thai}\p{Script=Lao}\p{Script=Tibetan}\p{Script=Myanmar}\p{Script=Khmer}\p{Script=Mongolian}]/u;
+export const needsDom = (text: string) => NEEDS_DOM.test(text);
+const COMBINING = /^\p{M}$/u;
+
 const SKIP = "a, button, label, input, select, textarea, pre, .sr-only, [data-gl-skip]";
 
 export class TextLayer {
@@ -87,7 +103,7 @@ export class TextLayer {
   /** Charge l'atlas précalculé en haut de la texture ; ses glyphes ne seront plus dessinés au démarrage. */
   useBaked(meta: BakedAtlas, pixels: Uint8Array) {
     if (this.bakeLog || meta.width > ATLAS_SIZE || meta.height > ATLAS_SIZE) return;
-    this.device.queue.writeTexture({ texture: this.texture }, pixels, { bytesPerRow: meta.width }, [meta.width, meta.height]);
+    this.sink.write(0, 0, meta.width, meta.height, pixels);
     this.packer.reserve(meta.height);
     for (const [key, [x, y, w, h, glyphTop, glyphLeft, buffer, fontSize]] of Object.entries(meta.glyphs)) {
       this.entries.set(key, {
@@ -110,16 +126,29 @@ export class TextLayer {
     return this.packer.used;
   }
 
-  private device: GPUDevice;
+  private sink: AtlasSink;
 
-  constructor(device: GPUDevice) {
-    this.device = device;
-    this.texture = device.createTexture({
+  /**
+   * `target` : l'appareil WebGPU du moteur TypeScript (l'atlas est une texture r8 2048²), ou un
+   * récepteur d'octets (presse-rs : l'hôte web recopie chaque rectangle dans son propre atlas).
+   */
+  constructor(target: GPUDevice | AtlasSink) {
+    if ("write" in target) {
+      this.sink = target;
+      this.texture = null as unknown as GPUTexture;
+      return;
+    }
+    const device = target;
+    const texture = device.createTexture({
       label: "atlas-sdf",
       size: [ATLAS_SIZE, ATLAS_SIZE],
       format: "r8unorm",
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
+    this.texture = texture;
+    this.sink = {
+      write: (x, y, w, h, data) => device.queue.writeTexture({ texture, origin: [x, y] }, data, { bytesPerRow: w }, [w, h]),
+    };
   }
 
   private sdfFor(font: string, tier: ReturnType<typeof tierFor>, family: string, weight: string, style: string, stretch: string) {
@@ -157,12 +186,7 @@ export class TextLayer {
       this.entries.set(key, null);
       return null;
     }
-    this.device.queue.writeTexture(
-      { texture: this.texture, origin: [slot.x, slot.y] },
-      g.data,
-      { bytesPerRow: g.width },
-      [g.width, g.height],
-    );
+    this.sink.write(slot.x, slot.y, g.width, g.height, g.data);
     const e: AtlasEntry = {
       width: g.width,
       height: g.height,
@@ -224,7 +248,12 @@ export class TextLayer {
     const had = root.classList.contains("gl-on");
     if (had) root.classList.remove("gl-on");
 
-    const containers = [...document.querySelectorAll<HTMLElement>("[data-gl-text]")];
+    const containers = [...document.querySelectorAll<HTMLElement>("[data-gl-text]")].filter((el) => {
+      // Rendu de secours par élément : le DOM le peint (l'attribut n'est pas observé, pas de boucle).
+      const dom = needsDom(el.textContent ?? "");
+      if (dom !== el.hasAttribute("data-gl-dom")) el.toggleAttribute("data-gl-dom", dom);
+      return !dom;
+    });
     const out: number[] = [];
     const u32: number[] = [];
     // Par glyphe : décalage de départ (x, y), genre (0 fixe, 1 voyage, 2 apparaît, 3 s'efface), retard.
@@ -273,8 +302,11 @@ export class TextLayer {
 
         for (let i = 0; i < text.length; ) {
           const cp = text.codePointAt(i)!;
-          const len = cp > 0xffff ? 2 : 1;
-          const raw = text.slice(i, i + len);
+          let len = cp > 0xffff ? 2 : 1;
+          // Une lettre et ses diacritiques combinants forment un seul glyphe (« e » + U+0301 = « é ») :
+          // séparés, l'accent se posait à côté de sa lettre.
+          while (i + len < text.length && COMBINING.test(String.fromCodePoint(text.codePointAt(i + len)!))) len += text.codePointAt(i + len)! > 0xffff ? 2 : 1;
+          const raw = len > 1 && cp <= 0xffff ? text.slice(i, i + len).normalize("NFC") : text.slice(i, i + len);
           if (raw.trim()) {
             range.setStart(node, i);
             range.setEnd(node, i + len);

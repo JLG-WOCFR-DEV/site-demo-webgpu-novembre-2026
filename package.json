@@ -11,6 +11,7 @@
     "carnet:wasm": "./tools/carnet-wasm.sh",
     "carnet:bench": "node --experimental-strip-types tools/carnet-bench-core.ts",
     "carnet:interruptions": "node tools/carnet-interruptions.mjs",
+    "carnet:parity": "node tools/carnet-parity.mjs",
     "test": "node --experimental-strip-types --test 'src/**/*.test.ts'",
     "images": "python3 tools/images.py",
     "test:visual": "node tools/visual/run.mjs"

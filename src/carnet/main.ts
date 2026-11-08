@@ -23,7 +23,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
 import { registerPwa } from "./pwa.ts";
-import { presse, type Presse } from "../presse/lib.ts";
+import { presse } from "../presse/lib.ts";
 import { createCore, dayPlace, weekPlace, type Core, type Suggestion } from "./core.ts";
 import { addDays, isSample, migrationTarget, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
 import { Store, type SaveState } from "./store.ts";
@@ -41,7 +41,9 @@ let core: Core;
 let store: Store;
 let ctx: RenderCtx;
 let sugIndex = new Map<string, Suggestion>();
-let engine: Presse | null = null;
+/** Ce que la coquille demande au rendu, quel qu'il soit. */
+type Renderer = { engine: { readonly asleep: boolean } | null; wake(ms?: number): void };
+let engine: Renderer | null = null;
 
 function draw() {
   ctx.core = core;
@@ -397,17 +399,38 @@ try {
   b.hidden = false;
   $("#cn-reload").addEventListener("click", () => location.reload());
 }
-void presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts: ["16px 'Newsreader Variable'", "12px 'IBM Plex Mono'"] }).then((p) => {
+// Rendu : Presse en TypeScript (par défaut) ou presse-rs, le module Rust (P3a) : ?rendu=rs, gardé.
+const RENDU_KEY = "carnet.rendu";
+const q = new URLSearchParams(location.search).get("rendu");
+try {
+  if (q === "rs" || q === "ts") localStorage.setItem(RENDU_KEY, q);
+} catch {
+  /* rien */
+}
+const rendu = q ?? (() => {
+  try {
+    return localStorage.getItem(RENDU_KEY);
+  } catch {
+    return null;
+  }
+})();
+const fonts = ["16px 'Newsreader Variable'", "12px 'IBM Plex Mono'"];
+const started: Promise<Renderer> =
+  rendu === "rs"
+    ? import("../presse/rs-host.ts").then((m) => m.presseRs({ onDemand: true, fonts }))
+    : presse({ onDemand: true, effects: ["grain"], motion: "normal", fonts });
+void started.then((p) => {
   engine = p;
   const badge = $("#cn-gpu");
   if (!p.engine) {
     badge.textContent = "Sans WebGPU : la page reste son HTML";
     return;
   }
+  const who = rendu === "rs" ? "GPU (Rust)" : "GPU";
   // Indicateur de sommeil du moteur : lu deux fois par seconde, sans image demandée. Il n'écrit que
   // lorsque l'état change : toute mutation du DOM relance la mise en page de Presse, donc le réveille.
   const tick = () => {
-    const label = p.engine!.asleep ? "GPU : endormi" : "GPU : actif";
+    const label = `${who} : ${p.engine!.asleep ? "endormi" : "actif"}`;
     if (badge.textContent !== label) badge.textContent = label;
   };
   tick();

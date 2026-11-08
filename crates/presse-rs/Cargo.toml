@@ -1,0 +1,15 @@
+[package]
+name = "presse-rs"
+version = "0.1.0"
+description = "Presse en Rust (wgpu) : texte SDF/MTSDF imprimé sur papier, sans DOM ni Carnet (roadmap § 3.5)"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+wgpu = { version = "30", default-features = false, features = ["std", "wgsl", "webgpu"] }
+bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+naga = { version = "30", features = ["wgsl-in"] }

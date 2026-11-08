@@ -15,5 +15,5 @@ carnet-core = { path = "../carnet-core" }
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 # Version figée : elle doit être celle de wasm-bindgen-cli (tools/carnet-wasm.sh).
-wasm-bindgen = "=0.2.100"
+wasm-bindgen = "=0.2.130"
 js-sys = "0.3"

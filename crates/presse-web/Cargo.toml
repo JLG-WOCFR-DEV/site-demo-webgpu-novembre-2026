@@ -1,0 +1,18 @@
+[package]
+name = "presse-web"
+version = "0.1.0"
+description = "Hôte web de presse-rs : WebGPU par wgpu, un second .wasm chargé après le core (roadmap § 3.1)"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+presse-rs = { path = "../presse-rs" }
+wgpu = { version = "30", default-features = false, features = ["std", "wgsl", "webgpu"] }
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }

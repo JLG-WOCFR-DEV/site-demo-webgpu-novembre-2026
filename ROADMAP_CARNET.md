@@ -297,7 +297,7 @@ réel du projet.
 - [x] Modèle § 3.2, règles produit, commandes, modèles de vue semaine / jour / mois — la coquille v0 tourne dessus
 - [x] Édition : `<textarea>` visible pendant l'édition, diff → opérations `Y.Text`, offsets UTF-16 (paires de substitution jamais coupées, composition attendue) — à valider au clavier Android (recette P1)
 - [x] Suggestions : veille, prévu ce mois, il y a un an
-- [x] Persistance § 3.3 — contrat affiché, journal par lots de 250 ms, compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché, `storage.persist()`, premier lancement unique entre onglets. Mises à jour : base reprise par une version plus récente → page en lecture seule avec « Recharger » ; schéma du document marqué, vers l'avant seulement (un carnet d'un schéma plus récent se lit sans s'écrire). Interruptions automatisées sur ordinateur (`tools/carnet-interruptions.mjs`, navigateur tué par SIGKILL : tout ce qui était annoncé enregistré revient) → `docs/carnet/interruptions-desktop.json`. **Médias reportés à P4b** (pas de consommateur avant les photos ; le contrat « fichier écrit, confirmé, puis référence » reste la règle)
+- [x] Persistance § 3.3 — contrat affiché, journal écrit immédiatement (une transaction à la fois, `commit()` explicite ; l'attente de 250 ms perdait l'entrée tapée juste avant un rechargement), compaction atomique sous Web Locks, plusieurs onglets (BroadcastChannel), wasm précaché, `storage.persist()`, premier lancement unique entre onglets. Mises à jour : base reprise par une version plus récente → page en lecture seule avec « Recharger » ; schéma du document marqué, vers l'avant seulement (un carnet d'un schéma plus récent se lit sans s'écrire). Interruptions automatisées sur ordinateur (`tools/carnet-interruptions.mjs`, navigateur tué par SIGKILL : tout ce qui était annoncé enregistré revient) → `docs/carnet/interruptions-desktop.json`. **Médias reportés à P4b** (pas de consommateur avant les photos ; le contrat « fichier écrit, confirmé, puis référence » reste la règle)
 - [x] Carnet de référence (§ 5) mesuré dans le core : `tools/carnet-bench-core.ts` → `docs/carnet/bench-core.json` (≈ 3 000 entrées : checkpoint 0,8 Mo, ouverture 40 ms, vue semaine 4 ms sur ordinateur ; à multiplier pour le téléphone). Pas de découpage de `notebook` nécessaire à ce stade
 - [x] Sauvegarde `.carnet` (zip : manifeste + document yrs, empreintes SHA-256) et restauration par fusion, vérifiée dans un carnet vide ; import v0 conservateur (original renommé `carnet.v0.importé` après relecture). Pages et médias s'ajouteront au même format
 - [x] Tests de convergence reformulés (§ 4.3)
@@ -308,11 +308,19 @@ et P4a).
 
 #### P3a — Chemin de rendu Rust, court (2 semaines)
 
-- [ ] `presse-rs` + `presse-web` sur WebGPU (wasm), chargés après le core
-- [ ] Scène représentative : une semaine réelle avec le corpus typographique du § 3.5, rendu de secours DOM
-- [ ] Une transition : le morphing de migration
-- [ ] Perte d'appareil et reconstruction
-- [ ] Mesures § 5 ; calibration des seuils de parité
+- [x] `presse-rs` (wgpu 30, WGSL dans `crates/presse-rs/shaders/`, validé par naga) + `presse-web` (wasm), chargé après
+      le core, au choix : `carnet.html?rendu=rs` (gardé). La mise en page des glyphes reste en TS (`TextLayer`, inchangé,
+      qui écrit son atlas par un `AtlasSink`) ; le module ne reçoit que des octets. Module : 136 Ko (59 Ko compressé) +
+      36 Ko de JS ; initialisation ≈ 0,6 s sous SwiftShader
+- [x] Scène représentative : la semaine réelle de Carnet, corpus § 3.5 (`docs/carnet/p3a-corpus.png`). Trouvé et corrigé
+      (vaut aussi pour Presse TS) : accent combinant posé à côté de sa lettre → lettre + diacritiques en un glyphe ;
+      emoji en silhouettes et arabe déformé → **rendu de secours par élément** (`data-gl-dom`, emoji et écritures à mise en
+      forme laissés au DOM)
+- [x] Une transition : le morphing de migration (même chemin que TS)
+- [x] Perte d'appareil et reconstruction : l'hôte garde l'atlas (4 Mo) et le MTSDF, recrée le module, rend tout sans relire
+      le DOM (testé par `loseDevice()`)
+- [ ] Mesures § 5 sur le téléphone ; **parité calibrée** : images identiques au pixel près, TS et Rust, densités 1 et 2,
+      environnement figé (`tools/carnet-parity.mjs` → `docs/carnet/parity.json`, seuil 0)
 
 **Sortie** : la chaîne de texte tient sur le corpus (ou son périmètre de secours est connu) ; taille, initialisation et
 temps par image mesurés sur le téléphone de P1 ; **réestimation de P3b**.
