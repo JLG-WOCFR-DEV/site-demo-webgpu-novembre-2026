@@ -1188,3 +1188,41 @@ body > .cn-wxpanel.cn-wxpanel.cn-wxpanel {
   position: absolute;
   z-index: 20;
 }
+
+/* ───── Sauvegardes et versions (D10) ───── */
+.cn-bkpanel .cn-wx-intro {
+  max-width: 26em;
+}
+.cn-versions {
+  max-height: min(45vh, 320px);
+  overflow-y: auto;
+  padding: 0 4px 6px;
+}
+.cn-version {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-top: 1px solid var(--line);
+}
+.cn-version > span {
+  flex: 1;
+  min-width: 0;
+  font: 13px/1.35 var(--serif);
+  color: var(--ink);
+}
+.cn-version > .cn-move-item {
+  flex: none;
+  width: auto;
+  min-height: 36px;
+  font: 12px var(--mono);
+}
+.cn-version > .cn-move-item.is-danger {
+  color: var(--accent, #b3261e);
+  font-weight: 600;
+}
+@media (pointer: coarse) {
+  .cn-version > .cn-move-item {
+    min-height: 44px;
+  }
+}

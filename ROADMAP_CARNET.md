@@ -28,6 +28,7 @@ d'adaptation de 1 500 lignes bien délimitée vaut mieux que 500 lignes qui mêl
 | D6 | **Desktop : Rune**, candidat à prototyper, révision figée | Le hook `Compositor` donne device, queue, encodeur et cible : on peut y jouer les passes de `presse-rs`, compute compris | GPUI + GPUI Kit (pas de passes GPU d'application documentées) ; NSH : ses shaders lisent le contenu et l'arrière-plan des vues (`sample_content`, `sample_backdrop`, `sample_from`, `sample_to`, v0.4.0) mais rien ne montre qu'il accueille un pipeline compute arbitraire |
 | D7 | Effets en **WGSL**, contrat versionné (§ 3.5) | Écrits une fois, joués par Presse TS, `presse-rs` et Rune | Three.js + TSL (second moteur) |
 | D8 | Rendu **à la demande** ; on mesure aussi les réveils CPU, capteurs et tâches de fond | Application ouverte toute la journée sur un téléphone | Boucle permanente |
+| D10 | **Pas de synchro pour l'instant : sauvegarde locale seulement** (décidé le 8 novembre) | Le carnet reste sur l'appareil. Protection contre les erreurs : versions automatiques dans l'OPFS (toutes les deux heures quand le carnet change, jamais réécrites, rétention jour, semaine, mois) et retour à une version. Protection contre la perte de l'appareil : export `.carnet` par la feuille de partage (Drive, Fichiers…) avec un rappel après 7 jours, et sur ordinateur un dossier de sauvegarde automatique (File System Access ; un dossier synchronisé par Drive, iCloud ou Dropbox sort la copie de l'appareil sans que Carnet parle à aucun service). P6 en attente : la spec v2 et `carnet-sync` restent, testés, non chargés | Relais Carnet, stockage personnel (pour l'instant) |
 | D9 | **Vues maison** (tranché en P4a, sans prototype React) | React n'est pas bloqué techniquement : il garde les éléments par clé comme `syncList`, et nos attributs posés une fois (`data-gl-morph-from`) se traduisent en props. Ce qui décide : le core rend déjà des modèles de vue complets à chaque rendu (une seconde gestion d'état serait redondante) ; le coût du rendu est dans le core (3 à 4 ms la semaine), pas dans le DOM ; le champ d'édition et sa composition ne doivent jamais être touchés par un nouveau rendu (en React : champ non contrôlé, donc sans le bénéfice) ; 45 Ko compressés de moins. **À rouvrir** si les écrans de formulaires se multiplient (réglages, choix d'autocollants en P4b) | React (pour l'instant) |
 
 ## 2. État actuel (P0, fait)
@@ -372,7 +373,19 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
 - [ ] Temps GPU par passe dans presse-rs (timestamp-query) : la colonne « GPU » du banc reste vide en Rust
 - [ ] Mesures sur le téléphone (P3a) : taille, initialisation, temps par image — avec le banc
 
-#### P6 — avancement
+#### Sauvegardes locales (D10) — avancement
+
+- [x] Versions sur l'appareil (`versions.ts`, OPFS) : toutes les deux heures quand le carnet change, jamais
+      réécrites ; rétention (tout le jour, 7 jours, 5 semaines, 12 mois, testée) ; « Revenir » remplace le carnet
+      (pas une fusion) après une copie « avant retour », avec « Annuler » ; les autres onglets rechargent
+- [x] Export : feuille de partage sur téléphone, téléchargement ailleurs ; « Dernier export » et rappel après 7 jours
+- [x] Ordinateur : dossier de sauvegarde automatique (`folder.ts`), une sauvegarde complète par jour où le carnet
+      change, 7 gardées ; permission redemandée d'un appui
+- [ ] Recette sur le téléphone : feuille de partage vers Drive et Fichiers, retour à une version, espace occupé
+- [ ] Sauvegarde chiffrée par phrase (réutiliserait l'enveloppe et Argon2id de `carnet-sync`), si l'export part
+      vers un cloud
+
+#### P6 — avancement (en attente : D10)
 
 - [x] Spec `docs/carnet/sync.md` v1, relue par un agent indépendant (25 constats dont 9 bloquants : écho, écrivains
       multiples, mises à jour en attente perdues, création seule contournée, rotation sans barrière, retrait qui ne coupe

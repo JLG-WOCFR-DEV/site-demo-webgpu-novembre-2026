@@ -31,6 +31,8 @@ import { moveChoices, openMoveMenu } from "./move.ts";
 import { addDays, isSample, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
 import { Store, type SaveState } from "./store.ts";
 import { backup, backupName, restore } from "./backup.ts";
+import { folderAvailable, folderPermission, forgetFolder, pickFolder, savedFolder, writeToFolder } from "./folder.ts";
+import { ageLabel, lastExport, listVersions, markExported, prune, readVersion, safetyName, shouldNudge, VERSION_EVERY_MS, versionName, versionsAvailable, writeVersion, type VersionInfo } from "./versions.ts";
 import { openEditor } from "./edit.ts";
 import { Pages } from "./pages.ts";
 import { Decor } from "./decor.ts";
@@ -579,24 +581,223 @@ $<HTMLInputElement>("#cn-ics-file").addEventListener("change", async (ev) => {
   toast(`${parts.join(", ")}. Ils sont sur les pages des mois, et reviennent au crayon le jour dit.`);
 });
 
-/* ───── Sauvegarde .carnet ───── */
-$("#cn-backup").addEventListener("click", async () => {
+/* ───── Sauvegardes (D10 : locales seulement) ───── */
+/** Le carnet complet au format `.carnet` ; avec les photos pour un export, sans pour une version (elles restent dans l'OPFS). */
+async function makeBackup(withMedia: boolean) {
   await store.flush().catch(() => undefined);
   await store.flushPages();
   const all = await pages.all();
   const media = new Map<string, Uint8Array>();
-  for (const p of all.values()) for (const sha of p.media()) if (!media.has(sha)) {
-    const b = await getMedia(sha);
-    if (b) media.set(sha, b);
+  if (withMedia) {
+    for (const p of all.values()) for (const sha of p.media()) if (!media.has(sha)) {
+      const b = await getMedia(sha);
+      if (b) media.set(sha, b);
+    }
   }
-  const { bytes, manifest } = await backup(core, all, media);
+  return backup(core, all, media);
+}
+/** Empreinte du contenu (pas de la date) : une version ne se réécrit que si le carnet a changé. */
+const contentHash = (m: { files: Record<string, { sha256: string }> }) =>
+  Object.entries(m.files)
+    .filter(([n]) => !n.startsWith("media/"))
+    .map(([n, f]) => `${n}:${f.sha256}`)
+    .sort()
+    .join("|");
+const lsGet = (k: string) => {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+};
+const lsSet = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* rien */
+  }
+};
+
+/** Exporter : la feuille de partage sur téléphone (Drive, Fichiers, courriel…), un téléchargement ailleurs. */
+async function exportNow(bytes?: Uint8Array, name = backupName()) {
+  const data = bytes ?? (await makeBackup(true)).bytes;
+  const file = new File([data as Uint8Array<ArrayBuffer>], name, { type: "application/zip" });
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  if (matchMedia("(pointer: coarse)").matches && nav.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "Sauvegarde Carnet" });
+      markExported();
+      toast("Sauvegarde partagée");
+    } catch (e) {
+      if ((e as DOMException).name !== "AbortError") toast(`Partage impossible : ${e instanceof Error ? e.message : String(e)}`);
+    }
+    return;
+  }
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" }));
-  a.download = backupName();
+  a.href = URL.createObjectURL(file);
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
-  toast(`Sauvegarde prête : ${manifest.entries} entrée${manifest.entries > 1 ? "s" : ""}`);
-});
+  markExported();
+  toast("Sauvegarde téléchargée");
+}
+$("#cn-backup").addEventListener("click", () => void exportNow());
+
+/** Une fois par jour où le carnet change : version sur l'appareil, et copie dans le dossier choisi (ordinateur). */
+let folderWaiting = false;
+async function autoVersion() {
+  if (readOnly || !versionsAvailable()) return;
+  await navigator.locks.request("carnet:versions", { ifAvailable: true }, async (lock) => {
+    if (!lock) return;
+    try {
+      const now = new Date();
+      const { bytes, manifest } = await makeBackup(false);
+      const h = contentHash(manifest);
+      // Une nouvelle version si le carnet a changé et que la dernière a au moins deux heures (jamais de réécriture).
+      const last = Math.max(0, ...(await listVersions()).filter((v) => !v.safety).map((v) => v.modified));
+      if (lsGet("carnet.version") !== h && now.getTime() - last >= VERSION_EVERY_MS) {
+        await writeVersion(versionName(now), bytes);
+        lsSet("carnet.version", h);
+        await prune(versionName(now).slice(0, 10));
+      }
+      const dir = await savedFolder();
+      if (dir) {
+        const perm = await folderPermission(dir);
+        folderWaiting = perm !== "granted";
+        if (perm === "granted" && lsGet("carnet.dossier") !== h) {
+          const full = await makeBackup(true);
+          await writeToFolder(dir, backupName(), full.bytes);
+          lsSet("carnet.dossier", h);
+          markExported();
+        }
+      }
+    } catch (e) {
+      console.warn("[carnet] version du jour", e);
+    }
+  });
+}
+
+/** Revenir à une version : copie de l'état actuel d'abord, puis remplacement (pas une fusion). */
+async function replaceWith(bytes: Uint8Array, label: string) {
+  if (readOnly) return void toast(readOnly);
+  const safety = safetyName();
+  if (versionsAvailable()) await writeVersion(safety, (await makeBackup(false)).bytes);
+  await store.flush().catch(() => undefined);
+  const next = await createCore();
+  let r: Awaited<ReturnType<typeof restore>>;
+  try {
+    r = await restore(next, bytes);
+  } catch (e) {
+    next.free();
+    return void toast(e instanceof Error ? e.message : String(e));
+  }
+  core.free();
+  core = next;
+  await store.clear(core);
+  pages.reset(store);
+  setSample(false);
+  if (mediaAvailable()) for (const [sha, b] of r.media) await restoreMedia(sha, b);
+  store.append([r.update]);
+  for (const [key, u] of r.pages) pages.restore(key, u);
+  await store.flush().catch(() => undefined);
+  await store.flushPages();
+  lsSet("carnet.version", "");
+  ctx.from.clear();
+  draw();
+  control?.postMessage("remplacé");
+  toast(`Carnet revenu au ${label}`, versionsAvailable() ? { label: "Annuler", run: () => void readVersion(safety).then((b) => replaceWith(b, "état d'avant")) } : undefined);
+}
+// Un autre onglet a remplacé le carnet : on recharge (sinon il réécrirait l'ancien état par-dessus).
+const control = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("carnet:control") : null;
+control?.addEventListener("message", (ev) => ev.data === "remplacé" && location.reload());
+
+const fLongYear = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const fHour = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" });
+const sizeLabel = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} Ko` : `${(n / 1024 / 1024).toFixed(1)} Mo`);
+async function openBackupPanel(anchor: HTMLElement) {
+  document.querySelector(".cn-bkpanel")?.remove();
+  const panel = document.createElement("div");
+  panel.className = "cn-move cn-wxpanel cn-bkpanel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "Sauvegardes");
+  panel.dataset.glIgnore = "";
+  const p = (cls: string, text: string) => {
+    const e = document.createElement("p");
+    e.className = cls;
+    e.textContent = text;
+    return e;
+  };
+  const btn = (text: string, run: () => void) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cn-move-item";
+    b.textContent = text;
+    b.addEventListener("click", run);
+    return b;
+  };
+  panel.append(p("cn-wx-intro", `Ton carnet n'existe que sur cet appareil. Dernier export : ${ageLabel(lastExport())}.`));
+  const first = btn("Exporter une sauvegarde complète", () => (close(), void exportNow()));
+  panel.append(first);
+  if (folderAvailable()) {
+    const dir = await savedFolder();
+    if (!dir) panel.append(btn("Choisir un dossier de sauvegarde automatique…", () => void pickFolder().then(() => (close(), lsSet("carnet.dossier", ""), void autoVersion().then(() => toast("Sauvegarde automatique : une par jour dans ce dossier, les 7 dernières gardées."))), () => undefined)));
+    else {
+      panel.append(p("cn-wx-intro", `Dossier : ${dir.name}${folderWaiting ? " — en attente de ta permission" : " — une sauvegarde par jour"}.`));
+      if (folderWaiting) panel.append(btn(`Reprendre la sauvegarde dans « ${dir.name} »`, () => void folderPermission(dir, true).then((s) => (close(), s === "granted" && void autoVersion()))));
+      panel.append(btn("Ne plus sauvegarder dans ce dossier", () => void forgetFolder().then(() => (close(), toast("Dossier oublié. Les fichiers déjà écrits restent.")))));
+    }
+  }
+  panel.append(p("cn-wx-intro", "Versions sur cet appareil (toutes les deux heures quand le carnet change ; contre les erreurs, pas contre la perte du téléphone) :"));
+  const list = document.createElement("div");
+  list.className = "cn-wx-results cn-versions";
+  panel.append(list);
+  let versions: VersionInfo[] = [];
+  if (!versionsAvailable()) list.textContent = "Ce navigateur ne sait pas garder de versions.";
+  else {
+    versions = await listVersions().catch(() => []);
+    if (!versions.length) list.textContent = "Aucune encore : la première sera faite dans quelques secondes.";
+  }
+  for (const v of versions) {
+    const row = document.createElement("div");
+    row.className = "cn-version";
+    const at = new Date(v.modified);
+    const label = `${fLongYear.format(at)}, ${fHour.format(at)}${v.safety ? ", avant un retour" : ""}`;
+    const t = document.createElement("span");
+    t.textContent = `${label} · ${sizeLabel(v.size)}`;
+    let armed = false;
+    const back = btn("Revenir", () => {
+      if (!armed) {
+        armed = true;
+        back.textContent = "Confirmer : remplacer le carnet";
+        back.classList.add("is-danger");
+        return;
+      }
+      close();
+      void readVersion(v.name).then((b) => replaceWith(b, label));
+    });
+    back.setAttribute("aria-label", `Revenir à la version du ${label}`);
+    const exp = btn("Exporter", () => void readVersion(v.name).then((b) => exportNow(b, `carnet-${v.name}.carnet`)));
+    exp.setAttribute("aria-label", `Exporter la version du ${label} (sans les photos)`);
+    row.append(t, back, exp);
+    list.append(row);
+  }
+  document.body.append(panel);
+  const r = anchor.getBoundingClientRect();
+  panel.style.left = `${Math.max(8, Math.min(innerWidth - panel.offsetWidth - 8, r.left)) + scrollX}px`;
+  panel.style.top = `${Math.max(8, r.top - panel.offsetHeight - 6) + scrollY}px`;
+  first.focus();
+  const onDown = (ev: PointerEvent) => !panel.contains(ev.target as Node) && ev.target !== anchor && close();
+  const onKey = (ev: KeyboardEvent) => ev.key === "Escape" && (close(), anchor.focus());
+  function close() {
+    panel.remove();
+    removeEventListener("pointerdown", onDown, true);
+    removeEventListener("keydown", onKey, true);
+  }
+  addEventListener("pointerdown", onDown, true);
+  addEventListener("keydown", onKey, true);
+}
+$("#cn-versions").addEventListener("click", (ev) => void openBackupPanel(ev.currentTarget as HTMLElement));
+
 $("#cn-restore").addEventListener("click", () => $<HTMLInputElement>("#cn-restore-file").click());
 $<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) => {
   const input = ev.target as HTMLInputElement;
@@ -708,7 +909,22 @@ async function boot() {
       }
     }, 4000);
   }
-  (window as unknown as { __carnet: object }).__carnet = { get core() { return core; }, get store() { return store; }, ctx, get presse() { return engine; } };
+  // Version du jour (au calme, puis toutes les 30 min et à chaque passage en arrière-plan), et rappel d'export.
+  setTimeout(() => {
+    void autoVersion().then(async () => {
+      if (!versionsAvailable()) return;
+      const vs = await listVersions().catch(() => []);
+      const newest = Math.max(0, ...vs.filter((v) => !v.safety).map((v) => v.modified));
+      if (!isSample() && shouldNudge((t) => newest > t)) {
+        toast(`Ton carnet n'existe que sur cet appareil. Dernier export : ${ageLabel(lastExport())}.`, { label: "Exporter", run: () => void exportNow() });
+      }
+    });
+  }, 6000);
+  setInterval(() => void autoVersion(), 30 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) void autoVersion();
+  });
+  (window as unknown as { __carnet: object }).__carnet = { get core() { return core; }, get store() { return store; }, ctx, get presse() { return engine; }, autoVersion, replaceWith };
 }
 
 try {

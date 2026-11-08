@@ -1,6 +1,6 @@
 # Carnet — synchro chiffrée (P6) : spécification
 
-Statut : **v2**, amendée après une relecture indépendante (annexe B : 25 constats, 9 bloquants, tous traités). La
+Statut : **en attente** (décision D10 du 8 novembre : sauvegarde locale seulement pour l'instant). **v2**, amendée après une relecture indépendante (annexe B : 25 constats, 9 bloquants, tous traités). La
 contre-revue habituelle (Codex) reste à faire avant la mise en service. Le cœur du protocole est implémenté et testé
 sans réseau dans `crates/carnet-sync` (annexe A). Les choix marqués **[produit]** attendent Jérôme.
 
