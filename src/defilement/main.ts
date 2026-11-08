@@ -50,6 +50,19 @@ const progress = (el: HTMLElement) => {
   const r = el.getBoundingClientRect();
   return clamp(-r.top / Math.max(1, r.height - innerHeight));
 };
+/** La position de défilement où la scène est pile sur le cran i. */
+const stepTop = (s: Scrub, i: number) => {
+  const top = s.el.getBoundingClientRect().top + scrollY;
+  return top + (i / Math.max(1, s.steps - 1)) * Math.max(1, s.el.offsetHeight - innerHeight);
+};
+/** Aller au cran i : la page y saute, le ressort de la scène fait le mouvement. */
+const goStep = (s: Scrub, i: number) => scrollTo({ top: stepTop(s, clamp(i, 0, s.steps - 1)), behavior: "instant" });
+/** La scène épinglée qui tient l'écran, s'il y en a une. */
+const engaged = () =>
+  scrubs.find((x) => {
+    const r = x.el.getBoundingClientRect();
+    return r.top <= 1 && r.bottom >= innerHeight - 1;
+  });
 
 /* 1. Roue de projets */
 {
@@ -108,9 +121,12 @@ const progress = (el: HTMLElement) => {
   if (el) {
     const words = [...el.querySelectorAll<HTMLElement>(".df-drum-words li")];
     const dots = el.querySelector<HTMLElement>(".df-dots")!;
-    dots.innerHTML = words.map(() => "<li></li>").join("");
+    // Les points sont des boutons : un clic (ou Entrée) mène au mot ; la cible fait 24 px, le point en dessine 7.
+    dots.removeAttribute("aria-hidden");
+    dots.setAttribute("aria-label", "Aller à un mot");
+    dots.innerHTML = words.map((w) => `<li><button type="button" class="df-dot" aria-label="${w.textContent!.trim().replace(/"/g, "&quot;")}"></button></li>`).join("");
     const dl = [...dots.children] as HTMLElement[];
-    pinned("drum", (f) => {
+    const drum = pinned("drum", (f) => {
       const g = notch(f);
       // Le rayon du tambour suit la taille du texte : un mot par cran, sans chevauchement.
       const R = parseFloat(getComputedStyle(words[0]!).fontSize) * 2.3;
@@ -123,8 +139,14 @@ const progress = (el: HTMLElement) => {
         w.style.fontVariationSettings = `"wght" ${Math.round(400 + 450 * close)}`;
       });
       const k = Math.round(g);
-      dl.forEach((d, i) => d.classList.toggle("is-on", i === k));
+      dl.forEach((d, i) => {
+        d.classList.toggle("is-on", i === k);
+        const b = d.firstElementChild as HTMLElement;
+        if (i === k) b.setAttribute("aria-current", "true");
+        else b.removeAttribute("aria-current");
+      });
     });
+    dl.forEach((d, i) => d.firstElementChild!.addEventListener("click", () => drum && goStep(drum, i)));
   }
 }
 
@@ -237,18 +259,11 @@ const wakeLoop = () => {
   let prevMag = 0;
   let acc = 0;
   let stepped = false;
-  const stepTop = (s: Scrub, i: number) => {
-    const top = s.el.getBoundingClientRect().top + scrollY;
-    return top + (i / Math.max(1, s.steps - 1)) * Math.max(1, s.el.offsetHeight - innerHeight);
-  };
   addEventListener(
     "wheel",
     (e) => {
       if (e.ctrlKey || e.metaKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      const s = scrubs.find((x) => {
-        const r = x.el.getBoundingClientRect();
-        return r.top <= 1 && r.bottom >= innerHeight - 1;
-      });
+      const s = engaged();
       if (!s) return;
       const d = e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? innerHeight : 1);
       if (!d) return;
@@ -271,10 +286,24 @@ const wakeLoop = () => {
       lastStep = now;
       stepped = true;
       acc = 0;
-      scrollTo({ top: stepTop(s, next), behavior: "instant" });
+      goStep(s, next);
     },
     { passive: false },
   );
+  // Au clavier, pareil : ↑ ↓, Page préc./suiv. et Espace avancent d'un cran dans la scène qui tient l'écran.
+  addEventListener("keydown", (e) => {
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest?.("input, textarea, select, [contenteditable], [role=slider], [role=listbox], dialog, [popover]")) return;
+    const dir = e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey) ? 1 : e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey) ? -1 : 0;
+    if (!dir) return;
+    const s = engaged();
+    if (!s) return;
+    const next = Math.round(progress(s.el) * (s.steps - 1)) + dir;
+    if (next < 0 || next > s.steps - 1) return;
+    e.preventDefault();
+    goStep(s, next);
+  });
 }
 addEventListener("scroll", wakeLoop, { passive: true });
 addEventListener("resize", wakeLoop);

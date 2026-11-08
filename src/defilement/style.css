@@ -213,7 +213,7 @@ body.df {
 }
 .df-dots {
   position: absolute;
-  bottom: 48px;
+  bottom: 40px;
   left: 50%;
   display: flex;
   gap: 10px;
@@ -222,16 +222,39 @@ body.df {
   list-style: none;
   transform: translateX(-50%);
 }
-.df-dots li {
+.df-dots {
+  gap: 0;
+}
+/* Chaque point est un bouton de 24 px de haut (WCAG 2.2) ; le point visible fait 7 px. */
+.df-dot {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.df-dot::before {
+  content: "";
   width: 7px;
   height: 7px;
   border-radius: 99px;
   background: #c9c6be;
   transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.35s;
 }
-.df-dots li.is-on {
+.df-dot:hover::before {
+  background: #8f8b82;
+}
+.df-dots li.is-on .df-dot::before {
   width: 26px;
   background: var(--ink);
+}
+.df-dot:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  border-radius: 6px;
 }
 
 /* 4. Liste qui se transforme */
