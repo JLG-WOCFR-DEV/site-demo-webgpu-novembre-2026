@@ -32,6 +32,7 @@ import { backup, backupName, restore } from "./backup.ts";
 import { openEditor } from "./edit.ts";
 import { Pages } from "./pages.ts";
 import { Decor } from "./decor.ts";
+import { icsKey, parseIcs } from "./ics.ts";
 import { addMonths, monthOf, render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
@@ -141,6 +142,14 @@ spread.addEventListener("submit", (ev) => {
   if (!f.classList.contains("cn-form")) return;
   ev.preventDefault();
   const input = f.querySelector("input")!;
+  if (f.dataset.newtracker !== undefined) {
+    const name = input.value.trim();
+    if (!name) return;
+    if (act(() => core.createTracker(name)) === undefined) return;
+    input.value = "";
+    focusById("in-tracker");
+    return;
+  }
   if (f.dataset.newcol !== undefined) {
     // Nouvelle collection : elle s'ouvre aussitôt, prête à recevoir ses lignes.
     const name = input.value.trim();
@@ -194,6 +203,23 @@ spread.addEventListener("click", (ev) => {
   if (col && col.tagName === "BUTTON") {
     ctx.col = col.dataset.col!;
     draw();
+    return;
+  }
+  const cell = t.closest<HTMLElement>("[data-tracker]");
+  if (cell) {
+    let ok = false;
+    act(() => {
+      core.toggleTracker(cell.dataset.tracker!, cell.dataset.day!);
+      ok = true;
+    });
+    if (ok) spread.querySelector<HTMLElement>(`[data-tracker="${cell.dataset.tracker}"][data-day="${cell.dataset.day}"]`)?.focus({ preventScroll: true });
+    return;
+  }
+  const tdel = t.closest<HTMLElement>("[data-trackerdel]");
+  if (tdel) {
+    const id = tdel.dataset.trackerdel!;
+    act(() => core.deleteTracker(id));
+    toast("Suivi retiré", { label: "Annuler", run: () => act(() => core.restoreTracker(id)) });
     return;
   }
   const del = t.closest<HTMLElement>("[data-coldel]");
@@ -364,6 +390,35 @@ $("#cn-reset").addEventListener("click", () => {
   void freshCore(false).then(() => toast("Carnet vidé. Page blanche."));
 });
 $("#cn-reseed").addEventListener("click", () => void freshCore(true));
+
+/* ───── Agenda .ics : import ponctuel ───── */
+$("#cn-ics").addEventListener("click", () => $<HTMLInputElement>("#cn-ics-file").click());
+$<HTMLInputElement>("#cn-ics-file").addEventListener("change", async (ev) => {
+  const input = ev.target as HTMLInputElement;
+  const f = input.files?.[0];
+  input.value = "";
+  if (!f) return;
+  const r = parseIcs(await f.text());
+  let added = 0;
+  let already = 0;
+  // Une seule commande, un seul enregistrement, une seule annonce.
+  act(() => {
+    for (const e of r.events) {
+      const key = icsKey(e);
+      if (core.isDismissed(key)) {
+        already++;
+        continue;
+      }
+      core.add(monthPlace(e.day.slice(0, 7), e.day), { kind: "event", text: e.location ? `${e.summary} — ${e.location}` : e.summary, time: e.time });
+      core.dismiss(key);
+      added++;
+    }
+  });
+  const parts = [`${added} rendez-vous importé${added > 1 ? "s" : ""}`];
+  if (already) parts.push(`${already} déjà là`);
+  if (r.unsupported) parts.push(`${r.unsupported} répétition${r.unsupported > 1 ? "s" : ""} non dépliée${r.unsupported > 1 ? "s" : ""}`);
+  toast(`${parts.join(", ")}. Ils sont sur les pages des mois, et reviennent au crayon le jour dit.`);
+});
 
 /* ───── Sauvegarde .carnet ───── */
 $("#cn-backup").addEventListener("click", async () => {

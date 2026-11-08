@@ -8,6 +8,7 @@ pub mod id;
 mod import;
 pub mod notebook;
 pub mod page;
+mod tracker;
 pub mod view;
 
 pub use collection::{Collection, CollectionView};
@@ -18,4 +19,5 @@ pub use notebook::{
     SCHEMA, TRASH_MS,
 };
 pub use page::{Anchor, Item, Page};
+pub use tracker::TrackerRow;
 pub use view::{CalendarDay, DayView, Line, MonthView, Suggestion, SuggestionKind, WeekView};

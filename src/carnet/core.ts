@@ -46,6 +46,7 @@ export type CalendarDay = { day: Day; count: number; headline: string | null };
 export type MonthView = { month: string; calendar: CalendarDay[]; lines: Line[]; departed: Line[]; suggestions: Suggestion[] };
 export type Collection = { id: string; name: string; createdAt: number; count: number; open: number };
 export type CollectionView = { collection: Collection; lines: Line[]; departed: Line[] };
+export type TrackerRow = { id: string; name: string; days: boolean[]; count: number };
 export type NewEntry = { kind?: Kind; text: string; time?: string | null; priority?: boolean; idea?: boolean };
 export type ImportReport = { imported: number; merged_copies: number; skipped: number };
 
@@ -83,6 +84,12 @@ export interface Core {
   restoreCollection(id: string): void;
   collections(): Collection[];
   collectionView(id: string): CollectionView | null;
+  createTracker(name: string): string;
+  renameTracker(id: string, name: string): void;
+  deleteTracker(id: string): void;
+  restoreTracker(id: string): void;
+  toggleTracker(id: string, day: Day): boolean;
+  trackers(month: string): TrackerRow[];
   /** Schéma qui a écrit ce carnet (0 : jamais marqué) et schéma que ce module sait écrire. */
   schema(): number;
   supportedSchema(): number;

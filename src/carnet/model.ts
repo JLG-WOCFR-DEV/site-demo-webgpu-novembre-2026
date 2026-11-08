@@ -105,6 +105,10 @@ export function seed(core: Core) {
   // Un rendez-vous noté sur la page du mois : il revient au crayon le jour dit (« prévu ce mois »).
   core.add({ scope: `month:${now.slice(0, 7)}`, day: now }, { kind: "event", text: "Dentiste", time: "14:00" });
   core.add({ scope: `month:${now.slice(0, 7)}`, day: null }, { kind: "task", text: "Renouveler l’assurance habitation", priority: true });
+  // Un suivi, coché les jours passés de la semaine.
+  const water = core.createTracker("Boire 1,5 l d’eau");
+  for (const d of [y2, y]) core.toggleTracker(water, d);
+  core.createTracker("Lire 20 minutes");
   // Deux collections : ce qui ne dépend pas d'un jour.
   const films = core.createCollection("Films et séries à voir");
   core.add(collectionPlace(films), { kind: "task", text: "Past Lives" });

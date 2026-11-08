@@ -375,6 +375,77 @@ function monthPage(host: HTMLElement, mv: MonthView, ctx: RenderCtx, sugIndex: M
   syncList(sec.querySelector("ol")!, specs);
 }
 
+/* ───── Suivis : une grille par mois, une ligne par habitude ───── */
+function trackersBlock(host: HTMLElement, month: string, ctx: RenderCtx) {
+  let sec = host.querySelector<HTMLElement>(":scope > .cn-trackers");
+  if (!sec) {
+    sec = el("section", "cn-day cn-trackers");
+    const head = el("div", "cn-dhead");
+    head.append(el("span", "cn-label", "Suivis"));
+    const wrap = el("div", "cn-trk-wrap");
+    const table = el("table", "cn-trk");
+    wrap.append(table);
+    const f = el("form", "cn-form");
+    f.autocomplete = "off";
+    f.dataset.newtracker = "";
+    const p = el("span", "cn-prompt", "+");
+    p.setAttribute("aria-hidden", "true");
+    const i = el("input");
+    i.type = "text";
+    i.id = "in-tracker";
+    i.placeholder = "nouveau suivi : « boire 1,5 l », « lire 20 min »";
+    i.setAttribute("aria-label", "Nouveau suivi");
+    f.append(p, i);
+    sec.append(head, wrap, f);
+    host.append(sec);
+  }
+  const rows = ctx.core.trackers(month);
+  const table = sec.querySelector("table")!;
+  const n = new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate();
+  const today = ctx.now.startsWith(month) ? Number(ctx.now.slice(8)) : 0;
+  table.replaceChildren();
+  table.hidden = !rows.length;
+  if (!rows.length) return;
+  const cap = el("caption", "sr-only", `Suivis de ${fMonth.format(parseDay(`${month}-01`))}`);
+  const thead = el("thead");
+  const hr = el("tr");
+  hr.append(el("th", "cn-trk-name", ""));
+  for (let d = 1; d <= n; d++) {
+    const th = el("th", d === today ? "is-today" : "", String(d));
+    th.setAttribute("scope", "col");
+    hr.append(th);
+  }
+  hr.append(el("th", "", ""));
+  thead.append(hr);
+  const tbody = el("tbody");
+  for (const r of rows) {
+    const tr = el("tr");
+    const name = el("th", "cn-trk-name", r.name);
+    name.setAttribute("scope", "row");
+    tr.append(name);
+    r.days.forEach((on, i) => {
+      const td = el("td", i + 1 === today ? "is-today" : "");
+      const b = el("button", "cn-trk-cell");
+      b.type = "button";
+      b.dataset.tracker = r.id;
+      b.dataset.day = `${month}-${String(i + 1).padStart(2, "0")}`;
+      b.setAttribute("aria-pressed", String(on));
+      b.setAttribute("aria-label", `${r.name}, ${i + 1}`);
+      td.append(b);
+      tr.append(td);
+    });
+    const tdDel = el("td");
+    const del = el("button", "cn-op", "×");
+    del.type = "button";
+    del.dataset.trackerdel = r.id;
+    del.setAttribute("aria-label", `Retirer le suivi ${r.name}`);
+    tdDel.append(del);
+    tr.append(tdDel);
+    tbody.append(tr);
+  }
+  table.append(cap, thead, tbody);
+}
+
 /* ───── Collections : l'index à gauche, la collection ouverte à droite ───── */
 function collectionIndex(host: HTMLElement, ctx: RenderCtx) {
   let sec = host.querySelector<HTMLElement>(":scope > .cn-colidx");
@@ -500,6 +571,7 @@ export function render(root: HTMLElement, ctx: RenderCtx): Map<string, Suggestio
     const mv = ctx.core.monthView(monthOf(ctx.cur), ctx.now);
     monthCalendar(left, mv, ctx);
     monthPage(right, mv, ctx, sugIndex);
+    trackersBlock(right, mv.month, ctx);
   } else {
     const cols = collectionIndex(left, ctx);
     if (ctx.col && !cols.some((c) => c.id === ctx.col)) ctx.col = null;

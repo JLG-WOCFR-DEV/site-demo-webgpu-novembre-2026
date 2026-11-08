@@ -539,3 +539,42 @@ fn collections_hold_entries_that_migrate() {
     a.restore_collection(&books).unwrap();
     assert_eq!(a.collection_view(&books).unwrap().lines.len(), 2);
 }
+
+#[test]
+fn trackers_tick_days_and_converge() {
+    let c = clock(1_700_000_000_000.0);
+    let mut a = notebook(1, &c);
+    let water = a.create_tracker("Boire 1,5 l").unwrap();
+    let run = a.create_tracker("Courir").unwrap();
+    assert!(a.create_tracker("  ").is_err());
+    assert!(a.toggle_tracker(&water, d("2026-11-03")).unwrap());
+    assert!(a.toggle_tracker(&water, d("2026-11-04")).unwrap());
+    assert!(
+        !a.toggle_tracker(&water, d("2026-11-04")).unwrap(),
+        "décocher"
+    );
+    let m: Month = "2026-11".parse().unwrap();
+    let rows = a.trackers(m);
+    assert_eq!(
+        rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>(),
+        ["Boire 1,5 l", "Courir"]
+    );
+    assert_eq!(rows[0].days.len(), 30);
+    assert!(rows[0].days[2] && !rows[0].days[3]);
+    assert_eq!(rows[0].count, 1);
+    // Deux appareils cochent des jours différents : les deux restent.
+    let mut b = notebook(2, &c);
+    b.apply_update(&a.encode_state()).unwrap();
+    a.toggle_tracker(&run, d("2026-11-10")).unwrap();
+    b.toggle_tracker(&run, d("2026-11-11")).unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.trackers(m), b.trackers(m));
+    assert_eq!(a.trackers(m)[1].count, 2);
+    // Un autre mois ne voit pas ces cases ; la corbeille cache le suivi.
+    assert_eq!(a.trackers("2026-12".parse().unwrap())[0].count, 0);
+    a.delete_tracker(&run).unwrap();
+    assert_eq!(a.trackers(m).len(), 1);
+    a.restore_tracker(&run).unwrap();
+    a.rename_tracker(&run, "Courir 30 min").unwrap();
+    assert_eq!(a.trackers(m)[1].name, "Courir 30 min");
+}

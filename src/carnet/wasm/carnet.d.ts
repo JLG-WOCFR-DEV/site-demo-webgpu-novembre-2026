@@ -25,12 +25,14 @@ export class Carnet {
     collectionView(id: string): any;
     collections(): any;
     createCollection(name: string): string;
+    createTracker(name: string): string;
     /**
      * Ouverte → faite → annulée → ouverte. Rend le nouvel état.
      */
     cycleState(id: string): any;
     dayView(d: string, today: string, limit: number): any;
     deleteCollection(id: string): void;
+    deleteTracker(id: string): void;
     delete(id: string): void;
     diff(state_vector: Uint8Array | number[]): Uint8Array;
     dismiss(key: string): void;
@@ -60,7 +62,9 @@ export class Carnet {
      */
     purge(): number;
     renameCollection(id: string, name: string): void;
+    renameTracker(id: string, name: string): void;
     restoreCollection(id: string): void;
+    restoreTracker(id: string): void;
     restore(id: string): void;
     /**
      * Schéma qui a écrit ce carnet, et celui que ce module sait écrire.
@@ -84,6 +88,8 @@ export class Carnet {
      * Mises à jour produites par les commandes locales depuis le dernier appel, dans l'ordre.
      */
     takeUpdates(): Array<any>;
+    toggleTracker(id: string, on: string): boolean;
+    trackers(month: string): any;
     weekView(any_day: string, today: string): any;
     writable(): boolean;
 }
@@ -120,10 +126,12 @@ export interface InitOutput {
     readonly carnet_collectionView: (a: number, b: number, c: number) => [number, number, number];
     readonly carnet_collections: (a: number) => [number, number, number];
     readonly carnet_createCollection: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly carnet_createTracker: (a: number, b: number, c: number) => [number, number, number, number];
     readonly carnet_cycleState: (a: number, b: number, c: number) => [number, number, number];
     readonly carnet_dayView: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number];
     readonly carnet_delete: (a: number, b: number, c: number) => [number, number];
     readonly carnet_deleteCollection: (a: number, b: number, c: number) => [number, number];
+    readonly carnet_deleteTracker: (a: number, b: number, c: number) => [number, number];
     readonly carnet_diff: (a: number, b: number, c: number) => [number, number, number, number];
     readonly carnet_dismiss: (a: number, b: number, c: number) => [number, number];
     readonly carnet_encodeState: (a: number) => [number, number];
@@ -137,8 +145,10 @@ export interface InitOutput {
     readonly carnet_new: () => number;
     readonly carnet_purge: (a: number) => [number, number, number];
     readonly carnet_renameCollection: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly carnet_renameTracker: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_restore: (a: number, b: number, c: number) => [number, number];
     readonly carnet_restoreCollection: (a: number, b: number, c: number) => [number, number];
+    readonly carnet_restoreTracker: (a: number, b: number, c: number) => [number, number];
     readonly carnet_schema: (a: number) => number;
     readonly carnet_setMarks: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setState: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -149,6 +159,8 @@ export interface InitOutput {
     readonly carnet_stateVector: (a: number) => [number, number];
     readonly carnet_supportedSchema: (a: number) => number;
     readonly carnet_takeUpdates: (a: number) => any;
+    readonly carnet_toggleTracker: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
+    readonly carnet_trackers: (a: number, b: number, c: number) => [number, number, number];
     readonly carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_writable: (a: number) => number;
     readonly carnetpage_addSticker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];

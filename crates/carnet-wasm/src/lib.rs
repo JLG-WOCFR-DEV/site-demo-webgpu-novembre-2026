@@ -242,6 +242,40 @@ impl Carnet {
         to_js(&self.nb.collection_view(id))
     }
 
+    /* ───── Suivis ───── */
+
+    #[wasm_bindgen(js_name = createTracker)]
+    pub fn create_tracker(&mut self, name: &str) -> Result<String, JsError> {
+        self.nb.create_tracker(name).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = renameTracker)]
+    pub fn rename_tracker(&mut self, id: &str, name: &str) -> Result<(), JsError> {
+        self.nb.rename_tracker(id, name).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = deleteTracker)]
+    pub fn delete_tracker(&mut self, id: &str) -> Result<(), JsError> {
+        self.nb.delete_tracker(id).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = restoreTracker)]
+    pub fn restore_tracker(&mut self, id: &str) -> Result<(), JsError> {
+        self.nb.restore_tracker(id).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = toggleTracker)]
+    pub fn toggle_tracker(&mut self, id: &str, on: &str) -> Result<bool, JsError> {
+        self.nb.toggle_tracker(id, day(on)?).map_err(err)
+    }
+
+    pub fn trackers(&self, month: &str) -> Result<JsValue, JsError> {
+        let m: Month = month
+            .parse()
+            .map_err(|_| err(format!("mois illisible : {month}")))?;
+        to_js(&self.nb.trackers(m))
+    }
+
     /* ───── Vues ───── */
 
     #[wasm_bindgen(js_name = weekView)]

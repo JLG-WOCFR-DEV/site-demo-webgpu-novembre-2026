@@ -1032,3 +1032,77 @@ body.is-drawing .cn-spread * {
     height: 36px;
   }
 }
+
+/* Suivis : une case par jour, cochée à l'encre. */
+.cn-trackers {
+  box-shadow: none;
+  margin-top: var(--g);
+}
+.cn-trk-wrap {
+  overflow-x: auto;
+  margin-left: calc(var(--g) * -0.2);
+  padding-bottom: 4px;
+}
+.cn-trk {
+  border-collapse: collapse;
+  font: 10px / 1 var(--mono);
+  color: var(--ink-soft);
+}
+.cn-trk th {
+  font-weight: 500;
+  padding: 0 0 4px;
+  text-align: center;
+  min-width: 18px;
+}
+.cn-trk th.is-today,
+.cn-trk td.is-today {
+  color: var(--accent);
+  background: var(--hover);
+}
+.cn-trk .cn-trk-name {
+  text-align: left;
+  font: 15px / var(--g) var(--serif);
+  color: var(--ink);
+  padding-right: 10px;
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+  background: var(--paper);
+  z-index: 1;
+}
+.cn-trk td {
+  padding: 2px 1px;
+  text-align: center;
+}
+.cn-trk-cell {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.cn-trk-cell[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.cn-trk-cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (hover: none) {
+  .cn-trk-cell {
+    width: 26px;
+    height: 26px;
+  }
+}
