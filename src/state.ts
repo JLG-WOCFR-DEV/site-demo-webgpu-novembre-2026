@@ -38,6 +38,8 @@ export type Settings = {
   inertia: { amount: number };
   /** Effets d'après Canvas UI, sur toute la page : effet (index de CUI_EFFECTS, 0 aucun), intensité, taille. */
   cui: { effect: number; amount: number; scale: number };
+  /** Carnet, papier éclairé (P5) : direction vers la lumière, relief, 0 ; chaleur, flaque de lampe, centre (uv). Relief 0 : éteint. */
+  paperLight: { light: [number, number, number, number]; lamp: [number, number, number, number] };
   layers: { order: LayerId[]; mode: Record<LayerId, number>; opacity: Record<LayerId, number>; visible: Record<LayerId, boolean>; mask: number };
 };
 
@@ -62,6 +64,7 @@ export const settings: Settings = {
   dust: { value: 0, target: 0 },
   inertia: { amount: 0 },
   cui: { effect: 0, amount: 1, scale: 1 },
+  paperLight: { light: [0, 0, 0, 0], lamp: [0, 0, 0.3, 0.15] },
   ink: { flow: 1, stir: 1 },
   a11y: { reader: false, fade: 0, vision: 0, spacing: false },
   fluid: { force: 1, dry: 0.5 },

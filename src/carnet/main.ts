@@ -24,6 +24,7 @@ import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
 import { registerPwa } from "./pwa.ts";
 import { presse } from "../presse/lib.ts";
+import { hourOf, LIGHT_OFF, lightChanged, paperLight, type PaperLight } from "./light.ts";
 import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core, type Place, type Suggestion } from "./core.ts";
 import { moveChoices, openMoveMenu } from "./move.ts";
 import { addDays, isSample, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
@@ -50,7 +51,7 @@ let decor: Decor | null = null;
 let ctx: RenderCtx;
 let sugIndex = new Map<string, Suggestion>();
 /** Ce que la coquille demande au rendu, quel qu'il soit. */
-type Renderer = { engine: { readonly asleep: boolean } | null; wake(ms?: number): void };
+type Renderer = { engine: { readonly asleep: boolean } | null; wake(ms?: number): void; settings?: { paperLight: PaperLight } };
 let engine: Renderer | null = null;
 
 function draw() {
@@ -177,7 +178,11 @@ spread.addEventListener("submit", (ev) => {
   else place = f.dataset.day ? dayPlace(f.dataset.day) : weekPlace(f.dataset.week!);
   const p = parseLine(raw);
   if (!p.text) return;
-  const id = act(() => core.add(place, { kind: p.kind, text: p.text, time: p.time || null, priority: p.marks.includes("priority"), idea: p.marks.includes("idea") }));
+  const id = act(() => {
+    const id = core.add(place, { kind: p.kind, text: p.text, time: p.time || null, priority: p.marks.includes("priority"), idea: p.marks.includes("idea") });
+    ctx.fresh?.add(id);
+    return id;
+  });
   if (id === undefined) return;
   input.value = "";
   focusById(input.id);
@@ -313,6 +318,8 @@ spread.addEventListener("click", (ev) => {
 /** Migration : même entrée, nouvelle place ; ses lettres voyagent, la place quittée garde « > ». */
 function moveEntry(id: string, to: Place) {
   ctx.from.set(`e:${id}`, `e:${id}`);
+  // Recopiée à la main : l'encre est fraîche à la nouvelle place.
+  ctx.fresh?.add(id);
   let moved = false;
   act(() => {
     core.migrate(id, to);
@@ -630,7 +637,7 @@ async function boot() {
   // Raccourcis de l'icône installée (manifeste) : ?vue=jour | mois | collections.
   const vue = new URLSearchParams(location.search).get("vue");
   const start: View = vue === "jour" ? "day" : vue === "mois" ? "month" : vue === "collections" ? "collections" : "week";
-  ctx = { core, view: start, cur: today(), now: today(), from: new Map(), col: null, weather: (d) => weatherOf(d) };
+  ctx = { core, view: start, cur: today(), now: today(), from: new Map(), fresh: new Set(), col: null, weather: (d) => weatherOf(d) };
   if (opened.empty) {
     let v0: string | null = null;
     try {
@@ -750,6 +757,49 @@ void started.then((p) => {
   };
   tick();
   setInterval(tick, 500);
+  startLight(p);
 });
+
+/* ───── Papier éclairé (P5) : la lumière de l'heure, relue toutes les cinq minutes ───── */
+const LIGHT_KEY = "carnet.lumiere";
+function lightOn() {
+  try {
+    return localStorage.getItem(LIGHT_KEY) !== "non";
+  } catch {
+    return true;
+  }
+}
+function startLight(p: Renderer) {
+  const sp = new URLSearchParams(location.search);
+  // ?heure=21.5 : une heure imposée (captures, recette) ; ?lumiere=non : éteinte pour cette page.
+  const forced = sp.has("heure") ? Number(sp.get("heure")) : NaN;
+  const off = sp.get("lumiere") === "non";
+  let last: PaperLight | null = null;
+  const btn = $<HTMLButtonElement>("#cn-light");
+  const apply = () => {
+    if (!p.settings) return;
+    const on = !off && lightOn();
+    btn.setAttribute("aria-pressed", String(on));
+    const now = new Date();
+    const l = on ? paperLight(now, Number.isFinite(forced) ? forced : hourOf(now)) : LIGHT_OFF;
+    if (last && !lightChanged(last, l)) return;
+    p.settings.paperLight.light = [...l.light];
+    p.settings.paperLight.lamp = [...l.lamp];
+    last = l;
+    p.wake(80);
+  };
+  btn.addEventListener("click", () => {
+    try {
+      localStorage.setItem(LIGHT_KEY, lightOn() ? "non" : "oui");
+    } catch {
+      /* rien */
+    }
+    apply();
+    toast(lightOn() ? "La page suit la lumière de l'heure" : "Lumière de l'heure éteinte");
+  });
+  apply();
+  setInterval(apply, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => document.hidden || apply());
+}
 
 registerPwa();

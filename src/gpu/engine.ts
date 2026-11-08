@@ -5,7 +5,7 @@ import { MAX_RIPPLES } from "./cui.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
-import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
+import { ATLAS_SIZE, ELEM_FLOATS, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, matBusy, matOf, type BakedAtlas, type MsdfMeta } from "./text.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 import { renderScale, restFullScale, setGovernorIdle } from "./governor.ts";
 
@@ -89,7 +89,7 @@ const TRACE_RATES: [number, number, number, number][] = [
 export const WRAP_PAD = 112;
 const BODY_STRIDE = 32;
 const DROP_STRIDE = 32;
-const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2 + 2 + MAX_RIPPLES;
+const POST_VEC4 = 7 + MAX_STAGES + MAX_STAGES / 4 + 1 + MAX_CHAPTERS + 1 + 1 + 16 + 1 + 1 + 3 + MAX_TEARS + 2 + 2 + MAX_RIPPLES + 2;
 const PRINT_AT = 4 * (7 + MAX_STAGES + MAX_STAGES / 4);
 const A11Y_AT = PRINT_AT + 4 + MAX_CHAPTERS * 4;
 const CASSE_AT = A11Y_AT + 4;
@@ -100,6 +100,8 @@ const LENSM_AT = CREASE_AT + 4;
 const TEAR_AT = LENSM_AT + 4;
 const GRID_AT = TEAR_AT + 4 + MAX_TEARS * 4;
 const CUI_AT = GRID_AT + 8;
+/** Carnet, papier éclairé : deux vec4f à la fin du bloc. */
+const PLIGHT_AT = CUI_AT + 8 + MAX_RIPPLES * 4;
 
 const premul: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
@@ -876,12 +878,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     frameData.set([pointer.x, pointer.y, pointer.inside ? 1 : 0, reduced ? 1 : 0], 4);
     frameData.set([settings.glyph.wave, settings.glyph.ink, settings.glyph.scatter, settings.dom.boxes ? 1 : 0], 8);
     frameData.set([2048, 1.6, PAPER[0], settings.debug.wire ? 1 : 0], 12);
-    frameData.set([slip, settings.inertia.amount * motionScale(), motionScale(), 0], 16);
+    frameData.set([slip, settings.inertia.amount * motionScale(), motionScale(), lightAngle()], 16);
     device.queue.writeBuffer(frameBuf, 0, frameData);
 
     /* Éléments de texte : seule la boîte de l'élément est relue. */
     const elems = text.elems;
-    if (elemData.length < elems.length * 8) elemData = new Float32Array(elems.length * 8);
+    if (elemData.length < elems.length * ELEM_FLOATS) elemData = new Float32Array(elems.length * ELEM_FLOATS);
+    const wallNow = Date.now();
+    let matsBusy = false;
     const boxes: number[] = [];
     elems.forEach((e, i) => {
       const r = e.el.getBoundingClientRect();
@@ -892,10 +896,13 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const ms = text.morphSince.get(e.el);
       const morph = ms === undefined || reduced ? 1 : Math.min(1, (now - ms) / MORPH_MS);
       // Un élément retiré du DOM attend la prochaine mise en page : sa boîte vaut zéro, il ne doit pas s'imprimer en haut de l'écran.
-      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen || !e.el.isConnected ? 0 : 1, morph, e.kin], i * 8);
+      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, hideSpecimen || !e.el.isConnected ? 0 : 1, morph, e.kin, ...matOf(e, wallNow, reduced)], i * ELEM_FLOATS);
+      if (!reduced && matBusy(e, wallNow)) matsBusy = true;
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left, r.top, r.width, r.height, 0, 0.627, 0.863, 0.9);
     });
-    if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 8);
+    if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * ELEM_FLOATS);
+    // Encre qui sèche : le moteur à la demande garde la main jusqu'à la fin.
+    if (matsBusy) wake(120);
 
     /* Plans */
     type Job = { offset: number; bind: GPUBindGroup; shadow: boolean; peel: boolean };
@@ -1175,6 +1182,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     const gc = gridCache;
     postData.set(gm && gc ? [gm, gc.gl * dpr, (cssW - gc.gr) * dpr, gc.gap * dpr] : [0, 0, 0, 0], GRID_AT);
     postData.set([12, 8 * dpr, scrollY * dpr, 0], GRID_AT + 4);
+
+    postData.set(settings.paperLight.light, PLIGHT_AT);
+    postData.set(settings.paperLight.lamp, PLIGHT_AT + 4);
 
     // Effets d'après Canvas UI : pointeur amorti (celui de la lentille) et ondes des clics.
     const cu = settings.cui;
@@ -1583,6 +1593,12 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 }
 
 export type Engine = Awaited<ReturnType<typeof createEngine>>;
+
+/** D'où vient la lumière du papier (angle à l'écran) ; par défaut, du haut à gauche. Lu par les matières. */
+function lightAngle() {
+  const [x, y, on] = settings.paperLight.light;
+  return on > 0 && (x || y) ? Math.atan2(y, x) : Math.atan2(-0.8, -0.6);
+}
 
 /**
  * Rapport de contraste WCAG d'une zone de texte : le papier est la luminance

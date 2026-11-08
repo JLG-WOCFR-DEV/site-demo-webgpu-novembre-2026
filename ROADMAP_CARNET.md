@@ -369,6 +369,24 @@ Faite avant P3b (choix du 8 novembre : les enrichissements passent par les vues 
 - [ ] Recette TalkBack et clavier sur le téléphone : autocollants, dessin, photos, trackers, météo
 - [ ] Mesures sur le téléphone : mémoire avec 50 photos, temps d'ouverture d'un mois chargé
 
+#### P5 — avancement
+
+Faite avant P3b, comme P4b : les effets vivent dans un fichier WGSL partagé (`crates/presse-rs/shaders/carnet-fx.wgsl`),
+que les deux moteurs incluent ; P3b n'aura rien à porter.
+
+- [x] Contrat § 3.6 écrit (`docs/carnet/effets.md`). Décision : **effets P0 sans état** (fonctions du temps écoulé
+      depuis l'événement, horodaté dans le DOM) → ni cache ni reconstruction à écrire, indépendants du nombre d'images,
+      mouvement réduit = état final ; le cache du § 3.6 attend le premier effet à état (P1)
+- [x] Crayon (graphite sur la dent du papier) ; crayon → encre au « Garder » (la plume repasse la ligne) ;
+      encre fraîche à l'écriture et à la migration, qui sèche jusqu'à la lettre normale
+- [x] Papier éclairé : lumière de l'heure et de la saison (`light.ts`, testée), lampe la nuit, bouton pour l'éteindre ;
+      `?heure=` pour les captures
+- [x] Parité TS / Rust sur les deux effets (même source, mêmes formules)
+- [ ] Mesure sur le téléphone : coût de la lumière plein écran au banc ; si elle dépasse le budget, la limiter au papier
+      visible ou la cuire dans une texture à la mise en page
+- [ ] P1 selon budget : diffusion d'encre sur les traits dessinés (à état : cache et reconstruction), aquarelle sur les
+      autocollants
+
 **Sortie P4b (MVP)** : **30 jours d'usage réel** sur Android, aucune perte de données, restauration testée chaque semaine,
 recette TalkBack et clavier verte.
 

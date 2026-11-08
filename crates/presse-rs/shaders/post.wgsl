@@ -5,6 +5,8 @@ struct Post {
   res: vec4f,    // largeur, hauteur (px physiques), dpr, temps (s)
   paper: vec4f,  // couleur du papier (sRGB), 0
   opts: vec4f,   // amplitude du grain (0 coupé), mouvement réduit (0/1), 0, 0
+  plight: vec4f, // Carnet, papier éclairé : direction vers la lumière (écran), relief (0 éteint), 0
+  lamp: vec4f,   // Carnet : chaleur (−1…1), flaque de lampe (0…1), centre de la flaque (uv)
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -45,6 +47,11 @@ fn vnoise(p: vec2f) -> f32 {
 fn fs(in: VsOut) -> @location(0) vec4f {
   let px = in.uv * u.res.xy;
   var col = textureSampleLevel(scene, samp, in.uv, 0.0).rgb;
+  if (u.plight.z > 0.0) {
+    // Carnet : la feuille sous la lumière de l'heure (carnet-fx.wgsl), avant le grain.
+    let pp = 1.0 - smoothstep(0.02, 0.2, distance(col, u.paper.rgb));
+    col = cfx_paper_light(col, px, in.uv, u.res.x / max(u.res.y, 1.0), u.res.z, u.plight, u.lamp, pp);
+  }
   let amp = u.opts.x;
   if (amp > 0.5) {
     // Fibre : bruit lent, seulement là où il y a du papier.

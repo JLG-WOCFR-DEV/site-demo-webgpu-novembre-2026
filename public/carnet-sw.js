@@ -7,7 +7,7 @@
  *   fermées, pour ne jamais faire tourner une page ouverte avec un worker plus récent qu'elle
  *   (roadmap § 3.3). La page propose de recharger quand une version attend.
  */
-const VERSION = "carnet-p2-1";
+const VERSION = "carnet-p5-1";
 const SHELL = ["./carnet.html", "./carnet-recette.html", "./carnet-banc.html", "./carnet/manifest.webmanifest", "./carnet/icon-192.png", "./sdf/text.json", "./sdf/text.png", "./msdf/display.json", "./msdf/display.png"];
 
 // Les noms des fichiers construits changent à chaque build : on les lit dans les pages, puis dans leurs

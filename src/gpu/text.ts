@@ -32,7 +32,33 @@ export type BakeGlyph = { key: string; m: [number, number, number, number, numbe
 
 /** Glyphe tel qu'émis, gardé pour le morphing de l'élément au prochain changement de texte. */
 type MorphGlyph = { ch: string; f: number[]; color: number };
-export const ELEM_STRIDE = 32;
+/** Un élément de texte côté GPU : 12 flottants (origine, apparition, fx, compte, alpha, morphing, cinétique, matière). */
+export const ELEM_FLOATS = 12;
+export const ELEM_STRIDE = ELEM_FLOATS * 4;
+
+/**
+ * Matières de Carnet (P5, shaders/carnet-fx.wgsl), posées par la page :
+ *   data-gl-mat="crayon"   la lettre est au crayon (graphite sur la dent du papier) ;
+ *   data-gl-ink="<ms>"     crayon → encre : la plume repasse de gauche à droite à partir de cet instant (Date.now) ;
+ *   data-gl-wet="<ms>"     encre fraîche à cet instant : sombre et brillante, elle sèche.
+ * Rien n'est simulé : l'état se calcule à partir du temps écoulé, l'état final est la lettre normale.
+ */
+export const INK_MS = 700;
+export const DRY_MS = 2600;
+export function matOf(e: Pick<TextElem, "pencil" | "inkAt" | "wetAt" | "seed">, now: number, reduced: boolean): [number, number, number, number] {
+  let ink = e.pencil ? 0 : 1;
+  let wet = 0;
+  if (Number.isFinite(e.inkAt)) {
+    ink = reduced ? 1 : Math.min(1, Math.max(0, (now - e.inkAt) / INK_MS));
+    // L'encre touche chaque lettre au passage de la plume : elle sèche à partir de là.
+    wet = reduced ? 0 : 1 - Math.min(1, Math.max(0, (now - e.inkAt - INK_MS * 0.5) / DRY_MS));
+  }
+  if (Number.isFinite(e.wetAt)) wet = Math.max(wet, reduced ? 0 : 1 - Math.min(1, Math.max(0, (now - e.wetAt) / DRY_MS)));
+  return [ink, wet, e.seed, 0];
+}
+/** Une matière est-elle encore en mouvement (le moteur à la demande doit peindre) ? */
+export const matBusy = (e: Pick<TextElem, "inkAt" | "wetAt">, now: number) =>
+  (Number.isFinite(e.inkAt) && now - e.inkAt < INK_MS * 0.5 + DRY_MS) || (Number.isFinite(e.wetAt) && now - e.wetAt < DRY_MS);
 
 type AtlasEntry = SdfMetrics & { u0: number; v0: number; u1: number; v1: number };
 
@@ -61,6 +87,11 @@ export type TextElem = {
   count: number;
   first: number;
   revealStart: number;
+  /** Matières de Carnet (voir matOf). */
+  pencil: boolean;
+  inkAt: number;
+  wetAt: number;
+  seed: number;
 };
 
 /** Où vont les pixels de l'atlas SDF (r8, une ligne = `w` octets). */
@@ -428,7 +459,19 @@ export class TextLayer {
         this.morphPrev.set(el, { key, glyphs: cur });
       }
       if (morphId) nextIds.set(morphId, { glyphs: cur, x: box.left + scrollX, y: box.top + scrollY });
-      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: arrived.has(el) ? 0 : (revealed.get(el) ?? -1) });
+      const ds = el.dataset;
+      this.elems.push({
+        el,
+        fx,
+        kin: Math.max(0, KINETIC.indexOf(ds.glKinetic ?? "")),
+        count: idx,
+        first,
+        revealStart: arrived.has(el) ? 0 : (revealed.get(el) ?? -1),
+        pencil: ds.glMat === "crayon",
+        inkAt: ds.glInk ? Number(ds.glInk) : NaN,
+        wetAt: ds.glWet ? Number(ds.glWet) : NaN,
+        seed: seedOf(ds.glMorphId ?? String(elemIndex)),
+      });
     });
 
     if (had) root.classList.add("gl-on");
@@ -460,6 +503,13 @@ export class TextLayer {
  * `color-mix()` ou une couleur relative, et garde l'espace d'origine pour oklch(), lab()… : ceux-là passent par une toile
  * 1 × 1 (une fois par valeur, en cache).
  */
+/** Graine stable d'un élément (sa matière ne change pas d'une mise en page à l'autre). */
+function seedOf(key: string) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  return ((h >>> 0) % 1000) / 1000;
+}
+
 const colorCache = new Map<string, number>();
 let colorCtx: OffscreenCanvasRenderingContext2D | null = null;
 const pack = (r: number, g: number, b: number, a: number) => ((Math.round(a * 255) << 24) | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r)) >>> 0;

@@ -10,6 +10,7 @@
  *   Limite       p95 ≤ 2 × budget
  *   Trop lourd   au-delà
  */
+import { paperLight } from "./light.ts";
 import "@fontsource-variable/newsreader/opsz.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
@@ -162,6 +163,24 @@ async function testCui(name: (typeof CUI_EFFECTS)[number], label: string) {
   p.settings.cui.effect = 0;
   show(row(label, dts));
 }
+/** P5 : papier éclairé (lampe du soir, le cas le plus cher) et 20 lignes à l'encre fraîche, dont 10 repassées du crayon. */
+async function testInk() {
+  status.textContent = "Encre et lumière : 3 s…";
+  if (!p) return;
+  const l = paperLight(new Date(), 22);
+  p.settings.paperLight.light = [...l.light];
+  p.settings.paperLight.lamp = [...l.lamp];
+  fillSource(20);
+  const now = String(Date.now());
+  $("#src").querySelectorAll<HTMLElement>(".cn-text").forEach((t, i) => {
+    if (i % 2) (t.dataset.glMat = "crayon"), (t.dataset.glInk = now);
+    else t.dataset.glWet = now;
+  });
+  p.relayout();
+  show(row("Encre fraîche ×20 + papier éclairé", await measure(3000)));
+  p.settings.paperLight.light = [0, 0, 0, 0];
+  p.settings.paperLight.lamp = [0, 0, 0.3, 0.15];
+}
 async function runAll() {
   if (!p?.engine) return;
   rows.length = 0;
@@ -172,6 +191,7 @@ async function runAll() {
   await testDust();
   await testCui("tissu", "Tissu");
   await testCui("particules", "Particules");
+  await testInk();
   for (const b of document.querySelectorAll<HTMLButtonElement>("button")) b.disabled = false;
   status.textContent = "Terminé. « Copier les résultats » pour me les envoyer.";
 }

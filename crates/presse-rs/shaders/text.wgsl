@@ -35,6 +35,10 @@ struct Elem {
   alpha: f32,
   morph: f32,    // progression du morphing de l'élément (0…1)
   kin: f32,
+  ink: f32,      // Carnet : crayon → encre, 0 crayon … 1 encre (tracé de gauche à droite)
+  wet: f32,      // Carnet : encre fraîche, 1 mouillée … 0 sèche
+  seed: f32,     // graine de la matière
+  _pad: f32,
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
@@ -50,6 +54,8 @@ struct VsOut {
   @location(1) color: vec4f,
   @location(2) @interpolate(flat) edge: f32,
   @location(3) @interpolate(flat) multi: f32,
+  @location(4) @interpolate(flat) mat: vec2f,  // Carnet : crayon, encre mouillée (0…1) pour cette lettre
+  @location(5) mpos: vec2f,                    // position dans l'élément (px css) + graine
 };
 
 fn to_clip(p: vec2f) -> vec4f {
@@ -108,6 +114,11 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
   // Seuil de bord du champ : 0,75 = contour exact de TinySDF ; au-dessus la lettre maigrit, à 1,4
   // elle a disparu (apparition à l'encre).
   out.edge = 0.75 + (1.0 - reveal) * 0.65;
+  // Crayon → encre : la plume passe de gauche à droite, quatre lettres de fondu (carnet-fx.wgsl).
+  let inked = clamp((e.ink * (e.count + 4.0) - g.idx) / 4.0, 0.0, 1.0);
+  out.mat = vec2f(1.0 - inked, e.wet * inked);
+  out.mpos = g.pos + c * g.size + vec2f(e.seed * 97.0, e.seed * 41.0);
+  out.edge += cfx_edge(out.mat.x, out.mat.y, g.pos + vec2f(e.seed * 97.0, e.seed * 41.0));
   out.multi = select(0.0, 1.0, g.px < 0.0);
   return out;
 }
@@ -135,6 +146,16 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     + sdf_cov(in.uv + gx * 0.375 + gy * -0.125, edge, ws)
     + sdf_cov(in.uv + gx * 0.125 + gy * 0.375, edge, ws)
     + sdf_cov(in.uv + gx * -0.375 + gy * 0.125, edge, ws);
-  let a = select(ss * 0.25, smoothstep(edge - w, edge + w, d), is_multi) * in.color.a;
-  return vec4f(in.color.rgb * a, a);
+  var a = select(ss * 0.25, smoothstep(edge - w, edge + w, d), is_multi) * in.color.a;
+  var col = in.color.rgb;
+  // Matières de Carnet (crayon, encre fraîche) : neutres sur une lettre normale (0, 0).
+  let dg = vec2f(dpdx(d), dpdy(d));
+  let gl = length(dg);
+  let la = frame.motion.w;
+  let cm = cfx_mat(in.mat.x, in.mat.y, in.mpos, col, d, edge, select(vec2f(0.0), dg / gl, gl > 1e-6), vec2f(cos(la), sin(la)));
+  if (in.mat.x + in.mat.y > 0.001) {
+    a *= cm.alpha;
+    col = cm.col;
+  }
+  return vec4f(col * a, a);
 }

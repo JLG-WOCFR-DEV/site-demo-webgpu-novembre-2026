@@ -8,6 +8,8 @@
  * rgba16float pour que les hautes lumières des photos puissent dépasser 1.
  */
 import { CUI_WGSL, MAX_RIPPLES } from "./cui.ts";
+// Effets de Carnet (P5) : source unique, partagée avec presse-rs.
+import CARNET_FX from "../../crates/presse-rs/shaders/carnet-fx.wgsl?raw";
 
 export const FRAME_STRUCT = /* wgsl */ `
 struct Frame {
@@ -473,6 +475,7 @@ fn fs(in: VsOut) -> @location(0) vec4f {
 
 export const GLYPH = /* wgsl */ `
 ${FRAME_STRUCT}
+${CARNET_FX}
 
 struct Glyph {
   pos: vec2f,    // coin haut-gauche du quad, relatif à l'élément (css)
@@ -495,6 +498,10 @@ struct Elem {
   alpha: f32,
   morph: f32,    // progression du morphing de l'élément (0…1)
   kin: f32,      // typographie cinétique (D6) : 0 aucune, 1 respire, 2 vitesse, 3 contour, 4 vague
+  ink: f32,      // Carnet : crayon → encre, 0 crayon … 1 encre (tracé de gauche à droite)
+  wet: f32,      // Carnet : encre fraîche, 1 mouillée … 0 sèche
+  seed: f32,     // graine de la matière
+  _pad: f32,
 };
 
 // État physique d'une lettre de l'ouverture, écrit par la passe de calcul.
@@ -524,6 +531,8 @@ struct VsOut {
   @location(4) @interpolate(flat) size: vec2f,
   @location(5) @interpolate(flat) multi: f32,
   @location(6) @interpolate(flat) kin: vec2f,  // mode cinétique, intensité pour cette lettre
+  @location(7) @interpolate(flat) mat: vec2f,  // Carnet : crayon, encre mouillée (0…1) pour cette lettre
+  @location(8) mpos: vec2f,                    // position dans l'élément (px css) + graine : la matière tient à la lettre
 };
 
 fn rot(a: f32) -> mat2x2f {
@@ -629,6 +638,11 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
   if (e.fx > 1.5) { ink = frame.glyph.y; }
   out.edge = 0.75 - ink * 0.14 - weight * 0.1 + (1.0 - reveal) * 0.65;
   out.kin = vec2f(f32(km), kAmt);
+  // Crayon → encre : la plume passe de gauche à droite, quatre lettres de fondu.
+  let inked = clamp((e.ink * (e.count + 4.0) - g.idx) / 4.0, 0.0, 1.0);
+  out.mat = vec2f(1.0 - inked, e.wet * inked);
+  out.mpos = g.pos + c * g.size + vec2f(e.seed * 97.0, e.seed * 41.0);
+  out.edge += cfx_edge(out.mat.x, out.mat.y, g.pos + vec2f(e.seed * 97.0, e.seed * 41.0));
   out.size = g.size;
   out.multi = select(0.0, 1.0, g.px < 0.0);
   return out;
@@ -667,6 +681,15 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     a = mix(band * in.color.a, a, in.kin.y);
   }
   var col = in.color.rgb;
+  // Matières de Carnet (crayon, encre fraîche) : neutres sur une lettre normale (0, 0).
+  let dg = vec2f(dpdx(d), dpdy(d));
+  let gl = length(dg);
+  let la = frame.motion.w;
+  let cm = cfx_mat(in.mat.x, in.mat.y, in.mpos, col, d, edge, select(vec2f(0.0), dg / gl, gl > 1e-6), vec2f(cos(la), sin(la)));
+  if (in.mat.x + in.mat.y > 0.001) {
+    a *= cm.alpha;
+    col = cm.col;
+  }
   if (wire_on(frame)) {
     let pxw = 1.0 / max(in.size, vec2f(1.0));
     let e = min(min(in.local.x, 1.0 - in.local.x) / pxw.x, min(in.local.y, 1.0 - in.local.y) / pxw.y);
@@ -1642,6 +1665,8 @@ struct Post {
   cui: vec4f,      // effet Canvas UI (0 aucun…10), intensité, taille, 0
   cui2: vec4f,     // pointeur amorti x, y (px), présent, défilement (px)
   ripples: array<vec4f, ${MAX_RIPPLES}>, // clics : x, y (px), départ (s), force
+  plight: vec4f,   // Carnet, papier éclairé : direction vers la lumière (écran), relief (0 éteint), 0
+  lamp: vec4f,     // Carnet : chaleur (−1…1), flaque de lampe (0…1), centre de la flaque (uv)
 };
 
 @group(0) @binding(0) var<uniform> u: Post;
@@ -2472,6 +2497,8 @@ fn image_filter(px: vec2f, st: vec4f) -> vec3f {
 
 ${CUI_WGSL}
 
+${CARNET_FX}
+
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4f {
   let px = in.uv * u.res.xy;
@@ -2584,6 +2611,11 @@ fn fs(in: VsOut) -> @location(0) vec4f {
     col = tear_edge(px, col);
   }
 
+  if (u.plight.z > 0.0) {
+    // Carnet : la feuille sous la lumière de l'heure (avant le grain, qui reste celui du papier).
+    let pp = 1.0 - smoothstep(0.02, 0.2, distance(col, u.paper.rgb));
+    col = cfx_paper_light(col, px, in.uv, u.res.x / max(u.res.y, 1.0), u.res.z, u.plight, u.lamp, pp);
+  }
   if (u.chain2.x > 0.5) {
     let amp = u.chain2.x;
     // Fibre : bruit lent, seulement là où il y a du papier.

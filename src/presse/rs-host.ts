@@ -10,10 +10,10 @@
  */
 import "./presse.css";
 import init, { PresseWeb } from "./rs/presse_web.js";
-import { ATLAS_SIZE, GLYPH_STRIDE, MORPH_MS, TextLayer, type AtlasSink, type BakedAtlas, type MsdfMeta } from "../gpu/text.ts";
+import { ATLAS_SIZE, ELEM_FLOATS, GLYPH_STRIDE, MORPH_MS, TextLayer, matBusy, matOf, type AtlasSink, type BakedAtlas, type MsdfMeta } from "../gpu/text.ts";
 import { renderScale, restFullScale, setGovernorIdle } from "../gpu/governor.ts";
 import { motionScale } from "../motion-scale.ts";
-import { motion } from "../state.ts";
+import { motion, settings } from "../state.ts";
 
 const WAKE_LAYOUT_MS = 1600;
 const WAKE_INPUT_MS = 400;
@@ -24,6 +24,8 @@ export type PresseRs = {
   engine: { readonly asleep: boolean; loseDevice(): void; stats(): PresseRsStats } | null;
   wake(ms?: number): void;
   relayout(): void;
+  /** Carnet, papier éclairé : mêmes valeurs que settings.paperLight du moteur TypeScript. */
+  settings: Pick<typeof settings, "paperLight">;
 };
 
 function readPaper(): [number, number, number] {
@@ -46,7 +48,7 @@ async function rgbaOf(blob: Blob) {
 }
 
 export async function presseRs(o: { onDemand?: boolean; fonts?: string[]; grain?: boolean } = {}): Promise<PresseRs> {
-  const api: PresseRs = { engine: null, wake: () => {}, relayout: () => {} };
+  const api: PresseRs = { engine: null, wake: () => {}, relayout: () => {}, settings };
   if (!(navigator as Navigator & { gpu?: unknown }).gpu) return api;
   const t0 = performance.now();
   const root = document.documentElement;
@@ -188,7 +190,9 @@ export async function presseRs(o: { onDemand?: boolean; fonts?: string[]; grain?
     const reduced = motion.reduced;
     const cssH = canvas.clientHeight;
     const elems = text.elems;
-    if (elemData.length < elems.length * 8) elemData = new Float32Array(elems.length * 8);
+    if (elemData.length < elems.length * ELEM_FLOATS) elemData = new Float32Array(elems.length * ELEM_FLOATS);
+    const wallNow = Date.now();
+    let matsBusy = false;
     elems.forEach((e, i) => {
       const r = e.el.getBoundingClientRect();
       if (e.revealStart < 0 && r.top < cssH * 0.92 && r.bottom > 0) e.revealStart = now;
@@ -196,9 +200,13 @@ export async function presseRs(o: { onDemand?: boolean; fonts?: string[]; grain?
       const reveal = reduced ? 1 : e.revealStart < 0 ? 0 : Math.min(1, (now - e.revealStart) / dur);
       const ms = text.morphSince.get(e.el);
       const morph = ms === undefined || reduced ? 1 : Math.min(1, (now - ms) / MORPH_MS);
-      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, e.el.isConnected ? 1 : 0, morph, e.kin], i * 8);
+      elemData.set([r.left, r.top, ease(reveal), e.fx, e.count, e.el.isConnected ? 1 : 0, morph, e.kin, ...matOf(e, wallNow, reduced)], i * ELEM_FLOATS);
+      if (!reduced && matBusy(e, wallNow)) matsBusy = true;
     });
-    pw.setElems(elemData.subarray(0, elems.length * 8));
+    pw.setElems(elemData.subarray(0, elems.length * ELEM_FLOATS));
+    if (matsBusy) awakeUntil = Math.max(awakeUntil, performance.now() + 120);
+    const { light: L, lamp: P } = settings.paperLight;
+    pw.setLight(L[0], L[1], L[2], L[3], P[0], P[1], P[2], P[3]);
     try {
       pw.render(canvas.clientWidth, cssH, dprNow(), (now - start) / 1000, reduced, motionScale(), paper[0], paper[1], paper[2], o.grain === false ? 0 : 1);
     } catch (e) {

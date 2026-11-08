@@ -28,6 +28,7 @@ pub struct PresseWeb {
     lost: Arc<AtomicBool>,
     info: String,
     frames: Cell<u32>,
+    light: Cell<[f32; 8]>,
 }
 
 #[wasm_bindgen]
@@ -95,6 +96,7 @@ impl PresseWeb {
             lost,
             info: format!("{} · {} · {:?}", ai.name, ai.driver, format),
             frames: Cell::new(0),
+            light: Cell::new([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.15]),
         })
     }
 
@@ -137,6 +139,13 @@ impl PresseWeb {
             .set_elems(&self.device, &self.queue, data);
     }
 
+    /// Carnet, papier éclairé : direction (x, y), relief, 0 ; chaleur, flaque, centre (u, v).
+    #[wasm_bindgen(js_name = setLight)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_light(&self, lx: f32, ly: f32, relief: f32, l3: f32, warm: f32, pool: f32, pu: f32, pv: f32) {
+        self.light.set([lx, ly, relief, l3, warm, pool, pu, pv]);
+    }
+
     /// Peint une image. `false` : image sautée (surface pas prête), à redemander.
     #[allow(clippy::too_many_arguments)]
     pub fn render(
@@ -174,6 +183,14 @@ impl PresseWeb {
             motion,
             paper: [paper_r, paper_g, paper_b],
             grain,
+            light: {
+                let l = self.light.get();
+                [l[0], l[1], l[2], l[3]]
+            },
+            lamp: {
+                let l = self.light.get();
+                [l[4], l[5], l[6], l[7]]
+            },
         };
         self.renderer
             .borrow_mut()

@@ -18,12 +18,14 @@ pub const ATLAS_SIZE: u32 = 2048;
 /// Octets par glyphe (`struct Glyph`).
 pub const GLYPH_STRIDE: usize = 64;
 /// Flottants par élément (`struct Elem`).
-pub const ELEM_FLOATS: usize = 8;
+pub const ELEM_FLOATS: usize = 12;
 /// Format de la scène : demi-flottants, comme le moteur TypeScript.
 pub const SCENE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
-pub const TEXT_WGSL: &str = include_str!("../shaders/text.wgsl");
-pub const POST_WGSL: &str = include_str!("../shaders/post.wgsl");
+/// Effets de Carnet (P5) : source unique, partagée avec le moteur TypeScript, placée avant chaque module.
+pub const CARNET_FX_WGSL: &str = include_str!("../shaders/carnet-fx.wgsl");
+pub const TEXT_WGSL: &str = concat!(include_str!("../shaders/carnet-fx.wgsl"), include_str!("../shaders/text.wgsl"));
+pub const POST_WGSL: &str = concat!(include_str!("../shaders/carnet-fx.wgsl"), include_str!("../shaders/post.wgsl"));
 
 /// Ce que l'hôte donne à chaque image.
 #[derive(Clone, Copy, Debug)]
@@ -41,6 +43,22 @@ pub struct Frame {
     pub paper: [f32; 3],
     /// Amplitude du grain (0 : coupé).
     pub grain: f32,
+    /// Carnet, papier éclairé : direction vers la lumière (écran), relief (0 : éteint), 0.
+    pub light: [f32; 4],
+    /// Carnet : chaleur (−1…1), flaque de lampe (0…1), centre de la flaque (uv).
+    pub lamp: [f32; 4],
+}
+
+impl Frame {
+    /// D'où vient la lumière (angle à l'écran) : celle du papier, sinon le haut à gauche.
+    pub fn light_angle(&self) -> f32 {
+        let [x, y, on, _] = self.light;
+        if on > 0.0 && (x != 0.0 || y != 0.0) {
+            y.atan2(x)
+        } else {
+            (-0.8f32).atan2(-0.6)
+        }
+    }
 }
 
 #[repr(C)]
@@ -59,6 +77,8 @@ struct PostU {
     res: [f32; 4],
     paper: [f32; 4],
     opts: [f32; 4],
+    light: [f32; 4],
+    lamp: [f32; 4],
 }
 
 struct Storage {
@@ -522,13 +542,15 @@ impl Renderer {
             pointer: [0.0, 0.0, 0.0, if f.reduced { 1.0 } else { 0.0 }],
             glyph: [0.0; 4],
             misc: [ATLAS_SIZE as f32, 1.0, f.paper[0], 0.0],
-            motion: [0.0, 0.0, f.motion, 0.0],
+            motion: [0.0, 0.0, f.motion, f.light_angle()],
         };
         queue.write_buffer(&self.frame_buf, 0, bytemuck::bytes_of(&fu));
         let pu = PostU {
             res: [w as f32, h as f32, f.dpr, f.time],
             paper: [f.paper[0], f.paper[1], f.paper[2], 0.0],
             opts: [f.grain, if f.reduced { 1.0 } else { 0.0 }, 0.0, 0.0],
+            light: f.light,
+            lamp: f.lamp,
         };
         queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&pu));
 
@@ -614,9 +636,9 @@ mod tests {
     #[test]
     fn struct_sizes_match_wgsl() {
         assert_eq!(std::mem::size_of::<FrameU>(), 80);
-        assert_eq!(std::mem::size_of::<PostU>(), 48);
+        assert_eq!(std::mem::size_of::<PostU>(), 80);
         // Glyph : 4 × vec2/vec4 + 6 scalaires = 64 octets, comme GLYPH_STRIDE côté TypeScript.
         assert_eq!(GLYPH_STRIDE, 64);
-        assert_eq!(ELEM_FLOATS * 4, 32);
+        assert_eq!(ELEM_FLOATS * 4, 48); // ELEM_STRIDE côté TypeScript
     }
 }

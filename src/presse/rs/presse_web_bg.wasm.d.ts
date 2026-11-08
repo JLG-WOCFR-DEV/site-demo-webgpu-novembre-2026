@@ -12,13 +12,14 @@ export const presseweb_render: (a: number, b: number, c: number, d: number, e: n
 export const presseweb_resize: (a: number, b: number, c: number) => void;
 export const presseweb_setElems: (a: number, b: number, c: number) => void;
 export const presseweb_setGlyphs: (a: number, b: number, c: number) => void;
+export const presseweb_setLight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
 export const presseweb_setMsdf: (a: number, b: number, c: number, d: number, e: number) => void;
 export const presseweb_writeAtlas: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const wasm_bindgen_6a3ec2ce05371179___convert__closures_____invoke___js_sys_62fb8f201c7321e0___Function_fn_wasm_bindgen_6a3ec2ce05371179___JsValue_____wasm_bindgen_6a3ec2ce05371179___sys__Undefined___js_sys_62fb8f201c7321e0___Function_fn_wasm_bindgen_6a3ec2ce05371179___JsValue_____wasm_bindgen_6a3ec2ce05371179___sys__Undefined_______true_: (a: number, b: number, c: any, d: any) => void;
 export const wasm_bindgen_6a3ec2ce05371179___convert__closures_____invoke___wasm_bindgen_6a3ec2ce05371179___JsValue__core_bd3444573ca0e299___result__Result_____wasm_bindgen_6a3ec2ce05371179___JsError___true_: (a: number, b: number, c: any) => [number, number];
 export const wasm_bindgen_6a3ec2ce05371179___convert__closures_____invoke___wasm_bindgen_6a3ec2ce05371179___sys__JsNullable_wgpu_992fc74fe7b5e319___backend__webgpu__webgpu_sys__gen_GpuError__GpuError___core_bd3444573ca0e299___result__Result_____wasm_bindgen_6a3ec2ce05371179___JsError___true_: (a: number, b: number, c: any) => [number, number];
-export const wasm_bindgen_6a3ec2ce05371179___convert__closures_____invoke___wasm_bindgen_6a3ec2ce05371179___sys__JsNullable_wgpu_992fc74fe7b5e319___backend__webgpu__webgpu_sys__gen_GpuError__GpuError___core_bd3444573ca0e299___result__Result_____wasm_bindgen_6a3ec2ce05371179___JsError___true__16: (a: number, b: number, c: any) => [number, number];
 export const wasm_bindgen_6a3ec2ce05371179___convert__closures_____invoke___wasm_bindgen_6a3ec2ce05371179___sys__JsNullable_wgpu_992fc74fe7b5e319___backend__webgpu__webgpu_sys__gen_GpuError__GpuError___core_bd3444573ca0e299___result__Result_____wasm_bindgen_6a3ec2ce05371179___JsError___true__17: (a: number, b: number, c: any) => [number, number];
+export const wasm_bindgen_6a3ec2ce05371179___convert__closures_____invoke___wasm_bindgen_6a3ec2ce05371179___sys__JsNullable_wgpu_992fc74fe7b5e319___backend__webgpu__webgpu_sys__gen_GpuError__GpuError___core_bd3444573ca0e299___result__Result_____wasm_bindgen_6a3ec2ce05371179___JsError___true__18: (a: number, b: number, c: any) => [number, number];
 export const wasm_bindgen_6a3ec2ce05371179___convert__closures_____invoke___wgpu_992fc74fe7b5e319___backend__webgpu__webgpu_sys__gen_GpuDeviceLostInfo__GpuDeviceLostInfo______true_: (a: number, b: number, c: any) => void;
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

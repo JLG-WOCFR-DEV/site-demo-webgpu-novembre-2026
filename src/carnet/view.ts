@@ -27,6 +27,8 @@ export type RenderCtx = {
   now: Day;
   /** Lignes à faire partir d'une source au prochain rendu : clé de la ligne → identifiant de morphing de la source. */
   from: Map<string, string>;
+  /** Entrées écrites ou recopiées à l'instant (encre fraîche, P5), vidé après chaque rendu. */
+  fresh?: Set<string>;
   /** Place du bloc en cours de rendu (clé des traces « > »). */
   placeKey?: string;
   /** Collection ouverte dans la vue Collections. */
@@ -160,6 +162,12 @@ function entrySpec(e: Line, ctx: RenderCtx): RowSpec {
       // Ligne née d'une autre : ses lettres partent de la source, une fois.
       const src = ctx.from.get(key);
       if (src) t.dataset.glMorphFrom = src;
+      // Matières (P5) : un crayon gardé repasse à l'encre ; une ligne écrite ou recopiée à l'instant
+      // est encre fraîche, qui sèche. Posé une fois, à la naissance de la ligne.
+      if (!e.departedTo) {
+        if (src?.startsWith("g:")) t.dataset.glInk = String(Date.now());
+        else if (ctx.fresh?.has(e.id)) t.dataset.glWet = String(Date.now());
+      }
       return li;
     },
     update: (li) => {
@@ -216,6 +224,7 @@ function ghostSpec(s: Suggestion, day: Day): RowSpec {
       const t = el("span", "cn-text", s.text);
       t.dataset.glText = "";
       t.dataset.glMorphId = key;
+      t.dataset.glMat = "crayon";
       body.append(t, el("span", "cn-src", sourceOf(s, day)));
       const ops = el("span", "cn-gops");
       const k = el("button", "cn-gbtn cn-keep", "Garder");
@@ -604,5 +613,6 @@ export function render(root: HTMLElement, ctx: RenderCtx): Map<string, Suggestio
     collectionIndex(left, ctx);
   }
   ctx.from.clear();
+  ctx.fresh?.clear();
   return sugIndex;
 }
