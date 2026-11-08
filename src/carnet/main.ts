@@ -33,6 +33,7 @@ import { openEditor } from "./edit.ts";
 import { Pages } from "./pages.ts";
 import { Decor } from "./decor.ts";
 import { icsKey, parseIcs } from "./ics.ts";
+import { getMedia, mediaAvailable, prepare, putMedia, restoreMedia, sweep } from "./media.ts";
 import { addMonths, monthOf, render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
@@ -391,6 +392,45 @@ $("#cn-reset").addEventListener("click", () => {
 });
 $("#cn-reseed").addEventListener("click", () => void freshCore(true));
 
+/* ───── Photos : collées au jour de leur prise de vue ───── */
+$("#cn-photo").addEventListener("click", () => {
+  if (readOnly) return void toast(readOnly);
+  if (!mediaAvailable()) return void toast("Ce navigateur ne sait pas garder de photos ici.");
+  $<HTMLInputElement>("#cn-photo-file").click();
+});
+$<HTMLInputElement>("#cn-photo-file").addEventListener("change", async (ev) => {
+  const input = ev.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+  input.value = "";
+  if (!files.length) return;
+  toast(`Photos : préparation de ${files.length} fichier${files.length > 1 ? "s" : ""}…`);
+  const byDay = new Map<string, number>();
+  let approx = 0;
+  let failed = 0;
+  for (const f of files) {
+    try {
+      const p = await prepare(f);
+      const day = p.day ?? today();
+      // Fichier écrit et confirmé d'abord ; la référence ensuite (§ 3.3).
+      const sha = await putMedia(p.blob);
+      decor!.pastePhoto(`day:${day}`, sha, p.ratio, p.approx);
+      byDay.set(day, (byDay.get(day) ?? 0) + 1);
+      if (p.approx) approx++;
+    } catch (e) {
+      console.warn("[carnet] photo", f.name, e);
+      failed++;
+    }
+  }
+  const days = [...byDay.keys()].sort();
+  const where = days.map((d) => `${byDay.get(d)} au ${fLong.format(parseDay(d))}`).join(", ");
+  const n = files.length - failed;
+  const msg = [`${n} photo${n > 1 ? "s" : ""} collée${n > 1 ? "s" : ""}${where ? ` : ${where}` : ""}`];
+  if (approx) msg.push(`${approx} sans date de prise de vue (date du fichier, marquée approximative)`);
+  if (failed) msg.push(`${failed} illisible${failed > 1 ? "s" : ""}`);
+  const first = days[0];
+  toast(msg.join(" · "), first ? { label: "Voir", run: () => void openView("day", first) } : undefined);
+});
+
 /* ───── Agenda .ics : import ponctuel ───── */
 $("#cn-ics").addEventListener("click", () => $<HTMLInputElement>("#cn-ics-file").click());
 $<HTMLInputElement>("#cn-ics-file").addEventListener("change", async (ev) => {
@@ -424,7 +464,13 @@ $<HTMLInputElement>("#cn-ics-file").addEventListener("change", async (ev) => {
 $("#cn-backup").addEventListener("click", async () => {
   await store.flush().catch(() => undefined);
   await store.flushPages();
-  const { bytes, manifest } = await backup(core, await pages.all());
+  const all = await pages.all();
+  const media = new Map<string, Uint8Array>();
+  for (const p of all.values()) for (const sha of p.media()) if (!media.has(sha)) {
+    const b = await getMedia(sha);
+    if (b) media.set(sha, b);
+  }
+  const { bytes, manifest } = await backup(core, all, media);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" }));
   a.download = backupName();
@@ -441,7 +487,9 @@ $<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) =>
   try {
     // Fusion : la sauvegarde s'ajoute au carnet ouvert, rien n'est effacé.
     const before = core.all().length;
-    const { manifest, update, pages: restored } = await restore(core, new Uint8Array(await f.arrayBuffer()));
+    const { manifest, update, pages: restored, media } = await restore(core, new Uint8Array(await f.arrayBuffer()));
+    // Fichiers d'abord, références ensuite (§ 3.3).
+    if (mediaAvailable()) for (const [sha, b] of media) await restoreMedia(sha, b);
     store.append([update]);
     for (const [key, u] of restored) pages.restore(key, u);
     draw();
@@ -520,6 +568,20 @@ async function boot() {
     if (document.hidden) void store.flush();
   });
   draw();
+  // Balayage des médias, au calme : références sans fichier, fichiers sans référence (§ 3.3).
+  if (mediaAvailable()) {
+    setTimeout(async () => {
+      try {
+        const refs = new Set<string>();
+        for (const p of (await pages.all()).values()) for (const sha of p.media()) refs.add(sha);
+        const r = await sweep(refs);
+        (window as unknown as { __carnetMedia: object }).__carnetMedia = r;
+        if (r.missing.length) console.warn(`[carnet] ${r.missing.length} photo(s) référencée(s) sans fichier`);
+      } catch (e) {
+        console.warn("[carnet] balayage des médias", e);
+      }
+    }, 4000);
+  }
   (window as unknown as { __carnet: object }).__carnet = { get core() { return core; }, get store() { return store; }, ctx, get presse() { return engine; } };
 }
 

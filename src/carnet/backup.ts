@@ -4,7 +4,7 @@
  *   manifest.json   format, versions, date, empreintes SHA-256
  *   notebook.yrs    le document yrs complet (une mise à jour v1)
  *   pages/<clé>.yrs  une page graphique par bloc (autocollants, traits) — format 2
- *   (plus tard)     media/<sha256>
+ *   media/<sha256>   les photos collées, telles que stockées (format 3)
  *
  * Restaurer = appliquer le document au carnet ouvert : c'est une fusion CRDT, qui n'efface rien.
  * Pour repartir d'une sauvegarde seule, on vide le carnet d'abord.
@@ -15,7 +15,7 @@
 import type { Core, PageCore } from "./core.ts";
 
 export const FORMAT = "carnet";
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 3;
 /** Nom de fichier d'une page dans le zip (la clé contient « : »). */
 const pageFile = (key: string) => `pages/${encodeURIComponent(key)}.yrs`;
 
@@ -140,9 +140,12 @@ async function sha256(b: Uint8Array) {
 }
 
 /* ───── Sauvegarde ───── */
-export async function backup(core: Core, pages: Map<string, PageCore> = new Map(), app = "carnet-p4b"): Promise<{ bytes: Uint8Array; manifest: Manifest }> {
+export async function backup(core: Core, pages: Map<string, PageCore> = new Map(), media: Map<string, Uint8Array> = new Map(), app = "carnet-p4b"): Promise<{ bytes: Uint8Array; manifest: Manifest }> {
   const doc = core.encodeState();
-  const extra = [...pages].filter(([, p]) => !p.isEmpty()).map(([key, p]) => ({ name: pageFile(key), data: p.encodeState() }));
+  const extra = [
+    ...[...pages].filter(([, p]) => !p.isEmpty()).map(([key, p]) => ({ name: pageFile(key), data: p.encodeState() })),
+    ...[...media].map(([sha, data]) => ({ name: `media/${sha}`, data })),
+  ];
   const manifest: Manifest = {
     format: FORMAT,
     version: FORMAT_VERSION,
@@ -166,7 +169,7 @@ export async function backup(core: Core, pages: Map<string, PageCore> = new Map(
  * Rend aussi la mise à jour appliquée : l'hôte l'écrit au journal (Store.append), car elle ne vient
  * pas d'une commande locale.
  */
-export async function restore(core: Core, bytes: Uint8Array): Promise<{ manifest: Manifest; update: Uint8Array; pages: Map<string, Uint8Array> }> {
+export async function restore(core: Core, bytes: Uint8Array): Promise<{ manifest: Manifest; update: Uint8Array; pages: Map<string, Uint8Array>; media: Map<string, Uint8Array> }> {
   const files = await unzip(bytes);
   const raw = files.get("manifest.json");
   if (!raw) throw new Error("sauvegarde sans manifeste");
@@ -181,11 +184,14 @@ export async function restore(core: Core, bytes: Uint8Array): Promise<{ manifest
   const update = files.get("notebook.yrs")!;
   core.apply([update]);
   const pages = new Map<string, Uint8Array>();
+  const media = new Map<string, Uint8Array>();
   for (const name of Object.keys(m.files)) {
     const k = name.match(/^pages\/(.+)\.yrs$/);
     if (k) pages.set(decodeURIComponent(k[1]!), files.get(name)!);
+    const md = name.match(/^media\/([0-9a-f]{64})$/);
+    if (md) media.set(md[1]!, files.get(name)!);
   }
-  return { manifest: m, update, pages };
+  return { manifest: m, update, pages, media };
 }
 
 export const backupName = (d = new Date()) => {

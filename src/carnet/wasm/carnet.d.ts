@@ -100,6 +100,7 @@ export class Carnet {
 export class CarnetPage {
     free(): void;
     [Symbol.dispose](): void;
+    addPhoto(sha: string, ratio: number, approx: boolean, x: number, y: number, w: number, rot: number, scale: number): string;
     addSticker(sticker: string, tint: string, x: number, y: number, w: number, rot: number, scale: number): string;
     addStroke(tool: string, color: string, width: number, x: number, y: number, w: number, points: Float32Array | number[]): string;
     apply(updates: Array<any>): void;
@@ -107,6 +108,10 @@ export class CarnetPage {
     encodeState(): Uint8Array;
     isEmpty(): boolean;
     items(): any;
+    /**
+     * Les SHA-256 des photos référencées (corbeille comprise).
+     */
+    media(): string[];
     moveItem(id: string, x: number, y: number, w: number): void;
     constructor();
     restoreItem(id: string): void;
@@ -163,6 +168,7 @@ export interface InitOutput {
     readonly carnet_trackers: (a: number, b: number, c: number) => [number, number, number];
     readonly carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_writable: (a: number) => number;
+    readonly carnetpage_addPhoto: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
     readonly carnetpage_addSticker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
     readonly carnetpage_addStroke: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number, number];
     readonly carnetpage_apply: (a: number, b: any) => [number, number];
@@ -170,6 +176,7 @@ export interface InitOutput {
     readonly carnetpage_encodeState: (a: number) => [number, number];
     readonly carnetpage_isEmpty: (a: number) => number;
     readonly carnetpage_items: (a: number) => [number, number, number];
+    readonly carnetpage_media: (a: number) => [number, number];
     readonly carnetpage_moveItem: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly carnetpage_new: () => number;
     readonly carnetpage_restoreItem: (a: number, b: number, c: number) => [number, number];
@@ -182,6 +189,7 @@ export interface InitOutput {
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __externref_table_dealloc: (a: number) => void;
+    readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_start: () => void;
 }
 

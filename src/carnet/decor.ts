@@ -16,11 +16,14 @@
  *     ne dessine plus (paume posée) ; gomme : toucher un trait.
  */
 import { getStroke } from "perfect-freehand";
-import type { PageItem, StickerItem, StrokeItem } from "./core.ts";
+import type { PageItem, PhotoItem, StickerItem, StrokeItem } from "./core.ts";
+import { mediaUrl } from "./media.ts";
 import type { Pages } from "./pages.ts";
 import { ensureDieFilter, GROUPS, paletteStyle, SEASONS, seasonOf, stickerById, STICKERS, stickerSvg, type Season, type StickerGroup } from "./stickers.ts";
 
 const BASE = 56; // côté d'un autocollant à l'échelle 1 (px CSS)
+const PHOTO = 150; // grand côté d'une photo à l'échelle 1
+type Movable = StickerItem | PhotoItem;
 const NS = "http://www.w3.org/2000/svg";
 
 export type DecorHooks = {
@@ -149,6 +152,7 @@ export class Decor {
     for (const it of items) {
       seen.add(it.id);
       if (it.type === "sticker") this.syncSticker(layer, key, it, w);
+      else if (it.type === "photo") this.syncPhoto(layer, key, it, w);
       else this.syncStroke(ink, it, w);
     }
     for (const n of [...layer.querySelectorAll<HTMLElement>(".cn-sticker"), ...ink.querySelectorAll<SVGPathElement>("path[data-id]")]) {
@@ -157,7 +161,7 @@ export class Decor {
     // Ordre de pile : celui de la page (z).
     let z = 1;
     for (const it of items) {
-      const n = it.type === "sticker" ? layer.querySelector<HTMLElement>(`.cn-sticker[data-id="${it.id}"]`) : null;
+      const n = it.type !== "stroke" ? layer.querySelector<HTMLElement>(`.cn-sticker[data-id="${it.id}"]`) : null;
       if (n) n.style.zIndex = String(++z);
     }
   }
@@ -179,6 +183,38 @@ export class Decor {
     const size = BASE * it.scale * s;
     el.style.cssText = `${paletteStyle(it.tint)};left:${it.anchor.x * s - size / 2}px;top:${it.anchor.y * s - size / 2}px;width:${size}px;height:${size}px;transform:rotate(${it.rot}deg)`;
     el.setAttribute("aria-label", `Autocollant ${def?.name ?? ""}. Flèches pour déplacer, crochets pour tourner, plus et moins pour la taille, Suppr pour retirer.`);
+    el.classList.toggle("is-selected", this.selected?.id === it.id);
+  }
+
+  /** Une photo collée : un tirage à bord blanc, de travers, comme dans un carnet papier. */
+  private syncPhoto(layer: HTMLElement, key: string, it: PhotoItem, w: number) {
+    let el = layer.querySelector<HTMLElement>(`.cn-sticker[data-id="${it.id}"]`);
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "cn-sticker cn-photo";
+      el.dataset.id = it.id;
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      const img = document.createElement("img");
+      img.alt = "";
+      img.decoding = "async";
+      img.draggable = false;
+      el.append(img);
+      layer.append(el);
+      void mediaUrl(it.sha).then((u) => {
+        if (u) img.src = u;
+        else el!.classList.add("is-missing");
+      });
+    }
+    el.dataset.key = key;
+    const s = w / it.anchor.w;
+    const long = PHOTO * it.scale * s;
+    const pw = it.ratio >= 1 ? long : long * it.ratio;
+    const ph = it.ratio >= 1 ? long / it.ratio : long;
+    el.style.cssText = `left:${it.anchor.x * s - pw / 2}px;top:${it.anchor.y * s - ph / 2}px;width:${pw}px;height:${ph}px;transform:rotate(${it.rot}deg)`;
+    el.setAttribute("aria-label", `Photo${it.approx ? ", date approximative" : ""}. Flèches pour déplacer, crochets pour tourner, plus et moins pour la taille, Suppr pour retirer.`);
+    el.title = it.approx ? "Date approximative (pas de date de prise de vue dans le fichier)" : "";
+    el.classList.toggle("is-approx", it.approx);
     el.classList.toggle("is-selected", this.selected?.id === it.id);
   }
 
@@ -358,10 +394,26 @@ export class Decor {
     requestAnimationFrame(() => this.root.querySelector<HTMLElement>(`[data-block="${CSS.escape(key)}"] .cn-sticker[data-id="${id}"]`)?.focus({ preventScroll: true }));
   }
 
+  /**
+   * Colle une photo sur la page d'un bloc (pas forcément affiché : une photo du 5 va au 5). Position
+   * par défaut : en haut à droite, en cascade avec les photos déjà là.
+   */
+  pastePhoto(key: string, sha: string, ratio: number, approx: boolean) {
+    const block = this.root.querySelector<HTMLElement>(`[data-block="${CSS.escape(key)}"]`);
+    const w = block?.clientWidth || 540;
+    const n = this.h.pages.items(key).filter((i) => i.type === "photo").length;
+    const id = this.h.pages.mutate(key, (p) => p.addPhoto(sha, ratio, approx, w - 110 - (n % 3) * 26, 70 + (n % 4) * 22, w, Math.round((Math.random() - 0.5) * 10), 1));
+    if (block) {
+      this.refresh(key);
+      this.select(key, id);
+    }
+    return id;
+  }
+
   /* ───── Sélection, barre d'outils, clavier ───── */
 
   private stickerItem(key: string, id: string) {
-    return this.h.pages.items(key).find((i): i is StickerItem => i.type === "sticker" && i.id === id) ?? null;
+    return this.h.pages.items(key).find((i): i is Movable => i.type !== "stroke" && i.id === id) ?? null;
   }
 
   private select(key: string | null, id: string | null) {
@@ -440,7 +492,7 @@ export class Decor {
     this.h.pages.mutate(sel.key, (p) => p.deleteItem(sel.id));
     this.select(null, null);
     this.refresh(sel.key);
-    this.h.toast("Autocollant retiré", {
+    this.h.toast(this.root.querySelector(`.cn-photo[data-id="${sel.id}"]`) ? "Photo retirée" : "Autocollant retiré", {
       label: "Annuler",
       run: () => {
         this.h.pages.mutate(sel.key, (p) => p.restoreItem(sel.id));
@@ -725,7 +777,10 @@ export class Decor {
         this.h.pages.mutate(from, (p) => p.deleteItem(id));
         // Même taille à l'écran : l'échelle se rapporte à la largeur du nouveau bloc.
         const srcW = this.root.querySelector<HTMLElement>(`[data-block="${CSS.escape(from)}"]`)?.clientWidth ?? it.anchor.w;
-        const nid = this.h.pages.mutate(to, (p) => p.addSticker(it.sticker, it.tint, x, y, block.clientWidth, it.rot, (it.scale * srcW) / it.anchor.w));
+        const k = (it.scale * srcW) / it.anchor.w;
+        const nid = this.h.pages.mutate(to, (p) =>
+          it.type === "photo" ? p.addPhoto(it.sha, it.ratio, it.approx, x, y, block.clientWidth, it.rot, k) : p.addSticker(it.sticker, it.tint, x, y, block.clientWidth, it.rot, k),
+        );
         this.refresh(from);
         this.refresh(to);
         this.select(to, nid);

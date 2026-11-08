@@ -411,6 +411,29 @@ impl CarnetPage {
             .map_err(err)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    #[wasm_bindgen(js_name = addPhoto)]
+    pub fn add_photo(
+        &mut self,
+        sha: &str,
+        ratio: f64,
+        approx: bool,
+        x: f64,
+        y: f64,
+        w: f64,
+        rot: f64,
+        scale: f64,
+    ) -> Result<String, JsError> {
+        self.p
+            .add_photo(sha, ratio, approx, Anchor { x, y, w }, rot, scale)
+            .map_err(err)
+    }
+
+    /// Les SHA-256 des photos référencées (corbeille comprise).
+    pub fn media(&self) -> Vec<String> {
+        self.p.media()
+    }
+
     #[wasm_bindgen(js_name = moveItem)]
     pub fn move_item(&mut self, id: &str, x: f64, y: f64, w: f64) -> Result<(), JsError> {
         self.p.move_item(id, Anchor { x, y, w }).map_err(err)

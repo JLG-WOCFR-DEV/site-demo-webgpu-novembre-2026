@@ -675,6 +675,44 @@ export class CarnetPage {
         wasm.__wbg_carnetpage_free(ptr, 0);
     }
     /**
+     * @param {string} sha
+     * @param {number} ratio
+     * @param {boolean} approx
+     * @param {number} x
+     * @param {number} y
+     * @param {number} w
+     * @param {number} rot
+     * @param {number} scale
+     * @returns {string}
+     */
+    addPhoto(sha, ratio, approx, x, y, w, rot, scale) {
+        let deferred10_0;
+        let deferred10_1;
+        try {
+            const val2 = +ratio;
+            const val3 = +approx;
+            const val4 = +x;
+            const val5 = +y;
+            const val6 = +w;
+            const val7 = +rot;
+            const val8 = +scale;
+            const ptr0 = passStringToWasm0(sha, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.carnetpage_addPhoto(this.__wbg_ptr, ptr0, len0, val2, val3, val4, val5, val6, val7, val8);
+            var ptr9 = ret[0];
+            var len9 = ret[1];
+            if (ret[3]) {
+                ptr9 = 0; len9 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred10_0 = ptr9;
+            deferred10_1 = len9;
+            return getStringFromWasm0(ptr9, len9);
+        } finally {
+            wasm.__wbindgen_free(deferred10_0, deferred10_1, 1);
+        }
+    }
+    /**
      * @param {string} sticker
      * @param {string} tint
      * @param {number} x
@@ -809,6 +847,16 @@ export class CarnetPage {
             throw takeFromExternrefTable0(ret[1]);
         }
         return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * Les SHA-256 des photos référencées (corbeille comprise).
+     * @returns {string[]}
+     */
+    media() {
+        const ret = wasm.carnetpage_media(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]);
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * @param {string} id
@@ -1155,6 +1203,17 @@ function debugString(val) {
         // Per MDN: 'This list of values is exhaustive.'
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof#description
     }
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
 }
 
 function getArrayU8FromWasm0(ptr, len) {

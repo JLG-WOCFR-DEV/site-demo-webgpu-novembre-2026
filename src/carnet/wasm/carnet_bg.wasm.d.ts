@@ -46,6 +46,7 @@ export const carnet_toggleTracker: (a: number, b: number, c: number, d: number, 
 export const carnet_trackers: (a: number, b: number, c: number) => [number, number, number];
 export const carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
 export const carnet_writable: (a: number) => number;
+export const carnetpage_addPhoto: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
 export const carnetpage_addSticker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
 export const carnetpage_addStroke: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number, number];
 export const carnetpage_apply: (a: number, b: any) => [number, number];
@@ -53,6 +54,7 @@ export const carnetpage_deleteItem: (a: number, b: number, c: number) => [number
 export const carnetpage_encodeState: (a: number) => [number, number];
 export const carnetpage_isEmpty: (a: number) => number;
 export const carnetpage_items: (a: number) => [number, number, number];
+export const carnetpage_media: (a: number) => [number, number];
 export const carnetpage_moveItem: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
 export const carnetpage_new: () => number;
 export const carnetpage_restoreItem: (a: number, b: number, c: number) => [number, number];
@@ -65,4 +67,5 @@ export const __wbindgen_exn_store: (a: number) => void;
 export const __externref_table_alloc: () => number;
 export const __wbindgen_externrefs: WebAssembly.Table;
 export const __externref_table_dealloc: (a: number) => void;
+export const __externref_drop_slice: (a: number, b: number) => void;
 export const __wbindgen_start: () => void;

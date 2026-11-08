@@ -50,6 +50,21 @@ pub enum Item {
         created_at: f64,
         z: f64,
     },
+    /// Photo collée : le fichier vit à part (OPFS, adressé par son SHA-256), la page n'a que la référence.
+    #[serde(rename_all = "camelCase")]
+    Photo {
+        id: String,
+        sha: String,
+        /// Largeur / hauteur de l'image.
+        ratio: f64,
+        /// Date approximative (pas de date de prise de vue lisible) : on le dit.
+        approx: bool,
+        anchor: Anchor,
+        rot: f64,
+        scale: f64,
+        created_at: f64,
+        z: f64,
+    },
     #[serde(rename_all = "camelCase")]
     Stroke {
         id: String,
@@ -68,12 +83,12 @@ pub enum Item {
 impl Item {
     pub fn id(&self) -> &str {
         match self {
-            Item::Sticker { id, .. } | Item::Stroke { id, .. } => id,
+            Item::Sticker { id, .. } | Item::Photo { id, .. } | Item::Stroke { id, .. } => id,
         }
     }
     fn z(&self) -> f64 {
         match self {
-            Item::Sticker { z, .. } | Item::Stroke { z, .. } => *z,
+            Item::Sticker { z, .. } | Item::Photo { z, .. } | Item::Stroke { z, .. } => *z,
         }
     }
 }
@@ -116,6 +131,17 @@ fn read_item<T: ReadTxn>(id: &str, m: &MapRef, t: &T) -> Option<Item> {
             id: id.to_string(),
             sticker: text(m, t, "sticker")?,
             tint: text(m, t, "tint").unwrap_or_default(),
+            anchor,
+            rot: num(m, t, "rot").unwrap_or(0.0),
+            scale: num(m, t, "scale").unwrap_or(1.0),
+            created_at,
+            z,
+        }),
+        "photo" => Some(Item::Photo {
+            id: id.to_string(),
+            sha: text(m, t, "sha")?,
+            ratio: num(m, t, "ratio").filter(|r| *r > 0.0).unwrap_or(1.0),
+            approx: matches!(m.get(t, "approx"), Some(Out::Any(Any::Bool(true)))),
             anchor,
             rot: num(m, t, "rot").unwrap_or(0.0),
             scale: num(m, t, "scale").unwrap_or(1.0),
@@ -288,6 +314,60 @@ impl Page {
             Ok(())
         })?;
         Ok(id)
+    }
+
+    /// Colle une photo (déjà écrite et confirmée dans le stockage des médias : règle § 3.3).
+    pub fn add_photo(
+        &mut self,
+        sha: &str,
+        ratio: f64,
+        approx: bool,
+        at: Anchor,
+        rot: f64,
+        scale: f64,
+    ) -> Result<String, Error> {
+        check_anchor(&at)?;
+        if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(Error::Invalid("référence de photo invalide".into()));
+        }
+        if !(ratio.is_finite() && ratio > 0.0) {
+            return Err(Error::Invalid("proportions de photo invalides".into()));
+        }
+        let (id, now) = self.new_id();
+        let (id2, sha) = (id.clone(), sha.to_ascii_lowercase());
+        self.write(move |txn, items| {
+            let z = Self::next_z(items, txn);
+            let m = items.insert(txn, id2.as_str(), MapPrelim::default());
+            m.insert(txn, "type", "photo");
+            m.insert(txn, "sha", sha);
+            m.insert(txn, "ratio", ratio);
+            if approx {
+                m.insert(txn, "approx", true);
+            }
+            m.insert(txn, "x", at.x);
+            m.insert(txn, "y", at.y);
+            m.insert(txn, "w", at.w);
+            m.insert(txn, "rot", rot);
+            m.insert(txn, "scale", scale.clamp(0.25, 4.0));
+            m.insert(txn, "createdAt", now);
+            m.insert(txn, "z", z);
+            Ok(())
+        })?;
+        Ok(id)
+    }
+
+    /// Les photos référencées par cette page (balayage des médias).
+    pub fn media(&self) -> Vec<String> {
+        let t = self.doc.transact();
+        self.items
+            .iter(&t)
+            .filter_map(|(_, v)| match v {
+                Out::YMap(m) if text(&m, &t, "type").as_deref() == Some("photo") => {
+                    text(&m, &t, "sha")
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     /// Pose un trait (points x, y, pression à plat, relatifs à l'ancre).

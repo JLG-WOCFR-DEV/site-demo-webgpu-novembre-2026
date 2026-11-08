@@ -121,7 +121,8 @@ export const collectionPlace = (id: string): Place => ({ scope: `collection:${id
 export type Anchor = { x: number; y: number; w: number };
 export type StickerItem = { type: "sticker"; id: string; sticker: string; tint: string; anchor: Anchor; rot: number; scale: number; createdAt: number; z: number };
 export type StrokeItem = { type: "stroke"; id: string; tool: string; color: string; width: number; anchor: Anchor; points: number[]; createdAt: number; z: number };
-export type PageItem = StickerItem | StrokeItem;
+export type PhotoItem = { type: "photo"; id: string; sha: string; ratio: number; approx: boolean; anchor: Anchor; rot: number; scale: number; createdAt: number; z: number };
+export type PageItem = StickerItem | StrokeItem | PhotoItem;
 
 export interface PageCore {
   apply(updates: Uint8Array[]): void;
@@ -130,6 +131,8 @@ export interface PageCore {
   isEmpty(): boolean;
   addSticker(sticker: string, tint: string, x: number, y: number, w: number, rot: number, scale: number): string;
   addStroke(tool: string, color: string, width: number, x: number, y: number, w: number, points: Float32Array): string;
+  addPhoto(sha: string, ratio: number, approx: boolean, x: number, y: number, w: number, rot: number, scale: number): string;
+  media(): string[];
   moveItem(id: string, x: number, y: number, w: number): void;
   transform(id: string, rot: number, scale: number): void;
   deleteItem(id: string): void;

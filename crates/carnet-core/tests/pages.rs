@@ -164,3 +164,31 @@ proptest! {
         prop_assert_eq!(reps[1].items(), reps[2].items());
     }
 }
+
+#[test]
+fn photos_reference_media() {
+    let c = clock(1_700_000_000_000.0);
+    let mut p = page(1, &c);
+    let sha = "a".repeat(64);
+    let id = p
+        .add_photo(&sha, 1.5, true, at(120.0, 80.0), -3.0, 1.0)
+        .unwrap();
+    assert!(p
+        .add_photo("pas-un-sha", 1.0, false, at(0.0, 0.0), 0.0, 1.0)
+        .is_err());
+    assert!(p
+        .add_photo(&sha, 0.0, false, at(0.0, 0.0), 0.0, 1.0)
+        .is_err());
+    match &p.items()[0] {
+        Item::Photo {
+            sha: s,
+            ratio,
+            approx,
+            ..
+        } => assert_eq!((s.as_str(), *ratio, *approx), (sha.as_str(), 1.5, true)),
+        _ => panic!("photo attendue"),
+    }
+    // Les références restent connues même à la corbeille : la corbeille se restaure, le fichier doit rester.
+    p.delete_item(&id).unwrap();
+    assert_eq!(p.media(), vec![sha]);
+}
