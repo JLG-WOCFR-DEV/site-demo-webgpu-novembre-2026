@@ -2,7 +2,7 @@
  * Carnet — ce que la coquille web garde en TypeScript : dates locales, saisie rapide, carnet
  * d'exemple. Le modèle lui-même (entrées, migrations, suggestions, vues) vit dans carnet-core.
  */
-import { dayPlace, weekPlace, type Core, type Day, type Kind } from "./core.ts";
+import { collectionPlace, dayPlace, weekPlace, type Core, type Day, type Kind } from "./core.ts";
 
 export type { Day, Kind };
 export type Mark = "priority" | "idea";
@@ -104,4 +104,12 @@ export function seed(core: Core) {
   core.add(weekPlace(weekStart(now)), { kind: "note", text: "Garder le jeudi soir libre" });
   // Un rendez-vous noté sur la page du mois : il revient au crayon le jour dit (« prévu ce mois »).
   core.add({ scope: `month:${now.slice(0, 7)}`, day: now }, { kind: "event", text: "Dentiste", time: "14:00" });
+  core.add({ scope: `month:${now.slice(0, 7)}`, day: null }, { kind: "task", text: "Renouveler l’assurance habitation", priority: true });
+  // Deux collections : ce qui ne dépend pas d'un jour.
+  const films = core.createCollection("Films et séries à voir");
+  core.add(collectionPlace(films), { kind: "task", text: "Past Lives" });
+  core.add(collectionPlace(films), { kind: "task", text: "Slow Horses, saison 4" });
+  const recettes = core.createCollection("Recettes à essayer");
+  core.add(collectionPlace(recettes), { kind: "task", text: "Tarte fine aux poireaux" });
+  core.add(collectionPlace(recettes), { kind: "note", text: "Pain au levain : 75 % d’hydratation" });
 }

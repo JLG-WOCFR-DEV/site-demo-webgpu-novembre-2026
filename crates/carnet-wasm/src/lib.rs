@@ -210,6 +210,38 @@ impl Carnet {
         to_js(&self.nb.import_v0(json).map_err(err)?)
     }
 
+    /* ───── Collections ───── */
+
+    #[wasm_bindgen(js_name = createCollection)]
+    pub fn create_collection(&mut self, name: &str) -> Result<String, JsError> {
+        self.nb.create_collection(name).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = renameCollection)]
+    pub fn rename_collection(&mut self, id: &str, name: &str) -> Result<(), JsError> {
+        self.nb.rename_collection(id, name).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = deleteCollection)]
+    pub fn delete_collection(&mut self, id: &str) -> Result<(), JsError> {
+        self.nb.delete_collection(id).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = restoreCollection)]
+    pub fn restore_collection(&mut self, id: &str) -> Result<(), JsError> {
+        self.nb.restore_collection(id).map_err(err)
+    }
+
+    pub fn collections(&self) -> Result<JsValue, JsError> {
+        to_js(&self.nb.collections())
+    }
+
+    /// `null` si la collection n'existe pas (ou est à la corbeille).
+    #[wasm_bindgen(js_name = collectionView)]
+    pub fn collection_view(&self, id: &str) -> Result<JsValue, JsError> {
+        to_js(&self.nb.collection_view(id))
+    }
+
     /* ───── Vues ───── */
 
     #[wasm_bindgen(js_name = weekView)]

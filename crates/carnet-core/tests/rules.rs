@@ -484,3 +484,58 @@ fn newer_schema_is_read_only() {
         .iter()
         .any(|v| !v.lines.is_empty()));
 }
+
+#[test]
+fn collections_hold_entries_that_migrate() {
+    let c = clock(1_700_000_000_000.0);
+    let mut a = notebook(1, &c);
+    let books = a.create_collection("  Livres à lire  ").unwrap();
+    let films = a.create_collection("Films et séries").unwrap();
+    assert!(a.create_collection("   ").is_err());
+    let here = Place {
+        scope: Scope::Collection(books.clone()),
+        day: None,
+    };
+    let t1 = a.add(here.clone(), task("Le Bleu du ciel")).unwrap();
+    a.add(here.clone(), task("Les Années")).unwrap();
+    let t3 = a.add(here.clone(), task("Middlemarch")).unwrap();
+    a.set_state(&t3, State::Done).unwrap();
+    let cols = a.collections();
+    assert_eq!(
+        cols.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(),
+        ["Livres à lire", "Films et séries"]
+    );
+    assert_eq!((cols[0].count, cols[0].open), (3, 2));
+
+    // Une tâche de collection part dans la journée : même entrée, trace « > » dans la collection.
+    a.migrate(&t1, Place::day(d("2026-11-08"))).unwrap();
+    let v = a.collection_view(&books).unwrap();
+    assert_eq!(v.lines.len(), 2);
+    assert_eq!(
+        v.lines.last().unwrap().entry.id,
+        t3,
+        "les tâches faites passent après les ouvertes"
+    );
+    assert_eq!(v.departed.len(), 1);
+    assert_eq!(v.departed[0].entry.id, t1);
+    assert!(a
+        .day_view(d("2026-11-08"), d("2026-11-08"), 3)
+        .lines
+        .iter()
+        .any(|l| l.entry.id == t1));
+
+    // Renommer en même temps sur deux appareils : un seul nom gagne, partout.
+    let mut b = notebook(2, &c);
+    b.apply_update(&a.encode_state()).unwrap();
+    a.rename_collection(&films, "Films").unwrap();
+    b.rename_collection(&films, "Séries").unwrap();
+    sync(&mut a, &mut b);
+    assert_eq!(a.collections(), b.collections());
+
+    // Corbeille et retour.
+    a.delete_collection(&books).unwrap();
+    assert!(a.collection_view(&books).is_none());
+    assert_eq!(a.collections().len(), 1);
+    a.restore_collection(&books).unwrap();
+    assert_eq!(a.collection_view(&books).unwrap().lines.len(), 2);
+}

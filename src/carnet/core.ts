@@ -44,6 +44,8 @@ export type DayView = { day: Day; lines: Line[]; departed: Line[]; suggestions: 
 export type WeekView = { monday: Day; days: DayView[]; notes: Line[]; departedNotes: Line[] };
 export type CalendarDay = { day: Day; count: number; headline: string | null };
 export type MonthView = { month: string; calendar: CalendarDay[]; lines: Line[]; departed: Line[]; suggestions: Suggestion[] };
+export type Collection = { id: string; name: string; createdAt: number; count: number; open: number };
+export type CollectionView = { collection: Collection; lines: Line[]; departed: Line[] };
 export type NewEntry = { kind?: Kind; text: string; time?: string | null; priority?: boolean; idea?: boolean };
 export type ImportReport = { imported: number; merged_copies: number; skipped: number };
 
@@ -75,6 +77,12 @@ export interface Core {
   get(id: string): Entry | null;
   all(): Entry[];
   isDismissed(key: string): boolean;
+  createCollection(name: string): string;
+  renameCollection(id: string, name: string): void;
+  deleteCollection(id: string): void;
+  restoreCollection(id: string): void;
+  collections(): Collection[];
+  collectionView(id: string): CollectionView | null;
   /** Schéma qui a écrit ce carnet (0 : jamais marqué) et schéma que ce module sait écrire. */
   schema(): number;
   supportedSchema(): number;
@@ -98,3 +106,6 @@ export async function createCore(wasm?: BufferSource | URL): Promise<Core> {
 
 export const dayPlace = (day: Day): Place => ({ scope: "day", day });
 export const weekPlace = (monday: Day): Place => ({ scope: `week:${monday}`, day: null });
+/** Page du mois ; avec un jour, un rendez-vous daté noté sur cette page. */
+export const monthPlace = (month: string, day: Day | null = null): Place => ({ scope: `month:${month}`, day });
+export const collectionPlace = (id: string): Place => ({ scope: `collection:${id}`, day: null });

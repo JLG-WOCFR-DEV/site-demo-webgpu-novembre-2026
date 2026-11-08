@@ -24,12 +24,13 @@ import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
 import { registerPwa } from "./pwa.ts";
 import { presse } from "../presse/lib.ts";
-import { createCore, dayPlace, weekPlace, type Core, type Suggestion } from "./core.ts";
-import { addDays, isSample, migrationTarget, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
+import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core, type Place, type Suggestion } from "./core.ts";
+import { moveChoices, openMoveMenu } from "./move.ts";
+import { addDays, isSample, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
 import { Store, type SaveState } from "./store.ts";
 import { backup, backupName, restore } from "./backup.ts";
 import { openEditor } from "./edit.ts";
-import { render, titleFor, type RenderCtx, type View } from "./view.ts";
+import { addMonths, monthOf, render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
@@ -51,8 +52,11 @@ function draw() {
   sugIndex = render(spread, ctx);
   title.textContent = titleFor(ctx.view, ctx.cur);
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === ctx.view));
-  $("#prev").setAttribute("aria-label", ctx.view === "week" ? "Semaine précédente" : "Jour précédent");
-  $("#next").setAttribute("aria-label", ctx.view === "week" ? "Semaine suivante" : "Jour suivant");
+  const unit = { week: ["Semaine précédente", "Semaine suivante"], day: ["Jour précédent", "Jour suivant"], month: ["Mois précédent", "Mois suivant"], collections: ["", ""] }[ctx.view];
+  $("#prev").setAttribute("aria-label", unit[0]!);
+  $("#next").setAttribute("aria-label", unit[1]!);
+  // Les collections ne se feuillettent pas dans le temps.
+  for (const id of ["#prev", "#next", "#today"]) $(id).hidden = ctx.view === "collections";
   $("#cn-sample").hidden = !isSample();
 }
 
@@ -132,9 +136,31 @@ spread.addEventListener("submit", (ev) => {
   if (!f.classList.contains("cn-form")) return;
   ev.preventDefault();
   const input = f.querySelector("input")!;
-  const p = parseLine(input.value);
+  if (f.dataset.newcol !== undefined) {
+    // Nouvelle collection : elle s'ouvre aussitôt, prête à recevoir ses lignes.
+    const name = input.value.trim();
+    if (!name) return;
+    const id = act(() => core.createCollection(name));
+    if (id === undefined) return;
+    input.value = "";
+    ctx.col = id;
+    draw();
+    focusById("in-col");
+    return;
+  }
+  let raw = input.value;
+  let place: Place;
+  if (f.dataset.month) {
+    // Page du mois : « 12 o 14:00 dentiste » note un rendez-vous daté du 12.
+    const m = raw.match(/^\s*(\d{1,2})(?:\s+|$)/);
+    const n = m ? Number(m[1]) : 0;
+    const last = new Date(Number(f.dataset.month.slice(0, 4)), Number(f.dataset.month.slice(5)), 0).getDate();
+    if (m && n >= 1 && n <= last) raw = raw.slice(m[0].length);
+    place = monthPlace(f.dataset.month, m && n >= 1 && n <= last ? `${f.dataset.month}-${String(n).padStart(2, "0")}` : null);
+  } else if (f.dataset.col) place = collectionPlace(f.dataset.col);
+  else place = f.dataset.day ? dayPlace(f.dataset.day) : weekPlace(f.dataset.week!);
+  const p = parseLine(raw);
   if (!p.text) return;
-  const place = f.dataset.day ? dayPlace(f.dataset.day) : weekPlace(f.dataset.week!);
   const id = act(() => core.add(place, { kind: p.kind, text: p.text, time: p.time || null, priority: p.marks.includes("priority"), idea: p.marks.includes("idea") }));
   if (id === undefined) return;
   input.value = "";
@@ -159,6 +185,20 @@ function focusNextGhost() {
 
 spread.addEventListener("click", (ev) => {
   const t = ev.target as HTMLElement;
+  const col = t.closest<HTMLElement>("[data-col]");
+  if (col && col.tagName === "BUTTON") {
+    ctx.col = col.dataset.col!;
+    draw();
+    return;
+  }
+  const del = t.closest<HTMLElement>("[data-coldel]");
+  if (del) {
+    const id = del.dataset.coldel!;
+    const name = core.collectionView(id)?.collection.name ?? "";
+    act(() => core.deleteCollection(id));
+    toast(`Collection « ${name} » mise à la corbeille`, { label: "Annuler", run: () => act(() => core.restoreCollection(id)) });
+    return;
+  }
   const open = t.closest<HTMLElement>("[data-open]");
   if (open) {
     void openView(open.dataset.open === "week" ? "week" : "day", open.dataset.open === "week" ? ctx.cur : open.dataset.open!);
@@ -179,12 +219,8 @@ spread.addEventListener("click", (ev) => {
   if (a.dataset.act === "cycle" && e.kind === "task") {
     act(() => core.cycleState(id));
   } else if (a.dataset.act === "migrate") {
-    const target = migrationTarget(e.place.day, ctx.now);
-    // Même entrée, nouvelle place : ses lettres voyagent ; la place quittée garde la trace « > ».
-    ctx.from.set(`e:${id}`, `e:${id}`);
-    act(() => core.migrate(id, dayPlace(target)));
-    const visible = ctx.view === "week" ? weekStart(target) === weekStart(ctx.cur) : target === ctx.cur;
-    if (!visible) toast(`Migrée au ${fLong.format(parseDay(target))}`);
+    // Déplacer vers… : un menu plutôt qu'un glisser-déposer (clavier, TalkBack, doigt).
+    openMoveMenu(a, moveChoices(e.place, ctx.now, core.collections()), (to) => moveEntry(id, to));
   } else if (a.dataset.act === "delete") {
     act(() => core.delete(id));
     toast("Entrée mise à la corbeille", { label: "Annuler", run: () => act(() => core.restore(id)) });
@@ -241,6 +277,35 @@ spread.addEventListener("click", (ev) => {
   if (t) startEdit(t);
 });
 
+/** Migration : même entrée, nouvelle place ; ses lettres voyagent, la place quittée garde « > ». */
+function moveEntry(id: string, to: Place) {
+  ctx.from.set(`e:${id}`, `e:${id}`);
+  let moved = false;
+  act(() => {
+    core.migrate(id, to);
+    moved = true;
+  });
+  if (!moved) return;
+  const visible =
+    to.scope === "day" && to.day
+      ? ctx.view === "week"
+        ? weekStart(to.day) === weekStart(ctx.cur)
+        : ctx.view === "day" && to.day === ctx.cur
+      : (ctx.view === "month" && to.scope === `month:${monthOf(ctx.cur)}`) || (ctx.view === "collections" && to.scope === `collection:${ctx.col}`);
+  if (visible) return;
+  const where = to.day ? `au ${fLong.format(parseDay(to.day))}` : to.scope.startsWith("month:") ? "sur la page du mois prochain" : `dans « ${core.collectionView(to.scope.slice(11))?.collection.name ?? "la collection"} »`;
+  toast(`Déplacée ${where}`);
+}
+
+// Renommer une collection : le titre est un champ ; l'écriture part à la validation.
+spread.addEventListener("change", (ev) => {
+  const t = ev.target as HTMLInputElement;
+  if (t.id !== "in-colname" || !t.dataset.col) return;
+  const v = t.value.trim();
+  if (!v) return void draw();
+  act(() => core.renameCollection(t.dataset.col!, v));
+});
+
 /* ───── Navigation ───── */
 async function openView(view: View, cur: Day) {
   if (view === ctx.view && cur === ctx.cur) return;
@@ -262,7 +327,9 @@ async function openView(view: View, cur: Day) {
 }
 
 function step(n: number) {
-  void openView(ctx.view, ctx.view === "week" ? addDays(ctx.cur, 7 * n) : addDays(ctx.cur, n));
+  if (ctx.view === "collections") return;
+  const cur = ctx.view === "week" ? addDays(ctx.cur, 7 * n) : ctx.view === "month" ? `${addMonths(monthOf(ctx.cur), n)}-01` : addDays(ctx.cur, n);
+  void openView(ctx.view, cur);
 }
 $("#prev").addEventListener("click", () => step(-1));
 $("#next").addEventListener("click", () => step(1));
@@ -333,7 +400,7 @@ async function boot() {
     onVersionChange: () => setReadOnly("Carnet a été mis à jour dans un autre onglet. Recharge la page pour continuer à écrire."),
   });
   store = opened.store;
-  ctx = { core, view: "week", cur: today(), now: today(), from: new Map() };
+  ctx = { core, view: "week", cur: today(), now: today(), from: new Map(), col: null };
   if (opened.empty) {
     let v0: string | null = null;
     try {

@@ -28,7 +28,7 @@ d'adaptation de 1 500 lignes bien délimitée vaut mieux que 500 lignes qui mêl
 | D6 | **Desktop : Rune**, candidat à prototyper, révision figée | Le hook `Compositor` donne device, queue, encodeur et cible : on peut y jouer les passes de `presse-rs`, compute compris | GPUI + GPUI Kit (pas de passes GPU d'application documentées) ; NSH : ses shaders lisent le contenu et l'arrière-plan des vues (`sample_content`, `sample_backdrop`, `sample_from`, `sample_to`, v0.4.0) mais rien ne montre qu'il accueille un pipeline compute arbitraire |
 | D7 | Effets en **WGSL**, contrat versionné (§ 3.5) | Écrits une fois, joués par Presse TS, `presse-rs` et Rune | Three.js + TSL (second moteur) |
 | D8 | Rendu **à la demande** ; on mesure aussi les réveils CPU, capteurs et tâches de fond | Application ouverte toute la journée sur un téléphone | Boucle permanente |
-| D9 | Vues sans React pour l'instant | Une pile de moins. L'argument « contrôler l'identité des éléments » ne suffit pas : React conserve les éléments par type, position et clé. **À comparer en P4a** sur nos transitions (migration, vol, encre) avant de figer | — |
+| D9 | **Vues maison** (tranché en P4a, sans prototype React) | React n'est pas bloqué techniquement : il garde les éléments par clé comme `syncList`, et nos attributs posés une fois (`data-gl-morph-from`) se traduisent en props. Ce qui décide : le core rend déjà des modèles de vue complets à chaque rendu (une seconde gestion d'état serait redondante) ; le coût du rendu est dans le core (3 à 4 ms la semaine), pas dans le DOM ; le champ d'édition et sa composition ne doivent jamais être touchés par un nouveau rendu (en React : champ non contrôlé, donc sans le bénéfice) ; 45 Ko compressés de moins. **À rouvrir** si les écrans de formulaires se multiplient (réglages, choix d'autocollants en P4b) | React (pour l'instant) |
 
 ## 2. État actuel (P0, fait)
 
@@ -336,6 +336,18 @@ temps par image mesurés sur le téléphone de P1 ; **réestimation de P3b**.
 | P6 — Synchro | Spec § 3.7 relue (1 sem.), puis implémentation | 5 à 7 sem. | P4b, modèle économique tranché |
 | P7 — Desktop Rune | Prototype d'intégration (1 sem.), puis application | 5 sem. | P5, P6 |
 | S1 — Spike saisie Rust Android | winit + `android-activity` (état texte, sélection, composition) + wgpu + parley ; recette de P1 | 1 sem. | — (quand un créneau se libère) |
+
+#### P4a — avancement
+
+- [x] Mois en double page : calendrier (un jour par ligne, la ligne la plus importante du jour, + le reste) et page libre
+      du mois (« 12 o 14:00 dentiste » note un rendez-vous daté ; tâches et notes sans date), migration mensuelle au crayon
+- [x] Migrations avec `trail` partout (jour, semaine, mois, collections) ; **« Déplacer vers… »** au lieu du glisser-déposer :
+      aujourd'hui, demain, lundi prochain, mois prochain, une collection, un jour au calendrier du système ; clavier
+      (flèches, Échap), cibles de 44 px au doigt, `role="menu"`
+- [x] Collections (core : `meta.collections`, corbeille et retour ; coquille : index + page, renommer, créer depuis l'index) ;
+      exemples : films et séries, recettes
+- [x] D9 tranché (vues maison)
+- [ ] Recette TalkBack et clavier sur le téléphone pour ces écrans
 
 **Sortie P4b (MVP)** : **30 jours d'usage réel** sur Android, aucune perte de données, restauration testée chaque semaine,
 recette TalkBack et clavier verte.

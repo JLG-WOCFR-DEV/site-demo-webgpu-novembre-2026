@@ -20,10 +20,17 @@ export class Carnet {
      */
     apply(updates: Array<any>): void;
     /**
+     * `null` si la collection n'existe pas (ou est à la corbeille).
+     */
+    collectionView(id: string): any;
+    collections(): any;
+    createCollection(name: string): string;
+    /**
      * Ouverte → faite → annulée → ouverte. Rend le nouvel état.
      */
     cycleState(id: string): any;
     dayView(d: string, today: string, limit: number): any;
+    deleteCollection(id: string): void;
     delete(id: string): void;
     diff(state_vector: Uint8Array | number[]): Uint8Array;
     dismiss(key: string): void;
@@ -52,6 +59,8 @@ export class Carnet {
      * Vide la corbeille des entrées de plus de 30 jours. Rend leur nombre.
      */
     purge(): number;
+    renameCollection(id: string, name: string): void;
+    restoreCollection(id: string): void;
     restore(id: string): void;
     /**
      * Schéma qui a écrit ce carnet, et celui que ce module sait écrire.
@@ -87,9 +96,13 @@ export interface InitOutput {
     readonly carnet_add: (a: number, b: any, c: any) => [number, number, number, number];
     readonly carnet_all: (a: number) => [number, number, number];
     readonly carnet_apply: (a: number, b: any) => [number, number];
+    readonly carnet_collectionView: (a: number, b: number, c: number) => [number, number, number];
+    readonly carnet_collections: (a: number) => [number, number, number];
+    readonly carnet_createCollection: (a: number, b: number, c: number) => [number, number, number, number];
     readonly carnet_cycleState: (a: number, b: number, c: number) => [number, number, number];
     readonly carnet_dayView: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number];
     readonly carnet_delete: (a: number, b: number, c: number) => [number, number];
+    readonly carnet_deleteCollection: (a: number, b: number, c: number) => [number, number];
     readonly carnet_diff: (a: number, b: number, c: number) => [number, number, number, number];
     readonly carnet_dismiss: (a: number, b: number, c: number) => [number, number];
     readonly carnet_encodeState: (a: number) => [number, number];
@@ -102,7 +115,9 @@ export interface InitOutput {
     readonly carnet_monthView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_new: () => number;
     readonly carnet_purge: (a: number) => [number, number, number];
+    readonly carnet_renameCollection: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_restore: (a: number, b: number, c: number) => [number, number];
+    readonly carnet_restoreCollection: (a: number, b: number, c: number) => [number, number];
     readonly carnet_schema: (a: number) => number;
     readonly carnet_setMarks: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setState: (a: number, b: number, c: number, d: number, e: number) => [number, number];

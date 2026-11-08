@@ -15,10 +15,10 @@
  * suggestion gardée, vol entre les vues) reçoit une fois data-gl-morph-from :
  * ses lettres partent de la source.
  */
-import type { Core, DayView, Line, Suggestion } from "./core.ts";
+import type { CollectionView, Core, DayView, Line, MonthView, Suggestion } from "./core.ts";
 import { addDays, isoWeek, parseDay, weekStart, type Day } from "./model.ts";
 
-export type View = "week" | "day";
+export type View = "week" | "day" | "month" | "collections";
 export type RenderCtx = {
   core: Core;
   view: View;
@@ -28,6 +28,10 @@ export type RenderCtx = {
   from: Map<string, string>;
   /** Place du bloc en cours de rendu (clé des traces « > »). */
   placeKey?: string;
+  /** Collection ouverte dans la vue Collections. */
+  col: string | null;
+  /** Page du mois : la colonne d'heure porte aussi le jour du rendez-vous. */
+  dated?: boolean;
 };
 
 const fWeek = new Intl.DateTimeFormat("fr-FR", { weekday: "long" });
@@ -52,7 +56,18 @@ export function weekRange(ws: Day) {
   const b = parseDay(addDays(ws, 6));
   return a.getMonth() === b.getMonth() ? `${a.getDate()} – ${fLong.format(b)}` : `${fShort.format(a)} – ${fShort.format(b)}`;
 }
+const fMonth = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
+const fWeekShort = new Intl.DateTimeFormat("fr-FR", { weekday: "narrow" });
+export const monthOf = (d: Day) => d.slice(0, 7);
+export function addMonths(m: string, n: number) {
+  const [y, mo] = m.split("-").map(Number);
+  const d = new Date(y!, mo! - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function titleFor(view: View, cur: Day) {
+  if (view === "month") return cap(fMonth.format(parseDay(`${monthOf(cur)}-01`)));
+  if (view === "collections") return "Collections";
   if (view === "day") return cap(`${fWeek.format(parseDay(cur))} ${fLong.format(parseDay(cur))}`);
   return `Semaine ${isoWeek(cur)} · ${weekRange(weekStart(cur))}`;
 }
@@ -98,6 +113,8 @@ function strike(id: string) {
 function entrySpec(e: Line, ctx: RenderCtx): RowSpec {
   // Une trace « > » est une autre ligne que l'entrée vivante : sa propre clé, son propre morphing.
   const key = e.departedTo ? `d:${e.id}:${ctx.placeKey}` : `e:${e.id}`;
+  // Lu maintenant : la mise à jour de la ligne se fait plus tard, quand ctx a changé de bloc.
+  const dated = !!ctx.dated;
   return {
     key,
     make: () => {
@@ -152,7 +169,7 @@ function entrySpec(e: Line, ctx: RenderCtx): RowSpec {
         "aria-label",
         e.departedTo ? `Tâche migrée vers ${placeLabel(e.departedTo.day)}` : e.kind === "task" ? `Tâche ${STATE_LABEL[e.state]}, changer l’état` : e.kind === "event" ? "Événement" : "Note",
       );
-      time!.textContent = e.time ?? "";
+      time!.textContent = dated && e.place.day ? `${Number(e.place.day.slice(8))}${e.time ? ` · ${e.time}` : ""}` : (e.time ?? "");
       const t = body!.firstElementChild as HTMLElement;
       // Pendant l'édition, le champ fait foi : le texte imprimé se met à jour à la fermeture.
       if (!t.hidden && t.firstChild?.textContent !== e.text) {
@@ -282,31 +299,205 @@ function notesBlock(host: HTMLElement, ws: Day, notes: Line[], ctx: RenderCtx) {
   syncList(sec.querySelector("ol")!, notes.map((e) => entrySpec(e, ctx)));
 }
 
+/* ───── Mois : calendrier à gauche, page libre à droite ───── */
+function monthCalendar(host: HTMLElement, mv: MonthView, ctx: RenderCtx) {
+  let sec = host.querySelector<HTMLElement>(":scope > .cn-cal");
+  if (!sec) {
+    sec = el("section", "cn-day cn-cal");
+    const head = el("div", "cn-dhead");
+    head.append(el("span", "cn-label", "Calendrier"));
+    const ol = el("ol", "cn-log cn-cal-log");
+    sec.append(head, ol);
+    host.append(sec);
+  }
+  const specs: RowSpec[] = mv.calendar.map((c) => ({
+    key: `c:${c.day}`,
+    make: () => {
+      const li = el("li", "cn-cal-row");
+      const b = el("button", "cn-cal-day");
+      b.type = "button";
+      b.dataset.open = c.day;
+      const wd = el("span", "cn-cal-wd");
+      const n = el("b");
+      b.append(wd, n);
+      const t = el("span", "cn-cal-text");
+      t.dataset.glText = "";
+      t.dataset.glMorphId = `c:${c.day}`;
+      const count = el("span", "cn-cal-count");
+      li.append(b, t, count);
+      return li;
+    },
+    update: (li) => {
+      const d = parseDay(c.day);
+      const [b, t, count] = [...li.children] as HTMLElement[];
+      li.classList.toggle("is-today", c.day === ctx.now);
+      li.classList.toggle("is-weekend", d.getDay() === 0 || d.getDay() === 6);
+      b!.firstElementChild!.textContent = fWeekShort.format(d);
+      b!.lastElementChild!.textContent = String(d.getDate());
+      b!.setAttribute("aria-label", `Ouvrir le ${fWeek.format(d)} ${fLong.format(d)}${c.count ? `, ${c.count} entrée${c.count > 1 ? "s" : ""}` : ""}`);
+      if (t!.textContent !== (c.headline ?? "")) t!.textContent = c.headline ?? "";
+      count!.textContent = c.count > 1 ? `+${c.count - 1}` : "";
+    },
+  }));
+  syncList(sec.querySelector("ol")!, specs);
+}
+
+function monthPage(host: HTMLElement, mv: MonthView, ctx: RenderCtx, sugIndex: Map<string, Suggestion>) {
+  let sec = host.querySelector<HTMLElement>(":scope > .cn-mpage");
+  if (!sec) {
+    sec = el("section", "cn-day cn-mpage is-big");
+    const head = el("div", "cn-dhead");
+    head.append(el("span", "cn-label", "Page du mois"));
+    const ol = el("ol", "cn-log");
+    const f = el("form", "cn-form");
+    f.autocomplete = "off";
+    const p = el("span", "cn-prompt", "›");
+    p.setAttribute("aria-hidden", "true");
+    const i = el("input");
+    i.type = "text";
+    i.id = "in-month";
+    i.placeholder = "« 12 o 14:00 dentiste » · « . payer l’assurance »";
+    i.setAttribute("aria-label", "Nouvelle entrée du mois ; un jour en tête la date");
+    f.append(p, i);
+    sec.append(head, ol, f);
+    host.append(sec);
+  }
+  sec.querySelector<HTMLFormElement>("form")!.dataset.month = mv.month;
+  for (const s of mv.suggestions) sugIndex.set(s.key, s);
+  ctx.placeKey = `month:${mv.month}`;
+  ctx.dated = true;
+  const specs = [...mv.suggestions.map((s) => ghostSpec(s, ctx.now)), ...[...mv.departed, ...mv.lines].map((e) => entrySpec(e, ctx))];
+  ctx.dated = false;
+  syncList(sec.querySelector("ol")!, specs);
+}
+
+/* ───── Collections : l'index à gauche, la collection ouverte à droite ───── */
+function collectionIndex(host: HTMLElement, ctx: RenderCtx) {
+  let sec = host.querySelector<HTMLElement>(":scope > .cn-colidx");
+  if (!sec) {
+    sec = el("section", "cn-day cn-colidx is-big");
+    const head = el("div", "cn-dhead");
+    head.append(el("span", "cn-label", "Index"));
+    const ol = el("ol", "cn-log");
+    const f = el("form", "cn-form");
+    f.autocomplete = "off";
+    f.dataset.newcol = "";
+    const p = el("span", "cn-prompt", "+");
+    p.setAttribute("aria-hidden", "true");
+    const i = el("input");
+    i.type = "text";
+    i.id = "in-newcol";
+    i.placeholder = "nouvelle collection";
+    i.setAttribute("aria-label", "Nouvelle collection");
+    f.append(p, i);
+    sec.append(head, ol, f);
+    host.append(sec);
+  }
+  const cols = ctx.core.collections();
+  syncList(
+    sec.querySelector("ol")!,
+    cols.map((c) => ({
+      key: `k:${c.id}`,
+      make: () => {
+        const li = el("li", "cn-col-row");
+        const b = el("button", "cn-col-open");
+        b.type = "button";
+        b.dataset.col = c.id;
+        // Texte d'un bouton : Presse ne peint pas l'intérieur des contrôles, le DOM le garde.
+        const t = el("span", "cn-col-name");
+        b.append(t, el("span", "cn-col-count"));
+        li.append(b);
+        return li;
+      },
+      update: (li) => {
+        const b = li.firstElementChild as HTMLElement;
+        const [t, n] = [...b.children] as HTMLElement[];
+        if (t!.textContent !== c.name) t!.textContent = c.name;
+        n!.textContent = c.open ? `${c.open} / ${c.count}` : String(c.count);
+        b.setAttribute("aria-current", String(c.id === ctx.col));
+        b.setAttribute("aria-label", `${c.name}, ${c.count} entrée${c.count > 1 ? "s" : ""}${c.open ? `, ${c.open} à faire` : ""}`);
+      },
+    })),
+  );
+  return cols;
+}
+
+function collectionPage(host: HTMLElement, cv: CollectionView | null, ctx: RenderCtx) {
+  let sec = host.querySelector<HTMLElement>(":scope > .cn-colpage");
+  if (!sec) {
+    sec = el("section", "cn-day cn-colpage is-big");
+    const head = el("div", "cn-dhead");
+    const name = el("input", "cn-coltitle");
+    name.type = "text";
+    name.id = "in-colname";
+    name.setAttribute("aria-label", "Nom de la collection");
+    const del = el("button", "cn-link cn-coldel", "Mettre à la corbeille");
+    del.type = "button";
+    head.append(name, del);
+    const ol = el("ol", "cn-log");
+    const f = el("form", "cn-form");
+    f.autocomplete = "off";
+    const p = el("span", "cn-prompt", "›");
+    p.setAttribute("aria-hidden", "true");
+    const i = el("input");
+    i.type = "text";
+    i.id = "in-col";
+    i.placeholder = "« . à voir » · « - une note »";
+    f.append(p, i);
+    const empty = el("p", "cn-empty");
+    sec.append(head, ol, f, empty);
+    host.append(sec);
+  }
+  const [head, ol, form, empty] = [...sec.children] as HTMLElement[];
+  const has = !!cv;
+  head!.hidden = !has;
+  ol!.hidden = !has;
+  form!.hidden = !has;
+  empty!.hidden = has;
+  empty!.textContent = "Une collection rassemble ce qui ne dépend pas d’un jour : livres, films et séries, recettes, idées. Crée-la dans l’index.";
+  if (!cv) return syncList(ol!, []);
+  const name = head!.querySelector("input")!;
+  if (document.activeElement !== name) name.value = cv.collection.name;
+  name.dataset.col = cv.collection.id;
+  (head!.querySelector(".cn-coldel") as HTMLElement).dataset.coldel = cv.collection.id;
+  (form as HTMLFormElement).dataset.col = cv.collection.id;
+  form!.querySelector("input")!.setAttribute("aria-label", `Nouvelle entrée dans ${cv.collection.name}`);
+  ctx.placeKey = `collection:${cv.collection.id}`;
+  syncList(ol!, [...cv.departed, ...cv.lines].map((e) => entrySpec(e, ctx)));
+}
+
 /** Rend la double page. Renvoie l'index des suggestions visibles. */
 export function render(root: HTMLElement, ctx: RenderCtx): Map<string, Suggestion> {
   const sugIndex = new Map<string, Suggestion>();
   const left = root.querySelector<HTMLElement>(".cn-left")!;
   const right = root.querySelector<HTMLElement>(".cn-right")!;
   root.dataset.view = ctx.view;
+  // Une autre page (semaine, jour, mois, collections) : on repart de feuilles vides.
+  const page =
+    ctx.view === "week" ? `week:${weekStart(ctx.cur)}` : ctx.view === "day" ? `day:${ctx.cur}` : ctx.view === "month" ? `month:${monthOf(ctx.cur)}` : "collections";
+  if (root.dataset.page !== page) {
+    left.replaceChildren();
+    right.replaceChildren();
+    root.dataset.page = page;
+  }
   if (ctx.view === "week") {
     const ws = weekStart(ctx.cur);
-    // Une autre semaine, ou un retour de la vue jour : on repart de pages vides.
-    if (root.dataset.ws !== ws || left.querySelector(".is-big")) {
-      left.replaceChildren();
-      right.replaceChildren();
-    }
-    root.dataset.ws = ws;
     const w = ctx.core.weekView(ws, ctx.now);
     w.days.slice(0, 4).forEach((v) => dayBlock(left, v, ctx, sugIndex));
     w.days.slice(4).forEach((v) => dayBlock(right, v, ctx, sugIndex));
     notesBlock(right, ws, [...w.departedNotes, ...w.notes], ctx);
-  } else {
-    if (!left.querySelector(`.is-big[data-day="${ctx.cur}"]`)) {
-      left.replaceChildren();
-      right.replaceChildren();
-    }
-    delete root.dataset.ws;
+  } else if (ctx.view === "day") {
     dayBlock(left, ctx.core.dayView(ctx.cur, ctx.now, 5), ctx, sugIndex, true);
+  } else if (ctx.view === "month") {
+    const mv = ctx.core.monthView(monthOf(ctx.cur), ctx.now);
+    monthCalendar(left, mv, ctx);
+    monthPage(right, mv, ctx, sugIndex);
+  } else {
+    const cols = collectionIndex(left, ctx);
+    if (ctx.col && !cols.some((c) => c.id === ctx.col)) ctx.col = null;
+    ctx.col ??= cols[0]?.id ?? null;
+    collectionPage(right, ctx.col ? ctx.core.collectionView(ctx.col) : null, ctx);
+    collectionIndex(left, ctx);
   }
   ctx.from.clear();
   return sugIndex;

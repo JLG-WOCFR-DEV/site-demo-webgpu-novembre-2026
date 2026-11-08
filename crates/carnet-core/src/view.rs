@@ -115,6 +115,10 @@ fn sort_month(v: &mut [Entry]) {
     });
 }
 
+pub(crate) fn departed_from(live: &[Entry], here: &Place) -> Vec<Line> {
+    departed(live, here)
+}
+
 fn departed(live: &[Entry], here: &Place) -> Vec<Line> {
     let mut v: Vec<Entry> = live
         .iter()

@@ -772,6 +772,21 @@ impl Notebook {
         drop(txn);
     }
 
+    /* ───── Accès pour les modules du core ───── */
+
+    pub(crate) fn env_now(&mut self) -> f64 {
+        self.env.now_ms()
+    }
+    pub(crate) fn env_random(&mut self) -> u128 {
+        self.env.random()
+    }
+    pub(crate) fn read_txn(&self) -> yrs::Transaction<'_> {
+        self.doc.transact()
+    }
+    pub(crate) fn meta_ref(&self) -> &MapRef {
+        &self.meta
+    }
+
     /* ───── Lecture ───── */
 
     /// Schéma qui a écrit ce carnet (0 : avant le marquage).
