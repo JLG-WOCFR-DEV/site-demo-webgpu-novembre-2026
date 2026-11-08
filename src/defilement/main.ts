@@ -221,6 +221,61 @@ const wakeLoop = () => {
   last = performance.now();
   loopRaf = requestAnimationFrame(loop);
 };
+/*
+ * Un cran de molette = un cran de la démo. Tant qu'une scène épinglée tient l'écran, la molette ne fait plus défiler
+ * librement : chaque coup amène la page pile sur le cran suivant (ou précédent), et le ressort fait le mouvement. Au
+ * premier ou au dernier cran, la molette rend la main à la page (on entre et on sort normalement). Le clavier, la
+ * barre de défilement et le tactile ne changent pas.
+ *
+ * Une molette envoie un événement par cran ; un pavé tactile, un flot de petits deltas puis son inertie. Un cran est
+ * donc pris à chaque cran franc (≥ 50 px), ou une fois par geste de pavé (passé 30 px ; un geste neuf commence après
+ * 100 ms de silence ou à une relance franche), jamais deux en moins de 200 ms : un glissé ne fait pas défiler la liste.
+ */
+{
+  let lastStep = -1e9;
+  let lastEvt = -1e9;
+  let prevMag = 0;
+  let acc = 0;
+  let stepped = false;
+  const stepTop = (s: Scrub, i: number) => {
+    const top = s.el.getBoundingClientRect().top + scrollY;
+    return top + (i / Math.max(1, s.steps - 1)) * Math.max(1, s.el.offsetHeight - innerHeight);
+  };
+  addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey || e.metaKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const s = scrubs.find((x) => {
+        const r = x.el.getBoundingClientRect();
+        return r.top <= 1 && r.bottom >= innerHeight - 1;
+      });
+      if (!s) return;
+      const d = e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? innerHeight : 1);
+      if (!d) return;
+      const dir = Math.sign(d);
+      const here = Math.round(progress(s.el) * (s.steps - 1));
+      const next = here + dir;
+      // Au bord : la page reprend la molette (on sort de la scène).
+      if (next < 0 || next > s.steps - 1) return;
+      e.preventDefault();
+      const now = e.timeStamp;
+      const mag = Math.abs(d);
+      // Un geste neuf : après un silence, ou une relance franche pendant l'inertie d'un geste déjà compté.
+      if (now - lastEvt > 100 || (stepped && now - lastStep > 300 && mag > prevMag * 1.5)) ((acc = 0), (stepped = false));
+      lastEvt = now;
+      prevMag = mag;
+      acc += d;
+      // Un cran de molette (≥ 50 px) compte à chaque fois ; un pavé tactile, une fois par geste, passé 30 px.
+      const go = mag >= 50 || (!stepped && Math.abs(acc) >= 30);
+      if (!go || now - lastStep < 200) return;
+      lastStep = now;
+      stepped = true;
+      acc = 0;
+      scrollTo({ top: stepTop(s, next), behavior: "instant" });
+    },
+    { passive: false },
+  );
+}
 addEventListener("scroll", wakeLoop, { passive: true });
 addEventListener("resize", wakeLoop);
 // Le dessin au bruit arrive après coup (GPU) : un passage quand il est prêt.
