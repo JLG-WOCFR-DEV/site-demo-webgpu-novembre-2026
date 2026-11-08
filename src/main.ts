@@ -135,7 +135,10 @@ forced.addEventListener("change", () => {
 });
 for (const b of document.querySelectorAll("[data-action='pause']")) {
   b.addEventListener("click", () => {
-    motion.paused = !motion.paused;
+    // Système en mouvement réduit : le bouton rallume les animations pour cette page (choix explicite, jamais par
+    // défaut) ; sinon c'est la pause ordinaire.
+    if (motion.system) motion.allowed = !motion.allowed;
+    else motion.paused = !motion.paused;
     showMotion();
   });
 }

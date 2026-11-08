@@ -141,17 +141,24 @@ export function showMotion() {
   const el = document.querySelector("[data-readout='motion']");
   if (el) {
     el.textContent = motion.system
-      ? "Votre système demande moins d'animations : mouvements coupés."
+      ? motion.allowed
+        ? "Votre système demande moins d'animations ; vous les avez rallumées pour cette page."
+        : "Votre système demande moins d'animations : mouvements coupés. Le bouton Animer les rallume pour cette page."
       : motion.paused
         ? "Animations en pause à votre demande. Les réglages fixes restent actifs."
         : "Votre système autorise les animations. Le bouton Pause les arrête sans toucher au système.";
   }
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-action='pause']")) {
-    b.setAttribute("aria-pressed", String(motion.paused));
-    b.textContent = b.classList.contains("pause-btn")
-      ? motion.paused ? "Reprendre" : "Pause"
-      : motion.paused ? "Reprendre les animations" : "Mettre en pause";
-    b.disabled = motion.system;
+    const short = b.classList.contains("pause-btn");
+    if (motion.system) {
+      // Mouvement réduit demandé par le système : le bouton propose de rallumer les animations, sans jamais le faire seul.
+      b.setAttribute("aria-pressed", String(motion.allowed));
+      b.textContent = motion.allowed ? (short ? "Pause" : "Couper les animations") : short ? "Animer" : "Rallumer les animations";
+    } else {
+      b.setAttribute("aria-pressed", String(motion.paused));
+      b.textContent = short ? (motion.paused ? "Reprendre" : "Pause") : motion.paused ? "Reprendre les animations" : "Mettre en pause";
+    }
+    b.disabled = false;
   }
 }
 

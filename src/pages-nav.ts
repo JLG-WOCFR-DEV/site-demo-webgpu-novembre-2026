@@ -41,7 +41,7 @@ const CSS = `
    déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */
 @layer presse-base {
   h1, h2, h3, h4 { overflow-wrap: break-word; hyphens: auto; }
-  code, kbd, samp, .code-inline { overflow-wrap: anywhere; }
+  code, kbd, samp, .code-inline { overflow-wrap: break-word; }
   pre { max-width: 100%; min-width: 0; }
   input[type="range"] { min-height: 24px; }
   table { max-width: 100%; }
