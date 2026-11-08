@@ -497,6 +497,11 @@ main {
   margin: 0 0 1em;
   hyphens: auto;
 }
+/* Le trait d'union d'une césure automatique est dessiné par le navigateur, pas écrit dans le texte : le GPU, qui
+   imprime les caractères du DOM, ne le voit pas (« la leç on »). Quand le GPU imprime, on coupe sans césure. */
+html.gl-on .prose p {
+  hyphens: manual;
+}
 .prose p:last-child {
   margin-bottom: 0;
 }
