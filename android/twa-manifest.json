@@ -1,0 +1,33 @@
+{
+  "packageId": "CHOISIR.carnet",
+  "host": "CHOISIR-LE-DOMAINE",
+  "name": "Carnet",
+  "launcherName": "Carnet",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#f5f3ee",
+  "themeColorDark": "#1d1c1a",
+  "navigationColor": "#f5f3ee",
+  "navigationColorDark": "#1d1c1a",
+  "backgroundColor": "#f5f3ee",
+  "enableNotifications": false,
+  "startUrl": "/carnet.html",
+  "iconUrl": "https://CHOISIR-LE-DOMAINE/carnet/icon-512.png",
+  "maskableIconUrl": "https://CHOISIR-LE-DOMAINE/carnet/icon-maskable-512.png",
+  "webManifestUrl": "https://CHOISIR-LE-DOMAINE/carnet/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 24,
+  "appVersionName": "0.1.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    { "name": "Aujourd’hui", "shortName": "Jour", "url": "/carnet.html?vue=jour", "chosenIconUrl": "https://CHOISIR-LE-DOMAINE/carnet/icon-192.png" },
+    { "name": "Le mois", "shortName": "Mois", "url": "/carnet.html?vue=mois", "chosenIconUrl": "https://CHOISIR-LE-DOMAINE/carnet/icon-192.png" }
+  ],
+  "signingKey": { "path": "./carnet-upload.keystore", "alias": "carnet" },
+  "generatorApp": "bubblewrap-cli"
+}

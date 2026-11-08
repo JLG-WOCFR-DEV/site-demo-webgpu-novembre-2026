@@ -349,6 +349,26 @@ temps par image mesurés sur le téléphone de P1 ; **réestimation de P3b**.
 - [x] D9 tranché (vues maison)
 - [ ] Recette TalkBack et clavier sur le téléphone pour ces écrans
 
+#### P4b — avancement
+
+Faite avant P3b (choix du 8 novembre : les enrichissements passent par les vues maison et le moteur TS ; P3b reste à faire).
+
+- [x] Pages graphiques (core : un document yrs par bloc, `page.rs` ; ancres `{x, y, w}` mises à l'échelle de la largeur ;
+      proptest de convergence 300 cas ; journal et points de reprise par page, sauvegarde format 2 puis 3)
+- [x] Autocollants ancrés : 26 dessins originaux, quatre palettes de saison ; poser au doigt ou au clavier (Entrée),
+      déplacer (y compris vers un autre bloc), tourner, agrandir, supprimer avec « Annuler »
+- [x] Dessin à la pression (perfect-freehand) : encre, crayon, surligneur, gomme ; le stylet écarte la paume
+- [x] Photos : OPFS adressé par SHA-256, fichier confirmé avant la référence, 1 600 px WebP, date EXIF (sinon « vers le … »),
+      balayage au démarrage ; dans la sauvegarde (format 3)
+- [x] Import ICS ponctuel : récurrences simples dépliées, réimport sans doublon (`ics:UID:date`), le reste signalé
+- [x] Trackers du mois (core : `meta.trackers`, une case par jour, corbeille et retour)
+- [x] Météo (Open-Meteo, sans compte) : lieu gardé sur l'appareil, jours passés notés dans le carnet et figés,
+      prévisions affichées pâles et jamais écrites
+- [~] TWA : manifeste (id, raccourcis `?vue=`), `android/twa-manifest.json`, `.well-known/assetlinks.json` modèles,
+      marche à suivre `docs/carnet/twa.md`. **Bloqué par l'hébergement HTTPS** (domaine à la racine, à choisir)
+- [ ] Recette TalkBack et clavier sur le téléphone : autocollants, dessin, photos, trackers, météo
+- [ ] Mesures sur le téléphone : mémoire avec 50 photos, temps d'ouverture d'un mois chargé
+
 **Sortie P4b (MVP)** : **30 jours d'usage réel** sur Android, aucune perte de données, restauration testée chaque semaine,
 recette TalkBack et clavier verte.
 

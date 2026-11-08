@@ -627,7 +627,10 @@ async function boot() {
   decor = new Decor(spread, { pages, today, toast, readOnly: () => readOnly });
   $("#cn-stickers").addEventListener("click", () => decor!.toggleTray());
   $("#cn-draw").addEventListener("click", () => decor!.toggleDraw());
-  ctx = { core, view: "week", cur: today(), now: today(), from: new Map(), col: null, weather: (d) => weatherOf(d) };
+  // Raccourcis de l'icône installée (manifeste) : ?vue=jour | mois | collections.
+  const vue = new URLSearchParams(location.search).get("vue");
+  const start: View = vue === "jour" ? "day" : vue === "mois" ? "month" : vue === "collections" ? "collections" : "week";
+  ctx = { core, view: start, cur: today(), now: today(), from: new Map(), col: null, weather: (d) => weatherOf(d) };
   if (opened.empty) {
     let v0: string | null = null;
     try {

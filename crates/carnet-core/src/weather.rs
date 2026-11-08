@@ -88,7 +88,7 @@ impl Notebook {
                 })
             })
             .collect();
-        v.sort_by(|a, b| a.day.cmp(&b.day));
+        v.sort_by_key(|a| a.day);
         v
     }
 }
