@@ -20,6 +20,8 @@
           <button type="button" data-view="month" aria-pressed="false">Mois</button>
           <button type="button" data-view="collections" aria-pressed="false">Collections</button>
         </div>
+        <button class="cn-btn" id="cn-stickers" type="button" aria-expanded="false" aria-controls="cn-tray">Autocollants</button>
+        <button class="cn-btn" id="cn-draw" type="button" aria-pressed="false">Dessiner</button>
         <button class="cn-btn cn-icon" id="prev" type="button" aria-label="Semaine précédente">‹</button>
         <button class="cn-btn" id="today" type="button">Aujourd'hui</button>
         <button class="cn-btn cn-icon" id="next" type="button" aria-label="Semaine suivante">›</button>
@@ -53,6 +55,8 @@
       <a class="cn-link" href="./carnet-banc.html">Banc de mesure Android</a>
       <a class="cn-link" href="./carnet-recette.html">Recette téléphone</a>
     </footer>
+    <aside class="cn-tray" id="cn-tray" data-gl-ignore hidden></aside>
+    <div class="cn-drawbar" id="cn-drawbar" role="toolbar" aria-label="Dessin" data-gl-ignore hidden></div>
     <div class="cn-toast" id="cn-toast" role="status" aria-live="polite" data-gl-ignore hidden></div>
   </body>
 </html>

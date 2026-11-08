@@ -3,7 +3,8 @@
  *
  *   manifest.json   format, versions, date, empreintes SHA-256
  *   notebook.yrs    le document yrs complet (une mise à jour v1)
- *   (plus tard)     pages/<clé>.yrs, media/<sha256>
+ *   pages/<clé>.yrs  une page graphique par bloc (autocollants, traits) — format 2
+ *   (plus tard)     media/<sha256>
  *
  * Restaurer = appliquer le document au carnet ouvert : c'est une fusion CRDT, qui n'efface rien.
  * Pour repartir d'une sauvegarde seule, on vide le carnet d'abord.
@@ -11,10 +12,12 @@
  * Zip minimal : écriture sans compression (le document yrs se compresse peu), lecture des entrées
  * stockées ou compressées (deflate, via DecompressionStream).
  */
-import type { Core } from "./core.ts";
+import type { Core, PageCore } from "./core.ts";
 
 export const FORMAT = "carnet";
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
+/** Nom de fichier d'une page dans le zip (la clé contient « : »). */
+const pageFile = (key: string) => `pages/${encodeURIComponent(key)}.yrs`;
 
 export type Manifest = {
   format: typeof FORMAT;
@@ -137,8 +140,9 @@ async function sha256(b: Uint8Array) {
 }
 
 /* ───── Sauvegarde ───── */
-export async function backup(core: Core, app = "carnet-p2"): Promise<{ bytes: Uint8Array; manifest: Manifest }> {
+export async function backup(core: Core, pages: Map<string, PageCore> = new Map(), app = "carnet-p4b"): Promise<{ bytes: Uint8Array; manifest: Manifest }> {
   const doc = core.encodeState();
+  const extra = [...pages].filter(([, p]) => !p.isEmpty()).map(([key, p]) => ({ name: pageFile(key), data: p.encodeState() }));
   const manifest: Manifest = {
     format: FORMAT,
     version: FORMAT_VERSION,
@@ -147,10 +151,12 @@ export async function backup(core: Core, app = "carnet-p2"): Promise<{ bytes: Ui
     entries: core.all().length,
     files: { "notebook.yrs": { size: doc.length, sha256: await sha256(doc) } },
   };
+  for (const f of extra) manifest.files[f.name] = { size: f.data.length, sha256: await sha256(f.data) };
   const enc = new TextEncoder();
   const bytes = zip([
     { name: "manifest.json", data: enc.encode(JSON.stringify(manifest, null, 2)) },
     { name: "notebook.yrs", data: doc },
+    ...extra,
   ]);
   return { bytes, manifest };
 }
@@ -160,7 +166,7 @@ export async function backup(core: Core, app = "carnet-p2"): Promise<{ bytes: Ui
  * Rend aussi la mise à jour appliquée : l'hôte l'écrit au journal (Store.append), car elle ne vient
  * pas d'une commande locale.
  */
-export async function restore(core: Core, bytes: Uint8Array): Promise<{ manifest: Manifest; update: Uint8Array }> {
+export async function restore(core: Core, bytes: Uint8Array): Promise<{ manifest: Manifest; update: Uint8Array; pages: Map<string, Uint8Array> }> {
   const files = await unzip(bytes);
   const raw = files.get("manifest.json");
   if (!raw) throw new Error("sauvegarde sans manifeste");
@@ -174,7 +180,12 @@ export async function restore(core: Core, bytes: Uint8Array): Promise<{ manifest
   }
   const update = files.get("notebook.yrs")!;
   core.apply([update]);
-  return { manifest: m, update };
+  const pages = new Map<string, Uint8Array>();
+  for (const name of Object.keys(m.files)) {
+    const k = name.match(/^pages\/(.+)\.yrs$/);
+    if (k) pages.set(decodeURIComponent(k[1]!), files.get(name)!);
+  }
+  return { manifest: m, update, pages };
 }
 
 export const backupName = (d = new Date()) => {

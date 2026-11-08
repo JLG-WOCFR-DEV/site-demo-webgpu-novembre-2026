@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_carnet_free: (a: number, b: number) => void;
+export const __wbg_carnetpage_free: (a: number, b: number) => void;
 export const carnet_add: (a: number, b: any, c: any) => [number, number, number, number];
 export const carnet_all: (a: number) => [number, number, number];
 export const carnet_apply: (a: number, b: any) => [number, number];
@@ -39,6 +40,18 @@ export const carnet_supportedSchema: (a: number) => number;
 export const carnet_takeUpdates: (a: number) => any;
 export const carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
 export const carnet_writable: (a: number) => number;
+export const carnetpage_addSticker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
+export const carnetpage_addStroke: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number, number];
+export const carnetpage_apply: (a: number, b: any) => [number, number];
+export const carnetpage_deleteItem: (a: number, b: number, c: number) => [number, number];
+export const carnetpage_encodeState: (a: number) => [number, number];
+export const carnetpage_isEmpty: (a: number) => number;
+export const carnetpage_items: (a: number) => [number, number, number];
+export const carnetpage_moveItem: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+export const carnetpage_new: () => number;
+export const carnetpage_restoreItem: (a: number, b: number, c: number) => [number, number];
+export const carnetpage_takeUpdates: (a: number) => any;
+export const carnetpage_transform: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
 export const __wbindgen_free: (a: number, b: number, c: number) => void;

@@ -4,7 +4,7 @@
  * Les types ci-dessous décrivent ce que les vues sérialisées par serde contiennent ; ils suivent
  * crates/carnet-core/src/{notebook,view}.rs. Le module wasm est généré par tools/carnet-wasm.sh.
  */
-import init, { Carnet } from "./wasm/carnet.js";
+import init, { Carnet, CarnetPage } from "./wasm/carnet.js";
 
 export type Day = string; // AAAA-MM-JJ, date de journal sans fuseau
 export type Kind = "task" | "event" | "note";
@@ -109,3 +109,28 @@ export const weekPlace = (monday: Day): Place => ({ scope: `week:${monday}`, day
 /** Page du mois ; avec un jour, un rendez-vous daté noté sur cette page. */
 export const monthPlace = (month: string, day: Day | null = null): Place => ({ scope: `month:${month}`, day });
 export const collectionPlace = (id: string): Place => ({ scope: `collection:${id}`, day: null });
+
+/* ───── Pages graphiques (autocollants, traits) ───── */
+export type Anchor = { x: number; y: number; w: number };
+export type StickerItem = { type: "sticker"; id: string; sticker: string; tint: string; anchor: Anchor; rot: number; scale: number; createdAt: number; z: number };
+export type StrokeItem = { type: "stroke"; id: string; tool: string; color: string; width: number; anchor: Anchor; points: number[]; createdAt: number; z: number };
+export type PageItem = StickerItem | StrokeItem;
+
+export interface PageCore {
+  apply(updates: Uint8Array[]): void;
+  takeUpdates(): Uint8Array[];
+  encodeState(): Uint8Array;
+  isEmpty(): boolean;
+  addSticker(sticker: string, tint: string, x: number, y: number, w: number, rot: number, scale: number): string;
+  addStroke(tool: string, color: string, width: number, x: number, y: number, w: number, points: Float32Array): string;
+  moveItem(id: string, x: number, y: number, w: number): void;
+  transform(id: string, rot: number, scale: number): void;
+  deleteItem(id: string): void;
+  restoreItem(id: string): void;
+  items(): PageItem[];
+  free(): void;
+}
+
+/** Une page graphique vide (le module doit être chargé : après createCore). */
+export const createPage = (): PageCore => new CarnetPage() as unknown as PageCore;
+

@@ -556,6 +556,215 @@ export class Carnet {
     }
 }
 if (Symbol.dispose) Carnet.prototype[Symbol.dispose] = Carnet.prototype.free;
+
+/**
+ * Une page graphique (autocollants, traits) : un document par bloc du carnet.
+ */
+export class CarnetPage {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        CarnetPageFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_carnetpage_free(ptr, 0);
+    }
+    /**
+     * @param {string} sticker
+     * @param {string} tint
+     * @param {number} x
+     * @param {number} y
+     * @param {number} w
+     * @param {number} rot
+     * @param {number} scale
+     * @returns {string}
+     */
+    addSticker(sticker, tint, x, y, w, rot, scale) {
+        let deferred9_0;
+        let deferred9_1;
+        try {
+            const val3 = +x;
+            const val4 = +y;
+            const val5 = +w;
+            const val6 = +rot;
+            const val7 = +scale;
+            let ptr0, len0, ptr1, len1;
+            try {
+                ptr0 = passStringToWasm0(sticker, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+                len0 = WASM_VECTOR_LEN;
+                ptr1 = passStringToWasm0(tint, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+                len1 = WASM_VECTOR_LEN;
+            } catch (e) {
+                if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 1, 1); }
+                if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 1, 1); }
+                throw e;
+            }
+            const ret = wasm.carnetpage_addSticker(this.__wbg_ptr, ptr0, len0, ptr1, len1, val3, val4, val5, val6, val7);
+            var ptr8 = ret[0];
+            var len8 = ret[1];
+            if (ret[3]) {
+                ptr8 = 0; len8 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred9_0 = ptr8;
+            deferred9_1 = len8;
+            return getStringFromWasm0(ptr8, len8);
+        } finally {
+            wasm.__wbindgen_free(deferred9_0, deferred9_1, 1);
+        }
+    }
+    /**
+     * @param {string} tool
+     * @param {string} color
+     * @param {number} width
+     * @param {number} x
+     * @param {number} y
+     * @param {number} w
+     * @param {Float32Array | number[]} points
+     * @returns {string}
+     */
+    addStroke(tool, color, width, x, y, w, points) {
+        let deferred9_0;
+        let deferred9_1;
+        try {
+            const val4 = +width;
+            const val5 = +x;
+            const val6 = +y;
+            const val7 = +w;
+            let ptr0, len0, ptr1, len1, ptr2, len2;
+            try {
+                ptr0 = passStringToWasm0(tool, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+                len0 = WASM_VECTOR_LEN;
+                ptr1 = passStringToWasm0(color, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+                len1 = WASM_VECTOR_LEN;
+                ptr2 = passArrayF32ToWasm0(points, wasm.__wbindgen_malloc);
+                len2 = WASM_VECTOR_LEN;
+            } catch (e) {
+                if (ptr2) { wasm.__wbindgen_free(ptr2, len2 * 4, 4); }
+                if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 1, 1); }
+                if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 1, 1); }
+                throw e;
+            }
+            const ret = wasm.carnetpage_addStroke(this.__wbg_ptr, ptr0, len0, ptr1, len1, val4, val5, val6, val7, ptr2, len2);
+            var ptr8 = ret[0];
+            var len8 = ret[1];
+            if (ret[3]) {
+                ptr8 = 0; len8 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred9_0 = ptr8;
+            deferred9_1 = len8;
+            return getStringFromWasm0(ptr8, len8);
+        } finally {
+            wasm.__wbindgen_free(deferred9_0, deferred9_1, 1);
+        }
+    }
+    /**
+     * @param {Array<any>} updates
+     */
+    apply(updates) {
+        const ret = wasm.carnetpage_apply(this.__wbg_ptr, updates);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * @param {string} id
+     */
+    deleteItem(id) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnetpage_deleteItem(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    encodeState() {
+        const ret = wasm.carnetpage_encodeState(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {boolean}
+     */
+    isEmpty() {
+        const ret = wasm.carnetpage_isEmpty(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {any}
+     */
+    items() {
+        const ret = wasm.carnetpage_items(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @param {string} id
+     * @param {number} x
+     * @param {number} y
+     * @param {number} w
+     */
+    moveItem(id, x, y, w) {
+        const val2 = +x;
+        const val3 = +y;
+        const val4 = +w;
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnetpage_moveItem(this.__wbg_ptr, ptr0, len0, val2, val3, val4);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    constructor() {
+        const ret = wasm.carnetpage_new();
+        this.__wbg_ptr = ret;
+        CarnetPageFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {string} id
+     */
+    restoreItem(id) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnetpage_restoreItem(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * @returns {Array<any>}
+     */
+    takeUpdates() {
+        const ret = wasm.carnetpage_takeUpdates(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {string} id
+     * @param {number} rot
+     * @param {number} scale
+     */
+    transform(id, rot, scale) {
+        const val2 = +rot;
+        const val3 = +scale;
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnetpage_transform(this.__wbg_ptr, ptr0, len0, val2, val3);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+}
+if (Symbol.dispose) CarnetPage.prototype[Symbol.dispose] = CarnetPage.prototype.free;
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -777,6 +986,9 @@ function __wbg_get_imports() {
 const CarnetFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_carnet_free(ptr, 1));
+const CarnetPageFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_carnetpage_free(ptr, 1));
 
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();
@@ -855,6 +1067,14 @@ function getDataViewMemory0() {
     return cachedDataViewMemory0;
 }
 
+let cachedFloat32ArrayMemory0 = null;
+function getFloat32ArrayMemory0() {
+    if (cachedFloat32ArrayMemory0 === null || cachedFloat32ArrayMemory0.byteLength === 0) {
+        cachedFloat32ArrayMemory0 = new Float32Array(wasm.memory.buffer);
+    }
+    return cachedFloat32ArrayMemory0;
+}
+
 function getStringFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return decodeText(getUint8ArrayMemory0().subarray(ptr, ptr + len));
@@ -884,6 +1104,13 @@ function isLikeNone(x) {
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
     getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+function passArrayF32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getFloat32ArrayMemory0().set(arg, ptr / 4);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
 }
@@ -966,6 +1193,7 @@ function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
     cachedDataViewMemory0 = null;
+    cachedFloat32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     wasm.__wbindgen_start();
     return wasm;

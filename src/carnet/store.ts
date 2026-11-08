@@ -21,7 +21,8 @@ export type SaveState = "idle" | "saving" | "saved" | "error";
 type Checkpoint = { state: Uint8Array; upTo: number; at: number };
 
 const DB = "carnet";
-const VERSION = 1;
+// 2 : pages graphiques (autocollants, traits), un document par bloc — P4b.
+const VERSION = 2;
 const COMPACT_AFTER = 400; // lignes de journal
 
 function req<T>(r: IDBRequest<T>): Promise<T> {
@@ -48,6 +49,8 @@ export function openDb(name = DB, onVersionChange?: () => void): Promise<IDBData
       const db = r.result;
       if (!db.objectStoreNames.contains("journal")) db.createObjectStore("journal", { autoIncrement: true });
       if (!db.objectStoreNames.contains("checkpoint")) db.createObjectStore("checkpoint");
+      if (!db.objectStoreNames.contains("pjournal")) db.createObjectStore("pjournal", { autoIncrement: true }).createIndex("doc", "doc");
+      if (!db.objectStoreNames.contains("pcheckpoint")) db.createObjectStore("pcheckpoint");
     };
     r.onsuccess = () => {
       // Une version plus récente demande la base (mise à jour dans un autre onglet) : on la lui
@@ -73,12 +76,23 @@ export type StoreOptions = {
   durability?: "relaxed" | "strict" | "default";
   /** Diffuser ses mises à jour aux autres onglets (par défaut oui). */
   broadcast?: boolean;
+  /** Une page graphique a changé dans un autre onglet (mises à jour à lui appliquer). */
+  onRemotePage?: (key: string, updates: Uint8Array[]) => void;
 };
+
+/** Ce que le stockage demande à une page graphique (CarnetPage du module wasm). */
+export interface PageDoc {
+  apply(updates: Uint8Array[]): void;
+  takeUpdates(): Uint8Array[];
+  encodeState(): Uint8Array;
+}
 
 export class Store {
   private pending: Uint8Array[] = [];
   private flushing: Promise<void> | null = null;
   private channel: BroadcastChannel | null = null;
+  private pageChannel: BroadcastChannel | null = null;
+  private pageChain: Promise<void> = Promise.resolve();
   private journalSize = 0;
   state: SaveState = "idle";
   lastError: unknown = null;
@@ -101,6 +115,8 @@ export class Store {
           console.warn("[carnet] mise à jour d'un autre onglet illisible", e);
         }
       };
+      this.pageChannel = new BroadcastChannel(`${o.name ?? DB}:pages`);
+      this.pageChannel.onmessage = (ev: MessageEvent<{ key: string; updates: Uint8Array[] }>) => this.o.onRemotePage?.(ev.data.key, ev.data.updates);
     }
   }
 
@@ -212,12 +228,60 @@ export class Store {
     else await run();
   }
 
+  /* ───── Pages graphiques : un document par bloc, journal partagé, indexé par document ───── */
+
+  /** Charge une page : son checkpoint puis ses lignes de journal. */
+  async loadPage(key: string, page: PageDoc): Promise<void> {
+    const tx = this.db.transaction(["pcheckpoint", "pjournal"], "readonly");
+    const cp = await req(tx.objectStore("pcheckpoint").get(key) as IDBRequest<Uint8Array | undefined>);
+    const lines = await req(tx.objectStore("pjournal").index("doc").getAll(key) as IDBRequest<{ doc: string; u: Uint8Array }[]>);
+    if (cp) page.apply([cp]);
+    if (lines.length) page.apply(lines.map((l) => l.u));
+  }
+
+  /** Enregistre les mises à jour d'une page (tout de suite, une transaction à la fois) et les diffuse. */
+  commitPage(key: string, page: PageDoc) {
+    const ups = page.takeUpdates();
+    if (!ups.length) return;
+    this.pageChannel?.postMessage({ key, updates: ups });
+    this.setState("saving");
+    this.pageChain = this.pageChain.then(async () => {
+      const tx = this.db.transaction("pjournal", "readwrite", { durability: this.o.durability ?? "relaxed" });
+      const st = tx.objectStore("pjournal");
+      for (const u of ups) st.add({ doc: key, u });
+      tx.commit?.();
+      try {
+        await done(tx);
+        if (!this.pending.length && !this.flushing) this.setState("saved");
+      } catch (e) {
+        this.lastError = e;
+        this.setState("error", e);
+      }
+    });
+  }
+
+  /** Mises à jour d'une page venues d'ailleurs (sauvegarde restaurée) : à enregistrer telles quelles. */
+  appendPage(key: string, updates: Uint8Array[]) {
+    this.commitPage(key, { takeUpdates: () => updates, apply: () => {}, encodeState: () => new Uint8Array() });
+  }
+
+  /** Toutes les pages qui ont quelque chose d'enregistré. */
+  async pageKeys(): Promise<string[]> {
+    const tx = this.db.transaction(["pcheckpoint", "pjournal"], "readonly");
+    const a = (await req(tx.objectStore("pcheckpoint").getAllKeys())) as string[];
+    const docs = await req(tx.objectStore("pjournal").getAll() as IDBRequest<{ doc: string }[]>);
+    return [...new Set([...a, ...docs.map((d) => d.doc)])].sort();
+  }
+
+  async flushPages(): Promise<void> {
+    await this.pageChain;
+  }
+
   /** Efface le carnet stocké (« Vider le carnet »). Le core doit être remplacé par un neuf. */
   async clear(core: Core): Promise<void> {
     this.pending = [];
-    const tx = this.db.transaction(["journal", "checkpoint"], "readwrite");
-    tx.objectStore("journal").clear();
-    tx.objectStore("checkpoint").clear();
+    const tx = this.db.transaction(["journal", "checkpoint", "pjournal", "pcheckpoint"], "readwrite");
+    for (const n of ["journal", "checkpoint", "pjournal", "pcheckpoint"]) tx.objectStore(n).clear();
     await done(tx);
     this.core = core;
     this.journalSize = 0;
@@ -230,6 +294,7 @@ export class Store {
 
   close() {
     this.channel?.close();
+    this.pageChannel?.close();
     this.db.close();
   }
 

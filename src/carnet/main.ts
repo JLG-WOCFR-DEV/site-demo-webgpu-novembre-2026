@@ -30,6 +30,8 @@ import { addDays, isSample, parseDay, parseLine, seed, setSample, today, weekSta
 import { Store, type SaveState } from "./store.ts";
 import { backup, backupName, restore } from "./backup.ts";
 import { openEditor } from "./edit.ts";
+import { Pages } from "./pages.ts";
+import { Decor } from "./decor.ts";
 import { addMonths, monthOf, render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
 
@@ -40,6 +42,8 @@ const fLong = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" }
 
 let core: Core;
 let store: Store;
+let pages: Pages;
+let decor: Decor | null = null;
 let ctx: RenderCtx;
 let sugIndex = new Map<string, Suggestion>();
 /** Ce que la coquille demande au rendu, quel qu'il soit. */
@@ -50,6 +54,7 @@ function draw() {
   ctx.core = core;
   ctx.now = today();
   sugIndex = render(spread, ctx);
+  decor?.sync();
   title.textContent = titleFor(ctx.view, ctx.cur);
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === ctx.view));
   const unit = { week: ["Semaine précédente", "Semaine suivante"], day: ["Jour précédent", "Jour suivant"], month: ["Mois précédent", "Mois suivant"], collections: ["", ""] }[ctx.view];
@@ -348,6 +353,7 @@ async function freshCore(sample: boolean) {
   core.free();
   core = await createCore();
   await store.clear(core);
+  pages.reset(store);
   setSample(sample);
   if (sample) seed(core);
   store.commit();
@@ -362,7 +368,8 @@ $("#cn-reseed").addEventListener("click", () => void freshCore(true));
 /* ───── Sauvegarde .carnet ───── */
 $("#cn-backup").addEventListener("click", async () => {
   await store.flush().catch(() => undefined);
-  const { bytes, manifest } = await backup(core);
+  await store.flushPages();
+  const { bytes, manifest } = await backup(core, await pages.all());
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/zip" }));
   a.download = backupName();
@@ -379,8 +386,9 @@ $<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) =>
   try {
     // Fusion : la sauvegarde s'ajoute au carnet ouvert, rien n'est effacé.
     const before = core.all().length;
-    const { manifest, update } = await restore(core, new Uint8Array(await f.arrayBuffer()));
+    const { manifest, update, pages: restored } = await restore(core, new Uint8Array(await f.arrayBuffer()));
     store.append([update]);
+    for (const [key, u] of restored) pages.restore(key, u);
     draw();
     const added = core.all().length - before;
     toast(`Sauvegarde du ${new Date(manifest.createdAt).toLocaleDateString("fr-FR")} importée : ${added} entrée${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}`);
@@ -398,8 +406,13 @@ async function boot() {
     onRemote: () => draw(),
     onState: showSave,
     onVersionChange: () => setReadOnly("Carnet a été mis à jour dans un autre onglet. Recharge la page pour continuer à écrire."),
+    onRemotePage: (key, updates) => pages?.remote(key, updates),
   });
   store = opened.store;
+  pages = new Pages(store, (key) => decor?.refresh(key));
+  decor = new Decor(spread, { pages, today, toast, readOnly: () => readOnly });
+  $("#cn-stickers").addEventListener("click", () => decor!.toggleTray());
+  $("#cn-draw").addEventListener("click", () => decor!.toggleDraw());
   ctx = { core, view: "week", cur: today(), now: today(), from: new Map(), col: null };
   if (opened.empty) {
     let v0: string | null = null;

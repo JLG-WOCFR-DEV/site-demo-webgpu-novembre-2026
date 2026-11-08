@@ -6,7 +6,7 @@
 //!
 //! Le core ne fait aucune E/S : la coquille lit et écrit le stockage, et rend au core ce qu'elle lit.
 
-use carnet_core::{Day, Env, Month, NewEntry, Notebook, Place, State};
+use carnet_core::{Anchor, Day, Env, Month, NewEntry, Notebook, Page, Place, State};
 use js_sys::{Array, Uint8Array};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -296,6 +296,112 @@ impl Carnet {
 }
 
 impl Default for Carnet {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Une page graphique (autocollants, traits) : un document par bloc du carnet.
+#[wasm_bindgen]
+pub struct CarnetPage {
+    p: Page,
+}
+
+#[wasm_bindgen]
+impl CarnetPage {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> CarnetPage {
+        let id = random_bytes(8);
+        let client = u64::from_le_bytes(id.try_into().unwrap_or([1; 8])) & ((1 << 53) - 1);
+        CarnetPage {
+            p: Page::new(client.max(1), Box::new(WebEnv)),
+        }
+    }
+
+    pub fn apply(&mut self, updates: Array) -> Result<(), JsError> {
+        for (i, u) in updates.iter().enumerate() {
+            let u: Uint8Array = u
+                .dyn_into()
+                .map_err(|_| err(format!("mise à jour {i} : pas un Uint8Array")))?;
+            self.p.apply_update(&u.to_vec()).map_err(err)?;
+        }
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = takeUpdates)]
+    pub fn take_updates(&mut self) -> Array {
+        bytes_array(self.p.take_updates())
+    }
+
+    #[wasm_bindgen(js_name = encodeState)]
+    pub fn encode_state(&self) -> Vec<u8> {
+        self.p.encode_state()
+    }
+
+    #[wasm_bindgen(js_name = isEmpty)]
+    pub fn is_empty(&self) -> bool {
+        self.p.is_empty()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[wasm_bindgen(js_name = addSticker)]
+    pub fn add_sticker(
+        &mut self,
+        sticker: &str,
+        tint: &str,
+        x: f64,
+        y: f64,
+        w: f64,
+        rot: f64,
+        scale: f64,
+    ) -> Result<String, JsError> {
+        self.p
+            .add_sticker(sticker, tint, Anchor { x, y, w }, rot, scale)
+            .map_err(err)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[wasm_bindgen(js_name = addStroke)]
+    pub fn add_stroke(
+        &mut self,
+        tool: &str,
+        color: &str,
+        width: f64,
+        x: f64,
+        y: f64,
+        w: f64,
+        points: &[f32],
+    ) -> Result<String, JsError> {
+        self.p
+            .add_stroke(tool, color, width, Anchor { x, y, w }, points)
+            .map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = moveItem)]
+    pub fn move_item(&mut self, id: &str, x: f64, y: f64, w: f64) -> Result<(), JsError> {
+        self.p.move_item(id, Anchor { x, y, w }).map_err(err)
+    }
+
+    pub fn transform(&mut self, id: &str, rot: f64, scale: f64) -> Result<(), JsError> {
+        self.p.transform(id, rot, scale).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = deleteItem)]
+    pub fn delete_item(&mut self, id: &str) -> Result<(), JsError> {
+        self.p.delete_item(id).map_err(err)
+    }
+
+    #[wasm_bindgen(js_name = restoreItem)]
+    pub fn restore_item(&mut self, id: &str) -> Result<(), JsError> {
+        self.p.restore_item(id).map_err(err)
+    }
+
+    pub fn items(&self) -> Result<JsValue, JsError> {
+        to_js(&self.p.items())
+    }
+}
+
+impl Default for CarnetPage {
     fn default() -> Self {
         Self::new()
     }

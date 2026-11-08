@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createCore, dayPlace, weekPlace } from "./core.ts";
+import { createCore, createPage, dayPlace, weekPlace } from "./core.ts";
 import { backup, crc32, restore, unzip, zip } from "./backup.ts";
 
 const wasm = readFileSync(new URL("./wasm/carnet_bg.wasm", import.meta.url));
@@ -45,5 +45,22 @@ describe("sauvegarde .carnet", () => {
     const b = await createCore(wasm);
     await assert.rejects(restore(b, bad));
     assert.equal(b.all().length, 0);
+  });
+
+  test("les pages graphiques (autocollants, traits) voyagent dans la sauvegarde", async () => {
+    const a = await createCore(wasm);
+    a.add(dayPlace("2026-11-08"), { text: "x" });
+    const page = createPage();
+    page.addSticker("saison/feuille", "automne", 40, 20, 400, 8, 1.2);
+    page.addStroke("encre", "#1d2840", 2, 10, 10, 400, new Float32Array([0, 0, 0.5, 8, 3, 0.6, 16, 1, 0.4]));
+    const empty = createPage();
+    const { bytes, manifest } = await backup(a, new Map([["day:2026-11-08", page], ["day:2026-11-09", empty]]));
+    assert.deepEqual(Object.keys(manifest.files).sort(), ["notebook.yrs", "pages/day%3A2026-11-08.yrs"]);
+    const b = await createCore(wasm);
+    const r = await restore(b, bytes);
+    assert.deepEqual([...r.pages.keys()], ["day:2026-11-08"]);
+    const back = createPage();
+    back.apply([r.pages.get("day:2026-11-08")!]);
+    assert.deepEqual(back.items(), page.items());
   });
 });

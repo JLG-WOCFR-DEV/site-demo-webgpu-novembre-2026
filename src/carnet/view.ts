@@ -255,6 +255,7 @@ function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<s
     host.append(sec);
   }
   const d = parseDay(k);
+  sec.dataset.block = `day:${k}`;
   sec.classList.toggle("is-today", k === ctx.now);
   sec.classList.toggle("is-big", big);
   const nm = sec.querySelector<HTMLButtonElement>(".cn-dname")!;
@@ -295,6 +296,7 @@ function notesBlock(host: HTMLElement, ws: Day, notes: Line[], ctx: RenderCtx) {
     host.append(sec);
   }
   sec.querySelector<HTMLFormElement>("form")!.dataset.week = ws;
+  sec.dataset.block = `week:${ws}`;
   ctx.placeKey = `week:${ws}`;
   syncList(sec.querySelector("ol")!, notes.map((e) => entrySpec(e, ctx)));
 }
@@ -310,6 +312,7 @@ function monthCalendar(host: HTMLElement, mv: MonthView, ctx: RenderCtx) {
     sec.append(head, ol);
     host.append(sec);
   }
+  sec.dataset.block = `cal:${mv.month}`;
   const specs: RowSpec[] = mv.calendar.map((c) => ({
     key: `c:${c.day}`,
     make: () => {
@@ -363,6 +366,7 @@ function monthPage(host: HTMLElement, mv: MonthView, ctx: RenderCtx, sugIndex: M
     host.append(sec);
   }
   sec.querySelector<HTMLFormElement>("form")!.dataset.month = mv.month;
+  sec.dataset.block = `month:${mv.month}`;
   for (const s of mv.suggestions) sugIndex.set(s.key, s);
   ctx.placeKey = `month:${mv.month}`;
   ctx.dated = true;
@@ -455,7 +459,11 @@ function collectionPage(host: HTMLElement, cv: CollectionView | null, ctx: Rende
   form!.hidden = !has;
   empty!.hidden = has;
   empty!.textContent = "Une collection rassemble ce qui ne dépend pas d’un jour : livres, films et séries, recettes, idées. Crée-la dans l’index.";
-  if (!cv) return syncList(ol!, []);
+  if (!cv) {
+    delete sec.dataset.block;
+    return syncList(ol!, []);
+  }
+  sec.dataset.block = `collection:${cv.collection.id}`;
   const name = head!.querySelector("input")!;
   if (document.activeElement !== name) name.value = cv.collection.name;
   name.dataset.col = cv.collection.id;

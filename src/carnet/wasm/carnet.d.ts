@@ -88,11 +88,32 @@ export class Carnet {
     writable(): boolean;
 }
 
+/**
+ * Une page graphique (autocollants, traits) : un document par bloc du carnet.
+ */
+export class CarnetPage {
+    free(): void;
+    [Symbol.dispose](): void;
+    addSticker(sticker: string, tint: string, x: number, y: number, w: number, rot: number, scale: number): string;
+    addStroke(tool: string, color: string, width: number, x: number, y: number, w: number, points: Float32Array | number[]): string;
+    apply(updates: Array<any>): void;
+    deleteItem(id: string): void;
+    encodeState(): Uint8Array;
+    isEmpty(): boolean;
+    items(): any;
+    moveItem(id: string, x: number, y: number, w: number): void;
+    constructor();
+    restoreItem(id: string): void;
+    takeUpdates(): Array<any>;
+    transform(id: string, rot: number, scale: number): void;
+}
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_carnet_free: (a: number, b: number) => void;
+    readonly __wbg_carnetpage_free: (a: number, b: number) => void;
     readonly carnet_add: (a: number, b: any, c: any) => [number, number, number, number];
     readonly carnet_all: (a: number) => [number, number, number];
     readonly carnet_apply: (a: number, b: any) => [number, number];
@@ -130,6 +151,18 @@ export interface InitOutput {
     readonly carnet_takeUpdates: (a: number) => any;
     readonly carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_writable: (a: number) => number;
+    readonly carnetpage_addSticker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
+    readonly carnetpage_addStroke: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number, number];
+    readonly carnetpage_apply: (a: number, b: any) => [number, number];
+    readonly carnetpage_deleteItem: (a: number, b: number, c: number) => [number, number];
+    readonly carnetpage_encodeState: (a: number) => [number, number];
+    readonly carnetpage_isEmpty: (a: number) => number;
+    readonly carnetpage_items: (a: number) => [number, number, number];
+    readonly carnetpage_moveItem: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly carnetpage_new: () => number;
+    readonly carnetpage_restoreItem: (a: number, b: number, c: number) => [number, number];
+    readonly carnetpage_takeUpdates: (a: number) => any;
+    readonly carnetpage_transform: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;

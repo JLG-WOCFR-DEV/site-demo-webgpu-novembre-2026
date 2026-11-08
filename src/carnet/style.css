@@ -802,3 +802,233 @@ body > .cn-move.cn-move.cn-move {
     padding-bottom: var(--g);
   }
 }
+
+/* ───── Autocollants et dessin (P4b) ───── */
+[data-block] {
+  position: relative;
+}
+.cn-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.cn-ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.cn-ink path {
+  pointer-events: none;
+}
+body.is-drawing .cn-ink path {
+  pointer-events: visiblePainted;
+}
+.cn-sticker {
+  position: absolute;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 12px;
+  outline: none;
+  transition: filter 0.15s;
+}
+.cn-sticker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.cn-sticker.is-dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.18));
+  z-index: 50 !important;
+}
+.cn-sticker.is-selected,
+.cn-sticker:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.cn-sticker-tools {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px var(--shadow);
+}
+.cn-tool {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--ink);
+  font: 500 14px var(--mono);
+  cursor: pointer;
+}
+.cn-tool:hover,
+.cn-tool:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+body > .cn-sticker-tools.cn-sticker-tools.cn-sticker-tools {
+  position: absolute;
+  z-index: 30;
+}
+/* La planche : à droite sur ordinateur, en bas sur téléphone. */
+.cn-tray {
+  position: fixed;
+  right: 16px;
+  top: 76px;
+  bottom: 16px;
+  width: 300px;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 34px var(--shadow);
+  overflow: auto;
+}
+body > .cn-tray.cn-tray.cn-tray {
+  position: fixed;
+  z-index: 25;
+}
+.cn-tray[hidden] {
+  display: none;
+}
+.cn-tray-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cn-tray-head h2 {
+  margin: 0;
+}
+.cn-tray-seasons button {
+  border-bottom: 3px solid var(--a);
+}
+.cn-tray-groups {
+  display: flex;
+  gap: 14px;
+}
+.cn-tray-groups [aria-selected="true"] {
+  color: var(--accent);
+  text-decoration-thickness: 2px;
+}
+.cn-tray-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 6px;
+}
+.cn-tray-sticker {
+  aspect-ratio: 1;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.cn-tray-sticker svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.cn-tray-sticker:hover,
+.cn-tray-sticker:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+.cn-tray-sticker[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--hover);
+}
+.cn-tray-hint {
+  margin: 0;
+  font: 12px/1.5 var(--mono);
+  color: var(--ink-soft);
+}
+body.is-placing .cn-spread {
+  cursor: copy;
+}
+/* Dessin */
+.cn-drawbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100% - 24px);
+  padding: 8px 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 34px var(--shadow);
+}
+body > .cn-drawbar.cn-drawbar.cn-drawbar {
+  position: fixed;
+  z-index: 25;
+}
+.cn-drawbar[hidden] {
+  display: none;
+}
+.cn-draw-colors {
+  display: flex;
+  gap: 6px;
+}
+.cn-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--paper);
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+.cn-swatch[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+body.is-drawing .cn-spread {
+  cursor: crosshair;
+  touch-action: none;
+}
+body.is-drawing .cn-spread * {
+  user-select: none;
+}
+#cn-draw[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+@media (max-width: 860px) {
+  .cn-tray {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    width: auto;
+    max-height: 52vh;
+  }
+}
+@media (hover: none) {
+  .cn-tool {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .cn-swatch {
+    width: 36px;
+    height: 36px;
+  }
+}

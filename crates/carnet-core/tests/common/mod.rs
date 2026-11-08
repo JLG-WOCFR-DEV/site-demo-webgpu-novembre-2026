@@ -38,6 +38,15 @@ pub fn notebook(client: u64, clock: &Rc<Cell<f64>>) -> Notebook {
     )
 }
 
+/// Environnement de test pour un autre document (pages graphiques).
+pub fn env(client: u64, clock: &Rc<Cell<f64>>) -> Box<TestEnv> {
+    Box::new(TestEnv {
+        clock: clock.clone(),
+        state: 0x9E37_79B9_7F4A_7C15_F39C_C060_5CED_C834u128
+            ^ (client as u128 * 0x1234_5678_9ABC_DEF1),
+    })
+}
+
 pub fn clock(start: f64) -> Rc<Cell<f64>> {
     Rc::new(Cell::new(start))
 }
