@@ -99,6 +99,10 @@ proptest! {
         let mut restarts = 0u64;
 
         for (r, o) in &script {
+            // Le cache d'entrées (lu à chaque pas) ne doit jamais différer du document.
+            for rep in &reps {
+                prop_assert_eq!(rep.nb.all(), rep.nb.all_uncached());
+            }
             let live: Vec<_> = reps[*r].nb.all().into_iter().filter(|e| e.deleted_at.is_none()).collect();
             let dead: Vec<_> = reps[*r].nb.all().into_iter().filter(|e| e.deleted_at.is_some()).collect();
             let pick = |p: &u16, v: &Vec<carnet_core::Entry>| (!v.is_empty()).then(|| v[*p as usize % v.len()].clone());
@@ -185,6 +189,9 @@ proptest! {
             prop_assert!(!rep.nb.has_pending(), "réplique {} : mises à jour en attente après l'échange complet", i);
         }
         let reference = reps[0].nb.all();
+        for rep in &reps {
+            prop_assert_eq!(rep.nb.all(), rep.nb.all_uncached());
+        }
         for rep in &reps[1..] {
             prop_assert_eq!(&rep.nb.all(), &reference);
             prop_assert_eq!(rep.nb.dismissed(), reps[0].nb.dismissed());

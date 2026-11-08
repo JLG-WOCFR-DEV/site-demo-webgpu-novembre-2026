@@ -1,0 +1,31 @@
+{
+  "format": "carnet-bench-core/1",
+  "at": "2026-11-08T09:15:46.286Z",
+  "machine": "linux x64, Node v22.23.4",
+  "notebook": {
+    "entries": 2952,
+    "commands": 5859,
+    "buildMs": 264
+  },
+  "sizes": {
+    "checkpointBytes": 825575,
+    "journalBytes": 932219,
+    "perCommandBytes": 159
+  },
+  "openMs": {
+    "fromCheckpoint": 40.62,
+    "fromJournal": 100,
+    "sameAfterJournal": true
+  },
+  "viewMs": {
+    "week": 3.96,
+    "day": 2.4,
+    "month": 3.13,
+    "all": 15.28
+  },
+  "commandMs": {
+    "addThenTake": 0.04,
+    "splice": 0.01,
+    "encodeState": 5.31
+  }
+}

@@ -409,3 +409,53 @@ fn import_v0_merges_copy_chains_and_is_idempotent() {
     assert_eq!((r2.imported, r2.skipped), (0, 3));
     assert!(nb.import_v0("{ pas du json").is_err());
 }
+
+#[test]
+fn big_checkpoint_fills_the_cache() {
+    // Au-delà de 32 Ko, la mise à jour est appliquée sans observateur et le cache relu en entier.
+    let c = clock(1_700_000_000_000.0);
+    let mut a = notebook(1, &c);
+    let mut ids = Vec::new();
+    for i in 0..600 {
+        let day = d("2026-11-02").add_days(i % 30);
+        ids.push(
+            a.add(
+                Place::day(day),
+                NewEntry {
+                    kind: Some(Kind::Task),
+                    text: format!("tâche {i} — une ligne assez longue pour peser"),
+                    ..Default::default()
+                },
+            )
+            .unwrap(),
+        );
+    }
+    a.migrate(&ids[0], Place::day(d("2026-12-24"))).unwrap();
+    let state = a.encode_state();
+    assert!(
+        state.len() > 32 * 1024,
+        "checkpoint trop petit pour le test : {}",
+        state.len()
+    );
+
+    let mut b = notebook(2, &c);
+    let early = b
+        .add(
+            Place::day(d("2026-11-03")),
+            NewEntry {
+                text: "déjà là".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(b.all().len(), 1); // cache rempli avant l'arrivée du checkpoint
+    b.apply_update(&state).unwrap();
+    assert_eq!(b.all(), b.all_uncached());
+    assert_eq!(b.all().len(), 601);
+    assert!(b.get(&early).is_some());
+    assert_eq!(b.get(&ids[0]).unwrap().place.day, Some(d("2026-12-24")));
+    // Après l'arrivée en bloc, l'observateur suit de nouveau les petites modifications.
+    b.set_text(&ids[1], "renommée").unwrap();
+    assert_eq!(b.get(&ids[1]).unwrap().text, "renommée");
+    assert_eq!(b.all(), b.all_uncached());
+}

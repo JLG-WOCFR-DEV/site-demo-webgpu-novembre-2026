@@ -11,15 +11,17 @@
 //! file que l'hôte vide (`take_updates`) pour l'écrire ; l'hôte rend les mises à jour lues ou reçues
 //! par `apply_update`.
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
+use yrs::types::{Event, PathSegment};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{
-    uuid_v4_from, Any, Array, ArrayPrelim, ArrayRef, ClientID, Doc, GetString, Map, MapPrelim,
-    MapRef, OffsetKind, Options, Out, ReadTxn, StateVector, Text, TextPrelim, Transact,
+    uuid_v4_from, Any, Array, ArrayPrelim, ArrayRef, ClientID, DeepObservable, Doc, GetString, Map,
+    MapPrelim, MapRef, OffsetKind, Options, Out, ReadTxn, StateVector, Text, TextPrelim, Transact,
     TransactionMut, Update, WriteTxn,
 };
 
@@ -198,6 +200,54 @@ pub struct Notebook {
     outbox: Vec<Vec<u8>>,
     /// Mises à jour reçues avant celles dont elles dépendent, gardées telles quelles.
     deferred: Vec<Vec<u8>>,
+    /// Entrées déjà lues du document : les vues ne relisent que celles qu'une transaction a touchées
+    /// (carnet de référence : 20 ms → moins d'1 ms pour une semaine). Tenu à jour par un observateur
+    /// profond sur `entries`, donc aussi pour les mises à jour reçues d'ailleurs.
+    cache: RefCell<HashMap<String, Entry>>,
+    dirty: Arc<Mutex<Dirty>>,
+}
+
+const CACHE_OBSERVER: &str = "carnet-cache";
+
+/// Au-delà, une mise à jour reçue est appliquée sans observateur (yrs ne calcule alors pas les
+/// événements, coûteux sur un checkpoint) et le cache est relu en entier.
+const BULK_UPDATE: usize = 32 * 1024;
+
+fn observe_entries(entries: &MapRef, dirty: &Arc<Mutex<Dirty>>) {
+    let d = dirty.clone();
+    entries.observe_deep(CACHE_OBSERVER, move |txn, events| {
+        let mut d = d.lock().unwrap_or_else(|e| e.into_inner());
+        for e in events.iter() {
+            match e.path().front() {
+                // Un champ d'une entrée, ou son texte, ou son historique : la première clé est l'ULID.
+                Some(PathSegment::Key(id)) => d.mark(id),
+                // La map `entries` elle-même : entrées ajoutées ou retirées.
+                None => match e {
+                    Event::Map(m) => {
+                        for k in m.keys(txn).keys() {
+                            d.mark(k);
+                        }
+                    }
+                    _ => *d = Dirty::All,
+                },
+                _ => *d = Dirty::All,
+            }
+        }
+    });
+}
+
+/// Ce que le cache doit relire.
+enum Dirty {
+    All,
+    Ids(HashSet<String>),
+}
+
+impl Dirty {
+    fn mark(&mut self, id: &str) {
+        if let Dirty::Ids(s) = self {
+            s.insert(id.to_string());
+        }
+    }
 }
 
 /* ───── Lecture des champs ───── */
@@ -320,6 +370,8 @@ impl Notebook {
         let doc = Doc::with_options(o);
         let entries = doc.get_or_insert_map("entries");
         let meta = doc.get_or_insert_map("meta");
+        let dirty = Arc::new(Mutex::new(Dirty::All));
+        observe_entries(&entries, &dirty);
         Notebook {
             doc,
             entries,
@@ -327,6 +379,8 @@ impl Notebook {
             env,
             outbox: Vec::new(),
             deferred: Vec::new(),
+            cache: RefCell::new(HashMap::new()),
+            dirty,
         }
     }
 
@@ -347,11 +401,21 @@ impl Notebook {
     /// déjà intégré.
     pub fn apply_update(&mut self, bytes: &[u8]) -> Result<(), Error> {
         let u = Update::decode_v1(bytes).map_err(|e| Error::Update(e.to_string()))?;
+        let bulk = bytes.len() > BULK_UPDATE;
+        if bulk {
+            self.entries.unobserve_deep(CACHE_OBSERVER);
+        }
         let missing = {
             let mut txn = self.doc.transact_mut();
-            txn.apply_update(u)
-                .map_err(|e| Error::Update(e.to_string()))?;
-            txn.has_missing_updates()
+            let r = txn.apply_update(u);
+            let missing = txn.has_missing_updates();
+            drop(txn);
+            if bulk {
+                *self.dirty.lock().unwrap_or_else(|e| e.into_inner()) = Dirty::All;
+                observe_entries(&self.entries, &self.dirty);
+            }
+            r.map_err(|e| Error::Update(e.to_string()))?;
+            missing
         };
         if missing {
             self.deferred.push(bytes.to_vec());
@@ -676,16 +740,55 @@ impl Notebook {
 
     /* ───── Lecture ───── */
 
-    pub fn get(&self, id: &str) -> Option<Entry> {
+    /// Relit dans le document les entrées touchées depuis la dernière lecture.
+    fn refresh(&self) {
+        let dirty = std::mem::replace(
+            &mut *self.dirty.lock().unwrap_or_else(|e| e.into_inner()),
+            Dirty::Ids(HashSet::new()),
+        );
         let t = self.doc.transact();
-        match self.entries.get(&t, id) {
-            Some(Out::YMap(m)) => read_entry(id, &m, &t),
-            _ => None,
+        let mut cache = self.cache.borrow_mut();
+        match dirty {
+            Dirty::All => {
+                *cache = self
+                    .entries
+                    .iter(&t)
+                    .filter_map(|(k, v)| match v {
+                        Out::YMap(m) => read_entry(k, &m, &t).map(|e| (k.to_string(), e)),
+                        _ => None,
+                    })
+                    .collect();
+            }
+            Dirty::Ids(ids) => {
+                for id in ids {
+                    match self.entries.get(&t, &id) {
+                        Some(Out::YMap(m)) => match read_entry(&id, &m, &t) {
+                            Some(e) => cache.insert(id, e),
+                            None => cache.remove(&id),
+                        },
+                        _ => cache.remove(&id),
+                    };
+                }
+            }
         }
+    }
+
+    pub fn get(&self, id: &str) -> Option<Entry> {
+        self.refresh();
+        self.cache.borrow().get(id).cloned()
     }
 
     /// Toutes les entrées, corbeille comprise, triées par identifiant.
     pub fn all(&self) -> Vec<Entry> {
+        self.refresh();
+        let mut v: Vec<Entry> = self.cache.borrow().values().cloned().collect();
+        v.sort_by(|a, b| a.id.cmp(&b.id));
+        v
+    }
+
+    /// Les mêmes entrées, relues dans le document sans le cache (tests : le cache ne ment pas).
+    #[doc(hidden)]
+    pub fn all_uncached(&self) -> Vec<Entry> {
         let t = self.doc.transact();
         let mut v: Vec<Entry> = self
             .entries
