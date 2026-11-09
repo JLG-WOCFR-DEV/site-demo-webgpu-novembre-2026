@@ -12,8 +12,9 @@
  *     le bloc qui avait le focus (ou aujourd'hui) ;
  *   - déplacer : glisser, ou flèches (Maj : par 16 px) ; il peut changer de bloc en glissant ;
  *   - tourner, agrandir : barre d'outils, ou [ ] et - + au clavier ; retirer : Suppr (Annuler) ;
- *   - dessiner : mode Dessin, au stylet (pression réelle) ou au doigt ; le stylet présent, le doigt
- *     ne dessine plus (paume posée), il fait défiler ;
+ *   - dessiner : mode Dessin, au stylet (pression réelle) ou au doigt (ou stylet passif, vu comme un
+ *     doigt) ; deux doigts font défiler ; une paume (contact large) est ignorée ; le stylet présent,
+ *     le doigt ne dessine plus, il fait défiler ;
  *   - le stylet écrit aussi hors du mode Dessin (« Stylet partout ») : sur la page, pas sur les
  *     boutons ni les champs ; une tape du stylet reste une tape ;
  *   - tenir la pointe immobile en fin de trait : ligne, cercle, ellipse, triangle, rectangle (ink.ts) ;
@@ -70,6 +71,13 @@ function setPref(k: string, v: string) {
     /* navigation privée : le réglage vaut pour la session */
   }
 }
+
+/**
+ * Contact trop large pour un doigt ou une pointe : une paume, le tranchant de la main (Chrome Android
+ * donne la surface de contact ; ailleurs, width/height valent 1 et rien n'est écarté).
+ */
+const PALM_PX = 40;
+const isPalm = (e: PointerEvent) => Math.max(e.width || 0, e.height || 0) > PALM_PX;
 
 /**
  * Pression d'un point. Souris et doigt : 0,5 (le rendu simule alors la pression d'après la vitesse).
@@ -135,6 +143,8 @@ export class Decor {
   private liveAbort: (() => void) | null = null;
   private history = new InkHistory();
   private taps = new MultiTap();
+  /** Doigts posés en mode Dessin (défilement à deux doigts). */
+  private touches = new Map<number, [number, number]>();
   private picked: { key: string; ids: string[] } | null = null;
   private pickBox: HTMLElement | null = null;
   private undoBtn: HTMLButtonElement | null = null;
@@ -1137,6 +1147,8 @@ export class Decor {
         const rubber = pen && (ev.button === 5 || ev.button === 2 || (ev.buttons & 34) !== 0);
         if (this.drawing) {
           if (ev.pointerType === "touch") {
+            // Une paume (ou le tranchant de la main) posée : grande surface de contact, ignorée.
+            if (isPalm(ev)) return;
             // Deux doigts : ni trait ni gomme (une tape annule, un glissé fait défiler).
             if (this.taps.fingers > 1) return this.liveAbort?.();
             // Stylet présent : le doigt ne dessine plus (la paume posée sur l'écran), il fait défiler.
@@ -1185,23 +1197,47 @@ export class Decor {
     document.addEventListener("pointerdown", (ev) => {
       if (this.selected && !(ev.target as Element).closest(".cn-sticker, .cn-sticker-tools")) this.select(null, null);
     });
-    // Tapes à plusieurs doigts en mode Dessin : deux, annuler ; trois, rétablir.
+    // Tapes à plusieurs doigts en mode Dessin : deux, annuler ; trois, rétablir. Glisser à deux
+    // doigts fait défiler (sans stylet, un doigt dessine : la page ne défilerait plus du tout).
     addEventListener(
       "pointerdown",
       (ev) => {
-        if (this.drawing && ev.pointerType === "touch") this.taps.start(ev.pointerId, ev.clientX, ev.clientY, ev.timeStamp);
+        if (!this.drawing || ev.pointerType !== "touch" || isPalm(ev)) return;
+        this.taps.start(ev.pointerId, ev.clientX, ev.clientY, ev.timeStamp);
+        this.touches.set(ev.pointerId, [ev.clientX, ev.clientY]);
       },
       { capture: true },
     );
-    addEventListener("pointermove", (ev) => ev.pointerType === "touch" && this.taps.move(ev.pointerId, ev.clientX, ev.clientY), { passive: true });
+    addEventListener(
+      "pointermove",
+      (ev) => {
+        if (ev.pointerType !== "touch") return;
+        this.taps.move(ev.pointerId, ev.clientX, ev.clientY);
+        const was = this.touches.get(ev.pointerId);
+        if (!was) return;
+        this.touches.set(ev.pointerId, [ev.clientX, ev.clientY]);
+        // Le centre des doigts bouge de (déplacement d'un doigt) / (nombre de doigts).
+        if (this.drawing && !this.hasPen && this.touches.size >= 2) {
+          const n = this.touches.size;
+          scrollBy(-(ev.clientX - was[0]) / n, -(ev.clientY - was[1]) / n);
+        }
+      },
+      { passive: true },
+    );
     addEventListener("pointerup", (ev) => {
       if (ev.pointerType !== "touch") return;
+      this.touches.delete(ev.pointerId);
       const n = this.taps.end(ev.pointerId, ev.timeStamp);
       if (!this.drawing) return;
       if (n === 2) this.undo(true);
       else if (n >= 3) this.redo(true);
     });
-    addEventListener("pointercancel", (ev) => ev.pointerType === "touch" && (this.taps.cancel(), this.taps.end(ev.pointerId, ev.timeStamp)));
+    addEventListener("pointercancel", (ev) => {
+      if (ev.pointerType !== "touch") return;
+      this.touches.delete(ev.pointerId);
+      this.taps.cancel();
+      this.taps.end(ev.pointerId, ev.timeStamp);
+    });
     // Sous la pointe d'un stylet qui dessine, la page ne défile pas (Android, iPad : le stylet
     // envoie aussi des touch*, qu'on retient ; le doigt, lui, défile toujours).
     const stylus = (ev: TouchEvent) => {

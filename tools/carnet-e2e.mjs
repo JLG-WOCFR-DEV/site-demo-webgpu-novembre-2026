@@ -327,6 +327,46 @@ await step("téléphone : chaque vue sans débordement horizontal", async () => 
   await m.close();
 });
 
+await step("téléphone sans stylet actif : le doigt dessine, deux doigts défilent ou annulent, la paume est ignorée", async () => {
+  const m = await b.newContext({ ...devices["Pixel 7"] });
+  const q = await m.newPage();
+  await q.goto(url + "?vue=jour");
+  await q.waitForFunction(() => window.__carnet?.core);
+  const t = await m.newCDPSession(q);
+  const touch = async (frames, radius = 4) => {
+    // frames : une liste de positions de doigts [[x, y], …] par instant ; le premier pose, le dernier lève.
+    const pts = (f) => f.map(([x, y], id) => ({ x, y, id, radiusX: radius, radiusY: radius, force: 0.5 }));
+    await t.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(frames[0]) });
+    for (const f of frames.slice(1)) await t.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(f) });
+    await t.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  };
+  const count = () => q.evaluate(() => {
+    const k = document.querySelector("#spread [data-block]").dataset.block;
+    return window.__carnet.decor.items(k).filter((i) => i.type === "stroke").length;
+  });
+  await q.tap("#cn-draw");
+  const at = await q.evaluate(() => {
+    const b = document.querySelector("#spread [data-block]");
+    b.scrollIntoView({ block: "start" });
+    const r = b.getBoundingClientRect();
+    return [r.left + r.width / 2, r.top + 60];
+  });
+  const n0 = await count();
+  await touch(Array.from({ length: 12 }, (_, i) => [[at[0] - 60 + i * 10, at[1] + Math.sin(i) * 5]]));
+  eq(await count(), n0 + 1, "le doigt dessine");
+  await touch(Array.from({ length: 10 }, (_, i) => [[at[0] - 40 + i * 8, at[1] + 20]]), 30);
+  eq(await count(), n0 + 1, "la paume a dessiné");
+  const y0 = await q.evaluate(() => scrollY);
+  // Les doigts descendent : la page remonte (le jour est en bas de la page, on ne peut que remonter).
+  await touch(Array.from({ length: 12 }, (_, i) => [[at[0] - 40, at[1] + 40 + i * 12], [at[0] + 40, at[1] + 40 + i * 12]]));
+  const dy = y0 - (await q.evaluate(() => scrollY));
+  ok(dy > 100, `deux doigts : défilé de ${dy} px (depuis ${y0})`);
+  eq(await count(), n0 + 1, "deux doigts ont dessiné");
+  await touch([[[at[0] - 40, at[1] + 100], [at[0] + 40, at[1] + 100]], [[at[0] - 40, at[1] + 101], [at[0] + 40, at[1] + 100]]]);
+  eq(await count(), n0, "toucher à deux doigts : annuler");
+  await m.close();
+});
+
 await b.close();
 console.log(failed ? `\n${failed} échec(s)` : "\nTout passe.");
 process.exit(failed ? 1 : 0);

@@ -418,6 +418,9 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
       mine plus large ; **encre fraîche** : le trait brille puis sèche (2,4 s, rien si mouvement réduit)
 - [x] Parcours de bout en bout : vrais événements « pen » (pression, bouton) par le protocole DevTools ; audit axe du
       mode Dessin (la barre devient un repère)
+- [x] **Téléphone sans stylet actif** (doigt, stylet passif ou « universel », tous vus comme un doigt) : en mode Dessin,
+      deux doigts font défiler (avant : la page ne défilait plus du tout), une paume posée (contact > 40 px) est ignorée
+      et ne compte pas comme doigt d'une tape ; parcours e2e en événements tactiles réels (Pixel 7)
 - [ ] À essayer sur l'appareil : S Pen (bouton latéral, pression), paume posée, défilement au doigt en mode Dessin
 
 #### Sauvegardes locales (D10) — avancement
