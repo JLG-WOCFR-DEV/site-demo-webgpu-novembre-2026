@@ -1198,7 +1198,7 @@ async function boot() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) void autoVersion();
   });
-  (window as unknown as { __carnet: object }).__carnet = { get core() { return core; }, get store() { return store; }, ctx, get presse() { return engine; }, autoVersion, replaceWith };
+  (window as unknown as { __carnet: object }).__carnet = { get core() { return core; }, get store() { return store; }, ctx, get presse() { return engine; }, get decor() { return decor; }, autoVersion, replaceWith };
 }
 
 try {

@@ -398,6 +398,28 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
       Argon2id 64 Mio + XChaCha20-Poly1305 (code de `carnet-sync`), phrase générée ou choisie (60 bits au moins) ;
       l'import reconnaît le fichier et demande la phrase
 
+#### P4d — dessin et stylet (9 novembre)
+
+- [x] **Stylet partout** : hors du mode Dessin, le stylet écrit sur la page (pas sur les boutons ni les champs), le
+      doigt défile et touche comme avant ; une tape du stylet reste une tape (ouvre une ligne). Sous la pointe, la
+      page ne défile pas (Android, iPad : `touchstart` du stylet retenu). En mode Dessin, le stylet vu, le doigt défile
+      au lieu de dessiner. Réglage « Stylet partout » dans la barre (activé par défaut)
+- [x] **Bout gomme et bouton du stylet** : la gomme le temps du geste ; menu contextuel retenu
+- [x] **Gomme glissée** : tout trait traversé d'un seul geste (sonde tous les 5 px), un seul « Annuler »
+- [x] **Annuler / rétablir** le dessin (`ink.ts`, `InkHistory`) : Ctrl/⌘+Z, Ctrl/⌘+Maj+Z, Ctrl+Y, boutons ↶ ↷,
+      toucher à deux doigts (annuler) ou trois (rétablir) en mode Dessin ; traits, gommages, déplacements, duplications
+- [x] **Formes** : pointe tenue immobile 0,5 s en fin de trait → ligne, cercle, ellipse, triangle, rectangle (droit
+      sous 10° de pente), quadrilatère ; la ligne reconnue suit encore la pointe ; Maj : ligne droite ; nom de la forme
+      affiché un instant (et lu). Reconnaissance mesurée : 100 % cercles, rectangles, triangles, 94 à 99 % lignes,
+      0 faux positif sur gribouillis et écriture (main simulée)
+- [x] **Lasso** : entourer des traits (la moitié de leurs points dedans), les glisser, les dupliquer, les retirer ;
+      flèches et Suppr au clavier
+- [x] Latence : points prédits par le navigateur (`getPredictedEvents`), un dessin par image ; **crayon incliné** :
+      mine plus large ; **encre fraîche** : le trait brille puis sèche (2,4 s, rien si mouvement réduit)
+- [x] Parcours de bout en bout : vrais événements « pen » (pression, bouton) par le protocole DevTools ; audit axe du
+      mode Dessin (la barre devient un repère)
+- [ ] À essayer sur l'appareil : S Pen (bouton latéral, pression), paume posée, défilement au doigt en mode Dessin
+
 #### Sauvegardes locales (D10) — avancement
 
 - [x] Versions sur l'appareil (`versions.ts`, OPFS) : toutes les deux heures quand le carnet change, jamais

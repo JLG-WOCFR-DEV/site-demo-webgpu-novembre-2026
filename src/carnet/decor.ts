@@ -13,10 +13,18 @@
  *   - déplacer : glisser, ou flèches (Maj : par 16 px) ; il peut changer de bloc en glissant ;
  *   - tourner, agrandir : barre d'outils, ou [ ] et - + au clavier ; retirer : Suppr (Annuler) ;
  *   - dessiner : mode Dessin, au stylet (pression réelle) ou au doigt ; le stylet présent, le doigt
- *     ne dessine plus (paume posée) ; gomme : toucher un trait.
+ *     ne dessine plus (paume posée), il fait défiler ;
+ *   - le stylet écrit aussi hors du mode Dessin (« Stylet partout ») : sur la page, pas sur les
+ *     boutons ni les champs ; une tape du stylet reste une tape ;
+ *   - tenir la pointe immobile en fin de trait : ligne, cercle, ellipse, triangle, rectangle (ink.ts) ;
+ *     Maj : ligne droite ; crayon incliné : mine plus large ;
+ *   - gomme : glisser sur les traits ; le bout gomme du stylet ou son bouton font de même ;
+ *   - lasso : entourer des traits, puis glisser, dupliquer, retirer ;
+ *   - annuler, rétablir : Ctrl+Z / Ctrl+Maj+Z, boutons, ou toucher à deux / trois doigts.
  */
 import { getStroke } from "perfect-freehand";
 import type { PageItem, PhotoItem, StickerItem, StrokeItem } from "./core.ts";
+import { InkHistory, inverse, lassoPick, MultiTap, recognize, straight, type InkOp, type Pt, type ShapeKind } from "./ink.ts";
 import { mediaUrl } from "./media.ts";
 import type { Pages } from "./pages.ts";
 import { ensureDieFilter, GROUPS, paletteStyle, SEASONS, seasonOf, stickerById, STICKERS, stickerSvg, type Season, type StickerGroup } from "./stickers.ts";
@@ -33,13 +41,50 @@ export type DecorHooks = {
   readOnly: () => string | null;
 };
 
-type Tool = "encre" | "crayon" | "surligneur" | "gomme";
-const TOOLS: { id: Tool; name: string }[] = [
-  { id: "encre", name: "Encre" },
-  { id: "crayon", name: "Crayon" },
+type Tool = "encre" | "crayon" | "surligneur" | "gomme" | "lasso";
+const TOOLS: { id: Tool; name: string; title?: string }[] = [
+  { id: "encre", name: "Encre", title: "Tenir la pointe immobile à la fin d'un trait : ligne, cercle, rectangle… ; Maj : ligne droite" },
+  { id: "crayon", name: "Crayon", title: "Incliner le stylet élargit la mine" },
   { id: "surligneur", name: "Surligneur" },
-  { id: "gomme", name: "Gomme" },
+  { id: "gomme", name: "Gomme", title: "Passer sur les traits ; le bout gomme du stylet ou son bouton font de même" },
+  { id: "lasso", name: "Lasso", title: "Entourer des traits pour les déplacer, les dupliquer ou les retirer" },
 ];
+/** Pointe tenue immobile ce temps-là : la forme est reconnue. */
+const HOLD_MS = 480;
+const PEN_KEY = "carnet.stylet";
+const PEN_SEEN_KEY = "carnet.stylet.vu";
+/** Ce que le stylet touche sans dessiner, hors du mode Dessin (le texte d'une ligne, lui, reçoit l'encre ; une tape l'ouvre). */
+const INTERACTIVE = 'button, a[href], input, textarea, select, label, [contenteditable="true"], [contenteditable=""], [role="menuitem"], [role="button"]:not([data-act="edit"]), [data-tracker], .cn-sticker, .cn-sticker-tools, .cn-pick';
+
+function getPref(k: string) {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+}
+function setPref(k: string, v: string) {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* navigation privée : le réglage vaut pour la session */
+  }
+}
+
+/**
+ * Pression d'un point. Souris et doigt : 0,5 (le rendu simule alors la pression d'après la vitesse).
+ * Crayon : incliner le stylet élargit la mine, comme un vrai crayon couché sur le papier.
+ */
+function pressureOf(e: PointerEvent, tool: Tool) {
+  if (e.pointerType !== "pen") return 0.5;
+  let p = Math.max(0.05, e.pressure);
+  if (tool === "crayon") {
+    const alt = (e as PointerEvent & { altitudeAngle?: number }).altitudeAngle;
+    const tilt = typeof alt === "number" ? 1 - alt / (Math.PI / 2) : Math.min(1, Math.hypot(e.tiltX || 0, e.tiltY || 0) / 90);
+    p = Math.min(1, p * (1 + 1.3 * Math.max(0, tilt - 0.15)));
+  }
+  return p;
+}
 
 /** Contour d'un trait (perfect-freehand), en chemin SVG. */
 function strokePath(item: StrokeItem, s: number) {
@@ -80,7 +125,20 @@ export class Decor {
   private tool: Tool = "encre";
   private color = "var(--ink)";
   private width = 1.6;
-  private penSeen = false;
+  private inkTool: Tool = "encre";
+  /** Un stylet a touché l'écran : le doigt ne dessine plus, il fait défiler (la paume posée). */
+  private hasPen = false;
+  private penAnywhere = getPref(PEN_KEY) !== "non";
+  /** Un geste du stylet est en cours : ses touchstart sont retenus, la page ne défile pas sous la pointe. */
+  private penBusy = false;
+  private lastPen = 0;
+  private liveAbort: (() => void) | null = null;
+  private history = new InkHistory();
+  private taps = new MultiTap();
+  private picked: { key: string; ids: string[] } | null = null;
+  private pickBox: HTMLElement | null = null;
+  private undoBtn: HTMLButtonElement | null = null;
+  private redoBtn: HTMLButtonElement | null = null;
   private lastFocusBlock: string | null = null;
   private tray: HTMLElement;
   private tools: HTMLElement;
@@ -515,10 +573,8 @@ export class Decor {
       b.type = "button";
       b.textContent = t.name;
       b.dataset.tool = t.id;
-      b.addEventListener("click", () => {
-        this.tool = t.id;
-        this.renderDrawBar();
-      });
+      if (t.title) b.title = t.title;
+      b.addEventListener("click", () => this.setTool(t.id));
       tools.append(b);
     }
     const colors = document.createElement("div");
@@ -535,7 +591,7 @@ export class Decor {
       b.setAttribute("aria-label", name);
       b.addEventListener("click", () => {
         this.color = c;
-        if (this.tool === "gomme") this.tool = "encre";
+        if (this.tool === "gomme" || this.tool === "lasso") this.setTool(this.inkTool);
         this.renderDrawBar();
       });
       colors.append(b);
@@ -548,18 +604,55 @@ export class Decor {
     size.value = String(this.width);
     size.setAttribute("aria-label", "Épaisseur");
     size.addEventListener("input", () => (this.width = Number(size.value)));
+    const hist = document.createElement("div");
+    hist.className = "cn-seg cn-draw-hist";
+    hist.setAttribute("role", "group");
+    hist.setAttribute("aria-label", "Historique du dessin");
+    const hb = (label: string, text: string, run: () => void) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = text;
+      b.setAttribute("aria-label", label);
+      b.title = label;
+      b.addEventListener("click", run);
+      hist.append(b);
+      return b;
+    };
+    this.undoBtn = hb("Annuler (Ctrl+Z, ou toucher à deux doigts)", "↶", () => this.undo());
+    this.redoBtn = hb("Rétablir (Ctrl+Maj+Z, ou toucher à trois doigts)", "↷", () => this.redo());
+    const pen = document.createElement("label");
+    pen.className = "cn-draw-pen";
+    pen.title = "Le stylet écrit sur la page sans passer par « Dessiner » ; le doigt continue de faire défiler et de toucher.";
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = this.penAnywhere;
+    box.addEventListener("change", () => {
+      this.penAnywhere = box.checked;
+      setPref(PEN_KEY, box.checked ? "oui" : "non");
+    });
+    pen.append(box, document.createTextNode(" Stylet partout"));
     const done = document.createElement("button");
     done.type = "button";
     done.className = "cn-btn";
     done.textContent = "Terminer";
     done.addEventListener("click", () => this.toggleDraw(false));
-    bar.append(tools, colors, size, done);
+    bar.append(tools, colors, size, hist, pen, done);
+    this.renderDrawBar();
+  }
+
+  private setTool(t: Tool) {
+    this.tool = t;
+    if (t !== "gomme" && t !== "lasso") this.inkTool = t;
+    if (t !== "lasso") this.unpick();
     this.renderDrawBar();
   }
 
   private renderDrawBar() {
     for (const b of this.drawBar.querySelectorAll<HTMLElement>("[data-tool]")) b.setAttribute("aria-pressed", String(b.dataset.tool === this.tool));
-    for (const b of this.drawBar.querySelectorAll<HTMLElement>("[data-color]")) b.setAttribute("aria-pressed", String(b.dataset.color === this.color && this.tool !== "gomme"));
+    for (const b of this.drawBar.querySelectorAll<HTMLElement>("[data-color]")) b.setAttribute("aria-pressed", String(b.dataset.color === this.color && this.tool !== "gomme" && this.tool !== "lasso"));
+    if (this.undoBtn) this.undoBtn.disabled = !this.history.canUndo;
+    if (this.redoBtn) this.redoBtn.disabled = !this.history.canRedo;
+    document.body.dataset.drawTool = this.tool;
   }
 
   toggleDraw(on = !this.drawing) {
@@ -570,6 +663,7 @@ export class Decor {
     document.body.classList.toggle("is-drawing", on);
     document.getElementById("cn-draw")?.setAttribute("aria-pressed", String(on));
     if (on) this.select(null, null);
+    else this.unpick();
   }
 
   private colorValue(c: string, block: HTMLElement) {
@@ -578,66 +672,450 @@ export class Decor {
     return getComputedStyle(block).getPropertyValue(c.slice(4, -1)).trim() || "#1d2840";
   }
 
-  private beginStroke(ev: PointerEvent, block: HTMLElement) {
+  /** Un geste qui commence : trait, gomme ou lasso. `outside` : le stylet, hors du mode Dessin. */
+  private gesture(ev: PointerEvent, block: HTMLElement, tool: Tool, outside = false) {
+    if (ev.pointerType === "pen") {
+      this.penBusy = true;
+      this.lastPen = performance.now();
+    }
+    if (tool === "gomme") this.eraseDrag(ev, block);
+    else if (tool === "lasso") this.lasso(ev, block);
+    else this.beginStroke(ev, block, tool, outside);
+  }
+
+  /** Suit un pointeur jusqu'à ce qu'il se lève ; `end` reçoit l'événement final (annulé ou non). */
+  private follow(ev: PointerEvent, move: (e: PointerEvent) => void, end: (e: PointerEvent) => void) {
+    try {
+      (ev.target as Element).setPointerCapture?.(ev.pointerId);
+    } catch {
+      /* pointeur synthétique (tests) : pas de capture, les événements arrivent quand même à window */
+    }
+    const mv = (e: PointerEvent) => e.pointerId === ev.pointerId && move(e);
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== ev.pointerId) return;
+      stop();
+      // Le clic natif qui suit le lever (même élément sous la pointe) n'est pas pour la page.
+      this.swallowClick((ev.target as Element).closest("[data-block]") ?? this.root);
+      end(e);
+    };
+    const stop = () => {
+      removeEventListener("pointermove", mv);
+      removeEventListener("pointerup", up);
+      removeEventListener("pointercancel", up);
+      if (ev.pointerType === "pen") {
+        this.penBusy = false;
+        this.lastPen = performance.now();
+      }
+    };
+    addEventListener("pointermove", mv);
+    addEventListener("pointerup", up);
+    addEventListener("pointercancel", up);
+    return stop;
+  }
+
+  private synthClick = false;
+  private swallowClick(scope: Element) {
+    // Le seul clic qui suit (il arrive aussitôt après le lever), là où le geste a eu lieu ; un bouton
+    // touché juste après, ailleurs, garde le sien.
+    const off = () => removeEventListener("click", f, { capture: true });
+    const f = (e: MouseEvent) => {
+      if (this.synthClick || !scope.contains(e.target as Node)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      off();
+    };
+    addEventListener("click", f, { capture: true });
+    setTimeout(off, 150);
+  }
+
+  private beginStroke(ev: PointerEvent, block: HTMLElement, tool: Tool, outside: boolean) {
     const key = block.dataset.block!;
     const r = block.getBoundingClientRect();
     const ox = ev.clientX - r.left;
     const oy = ev.clientY - r.top;
-    const pts: [number, number, number][] = [];
+    const pts: Pt[] = [];
+    let ahead: Pt[] = [];
     const layer = this.layer(block);
     const ink = layer.querySelector<SVGSVGElement>(".cn-ink")!;
     ink.setAttribute("viewBox", `0 0 ${Math.max(1, block.clientWidth)} ${Math.max(1, block.clientHeight)}`);
     const live = document.createElementNS(NS, "path");
+    live.classList.add("is-live");
     const color = this.colorValue(this.color, block);
-    live.setAttribute("style", strokeStyle(this.tool, color));
+    const width = this.width;
+    live.setAttribute("style", strokeStyle(tool, color));
     live.setAttribute("transform", `translate(${ox} ${oy})`);
     ink.append(live);
-    const pressure = (e: PointerEvent) => (e.pointerType === "pen" ? Math.max(0.05, e.pressure) : 0.5);
+    const t0 = performance.now();
+    const local = (c: PointerEvent): Pt => [c.clientX - r.left - ox, c.clientY - r.top - oy, pressureOf(c, tool)];
+    // Un seul dessin par image, avec les points que le navigateur prédit : le trait colle à la pointe.
+    let raf = 0;
+    const paint = () => {
+      raf = 0;
+      live.setAttribute("d", outline(ahead.length ? pts.concat(ahead) : pts, tool, width));
+    };
+    const schedule = () => (raf ||= requestAnimationFrame(paint));
+    // Tenir la pointe immobile à la fin du trait : il devient la forme qu'il voulait être.
+    let snapped: ShapeKind | null = null;
+    let hold = 0;
+    let still: Pt = [0, 0, 0];
+    let over = false;
+    const trySnap = () => {
+      if (over || snapped) return;
+      const s = recognize(pts);
+      if (!s) return;
+      pts.splice(0, pts.length, ...s.pts);
+      ahead = [];
+      snapped = s.kind;
+      paint();
+      this.snapTip(s.kind, r.left + ox + still[0], r.top + oy + still[1]);
+      navigator.vibrate?.(8);
+    };
     const add = (e: PointerEvent) => {
-      // Les points intermédiaires que le navigateur a regroupés : un trait rapide reste lisse.
-      const list = typeof e.getCoalescedEvents === "function" ? e.getCoalescedEvents() : [e];
-      for (const c of list.length ? list : [e]) pts.push([c.clientX - r.left - ox, c.clientY - r.top - oy, pressure(c)]);
-      live.setAttribute("d", outline(pts, this.tool, this.width));
+      if (snapped === "ligne" || (e.shiftKey && pts.length)) {
+        // Ligne reconnue, ou Maj : une ligne droite dont le bout suit la pointe.
+        const a = pts[0]!;
+        pts.splice(0, pts.length, ...straight(a, local(e), a[2]));
+        ahead = [];
+        return schedule();
+      }
+      if (snapped) return;
+      const list = typeof e.getCoalescedEvents === "function" ? e.getCoalescedEvents() : [];
+      for (const c of list.length ? list : [e]) pts.push(local(c));
+      const pred = typeof e.getPredictedEvents === "function" ? e.getPredictedEvents() : [];
+      ahead = pred.slice(0, 2).map(local);
+      const last = pts[pts.length - 1]!;
+      if (Math.hypot(last[0] - still[0], last[1] - still[1]) > 4 || pts.length === 1) {
+        still = last;
+        clearTimeout(hold);
+        hold = window.setTimeout(trySnap, HOLD_MS);
+      }
+      schedule();
     };
     add(ev);
-    const target = ev.target as Element;
-    target.setPointerCapture?.(ev.pointerId);
-    const move = (e: PointerEvent) => e.pointerId === ev.pointerId && add(e);
-    const up = (e: PointerEvent) => {
-      if (e.pointerId !== ev.pointerId) return;
-      removeEventListener("pointermove", move);
-      removeEventListener("pointerup", up);
-      removeEventListener("pointercancel", up);
+    const finish = () => {
+      over = true;
+      clearTimeout(hold);
+      cancelAnimationFrame(raf);
       live.remove();
-      if (e.type === "pointercancel" || pts.length < 2) return;
-      const flat = new Float32Array(pts.flat());
-      try {
-        this.h.pages.mutate(key, (p) => p.addStroke(this.tool, color, this.width, ox, oy, block.clientWidth, flat));
-      } catch (err) {
-        this.h.toast(err instanceof Error ? err.message : String(err));
-      }
-      this.refresh(key);
+      if (this.liveAbort === abort) this.liveAbort = null;
     };
-    addEventListener("pointermove", move);
-    addEventListener("pointerup", up);
-    addEventListener("pointercancel", up);
+    const abort = () => {
+      stop();
+      finish();
+    };
+    this.liveAbort = abort;
+    const stop = this.follow(ev, add, (e) => {
+      finish();
+      if (e.type === "pointercancel") return;
+      // Une tape du stylet hors du mode Dessin reste une tape (ouvrir une ligne, cocher…).
+      let ext = 0;
+      for (const q of pts) ext = Math.max(ext, Math.abs(q[0]), Math.abs(q[1]));
+      if (outside && ext < 4 && performance.now() - t0 < 350) {
+        this.synthClick = true;
+        (ev.target as HTMLElement).click?.();
+        this.synthClick = false;
+        return;
+      }
+      if (pts.length < 2) return;
+      const flat = new Float32Array(pts.flat());
+      let id = "";
+      try {
+        id = this.h.pages.mutate(key, (p) => p.addStroke(tool, color, width, ox, oy, block.clientWidth, flat));
+      } catch (err) {
+        return this.h.toast(err instanceof Error ? err.message : String(err));
+      }
+      this.history.push({ kind: "add", key, ids: [id] });
+      this.refresh(key);
+      this.renderDrawBar();
+      // L'encre fraîche brille un instant puis sèche (comme le texte, P5).
+      const p = block.querySelector<SVGPathElement>(`.cn-ink path[data-id="${id}"]`);
+      if (p && tool !== "surligneur") {
+        p.classList.add("is-fresh");
+        p.addEventListener("animationend", () => p.classList.remove("is-fresh"), { once: true });
+      }
+    });
   }
 
-  private erase(ev: PointerEvent, block: HTMLElement) {
+  /** La forme reconnue, dite un instant près de la pointe (et aux lecteurs d'écran). */
+  private snapTip(kind: ShapeKind, x: number, y: number) {
+    const t = document.createElement("div");
+    t.className = "cn-snap-tip";
+    t.dataset.glIgnore = "";
+    t.setAttribute("role", "status");
+    t.textContent = kind[0]!.toUpperCase() + kind.slice(1);
+    t.style.left = `${x + scrollX + 14}px`;
+    t.style.top = `${y + scrollY - 30}px`;
+    document.body.append(t);
+    setTimeout(() => t.remove(), 1100);
+  }
+
+  /** Gomme : tout trait que la pointe traverse, d'un seul geste ; un seul « Annuler ». */
+  private eraseDrag(ev: PointerEvent, block: HTMLElement) {
     const key = block.dataset.block!;
-    // Le trait sous le doigt : chemins de la couche, du dessus vers le dessous.
-    const hit = document.elementsFromPoint(ev.clientX, ev.clientY).find((n) => n instanceof SVGPathElement && n.dataset.id && n.closest(".cn-ink")) as SVGPathElement | undefined;
-    if (!hit) return;
-    const id = hit.dataset.id!;
-    this.h.pages.mutate(key, (p) => p.deleteItem(id));
-    this.refresh(key);
-    this.h.toast("Trait effacé", {
-      label: "Annuler",
-      run: () => {
-        this.h.pages.mutate(key, (p) => p.restoreItem(id));
-        this.refresh(key);
-      },
+    const layer = this.layer(block);
+    document.body.classList.add("is-erasing");
+    const hit = new Map<string, SVGPathElement>();
+    const probe = (x: number, y: number) => {
+      for (const n of document.elementsFromPoint(x, y)) {
+        if (n instanceof SVGPathElement && n.dataset.id && !hit.has(n.dataset.id) && layer.contains(n)) {
+          hit.set(n.dataset.id, n);
+          n.classList.add("is-erased");
+        }
+      }
+    };
+    let last: [number, number] = [ev.clientX, ev.clientY];
+    probe(...last);
+    const visit = (e: PointerEvent) => {
+      const list = typeof e.getCoalescedEvents === "function" ? e.getCoalescedEvents() : [];
+      for (const c of list.length ? list : [e]) {
+        // Entre deux points éloignés (geste rapide), on sonde tous les 5 px : rien n'échappe.
+        const n = Math.max(1, Math.ceil(Math.hypot(c.clientX - last[0], c.clientY - last[1]) / 5));
+        for (let k = 1; k <= n; k++) probe(last[0] + ((c.clientX - last[0]) * k) / n, last[1] + ((c.clientY - last[1]) * k) / n);
+        last = [c.clientX, c.clientY];
+      }
+    };
+    this.follow(ev, visit, (e) => {
+      document.body.classList.remove("is-erasing");
+      for (const n of hit.values()) n.classList.remove("is-erased");
+      if (e.type === "pointercancel" || !hit.size) return;
+      const ids = [...hit.keys()];
+      const op: InkOp = { kind: "del", key, ids };
+      this.apply(op);
+      this.history.push(op);
+      this.renderDrawBar();
+      this.h.toast(ids.length > 1 ? `${ids.length} traits effacés` : "Trait effacé", { label: "Annuler", run: () => this.revert(op) });
     });
+  }
+
+  /** Lasso : entourer des traits pour les déplacer, les dupliquer ou les retirer ensemble. */
+  private lasso(ev: PointerEvent, block: HTMLElement) {
+    const key = block.dataset.block!;
+    const r = block.getBoundingClientRect();
+    const ink = this.layer(block).querySelector<SVGSVGElement>(".cn-ink")!;
+    const poly: [number, number][] = [[ev.clientX - r.left, ev.clientY - r.top]];
+    const line = document.createElementNS(NS, "path");
+    line.classList.add("cn-lasso-line");
+    ink.append(line);
+    const draw = () => line.setAttribute("d", `M${poly.map((p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" L")} Z`);
+    this.follow(
+      ev,
+      (e) => {
+        const list = typeof e.getCoalescedEvents === "function" ? e.getCoalescedEvents() : [];
+        for (const c of list.length ? list : [e]) poly.push([c.clientX - r.left, c.clientY - r.top]);
+        draw();
+      },
+      (e) => {
+        line.remove();
+        if (e.type === "pointercancel" || poly.length < 3) return;
+        const w = block.clientWidth || 1;
+        const strokes = this.h.pages
+          .items(key)
+          .filter((i): i is StrokeItem => i.type === "stroke")
+          .map((it) => {
+            const s = w / it.anchor.w;
+            const pts: [number, number][] = [];
+            for (let i = 0; i + 2 < it.points.length; i += 3) pts.push([(it.anchor.x + it.points[i]!) * s, (it.anchor.y + it.points[i + 1]!) * s]);
+            return { id: it.id, pts };
+          });
+        const ids = lassoPick(poly, strokes);
+        if (!ids.length) return this.h.toast("Aucun trait dans le lasso");
+        this.pick(key, ids);
+      },
+    );
+  }
+
+  private strokeItems(key: string, ids: string[]) {
+    const want = new Set(ids);
+    return this.h.pages.items(key).filter((i): i is StrokeItem => i.type === "stroke" && want.has(i.id));
+  }
+
+  /** Montre la sélection du lasso : traits soulignés, cadre à glisser, et ses deux boutons. */
+  private pick(key: string, ids: string[]) {
+    this.unpick();
+    const block = this.root.querySelector<HTMLElement>(`[data-block="${CSS.escape(key)}"]`);
+    if (!block) return;
+    const layer = this.layer(block);
+    const paths = ids.map((id) => layer.querySelector<SVGPathElement>(`.cn-ink path[data-id="${id}"]`)).filter((p): p is SVGPathElement => !!p);
+    if (!paths.length) return;
+    this.picked = { key, ids };
+    const br = block.getBoundingClientRect();
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const p of paths) {
+      p.classList.add("is-picked");
+      const q = p.getBoundingClientRect();
+      [x0, y0, x1, y1] = [Math.min(x0, q.left), Math.min(y0, q.top), Math.max(x1, q.right), Math.max(y1, q.bottom)];
+    }
+    const box = document.createElement("div");
+    box.className = "cn-pick";
+    box.tabIndex = 0;
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", `${ids.length > 1 ? `${ids.length} traits sélectionnés` : "Un trait sélectionné"}. Glisser ou flèches pour déplacer, Suppr pour retirer.`);
+    box.style.cssText = `left:${x0 - br.left - 8}px;top:${y0 - br.top - 8}px;width:${x1 - x0 + 16}px;height:${y1 - y0 + 16}px`;
+    const bar = document.createElement("div");
+    bar.className = "cn-pick-tools";
+    const btn = (text: string, run: () => void) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cn-tool";
+      b.textContent = text;
+      b.addEventListener("click", run);
+      bar.append(b);
+    };
+    btn("Dupliquer", () => this.duplicatePicked());
+    btn("Retirer", () => this.deletePicked());
+    box.append(bar);
+    layer.append(box);
+    this.pickBox = box;
+    box.addEventListener("pointerdown", (e) => {
+      if ((e.target as Element).closest("button")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      box.focus({ preventScroll: true });
+      const x = e.clientX;
+      const y = e.clientY;
+      let dx = 0;
+      let dy = 0;
+      this.follow(
+        e,
+        (m) => {
+          dx = m.clientX - x;
+          dy = m.clientY - y;
+          for (const n of [...paths, box]) n.style.translate = `${dx}px ${dy}px`;
+        },
+        (u) => {
+          for (const n of [...paths, box]) n.style.translate = "";
+          if (u.type === "pointercancel" || Math.hypot(dx, dy) < 2) return;
+          this.movePicked(dx, dy);
+        },
+      );
+    });
+    box.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 16 : 4;
+      const keys: Record<string, () => void> = {
+        ArrowLeft: () => this.movePicked(-step, 0),
+        ArrowRight: () => this.movePicked(step, 0),
+        ArrowUp: () => this.movePicked(0, -step),
+        ArrowDown: () => this.movePicked(0, step),
+        Delete: () => this.deletePicked(),
+        Backspace: () => this.deletePicked(),
+        Escape: () => this.unpick(),
+      };
+      const run = keys[e.key];
+      if (!run) return;
+      e.preventDefault();
+      e.stopPropagation();
+      run();
+    });
+    box.focus({ preventScroll: true });
+  }
+
+  private unpick() {
+    if (!this.picked) return;
+    const block = this.root.querySelector<HTMLElement>(`[data-block="${CSS.escape(this.picked.key)}"]`);
+    block?.querySelectorAll(".cn-ink path.is-picked").forEach((p) => p.classList.remove("is-picked"));
+    this.pickBox?.remove();
+    this.pickBox = null;
+    this.picked = null;
+  }
+
+  private movePicked(dx: number, dy: number) {
+    const sel = this.picked;
+    const block = sel && this.root.querySelector<HTMLElement>(`[data-block="${CSS.escape(sel.key)}"]`);
+    if (!sel || !block) return;
+    const w = block.clientWidth || 1;
+    const op: InkOp = {
+      kind: "move",
+      key: sel.key,
+      moves: this.strokeItems(sel.key, sel.ids).map((it) => {
+        const s = w / it.anchor.w;
+        return { id: it.id, from: [it.anchor.x, it.anchor.y, it.anchor.w], to: [it.anchor.x + dx / s, it.anchor.y + dy / s, it.anchor.w] };
+      }),
+    };
+    this.apply(op);
+    this.history.push(op);
+    this.renderDrawBar();
+    this.pick(sel.key, sel.ids);
+  }
+
+  private duplicatePicked() {
+    const sel = this.picked;
+    const block = sel && this.root.querySelector<HTMLElement>(`[data-block="${CSS.escape(sel.key)}"]`);
+    if (!sel || !block) return;
+    // Décalée de 16 px à l'écran, dans les unités de l'ancre de chaque trait.
+    const w = block.clientWidth || 1;
+    const items = this.strokeItems(sel.key, sel.ids);
+    const ids = this.h.pages.mutate(sel.key, (p) =>
+      items.map((it) => {
+        const d = (16 * it.anchor.w) / w;
+        return p.addStroke(it.tool, it.color, it.width, it.anchor.x + d, it.anchor.y + d, it.anchor.w, new Float32Array(it.points));
+      }),
+    );
+    this.history.push({ kind: "add", key: sel.key, ids });
+    this.refresh(sel.key);
+    this.renderDrawBar();
+    this.pick(sel.key, ids);
+  }
+
+  private deletePicked() {
+    const sel = this.picked;
+    if (!sel) return;
+    const op: InkOp = { kind: "del", key: sel.key, ids: sel.ids };
+    this.unpick();
+    this.apply(op);
+    this.history.push(op);
+    this.renderDrawBar();
+    this.h.toast(op.ids.length > 1 ? `${op.ids.length} traits retirés` : "Trait retiré", { label: "Annuler", run: () => this.revert(op) });
+  }
+
+  /* ───── Annuler, rétablir ───── */
+
+  /** Applique une opération de dessin à sa page (ajout = remettre, retrait = effacer, déplacement). */
+  private apply(op: InkOp) {
+    try {
+      this.h.pages.mutate(op.key, (p) => {
+        if (op.kind === "move") for (const m of op.moves) p.moveItem(m.id, m.to[0], m.to[1], m.to[2]);
+        else for (const id of op.ids) op.kind === "add" ? p.restoreItem(id) : p.deleteItem(id);
+      });
+    } catch (err) {
+      this.h.toast(err instanceof Error ? err.message : String(err));
+    }
+    this.refresh(op.key);
+  }
+
+  /** Le « Annuler » d'un toast : défait cette opération-là, même si d'autres ont suivi. */
+  private revert(op: InkOp) {
+    this.history.forget(op);
+    this.apply(inverse(op));
+    this.renderDrawBar();
+  }
+
+  undo(say = false) {
+    if (this.h.readOnly()) return false;
+    const op = this.history.undo();
+    if (!op) return false;
+    this.unpick();
+    this.apply(inverse(op));
+    this.renderDrawBar();
+    if (say) this.h.toast("Annulé");
+    return true;
+  }
+
+  redo(say = false) {
+    if (this.h.readOnly()) return false;
+    const op = this.history.redo();
+    if (!op) return false;
+    this.unpick();
+    this.apply(op);
+    this.renderDrawBar();
+    if (say) this.h.toast("Rétabli");
+    return true;
+  }
+
+  /** Premier trait au stylet hors du mode Dessin : on dit une fois ce qui vient de se passer. */
+  private hintPen() {
+    if (getPref(PEN_SEEN_KEY)) return;
+    setPref(PEN_SEEN_KEY, "1");
+    this.h.toast("Le stylet écrit directement sur la page ; le doigt fait défiler. Réglable dans Dessiner.");
   }
 
   /* ───── Événements ───── */
@@ -650,15 +1128,34 @@ export class Decor {
       (ev) => {
         const target = ev.target as HTMLElement;
         const block = target.closest<HTMLElement>("[data-block]");
+        const pen = ev.pointerType === "pen";
+        if (pen && !this.hasPen) {
+          this.hasPen = true;
+          document.body.classList.add("has-pen");
+        }
+        // Le bout gomme du stylet (bouton 5) ou son bouton latéral (2) : la gomme, le temps du geste.
+        const rubber = pen && (ev.button === 5 || ev.button === 2 || (ev.buttons & 34) !== 0);
         if (this.drawing) {
-          if (ev.pointerType === "pen") this.penSeen = true;
-          // Stylet présent : le doigt ne dessine plus (la paume posée sur l'écran).
-          if (ev.pointerType === "touch" && this.penSeen) return;
-          if (!block || target.closest("input, textarea")) return;
+          if (ev.pointerType === "touch") {
+            // Deux doigts : ni trait ni gomme (une tape annule, un glissé fait défiler).
+            if (this.taps.fingers > 1) return this.liveAbort?.();
+            // Stylet présent : le doigt ne dessine plus (la paume posée sur l'écran), il fait défiler.
+            if (this.hasPen) return;
+          }
+          if (!block || target.closest("input, textarea, .cn-pick")) return;
+          if (this.picked) this.unpick();
           ev.preventDefault();
           ev.stopPropagation();
-          if (this.tool === "gomme") this.erase(ev, block);
-          else this.beginStroke(ev, block);
+          this.gesture(ev, block, rubber ? "gomme" : this.tool);
+          return;
+        }
+        // Le stylet écrit partout, sans passer par « Dessiner » ; le doigt garde ses gestes.
+        if (pen && this.penAnywhere && block && !this.armed && !this.h.readOnly() && !target.closest(INTERACTIVE)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          this.select(null, null);
+          this.gesture(ev, block, rubber ? "gomme" : this.inkTool, true);
+          if (!rubber) this.hintPen();
           return;
         }
         if (this.armed) {
@@ -687,6 +1184,44 @@ export class Decor {
     );
     document.addEventListener("pointerdown", (ev) => {
       if (this.selected && !(ev.target as Element).closest(".cn-sticker, .cn-sticker-tools")) this.select(null, null);
+    });
+    // Tapes à plusieurs doigts en mode Dessin : deux, annuler ; trois, rétablir.
+    addEventListener(
+      "pointerdown",
+      (ev) => {
+        if (this.drawing && ev.pointerType === "touch") this.taps.start(ev.pointerId, ev.clientX, ev.clientY, ev.timeStamp);
+      },
+      { capture: true },
+    );
+    addEventListener("pointermove", (ev) => ev.pointerType === "touch" && this.taps.move(ev.pointerId, ev.clientX, ev.clientY), { passive: true });
+    addEventListener("pointerup", (ev) => {
+      if (ev.pointerType !== "touch") return;
+      const n = this.taps.end(ev.pointerId, ev.timeStamp);
+      if (!this.drawing) return;
+      if (n === 2) this.undo(true);
+      else if (n >= 3) this.redo(true);
+    });
+    addEventListener("pointercancel", (ev) => ev.pointerType === "touch" && (this.taps.cancel(), this.taps.end(ev.pointerId, ev.timeStamp)));
+    // Sous la pointe d'un stylet qui dessine, la page ne défile pas (Android, iPad : le stylet
+    // envoie aussi des touch*, qu'on retient ; le doigt, lui, défile toujours).
+    const stylus = (ev: TouchEvent) => {
+      if (!this.penBusy) return;
+      for (const t of Array.from(ev.changedTouches)) if ((t as Touch & { touchType?: string }).touchType === "stylus") return ev.preventDefault();
+    };
+    this.root.addEventListener("touchstart", stylus, { passive: false });
+    this.root.addEventListener("touchmove", stylus, { passive: false });
+    // Le bouton du stylet ouvre le menu contextuel : pas pendant qu'il gomme.
+    this.root.addEventListener("contextmenu", (ev) => {
+      if (this.penBusy || performance.now() - this.lastPen < 600) ev.preventDefault();
+    });
+    // Ctrl+Z, Ctrl+Maj+Z, Ctrl+Y : le dessin (hors des champs de texte, qui gardent les leurs).
+    addEventListener("keydown", (ev) => {
+      if (!(ev.ctrlKey || ev.metaKey) || ev.altKey) return;
+      const t = ev.target as HTMLElement;
+      if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      const k = ev.key.toLowerCase();
+      const done = k === "z" ? (ev.shiftKey ? this.redo() : this.undo()) : k === "y" ? this.redo() : false;
+      if (done) ev.preventDefault();
     });
     this.root.addEventListener("focusin", (ev) => {
       const b = (ev.target as HTMLElement).closest<HTMLElement>("[data-block]");
@@ -721,6 +1256,7 @@ export class Decor {
     addEventListener("keydown", (ev) => {
       if (ev.key !== "Escape") return;
       if (this.armed) this.disarm();
+      else if (this.picked) this.unpick();
       else if (this.drawing) this.toggleDraw(false);
       else if (!this.tray.hidden && this.tray.contains(document.activeElement)) {
         this.toggleTray(false);
