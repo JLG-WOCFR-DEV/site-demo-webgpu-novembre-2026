@@ -1,198 +1,313 @@
 <!doctype html>
 <!--
-  Diaporama de conférence, fait avec Presse (data-diapo) : une page, une diapo par <section data-diapo-slide>.
-  BROUILLON : les passages entre crochets, en ocre (.cf-todo), sont à remplir ; les cadres pointillés attendent les
-  captures ou vidéos de la V4 (public/conference/…). Les notes de l'orateur sont dans <aside data-notes>.
-  Clavier : → / Espace avancer, ← reculer, F plein écran, B écran noir, P vue présentateur, ? l'aide.
+  « Modéliser la bibliothèque du château de Kerguéhennec » — La Bretagne et le numérique #3, Lorient, 13 novembre 2026.
+  Diaporama Presse (data-diapo). Cinq parties : ouverture ; modélisation, son, escape game (les étudiantes) ; pipeline
+  de rendu (Jérôme) ; conclusion. Images : public/conference/ ; cadres pointillés [data-capture] : captures à venir,
+  remplacées d'elles-mêmes quand public/conference/<nom>.webp|jpg|png|mp4 existe. En ocre (.cf-todo) : à confirmer.
+  Clavier : → / Espace avancer, ← reculer, F plein écran, B écran noir, L laser, Z loupe, P vue présentateur, ? aide.
 -->
 <html lang="fr" data-presse-transition="impression" data-presse-effects="bloom grain">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Modéliser la bibliothèque du château de Kerguéhennec · La Bretagne et le numérique #3</title>
-    <meta name="description" content="Diaporama fait avec Presse pour « La Bretagne et le numérique #3 — La 3D, pour quoi faire ? » (MSHB, UBS, Lorient, 13 novembre 2026) : modéliser la bibliothèque du château de Kerguéhennec, et ce que l'IA y change." />
+    <meta name="description" content="Diaporama fait avec Presse pour « La Bretagne et le numérique #3 — La 3D, pour quoi faire ? » (MSHB, UBS, Lorient, 13 novembre 2026) : modéliser la bibliothèque du château de Kerguéhennec — modélisation, son, escape game, pipeline de rendu." />
     <meta name="theme-color" content="#efebe1" />
     <script type="module" src="/src/conference/main.ts"></script>
   </head>
   <body class="cf">
     <main data-diapo data-transition="impression" aria-label="Diaporama : Modéliser la bibliothèque du château de Kerguéhennec">
-      <!-- 1 · Titre -->
-      <section data-diapo-slide data-gl-print="page" data-transition="impression" class="cf-title-slide" aria-label="Modéliser la bibliothèque du château de Kerguéhennec">
-        <p class="cf-kicker" data-gl-text>La Bretagne et le numérique #3 · La 3D, pour quoi faire&#8239;? · Lorient, 13 novembre 2026</p>
-        <h1 class="cf-h1" data-gl-text>Modéliser la bibliothèque du château de Kerguéhennec</h1>
-        <p class="cf-sub" data-gl-text data-step="monte">Et ce que l'IA y change&#8239;: ce qu'elle fait bien, ce qu'elle fait mal</p>
-        <p class="cf-by" data-gl-text data-step="fondu">Jérôme Le Gousse, Axelle Charlet, Amélie Corlay, Bénédicte Osmont<br />Master Métiers du livre et de l'édition · Université Bretagne Sud</p>
+      <!-- ───────────── Ouverture ───────────── -->
+      <section data-diapo-slide data-gl-print="page" data-transition="impression" class="cf-cover" aria-label="Modéliser la bibliothèque du château de Kerguéhennec">
+        <div class="cf-cover-text">
+          <p class="cf-kicker" data-gl-text>La Bretagne et le numérique #3 · La 3D, pour quoi faire&#8239;? · Lorient, 13 novembre 2026</p>
+          <h1 class="cf-h1" data-gl-text>Modéliser la bibliothèque du château de Kerguéhennec</h1>
+          <p class="cf-by" data-gl-text data-step="fondu">Jérôme Le Gousse, Axelle Charlet, Amélie Corlay, Bénédicte Osmont<br />Master Métiers du livre et de l'édition · Université Bretagne Sud</p>
+        </div>
+        <figure class="cf-cover-img"><img data-gl-img src="./conference/piece-16h.jpg" width="1920" height="960" alt="La bibliothèque modélisée, vue de départ à 16 h : boiseries sculptées, bureau, suspension à opaline et deux fenêtres au sud." /></figure>
         <aside data-notes>
-          Session « La 3D vue des projets culturels » (11 h – 12 h 45), troisième intervention après l'ArchéoMusée Coriosolis
-          et Néotopia. Public : professionnels de la culture et du patrimoine, collectivités, étudiants des masters.
+          Session « La 3D vue des projets culturels », troisième intervention, après l'ArchéoMusée Coriosolis et Néotopia.
+          Public : professionnels de la culture et du patrimoine, collectivités, étudiants des masters.
 
-          Se présenter, présenter l'équipe. Annoncer le contrat : un retour d'expérience sur une vraie application 3D,
-          ce que l'IA y a apporté et ce qu'elle n'a pas su faire. Répartir les diapos entre les quatre intervenants.
-
-          Deux appuis pour le sous-titre et les noms.
+          Présenter l'équipe en une phrase chacun. Annoncer le plan : le lieu, l'application, puis trois chantiers (modéliser,
+          faire entendre, faire jouer), puis la cuisine du rendu.
         </aside>
       </section>
 
-      <!-- 2 · Le domaine -->
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-full" aria-label="Une bibliothèque de château, ouverte dans un onglet">
+        <figure class="cf-full-img" style="--ar: 2 / 1"><img data-gl-img src="./conference/piece-16h.jpg" width="1920" height="960" alt="La bibliothèque modélisée, vue de départ à 16 h : boiseries sculptées, bureau, suspension à opaline et deux fenêtres au sud." /></figure>
+        <p class="cf-caption" data-gl-text><b>Une bibliothèque de château, ouverte dans un onglet.</b> Vue de départ, 16&#8239;h. Capture de l'application, sans retouche.</p>
+        <aside data-notes>
+          Le sujet : une visite 3D de la bibliothèque, qui tourne dans un navigateur, sans installation, construite en un mois.
+          Laisser l'image parler quelques secondes.
+        </aside>
+      </section>
+
       <section data-diapo-slide data-gl-print="page" data-transition="buvard" class="cf-split" aria-label="Le domaine de Kerguéhennec">
         <div>
-          <p class="cf-kicker" data-gl-text>Le terrain</p>
-          <h2 class="cf-h2" data-gl-text>Un domaine, trois siècles</h2>
-          <p class="cf-lede" data-gl-text>Bignan, Morbihan. Un château, un parc, un centre d'art.</p>
+          <p class="cf-kicker" data-gl-text>Le lieu</p>
+          <h2 class="cf-h2" data-gl-text>Le domaine de Kerguéhennec</h2>
+          <p class="cf-lede" data-gl-text>Bignan, Morbihan. 175&#8239;hectares&#8239;: château, parc, art contemporain. Au Département depuis 1972.</p>
         </div>
         <ol class="cf-dates">
-          <li data-gl-text data-step="glisse"><b>1710</b> Le château, bâti par Olivier Delourme pour les frères Hogguer.</li>
-          <li data-gl-text data-step="glisse"><b>1872</b> Denis Bühler dessine le parc&#8239;: 170&#8239;hectares, jardin à la française, arboretum.</li>
-          <li data-gl-text data-step="glisse"><b>1986</b> Les premières sculptures entrent dans le parc.</li>
-          <li data-gl-text data-step="glisse"><b>Aujourd'hui</b> Le domaine du Département, centre d'art et parc de sculptures.</li>
+          <li data-gl-text data-step="glisse"><b>XVIII<sup>e</sup></b> Le château classique, ses allées et ses perspectives.</li>
+          <li data-gl-text data-step="glisse"><b>1872</b> Paul-Henri Lanjuinais achète le domaine&#8239;; restauration par Ernest-Félix Trilhe.</li>
+          <li data-gl-text data-step="glisse"><b>1986</b> Le parc de sculptures.</li>
+          <li data-gl-text data-step="glisse"><b>1988</b> Château et communs classés monuments historiques.</li>
+          <li data-gl-text data-step="glisse"><b>2027</b> Réouverture après travaux, au printemps.</li>
         </ol>
         <aside data-notes>
-          Poser le lieu avant l'outil : ce qu'on modélise compte plus que la technique.
+          Pourquoi une application : le domaine est en travaux jusqu'en 2027, et une bibliothèque se visite mal — on ne manipule
+          pas des livres anciens. La 3D sert à observer, ouvrir, rapprocher.
 
-          Quatre appuis, une date par appui. Vérifier les dates avec le domaine avant la conférence.
+          Dates tirées de la synthèse du wiki, à faire valider par le domaine.
         </aside>
       </section>
 
-      <!-- 3 · L'application -->
-      <section data-diapo-slide data-gl-print="page" data-transition="quadri" class="cf-media" aria-label="L'application, version 4">
-        <div class="cf-media-text">
-          <p class="cf-kicker" data-gl-text>L'application</p>
-          <h2 class="cf-h2" data-gl-text>Kerguéhennec, V4</h2>
-          <ul class="cf-points">
-            <li data-gl-text data-step="monte">La bibliothèque du château, et le château, en 3D, dans le navigateur.</li>
-            <li data-gl-text data-step="monte">WebGPU&#8239;: le rendu se fait sur la carte graphique, sans installation.</li>
-            <li data-gl-text data-step="monte"><span class="cf-todo">[ce que la V4 apporte de nouveau]</span></li>
-          </ul>
-        </div>
-        <figure class="cf-capture" data-capture="v4-ensemble">
-          <span>Capture V4 · vue d'ensemble du château</span>
-          <small>public/conference/v4-ensemble.webp (ou .mp4)</small>
-        </figure>
-        <aside data-notes>
-          Montrer l'application avant d'en parler. Si la démo en direct est prévue sur le PC Windows, c'est ici qu'on bascule ;
-          sinon, la vidéo de la V4 tourne dans le cadre.
-        </aside>
-      </section>
-
-      <!-- 4 · La thèse -->
-      <section data-diapo-slide data-gl-print="page" data-transition="massicot" class="cf-statement" aria-label="La thèse">
-        <p class="cf-kicker" data-gl-text>Ce que je défends</p>
-        <p class="cf-big" data-gl-text>L'IA ne remplace pas l'œil.</p>
-        <p class="cf-big cf-big-2" data-gl-text data-step="monte">Elle raccourcit la distance entre l'idée et l'écran.</p>
-        <aside data-notes>
-          Proposition de thèse, à reformuler avec tes mots. Laisser un silence entre les deux phrases.
-        </aside>
-      </section>
-
-      <!-- 5 · Ce qu'elle fait bien -->
-      <section data-diapo-slide data-gl-print="page" data-transition="trame" class="cf-list-slide" aria-label="Ce que l'IA fait bien">
-        <p class="cf-kicker" data-gl-text>En 3D, l'IA fait bien</p>
-        <ol class="cf-list">
-          <li data-gl-text data-step="monte"><b>Écrire ce qu'on sait décrire</b> Shaders, caméras, interfaces&#8239;: on dit l'effet, elle écrit le code.</li>
-          <li data-gl-text data-step="monte"><b>Essayer dix variantes</b> Au lieu d'en défendre une seule, on les regarde côte à côte.</li>
-          <li data-gl-text data-step="monte"><b>Outiller</b> Conversions de modèles, scripts, tests, captures de référence.</li>
-          <li data-gl-text data-step="monte"><b>Relire</b> Performance, accessibilité, bugs&#8239;: une seconde paire d'yeux, infatigable.</li>
-        </ol>
-        <aside data-notes>
-          Un exemple concret par point, tiré de la V4 : <span>[shader de … ; variantes de … ; script de conversion … ; bug trouvé en revue …]</span>.
-        </aside>
-      </section>
-
-      <!-- 6 · Huit regards (vivant) -->
-      <section data-diapo-slide data-gl-print="page" data-transition="fondu" class="cf-live" aria-label="Démonstration : huit regards">
-        <header class="cf-live-head">
-          <p class="cf-kicker" data-gl-text>Démonstration</p>
-          <h2 class="cf-h3" data-gl-text>Une scène, huit rendus</h2>
-        </header>
-        <iframe data-diapo-live data-src="./kerguehennec-styles.html" title="Kerguéhennec, huit regards : la même scène 3D rendue de huit façons" loading="lazy"></iframe>
-        <aside data-notes>
-          Page vivante : on peut cliquer dedans pour changer de regard (gravure, autochrome, nocturne…). Page suiv. ou Échap
-          ramènent au diaporama.
-
-          Message : avec l'IA, une variante de rendu coûte une conversation, pas une semaine ; on choisit en regardant.
-        </aside>
-      </section>
-
-      <!-- 7 · Théâtre de papier (vivant) -->
-      <section data-diapo-slide data-gl-print="page" data-transition="rouleau" class="cf-live" aria-label="Démonstration : théâtre de papier">
-        <header class="cf-live-head">
-          <p class="cf-kicker" data-gl-text>Démonstration</p>
-          <h2 class="cf-h3" data-gl-text>Kerguéhennec, 1910&#8239;: un théâtre de papier</h2>
-        </header>
-        <iframe data-diapo-live data-src="./kerguehennec.html" title="Kerguéhennec, 1910 : théâtre de papier en cinq tableaux" loading="lazy"></iframe>
-        <aside data-notes>
-          Une autre direction artistique sur le même lieu : des châssis découpés, en profondeur. Montrer un ou deux tableaux.
-        </aside>
-      </section>
-
-      <!-- 8 · Ce qu'elle fait mal -->
-      <section data-diapo-slide data-gl-print="page" data-transition="pli" class="cf-list-slide cf-list-warn" aria-label="Ce que l'IA fait mal">
-        <p class="cf-kicker" data-gl-text>Elle fait mal</p>
-        <ol class="cf-list">
-          <li data-gl-text data-step="monte"><b>Voir</b> Elle ne regarde pas l'écran&#8239;: il faut lui montrer, capture à l'appui.</li>
-          <li data-gl-text data-step="monte"><b>Mesurer</b> Images par seconde, mémoire, vraie machine&#8239;: à faire soi-même.</li>
-          <li data-gl-text data-step="monte"><b>Tenir un gros projet</b> Sans plan écrit, elle refait ce qui marchait.</li>
-          <li data-gl-text data-step="monte"><b>Savoir ce qui est juste</b> Une date, une façade, un droit d'auteur&#8239;: on vérifie.</li>
-        </ol>
-        <aside data-notes>
-          Un échec réel par point si possible : <span>[le bug que l'IA ne voyait pas ; la chute de fps ; la régression ; l'erreur historique]</span>.
-        </aside>
-      </section>
-
-      <!-- 9 · Méthode -->
-      <section data-diapo-slide data-gl-print="page" data-transition="composition" class="cf-list-slide" aria-label="La méthode">
-        <p class="cf-kicker" data-gl-text>Ce qui marche</p>
-        <h2 class="cf-h2" data-gl-text>Une méthode, pas un prompt</h2>
-        <ol class="cf-steps">
-          <li data-gl-text data-step="monte"><b>01</b> Un plan écrit, relu avant d'écrire du code.</li>
-          <li data-gl-text data-step="monte"><b>02</b> Deux IA qui se relisent&#8239;: l'une écrit, l'autre critique.</li>
-          <li data-gl-text data-step="monte"><b>03</b> Des tests et des captures de référence à chaque version.</li>
-          <li data-gl-text data-step="monte"><b>04</b> Des mesures sur la vraie machine, pas sur une impression.</li>
-        </ol>
-        <aside data-notes>
-          C'est la partie que le public peut réutiliser lundi. Insister sur le plan écrit et la revue croisée.
-        </aside>
-      </section>
-
-      <!-- 10 · V1 → V4 -->
-      <section data-diapo-slide data-gl-print="page" data-transition="revelateur" class="cf-compare" aria-label="De la V1 à la V4">
-        <p class="cf-kicker" data-gl-text>Le chemin</p>
-        <h2 class="cf-h2" data-gl-text>De la V1 à la V4</h2>
-        <figure class="cf-capture" data-capture="v1"><span>Capture V1</span><small>public/conference/v1.webp</small></figure>
-        <figure class="cf-capture" data-capture="v4" data-step="fondu"><span>Capture V4, même point de vue</span><small>public/conference/v4.webp</small></figure>
-        <aside data-notes>
-          Même cadrage pour les deux captures, sinon la comparaison ne dit rien. Un appui fait apparaître la V4.
-        </aside>
-      </section>
-
-      <!-- 11 · En chiffres -->
-      <section data-diapo-slide data-gl-print="page" data-transition="ligne" class="cf-figures" aria-label="En chiffres">
-        <p class="cf-kicker" data-gl-text>En chiffres</p>
-        <ul class="cf-numbers">
-          <li data-step="monte"><b data-gl-text class="cf-todo">[n]</b><span data-gl-text>semaines de travail</span></li>
-          <li data-step="monte"><b data-gl-text class="cf-todo">[n]</b><span data-gl-text>versions publiées</span></li>
-          <li data-step="monte"><b data-gl-text class="cf-todo">[n]&#8239;%</b><span data-gl-text>du code écrit par l'IA</span></li>
+      <section data-diapo-slide data-gl-print="page" data-transition="quadri" class="cf-figures" aria-label="L'application en bref">
+        <p class="cf-kicker" data-gl-text>L'application</p>
+        <h2 class="cf-h2" data-gl-text>Une application, quatre entrées</h2>
+        <ul class="cf-four">
+          <li data-gl-text data-step="monte"><b>Le château</b> Extérieur, relief, chemins, arbres, pluie et neige.</li>
+          <li data-gl-text data-step="monte"><b>La bibliothèque</b> Portes, tiroirs, volets, escabeau, bougies, loupe.</li>
+          <li data-gl-text data-step="monte"><b>L'escape game</b> Une enquête dans la même pièce.</li>
+          <li data-gl-text data-step="monte"><b>Le catalogue</b> La collection, sans se déplacer en 3D.</li>
+        </ul>
+        <ul class="cf-numbers cf-numbers-sm">
+          <li><b data-gl-text data-compte="748">0</b><span data-gl-text>notices au catalogue</span></li>
+          <li><b data-gl-text data-compte="98">0</b><span data-gl-text>volumes photographiés, consultables</span></li>
+          <li><b data-gl-text data-compte="22">0</b><span data-gl-text>ouvrages exposés dans la pièce</span></li>
         </ul>
         <aside data-notes>
-          Trois chiffres honnêtes valent mieux que dix flatteurs. Si un chiffre n'est pas mesuré, retirer la ligne.
+          Une seule application web. Elle tourne aussi sans connexion, sur une tablette ou une borne.
+          98 volumes photographiés ne veut pas dire 98 livres entièrement numérisés.
         </aside>
       </section>
 
-      <!-- 12 · Méta -->
-      <section data-diapo-slide data-gl-print="page" data-transition="tri" class="cf-statement" aria-label="Ce diaporama">
-        <p class="cf-kicker" data-gl-text>Au fait</p>
-        <p class="cf-big" data-gl-text>Ce diaporama est une page web.</p>
-        <p class="cf-sub" data-gl-text data-step="monte">Du HTML ordinaire, imprimé par la carte graphique&#8239;: chaque transition est un shader. Écrit avec l'IA, lui aussi.</p>
+      <!-- ───────────── Modéliser ───────────── -->
+      <section data-diapo-slide data-gl-print="page" data-transition="feuille" class="cf-divider" aria-label="Partie 1 : modéliser">
+        <p class="cf-part" data-gl-text>01</p>
+        <h2 class="cf-h1" data-gl-text>Modéliser</h2>
+        <p class="cf-sub" data-gl-text>Comprendre la pièce, la reproduire au mieux, la rendre visitable partout.</p>
+        <aside data-notes>Partie des étudiantes. Préciser qui la présente.</aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="trame" class="cf-media" aria-label="Blender">
+        <div class="cf-media-text">
+          <p class="cf-kicker" data-gl-text>Modéliser · Blender</p>
+          <h2 class="cf-h2" data-gl-text>Apprendre l'outil pour juger l'IA</h2>
+          <ul class="cf-points">
+            <li data-gl-text data-step="monte">Blender a permis de comprendre comment se construit un modèle 3D.</li>
+            <li data-gl-text data-step="monte">Et donc de voir ce qui cloche quand l'IA modélise&#8239;: tout se superpose.</li>
+            <li data-gl-text data-step="monte">Savoir où regarder, c'est savoir quoi lui demander de corriger.</li>
+          </ul>
+        </div>
+        <figure class="cf-capture" data-capture="blender">
+          <span>Capture Blender · un meuble de la bibliothèque</span>
+          <small>public/conference/blender.png (ou .jpg, .webp)</small>
+        </figure>
         <aside data-notes>
-          La chute : l'outil de présentation est lui-même un exemple. Presse, le framework WebGPU du site de démonstration.
+          Montrer un exemple concret de superposition produite par l'IA (pièces qui s'interpénètrent, faces doublées) et la
+          correction faite à la main.
         </aside>
       </section>
 
-      <!-- 13 · Merci -->
+      <section data-diapo-slide data-gl-print="page" data-transition="bavure" class="cf-media cf-media-rev" aria-label="Analyser la pièce">
+        <div class="cf-media-text">
+          <p class="cf-kicker" data-gl-text>Modéliser · la pièce</p>
+          <h2 class="cf-h2" data-gl-text>Regarder avant de reproduire</h2>
+          <ul class="cf-points">
+            <li data-gl-text data-step="monte">Analyse de la pièce&#8239;: photos, proportions, matériaux.</li>
+            <li data-gl-text data-step="monte">Recherche de textures et de modèles existants.</li>
+            <li data-gl-text data-step="monte">Reproduire au plus juste, et dire ce qui est restitué.</li>
+          </ul>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./conference/esquisse.webp" width="1600" height="800" alt="La vue de départ de la bibliothèque en esquisse sépia, au trait, comme un dessin d'architecte." /></figure>
+        <aside data-notes>L'esquisse est l'écran de chargement de l'application : la pièce au trait, avant la 3D.</aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-statement" aria-label="L'objectif de la modélisation">
+        <p class="cf-kicker" data-gl-text>Modéliser · pour quoi faire&#8239;?</p>
+        <p class="cf-big" data-gl-text data-step="mots">Immerger, et mettre en valeur un espace et une collection.</p>
+        <p class="cf-sub" data-gl-text data-step="monte">Dans un format numérique utilisable sur le site du château, sur ordinateur, tablette ou borne.</p>
+      </section>
+
+      <!-- ───────────── Son ───────────── -->
+      <section data-diapo-slide data-gl-print="page" data-transition="onde" class="cf-divider" aria-label="Partie 2 : faire entendre">
+        <p class="cf-part" data-gl-text>02</p>
+        <h2 class="cf-h1" data-gl-text>Faire entendre</h2>
+        <p class="cf-sub" data-gl-text>Une ambiance transmet des choses sans avoir à parler.</p>
+        <aside data-notes>Partie des étudiantes. Si des sons sont prêts, les faire écouter ici (lecteur à brancher sur la diapo).</aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="points" class="cf-list-slide" aria-label="Le son">
+        <p class="cf-kicker" data-gl-text>Le son</p>
+        <ol class="cf-list">
+          <li data-gl-text data-step="monte"><b>Les objets</b> Placards, bois qui craque&#8239;: la pièce répond quand on la touche.</li>
+          <li data-gl-text data-step="monte"><b>L'ambiance</b> Vent et bruits extérieurs, réverbération de la pièce.</li>
+          <li data-gl-text data-step="monte"><b>Le récit</b> Une respiration, la porte qui se ferme&#8239;: la discrétion, l'enfermement.</li>
+          <li data-gl-text data-step="monte"><b>L'immersion</b> Le visiteur comprend avant qu'on lui explique.</li>
+        </ol>
+      </section>
+
+      <!-- ───────────── Escape game ───────────── -->
+      <section data-diapo-slide data-gl-print="page" data-transition="portes" class="cf-divider" aria-label="Partie 3 : faire jouer">
+        <p class="cf-part" data-gl-text>03</p>
+        <h2 class="cf-h1" data-gl-text>Faire jouer</h2>
+        <p class="cf-sub" data-gl-text>Un escape game dans la bibliothèque, avec ceux qui l'ont habitée.</p>
+        <aside data-notes>Partie des étudiantes.</aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-statement" aria-label="L'histoire de l'escape game">
+        <p class="cf-kicker" data-gl-text>L'histoire</p>
+        <p class="cf-big cf-story" data-gl-text data-step="mots">La petite-fille du comte s'est enfermée dans la bibliothèque, où elle n'a pas le droit d'être.</p>
+        <p class="cf-sub" data-gl-text data-step="mots">Elle appelle quelqu'un en qui elle a confiance pour venir lui ouvrir. C'est vous.</p>
+        <aside data-notes>
+          Raconter, ne pas lire. Le « C'est vous » est une proposition : à garder ou non.
+          Vérifier le nom du jeu et du personnage avec la version finale (l'article parle encore du « Livre disparu »).
+        </aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="mosaique" class="cf-media" aria-label="Les énigmes">
+        <div class="cf-media-text">
+          <p class="cf-kicker" data-gl-text>Les énigmes</p>
+          <h2 class="cf-h2" data-gl-text>Jouer, c'est parcourir la pièce</h2>
+          <ul class="cf-points">
+            <li data-gl-text data-step="monte">Des énigmes et des mécanismes qui poussent à tester, ouvrir, regarder de près.</li>
+            <li data-gl-text data-step="monte">La pièce et les personnages du château mis en valeur par le jeu.</li>
+            <li data-gl-text data-step="monte">Les modèles 3D au service d'une histoire, pas l'inverse.</li>
+          </ul>
+        </div>
+        <figure class="cf-capture" data-capture="escape">
+          <span>Capture de l'escape game · une énigme</span>
+          <small>public/conference/escape.png (ou .mp4)</small>
+        </figure>
+        <aside data-notes>Exemples possibles (à confirmer) : le faisceau du soleil de 16 h qui désigne une lettre, une montre, une combinaison de sonnettes.</aside>
+      </section>
+
+      <!-- ───────────── Pipeline de rendu ───────────── -->
+      <section data-diapo-slide data-gl-print="page" data-transition="feuille" class="cf-divider" aria-label="Partie 4 : le rendu">
+        <p class="cf-part" data-gl-text>04</p>
+        <h2 class="cf-h1" data-gl-text>Rendre</h2>
+        <p class="cf-sub" data-gl-text>Ce que fait la carte graphique, soixante fois par seconde. Et ce que l'IA y a fait.</p>
+        <aside data-notes>Partie de Jérôme. Garder quatre ou cinq mots techniques, les autres en passant.</aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="composition" class="cf-list-slide" aria-label="Une image, une suite de passes">
+        <p class="cf-kicker" data-gl-text>Le pipeline de rendu</p>
+        <h2 class="cf-h2" data-gl-text>Une image, une suite de passes</h2>
+        <ol class="cf-passes">
+          <li data-gl-text data-step="glisse"><b>01</b> Le processeur prépare&#8239;: soleil, bougies, objets qui bougent.</li>
+          <li data-gl-text data-step="glisse"><b>02</b> Les ombres&#8239;: du soleil, puis des bougies, dans six directions.</li>
+          <li data-gl-text data-step="glisse"><b>03</b> La pièce&#8239;: couleur, matière, profondeur, mouvement.</li>
+          <li data-gl-text data-step="glisse"><b>04</b> La lumière qui rebondit, estimée à l'écran.</li>
+          <li data-gl-text data-step="glisse"><b>05</b> Le lissage dans le temps, d'image en image.</li>
+          <li data-gl-text data-step="glisse"><b>06</b> Les rayons de soleil dans la poussière.</li>
+          <li data-gl-text data-step="glisse"><b>07</b> La finition&#8239;: halo, vignette, couleurs pour l'écran.</li>
+        </ol>
+        <aside data-notes>
+          Chaque passe dessine dans une image intermédiaire, que la suivante relit. Mots techniques en passant : shadow maps,
+          scene pass, SSGI, TRAA, sun beams, tone mapping. Le tout s'écrit en TSL : le même graphe donne du WGSL pour WebGPU et
+          du GLSL pour WebGL.
+        </aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-full" aria-label="Ombres douces">
+        <figure class="cf-full-img cf-wide" style="--ar: 1400 / 390"><img data-gl-img src="./conference/pcss.png" width="1400" height="390" alt="Parquet sous la fenêtre : à gauche des ombres classiques, à droite des ombres PCSS, nettes au contact et floues avec la distance." /></figure>
+        <p class="cf-caption" data-gl-text><b>Les ombres&#8239;: nettes au contact, adoucies avec la distance.</b> À gauche, classiques&#8239;; à droite, PCSS. Un quart à un demi-millième de seconde de plus.</p>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="onde" class="cf-full" aria-label="Précalculer ou calculer en direct">
+        <figure class="cf-full-img" style="--ar: 1984 / 1306"><img data-gl-img src="./conference/gi-jour.jpg" width="1984" height="1306" alt="Grille de neuf captures à 16 h : lumière indirecte en temps réel, précalculée dans Cycles, et VXGI, pour la vue d'ensemble, le bureau et le plafond." /></figure>
+        <p class="cf-caption" data-gl-text><b>Calculer une fois ce qui ne bouge pas.</b> 16&#8239;h, mêmes caméras&#8239;: temps réel, précalculé (Cycles), voxels.</p>
+        <aside data-notes>
+          Baking : calculer hors ligne ce qui ne change pas et le stocker dans une texture. 9,6 ms par image avec la lightmap
+          contre 11,2 ms en temps réel ; 64 s de calcul par état. Limite : une lightmap ne vaut que pour une heure et un état des
+          volets. Remplacer par les captures HD quand elles sont prêtes.
+        </aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-full" aria-label="La nuit">
+        <figure class="cf-full-img" style="--ar: 1984 / 1306"><img data-gl-img src="./conference/gi-nuit.jpg" width="1984" height="1306" alt="La même grille de neuf captures, de nuit à 23 h, éclairée par les bougies et la suspension." /></figure>
+        <p class="cf-caption" data-gl-text><b>La nuit, l'écran ne suffit plus.</b> Le temps réel manque 93 à 96&#8239;% de la lumière indirecte&#8239;; les voxels voient toute la pièce.</p>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="points" class="cf-figures" aria-label="Le préchauffage des shaders">
+        <p class="cf-kicker" data-gl-text>Shaders · le préchauffage</p>
+        <h2 class="cf-h2" data-gl-text>Un visiteur bloqué, c'est pire qu'une saccade</h2>
+        <p class="cf-legend" data-gl-text>Temps de préparation&#8239;: en gris, pipelines compilés un par un&#8239;; <b>en rouge, tous en parallèle</b>.</p>
+        <div class="cf-hbars" data-step="fondu" aria-label="Durée de préparation avant et après le préchauffage parallèle, en secondes">
+          <div><span data-gl-text>WebGPU Économique</span><i data-barre="0.233"></i><i data-barre="0.109" class="after"></i><em data-gl-text>18,7 → 8,7&#8239;s</em></div>
+          <div><span data-gl-text>WebGPU Équilibré</span><i data-barre="0.390"></i><i data-barre="0.122" class="after"></i><em data-gl-text>31,2 → 9,8&#8239;s</em></div>
+          <div><span data-gl-text>WebGPU Élevé</span><i data-barre="0.803"></i><i data-barre="0.217" class="after"></i><em data-gl-text>64,3 → 17,4&#8239;s</em></div>
+          <div><span data-gl-text>WebGL Équilibré</span><i data-barre="1"></i><i data-barre="0.443" class="after"></i><em data-gl-text>80,1 → 35,5&#8239;s</em></div>
+        </div>
+        <aside data-notes>
+          Un shader est le petit programme que la carte graphique exécute pour chaque pixel. La première bougie allumée figeait
+          l'image près de deux secondes. Réponse : un préchauffage invisible sous l'écran de chargement, toutes les
+          combinaisons demandées en même temps pour que Chrome les compile en parallèle. Mesuré sur un PC RTX 4080.
+
+          Le filet est né d'un vrai signalement : des tablettes restaient figées à 70 %.
+        </aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="mosaique" class="cf-media cf-media-rev" aria-label="La loupe">
+        <div class="cf-media-text">
+          <p class="cf-kicker" data-gl-text>La loupe</p>
+          <h2 class="cf-h2" data-gl-text>Une deuxième caméra dans le verre</h2>
+          <ul class="cf-points">
+            <li data-gl-text data-step="monte">Avant&#8239;: l'image agrandie. Plus gros, pas plus net.</li>
+            <li data-gl-text data-step="monte">Maintenant&#8239;: la pièce re-rendue à travers le verre. Les petits textes restent lisibles.</li>
+            <li data-gl-text data-step="monte">Préparée en arrière-plan&#8239;: jamais de figement.</li>
+          </ul>
+        </div>
+        <figure class="cf-capture" data-capture="loupe">
+          <span>Capture HD · la loupe sur une gravure</span>
+          <small>public/conference/loupe.png</small>
+        </figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-hours" aria-label="La lumière, heure par heure">
+        <p class="cf-kicker" data-gl-text>La lumière, heure par heure · 47,886°&#8239;N, 2,735°&#8239;O</p>
+        <div class="cf-hours-row">
+          <figure class="cf-capture" data-capture="heure-16"><span>16 h</span><small>public/conference/heure-16.png</small></figure>
+          <figure class="cf-capture" data-capture="heure-19" data-step="fondu"><span>19 h</span><small>public/conference/heure-19.png</small></figure>
+          <figure class="cf-capture" data-capture="heure-23" data-step="fondu"><span>23 h, bougies</span><small>public/conference/heure-23.png</small></figure>
+        </div>
+        <p class="cf-caption" data-gl-text>Le soleil est calculé pour la position du château et l'heure de Paris. La nuit coûte plus que le jour&#8239;: chaque bougie projette ses ombres dans six directions.</p>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="trame" class="cf-list-slide" aria-label="Ce que l'IA a fait">
+        <p class="cf-kicker" data-gl-text>Et l'IA&#8239;?</p>
+        <h2 class="cf-h2" data-gl-text>Un développement assisté, encadré par la mesure</h2>
+        <ol class="cf-list">
+          <li data-gl-text data-step="monte"><b>Elle écrit</b> Shaders, passes, outils&#8239;: ce qu'on sait décrire, elle le code.</li>
+          <li data-gl-text data-step="monte"><b>Elle ne voit pas</b> Il faut lui montrer l'écran, capture à l'appui.</li>
+          <li data-gl-text data-step="monte"><b>On mesure</b> Profiler intégré, comparaisons A/B dans la même page, les pires images plutôt que la moyenne.</li>
+          <li data-gl-text data-step="monte"><b>On garde les preuves</b> Chaque optimisation se coupe et se compare&#8239;; captures et mesures sont archivées.</li>
+        </ol>
+        <aside data-notes>
+          Un mois, quatre versions, plus de 200 commits. Le travail est partagé : étudiantes pour la médiation et les contenus,
+          Pôle Muséo pour les objets du bureau, développement assisté par des agents IA.
+        </aside>
+      </section>
+
+      <!-- ───────────── Conclusion ───────────── -->
+      <section data-diapo-slide data-gl-print="page" data-transition="composition" class="cf-list-slide" aria-label="À retenir">
+        <p class="cf-kicker" data-gl-text>À retenir</p>
+        <ol class="cf-steps">
+          <li data-gl-text data-step="monte"><b>01</b> Comprendre l'outil pour savoir corriger l'IA.</li>
+          <li data-gl-text data-step="monte"><b>02</b> Le son et le jeu font comprendre la pièce sans l'expliquer.</li>
+          <li data-gl-text data-step="monte"><b>03</b> Un visiteur bloqué, c'est pire qu'une saccade.</li>
+          <li data-gl-text data-step="monte"><b>04</b> Mesurer avant d'annoncer un gain.</li>
+        </ol>
+        <aside data-notes>Suite : essais sur vraie tablette et vrais PC anciens ; réouverture du domaine au printemps 2027.</aside>
+      </section>
+
       <section data-diapo-slide data-gl-print="page" data-transition="impression" class="cf-title-slide cf-end" aria-label="Merci, questions">
         <h2 class="cf-h1" data-gl-text>Merci.</h2>
         <p class="cf-sub" data-gl-text>Questions&#8239;?</p>
-        <p class="cf-by" data-gl-text><span class="cf-todo">[adresse du site · contact]</span></p>
+        <p class="cf-by" data-gl-text>Merci au domaine de Kerguéhennec et au Pôle Muséo.<br /><span class="cf-todo">[adresse de l'application · contact]</span></p>
         <aside data-notes>Laisser cette diapo pendant les questions. B met l'écran au noir si besoin.</aside>
       </section>
     </main>
