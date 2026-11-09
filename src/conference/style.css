@@ -650,3 +650,29 @@ body.cf {
   color: var(--accent);
   font-weight: 500;
 }
+
+/* Une image par entrée de l'application. */
+.cf-thumb {
+  margin: 0 0 calc(var(--u) * 0.6);
+  aspect-ratio: 16 / 10;
+  min-width: 0;
+}
+.cf-thumb.cf-capture {
+  font-size: calc(var(--u) * 0.9);
+}
+.cf-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--u) * 0.4);
+}
+.cf-four li {
+  align-content: start;
+}
+.cf-four li > span {
+  font: 400 calc(var(--u) * 1.3) / 1.35 var(--sans);
+}
+.cf-drone {
+  justify-self: stretch;
+}
