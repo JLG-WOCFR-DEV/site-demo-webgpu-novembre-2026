@@ -1045,7 +1045,10 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       // La ligne d'impression est à une fraction réglable de la hauteur de
       // l'écran (86 % par défaut). En bas de page, rien ne peut plus monter :
       // tout ce qui est visible s'imprime.
-      st.target = Math.max(st.target, atBottom && r.top < cssH ? 1e6 : cssH * P.line - r.top);
+      // data-gl-print="page" (une diapo, une section qui tient l'écran) : rien ne défile, le front parcourt toute la
+      // section puis s'efface (2,5 largeurs de front plus bas), au rythme de la transition.
+      const whole = (ch as HTMLElement).dataset?.glPrint === "page";
+      st.target = Math.max(st.target, whole ? (r.height > 0 ? r.height + cssH * P.width * 2.6 : 0) : atBottom && r.top < cssH ? 1e6 : cssH * P.line - r.top);
       // Arrivé par une ancre au milieu d'un long chapitre : le front part du
       // haut de l'écran, pas du haut du chapitre, sinon l'écran reste vierge.
       if (st.target > -r.top) st.shown = Math.max(st.shown, -r.top - cssH * P.width);

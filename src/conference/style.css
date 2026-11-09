@@ -1,0 +1,339 @@
+/*
+ * Conférence « La 3D : que faire de bon avec l'IA ? ». Composée en --u (1 % de la largeur du cadre 16:9) : lisible au
+ * fond d'un amphi. Papier chaud, encre presque noire, une seule couleur d'accent ; contraste ≥ 12:1 pour le texte.
+ */
+@import "@fontsource-variable/bodoni-moda/opsz.css";
+@import "@fontsource-variable/bodoni-moda/opsz-italic.css";
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --paper: #efebe1;
+  --ink: #15110d;
+  --accent: #b3311b;
+  --todo: #9a5a12;
+  --serif: "Bodoni Moda Variable", "Bodoni 72", Georgia, serif;
+  --sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+html,
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+body.cf {
+  font-family: var(--sans);
+}
+
+/* ───── Cadre de chaque diapo ───── */
+.cf [data-diapo-slide] {
+  padding: calc(var(--u) * 6) calc(var(--u) * 7) calc(var(--u) * 5.5);
+  align-content: center;
+  gap: calc(var(--u) * 1.6);
+}
+.cf [data-diapo-slide]::after {
+  content: attr(data-num);
+  position: absolute;
+  right: calc(var(--u) * 3);
+  bottom: calc(var(--u) * 2.4);
+  font: 500 calc(var(--u) * 0.95) / 1 var(--mono);
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--ink) 55%, var(--paper));
+}
+.cf [data-diapo-slide]::before {
+  content: "Kerguéhennec · V4";
+  position: absolute;
+  left: calc(var(--u) * 7);
+  bottom: calc(var(--u) * 2.4);
+  font: 500 calc(var(--u) * 0.95) / 1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 55%, var(--paper));
+}
+.cf .cf-title-slide::before {
+  content: none;
+}
+
+/* ───── Typographie ───── */
+.cf-kicker {
+  margin: 0;
+  font: 500 calc(var(--u) * 1.15) / 1.2 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.cf-h1 {
+  margin: 0;
+  max-width: 15ch;
+  font: 500 calc(var(--u) * 7.2) / 0.98 var(--serif);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.cf-h2 {
+  margin: 0;
+  font: 500 calc(var(--u) * 4.6) / 1.02 var(--serif);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.cf-h3 {
+  margin: 0;
+  font: 500 calc(var(--u) * 2.8) / 1.05 var(--serif);
+}
+.cf-sub {
+  margin: 0;
+  max-width: 34ch;
+  font: 400 calc(var(--u) * 2.3) / 1.3 var(--sans);
+}
+.cf-lede {
+  margin: calc(var(--u) * 1.2) 0 0;
+  max-width: 24ch;
+  font: 400 calc(var(--u) * 2.1) / 1.35 var(--sans);
+}
+.cf-by {
+  margin: calc(var(--u) * 1.5) 0 0;
+  font: 500 calc(var(--u) * 1.5) / 1.3 var(--mono);
+  letter-spacing: 0.04em;
+}
+.cf-todo {
+  color: var(--todo);
+}
+.cf b {
+  font-weight: 700;
+}
+
+/* ───── Titre ───── */
+.cf .cf-title-slide {
+  align-content: center;
+  gap: calc(var(--u) * 2.2);
+}
+.cf .cf-end .cf-h1 {
+  font-size: calc(var(--u) * 11);
+}
+
+/* ───── Deux colonnes (le domaine) ───── */
+.cf .cf-split {
+  grid-template-columns: 1fr 1.15fr;
+  align-items: center;
+  column-gap: calc(var(--u) * 6);
+}
+.cf-dates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: calc(var(--u) * 1.9);
+}
+.cf-dates li {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 13) 1fr;
+  gap: calc(var(--u) * 1.6);
+  align-items: baseline;
+  font: 400 calc(var(--u) * 1.8) / 1.35 var(--sans);
+}
+.cf-dates b {
+  font: 500 calc(var(--u) * 2.4) / 1 var(--serif);
+  color: var(--accent);
+}
+
+/* ───── Texte + média ───── */
+.cf .cf-media {
+  grid-template-columns: 1fr 1.25fr;
+  align-items: center;
+  column-gap: calc(var(--u) * 5);
+}
+.cf-media-text {
+  display: grid;
+  gap: calc(var(--u) * 1.5);
+}
+.cf-points {
+  margin: calc(var(--u) * 1) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: calc(var(--u) * 1.4);
+  font: 400 calc(var(--u) * 1.85) / 1.35 var(--sans);
+}
+.cf-points li {
+  padding-left: calc(var(--u) * 2);
+  background: linear-gradient(var(--accent), var(--accent)) 0 0.62em / calc(var(--u) * 0.9) 2px no-repeat;
+}
+
+/* Emplacement d'une capture à venir : on le voit, on sait quoi y mettre. */
+.cf-capture {
+  margin: 0;
+  min-width: 0;
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-content: center;
+  gap: calc(var(--u) * 0.6);
+  text-align: center;
+  border: 2px dashed color-mix(in srgb, var(--ink) 35%, var(--paper));
+  border-radius: calc(var(--u) * 0.6);
+  font: 500 calc(var(--u) * 1.3) / 1.3 var(--mono);
+  color: color-mix(in srgb, var(--ink) 70%, var(--paper));
+}
+.cf-capture.is-filled {
+  border: 0;
+  display: block;
+}
+.cf-capture small {
+  font-size: calc(var(--u) * 0.9);
+  opacity: 0.75;
+}
+.cf-capture img,
+.cf-capture video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* ───── Phrase seule ───── */
+.cf .cf-statement {
+  align-content: center;
+  gap: calc(var(--u) * 2.4);
+}
+.cf-big {
+  margin: 0;
+  max-width: 20ch;
+  font: 500 calc(var(--u) * 5.6) / 1.05 var(--serif);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.cf-big-2 {
+  font-style: italic;
+  color: var(--accent);
+}
+
+/* ───── Listes ───── */
+.cf .cf-list-slide {
+  align-content: center;
+  gap: calc(var(--u) * 2);
+}
+.cf-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--u) * 2.6) calc(var(--u) * 5);
+}
+.cf-list li {
+  display: grid;
+  gap: calc(var(--u) * 0.6);
+  padding-top: calc(var(--u) * 1.2);
+  border-top: 2px solid var(--ink);
+  font: 400 calc(var(--u) * 1.65) / 1.38 var(--sans);
+}
+.cf-list b {
+  font: 500 calc(var(--u) * 2.9) / 1.05 var(--serif);
+}
+.cf-list-warn .cf-list li {
+  border-top-color: var(--accent);
+}
+.cf-steps {
+  margin: calc(var(--u) * 1) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: calc(var(--u) * 1.6);
+}
+.cf-steps li {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 6) 1fr;
+  align-items: baseline;
+  font: 400 calc(var(--u) * 2.2) / 1.3 var(--sans);
+}
+.cf-steps b {
+  font: 500 calc(var(--u) * 1.3) / 1 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+/* ───── Démonstration vivante ───── */
+.cf .cf-live {
+  grid-template-rows: auto 1fr;
+  align-content: stretch;
+  padding-top: calc(var(--u) * 3.4);
+  padding-bottom: calc(var(--u) * 4.6);
+  gap: calc(var(--u) * 1.4);
+}
+.cf-live-head {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 2.4);
+}
+.cf-live iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: calc(var(--u) * 0.6);
+  background: #16110d;
+  box-shadow: 0 calc(var(--u) * 1.2) calc(var(--u) * 3.6) rgba(22, 17, 13, 0.28);
+}
+/* La page vivante arrive après l'impression de sa diapo. */
+.cf .cf-live.is-active iframe {
+  animation: cf-arrive 0.9s 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes cf-arrive {
+  from {
+    opacity: 0;
+    translate: 0 calc(var(--u) * 1.2);
+  }
+}
+
+/* ───── Comparaison ───── */
+.cf .cf-compare {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto 1fr;
+  column-gap: calc(var(--u) * 3);
+  align-content: center;
+}
+.cf-compare .cf-kicker,
+.cf-compare .cf-h2 {
+  grid-column: 1 / -1;
+}
+
+/* ───── Chiffres ───── */
+.cf .cf-figures {
+  align-content: center;
+  gap: calc(var(--u) * 3);
+}
+.cf-numbers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(var(--u) * 4);
+}
+.cf-numbers li {
+  display: grid;
+  gap: calc(var(--u) * 0.8);
+  padding-top: calc(var(--u) * 1.4);
+  border-top: 2px solid var(--ink);
+}
+.cf-numbers b {
+  font: 500 calc(var(--u) * 8) / 1 var(--serif);
+  letter-spacing: -0.03em;
+}
+.cf-numbers span {
+  font: 400 calc(var(--u) * 1.8) / 1.3 var(--sans);
+}
+
+/* Le DOM qui n'est pas imprimé par le GPU (cadres, filets) suit la diapo d'un court fondu. */
+.cf .is-active :is(.cf-capture, .cf-list li, .cf-numbers li, .cf-points li) {
+  animation: cf-fade 0.7s 0.2s both;
+}
+@keyframes cf-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf .is-active :is(.cf-capture, .cf-list li, .cf-numbers li, .cf-points li, iframe) {
+    animation: none;
+  }
+}

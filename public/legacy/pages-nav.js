@@ -1823,6 +1823,11 @@ var Dn = [
 		text: "Le domaine en 3D, rendu de huit façons"
 	},
 	{
+		href: "conference.html",
+		name: "Conférence",
+		text: "Un diaporama Presse : la 3D et l'IA, au clavier (F plein écran, P présentateur)"
+	},
+	{
 		href: "legacy/index.html",
 		name: "WebGPU-demo-UBS v0",
 		text: "La toute première version, générée par Grok"

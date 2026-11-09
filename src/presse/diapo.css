@@ -1,0 +1,191 @@
+/*
+ * Presse — le diaporama. Un cadre 16:9 centré, le papier autour ; --u vaut 1 % de la largeur du cadre : les diapos
+ * se composent en --u et restent identiques sur l'écran du portable, un projecteur 16:10 ou 4:3.
+ */
+html.diapo-on,
+html.diapo-on body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.diapo-on {
+  --u: calc(min(100vw, 177.7778vh) / 100);
+}
+/* Le pointeur disparaît après deux secondes d'immobilité (il revient au moindre geste). */
+html.diapo-on.diapo-idle,
+html.diapo-on.diapo-idle * {
+  cursor: none !important;
+}
+/* !important : presse.css passe les enfants de <body> en position relative, z-index 1 (au-dessus du canvas). */
+[data-diapo] {
+  position: fixed !important;
+  z-index: 1 !important;
+  inset: 0;
+}
+[data-diapo-slide] {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(100vw, 177.7778vh);
+  height: min(100vh, 56.25vw);
+  translate: -50% -50%;
+  display: none;
+  box-sizing: border-box;
+}
+[data-diapo-slide].is-active {
+  display: grid;
+}
+[data-diapo-slide] [data-notes] {
+  display: none !important;
+}
+.diapo-progress {
+  position: fixed !important;
+  z-index: 5 !important;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--p, 0));
+  background: var(--accent, #c8321c);
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.diapo-noir {
+  position: fixed !important;
+  z-index: 50 !important;
+  inset: 0;
+  background: #000;
+}
+.diapo-sr {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.diapo-toast {
+  position: fixed !important;
+  z-index: 60 !important;
+  right: calc(var(--u) * 2);
+  bottom: calc(var(--u) * 2);
+  margin: 0;
+  padding: 0.6em 1em;
+  border-radius: 99px;
+  background: rgba(22, 17, 13, 0.92);
+  color: #efe6d2;
+  font: 500 15px/1.2 "IBM Plex Mono", ui-monospace, monospace;
+  opacity: 0;
+  translate: 0 8px;
+  transition: opacity 0.3s, translate 0.3s;
+  pointer-events: none;
+}
+.diapo-toast[data-on] {
+  opacity: 1;
+  translate: 0 0;
+}
+.diapo-aide {
+  position: fixed !important;
+  z-index: 70 !important;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  padding: 28px 34px;
+  border-radius: 10px;
+  background: rgba(22, 17, 13, 0.95);
+  color: #efe6d2;
+  font: 400 16px/1.4 "IBM Plex Mono", ui-monospace, monospace;
+}
+.diapo-aide h2 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.diapo-aide dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px 28px;
+  margin: 0;
+}
+.diapo-aide dt {
+  font-weight: 500;
+}
+.diapo-aide dd {
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* ───── Vue présentateur ───── */
+html.diapo-presentateur,
+html.diapo-presentateur body {
+  margin: 0;
+  height: 100%;
+  background: #16110d;
+  color: #efe6d2;
+}
+.dp {
+  display: grid;
+  grid-template: auto 1fr auto / 3fr 2fr;
+  gap: 18px 28px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 22px 28px;
+  font: 400 18px/1.45 "Archivo Variable", "Archivo", system-ui, sans-serif;
+}
+.dp-head {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 28px;
+  align-items: baseline;
+  font: 500 16px/1 "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.04em;
+}
+.dp-timer {
+  margin-left: auto;
+  font-size: 34px;
+  color: #ffd27a;
+}
+.dp-clock {
+  font-size: 22px;
+  opacity: 0.7;
+}
+.dp-label {
+  margin: 0 0 6px;
+  font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.dp-title {
+  margin: 0 0 16px;
+  font-size: 30px;
+  line-height: 1.15;
+}
+.dp-notes {
+  overflow: auto;
+  font-size: 22px;
+}
+.dp-notes p {
+  margin: 0 0 0.8em;
+}
+.dp-now {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dp-next {
+  padding-left: 24px;
+  border-left: 1px solid rgba(239, 230, 210, 0.2);
+  opacity: 0.8;
+}
+.dp-next-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.dp-keys {
+  grid-column: 1 / -1;
+  font: 400 13px/1 "IBM Plex Mono", ui-monospace, monospace;
+  opacity: 0.5;
+}
