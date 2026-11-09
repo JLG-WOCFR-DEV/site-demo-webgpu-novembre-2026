@@ -1,10 +1,9 @@
 /*
  * Conférence « La 3D : que faire de bon avec l'IA ? ». Composée en --u (1 % de la largeur du cadre 16:9) : lisible au
- * fond d'un amphi. Papier chaud, encre presque noire, une seule couleur d'accent ; contraste ≥ 12:1 pour le texte.
+ * fond d'un amphi : titres en Archivo grasse élargie, aucun délié. Papier chaud, encre presque noire, une seule couleur d'accent ; contraste ≥ 12:1 pour le texte.
  */
-@import "@fontsource-variable/bodoni-moda/opsz.css";
-@import "@fontsource-variable/bodoni-moda/opsz-italic.css";
-@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource-variable/archivo/wdth.css";
+@import "@fontsource-variable/archivo/wdth-italic.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
 
@@ -13,7 +12,8 @@
   --ink: #15110d;
   --accent: #b3311b;
   --todo: #9a5a12;
-  --serif: "Bodoni Moda Variable", "Bodoni 72", Georgia, serif;
+  /* Titres : Archivo grasse et élargie. Pas de didone : ses déliés disparaissent au fond d'un amphi (et sous le GPU). */
+  --display: "Archivo Variable", "Archivo", system-ui, sans-serif;
   --sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -43,7 +43,7 @@ body.cf {
   color: color-mix(in srgb, var(--ink) 55%, var(--paper));
 }
 .cf [data-diapo-slide]::before {
-  content: "Kerguéhennec · V4";
+  content: "Kerguéhennec · la bibliothèque";
   position: absolute;
   left: calc(var(--u) * 7);
   bottom: calc(var(--u) * 2.4);
@@ -69,20 +69,23 @@ body.cf {
 }
 .cf-h1 {
   margin: 0;
-  max-width: 15ch;
-  font: 500 calc(var(--u) * 7.2) / 0.98 var(--serif);
-  letter-spacing: -0.02em;
+  max-width: 17ch;
+  font: 700 calc(var(--u) * 6.2) / 1 var(--display);
+  font-stretch: semi-expanded;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 .cf-h2 {
   margin: 0;
-  font: 500 calc(var(--u) * 4.6) / 1.02 var(--serif);
+  font: 700 calc(var(--u) * 4) / 1.04 var(--display);
+  font-stretch: semi-expanded;
   letter-spacing: -0.015em;
   text-wrap: balance;
 }
 .cf-h3 {
   margin: 0;
-  font: 500 calc(var(--u) * 2.8) / 1.05 var(--serif);
+  font: 700 calc(var(--u) * 2.8) / 1.05 var(--display);
+  font-stretch: semi-expanded;
 }
 .cf-sub {
   margin: 0;
@@ -112,7 +115,7 @@ body.cf {
   gap: calc(var(--u) * 2.2);
 }
 .cf .cf-end .cf-h1 {
-  font-size: calc(var(--u) * 11);
+  font-size: calc(var(--u) * 10);
 }
 
 /* ───── Deux colonnes (le domaine) ───── */
@@ -136,7 +139,8 @@ body.cf {
   font: 400 calc(var(--u) * 1.8) / 1.35 var(--sans);
 }
 .cf-dates b {
-  font: 500 calc(var(--u) * 2.4) / 1 var(--serif);
+  font: 700 calc(var(--u) * 2.4) / 1 var(--display);
+  font-stretch: semi-expanded;
   color: var(--accent);
 }
 
@@ -201,12 +205,13 @@ body.cf {
 .cf-big {
   margin: 0;
   max-width: 20ch;
-  font: 500 calc(var(--u) * 5.6) / 1.05 var(--serif);
+  font: 700 calc(var(--u) * 4.6) / 1.08 var(--display);
+  font-stretch: semi-expanded;
   letter-spacing: -0.015em;
   text-wrap: balance;
 }
 .cf-big-2 {
-  font-style: italic;
+  font-weight: 500;
   color: var(--accent);
 }
 
@@ -231,7 +236,8 @@ body.cf {
   font: 400 calc(var(--u) * 1.65) / 1.38 var(--sans);
 }
 .cf-list b {
-  font: 500 calc(var(--u) * 2.9) / 1.05 var(--serif);
+  font: 700 calc(var(--u) * 2.3) / 1.1 var(--display);
+  font-stretch: semi-expanded;
 }
 .cf-list-warn .cf-list li {
   border-top-color: var(--accent);
@@ -319,7 +325,8 @@ body.cf {
   border-top: 2px solid var(--ink);
 }
 .cf-numbers b {
-  font: 500 calc(var(--u) * 8) / 1 var(--serif);
+  font: 700 calc(var(--u) * 7) / 1 var(--display);
+  font-stretch: semi-expanded;
   letter-spacing: -0.03em;
 }
 .cf-numbers span {
