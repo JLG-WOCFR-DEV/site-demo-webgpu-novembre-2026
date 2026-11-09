@@ -56,6 +56,10 @@ export class Carnet {
     keep(key: string, on: string): string;
     migrate(id: string, to: any): void;
     monthView(month: string, today: string): any;
+    /**
+     * Humeur d'un jour (0 : pas notée).
+     */
+    mood(d: string): number;
     constructor();
     /**
      * Vide la corbeille des entrées de plus de 30 jours. Rend leur nombre.
@@ -75,6 +79,10 @@ export class Carnet {
      */
     search(query: string, limit: number): any;
     setMarks(id: string, priority: boolean, idea: boolean): void;
+    /**
+     * Humeur d'un jour : 1 … 5, ou 0 pour l'effacer. Vrai si quelque chose a changé.
+     */
+    setMood(d: string, level: number): boolean;
     setState(id: string, state: string): void;
     /**
      * Remplace le texte par un seul remplacement minimal (préfixe et suffixe communs gardés).
@@ -160,6 +168,7 @@ export interface InitOutput {
     readonly carnet_keep: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly carnet_migrate: (a: number, b: number, c: number, d: any) => [number, number];
     readonly carnet_monthView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
+    readonly carnet_mood: (a: number, b: number, c: number) => [number, number, number];
     readonly carnet_new: () => number;
     readonly carnet_purge: (a: number) => [number, number, number];
     readonly carnet_renameCollection: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -170,6 +179,7 @@ export interface InitOutput {
     readonly carnet_schema: (a: number) => number;
     readonly carnet_search: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly carnet_setMarks: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly carnet_setMood: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly carnet_setState: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setText: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setTime: (a: number, b: number, c: number, d: number, e: number) => [number, number];

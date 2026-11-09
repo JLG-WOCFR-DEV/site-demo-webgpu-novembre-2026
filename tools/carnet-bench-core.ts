@@ -94,6 +94,10 @@ async function main() {
       week: median(() => c.weekView(today, today)),
       day: median(() => c.dayView(today, today, 5)),
       month: median(() => c.monthView(today.slice(0, 7), today)),
+      year: median(() => c.yearView(Number(today.slice(0, 4)), today)),
+      // Recherche : un mot fréquent (des centaines de résultats), puis deux mots (peu).
+      searchCommon: median(() => c.search("plombier", 50)),
+      searchTwo: median(() => c.search("réparer vélo", 50)),
       all: median(() => c.all(), 5),
     },
     commandMs: {

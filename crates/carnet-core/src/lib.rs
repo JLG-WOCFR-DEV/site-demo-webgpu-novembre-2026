@@ -7,6 +7,7 @@ pub mod date;
 mod find;
 pub mod id;
 mod import;
+mod mood;
 pub mod notebook;
 pub mod page;
 mod tracker;

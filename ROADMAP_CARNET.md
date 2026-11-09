@@ -387,6 +387,13 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
 - [x] **Question du jour** (`prompts.ts`) : au crayon, aujourd'hui seulement, la même sur tous les appareils ; « Écrire »
       en fait une note longue, curseur sous la question ; écartée ou écrite, elle ne revient pas (clé dans le carnet) ;
       désactivable
+- [x] **Humeur du jour** (core : `meta.moods`, 1 à 5, dernière écriture gagne) : un point dans l'en-tête de chaque jour
+      passé ou présent, cinq niveaux nommés ; dans la vue Année, « Humeur » colore chaque case (année en pixels) et
+      donne l'humeur moyenne du mois
+- [x] **Accessibilité vérifiée** (axe, WCAG 2 A/AA, clair et sombre, chaque vue et les panneaux) : corrigés
+      `aria-pressed` posé par erreur sur la double page, en-têtes vides du tableau des suivis, contenu hors repères,
+      liste de résultats sans nom ; l'audit fait partie du parcours de bout en bout
+- [x] Banc du core : vue Année 3 ms, recherche 6 à 8 ms sur un an (≈ 3 000 entrées), `docs/carnet/bench-core.json`
 - [x] **Export chiffré par phrase** (`crates/carnet-vault`, 65 Ko, chargé seulement à l'export ou à l'import) :
       Argon2id 64 Mio + XChaCha20-Poly1305 (code de `carnet-sync`), phrase générée ou choisie (60 bits au moins) ;
       l'import reconnaît le fichier et demande la phrase

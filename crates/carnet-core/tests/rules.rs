@@ -703,3 +703,27 @@ fn annee_future_log() {
     assert_eq!((decm.events, decm.open), (1, 1));
     assert!(y.months[0].past);
 }
+
+#[test]
+fn humeur_du_jour() {
+    let c = clock(1_794_000_000_000.0);
+    let mut a = notebook(1, &c);
+    let mut b = notebook(2, &c);
+    assert!(a.set_mood(d("2026-11-09"), 4).unwrap());
+    assert!(!a.set_mood(d("2026-11-09"), 4).unwrap());
+    assert!(a.set_mood(d("2026-11-10"), 2).is_ok());
+    assert!(a.set_mood(d("2026-11-11"), 6).is_err());
+    assert_eq!(a.mood(d("2026-11-09")), 4);
+    sync(&mut a, &mut b);
+    assert_eq!(
+        b.moods(d("2026-11-01"), d("2026-11-30")),
+        vec![(d("2026-11-09"), 4), (d("2026-11-10"), 2)]
+    );
+    // Effacer, puis l'année en pixels.
+    assert!(b.set_mood(d("2026-11-10"), 0).unwrap());
+    sync(&mut a, &mut b);
+    assert_eq!(a.mood(d("2026-11-10")), 0);
+    let y = a.year_view(2026, d("2026-11-09"));
+    assert_eq!(y.months[10].moods[8], 4);
+    assert_eq!(y.months[10].moods.iter().filter(|&&m| m > 0).count(), 1);
+}

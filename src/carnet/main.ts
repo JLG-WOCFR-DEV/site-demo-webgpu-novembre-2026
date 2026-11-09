@@ -27,6 +27,7 @@ import { registerPwa } from "./pwa.ts";
 import { setMotionLevel } from "../motion-scale.ts";
 import { hourOf, LIGHT_OFF, lightChanged, paperLight, type PaperLight } from "./light.ts";
 import { promptFor, promptKey, promptsOn, setPromptsOn } from "./prompts.ts";
+import { MOODS, setYearMode } from "./mood.ts";
 import { askPhrase, isSealed, openBackup, sealBackup } from "./vault-ui.ts";
 import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core, type Entry, type Place, type Suggestion } from "./core.ts";
 import { moveChoices, openMoveMenu } from "./move.ts";
@@ -65,7 +66,7 @@ function draw() {
   sugIndex = render(spread, ctx);
   decor?.sync();
   title.textContent = titleFor(ctx.view, ctx.cur);
-  for (const b of document.querySelectorAll<HTMLButtonElement>("[data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === ctx.view));
+  for (const b of document.querySelectorAll<HTMLButtonElement>("button[data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === ctx.view));
   const unit = { week: ["Semaine précédente", "Semaine suivante"], day: ["Jour précédent", "Jour suivant"], month: ["Mois précédent", "Mois suivant"], year: ["Année précédente", "Année suivante"], collections: ["", ""] }[ctx.view];
   $("#prev").setAttribute("aria-label", unit[0]!);
   $("#next").setAttribute("aria-label", unit[1]!);
@@ -258,6 +259,14 @@ spread.addEventListener("click", (ev) => {
     toast(`Collection « ${name} » mise à la corbeille`, { label: "Annuler", run: () => act(() => core.restoreCollection(id)) });
     return;
   }
+  const md = t.closest<HTMLElement>("[data-mood]");
+  if (md?.classList.contains("cn-mood")) return void openMoodPicker(md, md.dataset.mood!);
+  const ym = t.closest<HTMLElement>("[data-ymode]");
+  if (ym) {
+    setYearMode(ym.dataset.ymode === "humeur" ? "humeur" : "activite");
+    draw();
+    return;
+  }
   const om = t.closest<HTMLElement>("[data-open-month]");
   if (om) {
     void openView("month", `${om.dataset.openMonth}-01`);
@@ -410,7 +419,7 @@ function step(n: number) {
 $("#prev").addEventListener("click", () => step(-1));
 $("#next").addEventListener("click", () => step(1));
 $("#today").addEventListener("click", () => void openView(ctx.view, today()));
-for (const b of document.querySelectorAll<HTMLButtonElement>("[data-view]")) {
+for (const b of document.querySelectorAll<HTMLButtonElement>("button[data-view]")) {
   b.addEventListener("click", () => void openView(b.dataset.view as View, ctx.cur));
 }
 document.addEventListener("keydown", (ev) => {
@@ -632,6 +641,61 @@ function promptOf(day: Day): Suggestion | null {
   });
 }
 
+/* ───── Humeur du jour ───── */
+function openMoodPicker(anchor: HTMLElement, day: Day) {
+  document.querySelector(".cn-moodpanel")?.remove();
+  const panel = document.createElement("div");
+  panel.className = "cn-move cn-moodpanel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", `Humeur du ${fLong.format(parseDay(day))}`);
+  panel.dataset.glIgnore = "";
+  const cur = core.mood(day);
+  const items: HTMLButtonElement[] = [];
+  const set = (level: number) => {
+    close();
+    if (act(() => core.setMood(day, level)) !== undefined) anchor.focus({ preventScroll: true });
+  };
+  for (const m of MOODS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cn-move-item cn-mood-choice";
+    b.dataset.level = String(m.level);
+    b.setAttribute("aria-pressed", String(cur === m.level));
+    b.textContent = m.name;
+    b.addEventListener("click", () => set(m.level));
+    items.push(b);
+  }
+  panel.append(...items);
+  if (cur) {
+    const off = document.createElement("button");
+    off.type = "button";
+    off.className = "cn-move-item";
+    off.textContent = "Effacer";
+    off.addEventListener("click", () => set(0));
+    items.push(off);
+    panel.append(off);
+  }
+  document.body.append(panel);
+  const r = anchor.getBoundingClientRect();
+  panel.style.left = `${Math.max(8, Math.min(innerWidth - panel.offsetWidth - 8, r.left)) + scrollX}px`;
+  panel.style.top = `${r.bottom + 4 + scrollY}px`;
+  (items.find((b) => b.getAttribute("aria-pressed") === "true") ?? items[3]!).focus();
+  const onDown = (ev: PointerEvent) => !panel.contains(ev.target as Node) && ev.target !== anchor && close();
+  const onKey = (ev: KeyboardEvent) => {
+    if (ev.key === "Escape") return void (close(), anchor.focus());
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (ev.key === "ArrowDown" || ev.key === "ArrowRight") (ev.preventDefault(), items[(i + 1) % items.length]!.focus());
+    if (ev.key === "ArrowUp" || ev.key === "ArrowLeft") (ev.preventDefault(), items[(i - 1 + items.length) % items.length]!.focus());
+  };
+  function close() {
+    panel.remove();
+    removeEventListener("pointerdown", onDown, true);
+    removeEventListener("keydown", onKey, true);
+  }
+  addEventListener("pointerdown", onDown, true);
+  addEventListener("keydown", onKey, true);
+}
+
 /* ───── Recherche ───── */
 const fSearchDay = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 const fSearchMonth = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
@@ -698,6 +762,7 @@ function openSearch(anchor: HTMLElement) {
   list.className = "cn-wx-results cn-search-results";
   list.id = "cn-search-results";
   list.setAttribute("role", "listbox");
+  list.setAttribute("aria-label", "Résultats");
   const status = document.createElement("p");
   status.className = "cn-wx-intro";
   status.setAttribute("aria-live", "polite");

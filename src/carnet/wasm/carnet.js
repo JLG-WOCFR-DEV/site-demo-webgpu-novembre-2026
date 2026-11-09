@@ -356,6 +356,20 @@ export class Carnet {
         }
         return takeFromExternrefTable0(ret[0]);
     }
+    /**
+     * Humeur d'un jour (0 : pas notée).
+     * @param {string} d
+     * @returns {number}
+     */
+    mood(d) {
+        const ptr0 = passStringToWasm0(d, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnet_mood(this.__wbg_ptr, ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0];
+    }
     constructor() {
         const ret = wasm.carnet_new();
         this.__wbg_ptr = ret;
@@ -486,6 +500,22 @@ export class Carnet {
         if (ret[1]) {
             throw takeFromExternrefTable0(ret[0]);
         }
+    }
+    /**
+     * Humeur d'un jour : 1 … 5, ou 0 pour l'effacer. Vrai si quelque chose a changé.
+     * @param {string} d
+     * @param {number} level
+     * @returns {boolean}
+     */
+    setMood(d, level) {
+        const val2 = +level;
+        const ptr0 = passStringToWasm0(d, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnet_setMood(this.__wbg_ptr, ptr0, len0, val2);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] !== 0;
     }
     /**
      * @param {string} id

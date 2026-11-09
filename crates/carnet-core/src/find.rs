@@ -163,6 +163,17 @@ impl Notebook {
                         }
                     }
                 }
+                let mut moods = vec![0u8; mo.days() as usize];
+                for (d, l) in self.moods(
+                    mo.first(),
+                    Day {
+                        y: year,
+                        m,
+                        d: mo.days(),
+                    },
+                ) {
+                    moods[(d.d - 1) as usize] = l;
+                }
                 let open = page
                     .iter()
                     .filter(|e| e.kind == Kind::Task && e.state == State::Open)
@@ -177,6 +188,7 @@ impl Notebook {
                         })
                         .collect(),
                     days,
+                    moods,
                     events,
                     open,
                     past: (year, m) < (today.y, today.m),
@@ -196,6 +208,8 @@ pub struct YearMonth {
     pub lines: Vec<Line>,
     /// Entrées par jour (log du jour et rendez-vous datés).
     pub days: Vec<u32>,
+    /// Humeur de chaque jour (0 : pas notée, 1 … 5).
+    pub moods: Vec<u8>,
     pub events: usize,
     /// Tâches encore ouvertes sur la page du mois.
     pub open: usize,

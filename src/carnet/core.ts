@@ -46,7 +46,7 @@ export type WeekView = { monday: Day; days: DayView[]; notes: Line[]; departedNo
 export type CalendarDay = { day: Day; count: number; headline: string | null };
 export type MonthView = { month: string; calendar: CalendarDay[]; lines: Line[]; departed: Line[]; suggestions: Suggestion[] };
 export type SearchHit = Entry & { ranges: [number, number][] };
-export type YearMonth = { month: string; lines: Line[]; days: number[]; events: number; open: number; past: boolean; current: boolean };
+export type YearMonth = { month: string; lines: Line[]; days: number[]; moods: number[]; events: number; open: number; past: boolean; current: boolean };
 export type YearView = { year: number; months: YearMonth[] };
 export type Collection = { id: string; name: string; createdAt: number; count: number; open: number };
 export type CollectionView = { collection: Collection; lines: Line[]; departed: Line[] };
@@ -81,6 +81,8 @@ export interface Core {
   dayView(day: Day, today: Day, limit: number): DayView;
   monthView(month: string, today: Day): MonthView;
   yearView(year: number, today: Day): YearView;
+  setMood(day: Day, level: number): boolean;
+  mood(day: Day): number;
   search(query: string, limit: number): SearchHit[];
   get(id: string): Entry | null;
   all(): Entry[];

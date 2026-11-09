@@ -26,6 +26,7 @@
     "@mapbox/tiny-sdf": "^2.3.0",
     "@types/node": "^26.6.5",
     "@webgpu/types": "^0.1.74",
+    "axe-core": "^4.10.3",
     "binaryen": "^123.0.0",
     "exifr": "^7.1.3",
     "fake-indexeddb": "^6.0.0",

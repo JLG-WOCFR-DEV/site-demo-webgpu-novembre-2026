@@ -16,6 +16,7 @@
  * ses lettres partent de la source.
  */
 import type { CollectionView, Core, DayView, Line, MonthView, Suggestion, YearMonth } from "./core.ts";
+import { moodName, yearMode } from "./mood.ts";
 import { addDays, isoWeek, parseDay, weekStart, type Day } from "./model.ts";
 import { describe, skyIcon } from "./weather.ts";
 
@@ -257,9 +258,12 @@ function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<s
     const nm = el("button", "cn-dname");
     nm.type = "button";
     nm.dataset.open = k;
+    const mood = el("button", "cn-mood");
+    mood.type = "button";
+    mood.dataset.mood = k;
     const wx = el("span", "cn-wx");
     wx.dataset.glIgnore = "";
-    head.append(nm, wx);
+    head.append(nm, mood, wx);
     const ol = el("ol", "cn-log");
     const f = el("form", "cn-form");
     f.dataset.day = k;
@@ -281,6 +285,13 @@ function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<s
   nm.replaceChildren(document.createTextNode(fWeek.format(d)), el("b", "", String(d.getDate())));
   nm.setAttribute("aria-label", big ? `Retour à la semaine` : `Ouvrir le ${fWeek.format(d)} ${fLong.format(d)}`);
   nm.dataset.open = big ? "week" : k;
+  // Humeur : jusqu'à aujourd'hui seulement (on ne note pas l'humeur de demain).
+  const md = sec.querySelector<HTMLElement>(".cn-mood")!;
+  const level = k <= ctx.now ? ctx.core.mood(k) : 0;
+  md.hidden = k > ctx.now;
+  md.dataset.level = String(level);
+  md.setAttribute("aria-label", level ? `Humeur : ${moodName(level)}. Changer` : `Noter l'humeur du ${fLong.format(d)}`);
+  md.title = level ? moodName(level) : "Humeur du jour";
   const wx = sec.querySelector<HTMLElement>(".cn-wx")!;
   const w = ctx.weather?.(k) ?? null;
   const sig = w ? `${w.code}|${Math.round(w.max)}|${Math.round(w.min)}|${w.forecast}` : "";
@@ -388,6 +399,24 @@ function monthCalendar(host: HTMLElement, mv: MonthView, ctx: RenderCtx) {
 /* ───── Année (future log) ───── */
 const fMonthName = new Intl.DateTimeFormat("fr-FR", { month: "long" });
 const YEAR_LINES = 6;
+/** Activité ou humeur : ce que montrent les cases des jours. */
+function yearModeBar(host: HTMLElement) {
+  let bar = host.querySelector<HTMLElement>(":scope > .cn-ymode");
+  if (!bar) {
+    bar = el("div", "cn-ymode cn-seg");
+    bar.setAttribute("role", "group");
+    bar.setAttribute("aria-label", "Cases des jours");
+    for (const [m, label] of [["activite", "Activité"], ["humeur", "Humeur"]] as const) {
+      const b = el("button", "", label);
+      b.type = "button";
+      b.dataset.ymode = m;
+      bar.append(b);
+    }
+    host.prepend(bar);
+  }
+  for (const b of bar.querySelectorAll<HTMLButtonElement>("button")) b.setAttribute("aria-pressed", String(b.dataset.ymode === yearMode()));
+}
+
 /** Un mois de l'année : son nom (ouvre le mois), l'activité de ses jours, sa page (rendez-vous, tâches), une ligne pour y écrire. */
 function yearMonth(host: HTMLElement, ym: YearMonth, ctx: RenderCtx) {
   let sec = host.querySelector<HTMLElement>(`:scope > .cn-ymonth[data-month="${ym.month}"]`);
@@ -429,16 +458,26 @@ function yearMonth(host: HTMLElement, ym: YearMonth, ctx: RenderCtx) {
   if (nm.textContent !== name) nm.textContent = name;
   nm.setAttribute("aria-label", `Ouvrir ${name} ${ym.month.slice(0, 4)}`);
   const total = ym.days.reduce((a, b) => a + b, 0);
-  (head!.lastElementChild as HTMLElement).textContent = [total ? `${total} entrée${total > 1 ? "s" : ""}` : "", ym.open ? `${ym.open} à faire` : ""].filter(Boolean).join(" · ");
+  const noted = ym.moods.filter((m) => m > 0);
+  const avg = noted.length ? Math.round(noted.reduce((a, b) => a + b, 0) / noted.length) : 0;
+  (head!.lastElementChild as HTMLElement).textContent =
+    yearMode() === "humeur"
+      ? noted.length
+        ? `humeur : ${moodName(avg).toLowerCase()} · ${noted.length} jour${noted.length > 1 ? "s" : ""} noté${noted.length > 1 ? "s" : ""}`
+        : ""
+      : [total ? `${total} entrée${total > 1 ? "s" : ""}` : "", ym.open ? `${ym.open} à faire` : ""].filter(Boolean).join(" · ");
   // Activité : une case par jour, alignée sur le lundi ; plus foncée quand le jour est plus rempli.
   const offset = (first.getDay() + 6) % 7;
   const want = offset + ym.days.length;
   if (heat!.childElementCount !== want) {
     heat!.replaceChildren(...Array.from({ length: want }, (_, k) => el("span", k < offset ? "cn-heat-pad" : "cn-heat-day")));
   }
+  const byMood = yearMode() === "humeur";
+  heat!.classList.toggle("is-mood", byMood);
   ym.days.forEach((n, k) => {
     const c = heat!.children[offset + k] as HTMLElement;
     c.dataset.level = String(n === 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : 3);
+    c.dataset.mood = String(ym.moods[k] ?? 0);
     c.classList.toggle("is-today", `${ym.month}-${String(k + 1).padStart(2, "0")}` === ctx.now);
   });
   const shown = ym.lines.slice(0, YEAR_LINES);
@@ -540,13 +579,20 @@ function trackersBlock(host: HTMLElement, month: string, ctx: RenderCtx) {
   const cap = el("caption", "sr-only", `Suivis de ${fMonth.format(parseDay(`${month}-01`))}`);
   const thead = el("thead");
   const hr = el("tr");
-  hr.append(el("th", "cn-trk-name", ""));
+  // En-têtes des colonnes sans titre visible : un nom pour les lecteurs d'écran.
+  const h0 = el("th", "cn-trk-name");
+  h0.setAttribute("scope", "col");
+  h0.append(el("span", "sr-only", "Suivi"));
+  hr.append(h0);
   for (let d = 1; d <= n; d++) {
     const th = el("th", d === today ? "is-today" : "", String(d));
     th.setAttribute("scope", "col");
     hr.append(th);
   }
-  hr.append(el("th", "", ""));
+  const hn = el("th");
+  hn.setAttribute("scope", "col");
+  hn.append(el("span", "sr-only", "Jours cochés"));
+  hr.append(hn);
   thead.append(hr);
   const tbody = el("tbody");
   for (const r of rows) {
@@ -713,6 +759,7 @@ export function render(root: HTMLElement, ctx: RenderCtx): Map<string, Suggestio
     trackersBlock(right, mv.month, ctx);
   } else if (ctx.view === "year") {
     const yv = ctx.core.yearView(Number(ctx.cur.slice(0, 4)), ctx.now);
+    yearModeBar(left);
     yv.months.forEach((m, i) => yearMonth(i < 6 ? left : right, m, ctx));
   } else {
     const cols = collectionIndex(left, ctx);

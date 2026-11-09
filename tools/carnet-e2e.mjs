@@ -3,13 +3,13 @@
  * Carnet — parcours de bout en bout (fumée), sur la page construite :
  *   npm run build && npx vite preview --port 4317   puis   node tools/carnet-e2e.mjs [url]
  *
- * Écrire, garder une suggestion au crayon, la question du jour (note longue), migrer, rechercher, l'année
+ * Écrire, garder une suggestion au crayon, la question du jour (note longue), migrer, rechercher, l'humeur, l'année
  * (future log), une version et le retour, l'export (en clair et chiffré), le rechargement (tout est enregistré), le téléphone (mise en page sans débordement). Sans WebGPU :
  * l'application doit fonctionner à l'identique, la page reste son HTML.
  * Sortie : une ligne par étape, code 1 au premier échec.
  */
 import { chromium, devices } from "playwright";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 const url = process.argv.find((a) => a.startsWith("http")) ?? "http://127.0.0.1:4317/carnet.html";
 const pw = "/opt/pw-browsers";
@@ -98,6 +98,23 @@ await step("rechercher (sans accents) et ouvrir le résultat", async () => {
   ok((await p.textContent("#cn-title")).length > 3, "pas de page ouverte");
 });
 
+await step("humeur du jour, puis l'année en pixels", async () => {
+  await p.click('[data-view="day"]');
+  await p.click("#today");
+  const today = await p.evaluate(() => window.__carnet.ctx.now);
+  await p.click(`.cn-mood[data-mood="${today}"]`);
+  await p.locator(".cn-mood-choice", { hasText: "Bien" }).first().click();
+  eq(await p.evaluate((d) => window.__carnet.core.mood(d), today), 4, "humeur");
+  await p.click('[data-view="year"]');
+  await p.click('[data-ymode="humeur"]');
+  const cell = await p.evaluate((d) => {
+    const m = document.querySelector(`.cn-ymonth[data-month="${d.slice(0, 7)}"] .cn-heat`);
+    return m?.classList.contains("is-mood") ? [...m.querySelectorAll(".cn-heat-day")][Number(d.slice(8)) - 1]?.dataset.mood : null;
+  }, today);
+  eq(cell, "4", "case du jour");
+  await p.click('[data-ymode="activite"]');
+});
+
 await step("année : noter au future log, ouvrir le mois", async () => {
   await p.click('[data-view="year"]');
   await p.waitForSelector(".cn-ymonth");
@@ -140,7 +157,6 @@ await step("exporter chiffré (phrase générée), sans texte en clair", async (
   await p.locator(".cn-move-item", { hasText: "chiffrée" }).click();
   await p.locator(".cn-move-item", { hasText: "Générer" }).click();
   const [dl] = await Promise.all([p.waitForEvent("download"), p.locator(".cn-phrasepanel .is-primary").click()]);
-  const { readFileSync } = await import("node:fs");
   const bytes = readFileSync(await dl.path());
   eq(bytes.subarray(0, 3).toString(), "CNS", "en-tête");
   ok(!bytes.includes(Buffer.from("Tester Carnet")), "texte en clair dans le fichier chiffré");
@@ -151,6 +167,38 @@ await step("recharger : tout est enregistré", async () => {
   await p.reload();
   await p.waitForFunction(() => window.__carnet?.core);
   eq((await live()).sort(), before, "contenu après rechargement");
+});
+
+await step("accessibilité (axe, WCAG 2 A/AA) : vues, thèmes, panneaux", async () => {
+  const axe = readFileSync(new URL("../node_modules/axe-core/axe.min.js", import.meta.url), "utf8");
+  const found = [];
+  const audit = async (page, what) => {
+    if (!(await page.evaluate(() => "axe" in window))) await page.addScriptTag({ content: axe });
+    const v = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "best-practice"] })).violations.map((x) => `${x.id} ×${x.nodes.length} (${x.nodes[0].target.join(" ")})`));
+    for (const x of v) found.push(`${what} : ${x}`);
+  };
+  for (const scheme of ["light", "dark"]) {
+    const c = await b.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
+    const q = await c.newPage();
+    for (const v of ["", "?vue=jour", "?vue=mois", "?vue=annee", "?vue=collections"]) {
+      await q.goto(url + v);
+      await q.waitForFunction(() => window.__carnet?.core);
+      await audit(q, `${scheme} ${v || "semaine"}`);
+    }
+    await q.click("#cn-search");
+    await q.fill(".cn-search-input", "plombier");
+    await q.waitForSelector(".cn-hit");
+    await audit(q, `${scheme} recherche`);
+    await q.keyboard.press("Escape");
+    await q.click("#cn-versions");
+    await q.waitForSelector(".cn-bkpanel");
+    await audit(q, `${scheme} versions`);
+    await q.keyboard.press("Escape");
+    await q.click("#cn-stickers");
+    await audit(q, `${scheme} autocollants`);
+    await c.close();
+  }
+  eq(found, [], "violations");
 });
 
 await step("aucune erreur de page", async () => eq(errors, [], "erreurs"));

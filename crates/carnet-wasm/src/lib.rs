@@ -322,6 +322,17 @@ impl Carnet {
         to_js(&self.nb.search(query, limit))
     }
 
+    /// Humeur d'un jour : 1 … 5, ou 0 pour l'effacer. Vrai si quelque chose a changé.
+    #[wasm_bindgen(js_name = setMood)]
+    pub fn set_mood(&mut self, d: &str, level: u8) -> Result<bool, JsError> {
+        self.nb.set_mood(day(d)?, level).map_err(err)
+    }
+
+    /// Humeur d'un jour (0 : pas notée).
+    pub fn mood(&self, d: &str) -> Result<u8, JsError> {
+        Ok(self.nb.mood(day(d)?))
+    }
+
     /// L'année : page de chaque mois et activité de chaque jour.
     #[wasm_bindgen(js_name = yearView)]
     pub fn year_view(&self, year: i32, today: &str) -> Result<JsValue, JsError> {
