@@ -509,7 +509,11 @@ struct Elem {
   rv: f32,       // révélation : 0 encre, 1 lignes, 2 érosion
   lh: f32,       // hauteur de ligne (css)
   lines: f32,    // nombre de lignes
-  w: f32,        // largeur de l'élément (css)
+  w: f32,        // largeur de l'élément à la mise en page (css)
+  sc: f32,       // échelle CSS de la boîte depuis la mise en page (loupe, Magic Move) : 1 au repos
+  _p0: f32,
+  _p1: f32,
+  _p2: f32,
 };
 
 // État physique d'une lettre de l'ouverture, écrit par la passe de calcul.
@@ -570,8 +574,8 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
   let t = frame.viewport.w;
   let reduced = frame.pointer.w > 0.5;
 
-  var center = e.origin + g.pos + g.size * 0.5;
-  var local = (c - 0.5) * g.size;
+  var center = e.origin + (g.pos + g.size * 0.5) * e.sc;
+  var local = (c - 0.5) * g.size * e.sc;
   var reveal = e.reveal;
 
   if (e.fx > 0.5 && e.fx < 1.5) {

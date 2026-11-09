@@ -32,7 +32,7 @@ export type BakeGlyph = { key: string; m: [number, number, number, number, numbe
 
 /** Glyphe tel qu'émis, gardé pour le morphing de l'élément au prochain changement de texte. */
 type MorphGlyph = { ch: string; f: number[]; color: number };
-export const ELEM_STRIDE = 48;
+export const ELEM_STRIDE = 64;
 
 type AtlasEntry = SdfMetrics & { u0: number; v0: number; u1: number; v1: number };
 
@@ -71,6 +71,8 @@ export type TextElem = {
   rv: number;
   lh: number;
   lines: number;
+  /** Largeur de la boîte à la mise en page : une boîte agrandie en CSS (scale) agrandit ses lettres d'autant. */
+  w0: number;
 };
 
 const SKIP = "a, button, label, input, select, textarea, pre, .sr-only, [data-gl-skip]";
@@ -349,7 +351,7 @@ export class TextLayer {
         lh = Number.parseFloat(cs.lineHeight) || Number.parseFloat(cs.fontSize) * 1.2;
       }
       const lines = rv ? Math.max(1, Math.round(box.height / lh)) : 1;
-      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: revealed.get(el) ?? -1, rv, lh, lines });
+      this.elems.push({ el, fx, kin: Math.max(0, KINETIC.indexOf(el.dataset.glKinetic ?? "")), count: idx, first, revealStart: revealed.get(el) ?? -1, rv, lh, lines, w0: box.width });
     });
 
     if (had) root.classList.add("gl-on");

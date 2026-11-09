@@ -55,6 +55,9 @@ body.cf {
 .cf .cf-title-slide::before {
   content: none;
 }
+.cf-demos [data-diapo-slide]::before {
+  content: "Presse · diaporama";
+}
 
 /* ───── Typographie ───── */
 .cf-kicker {
@@ -336,4 +339,119 @@ body.cf {
   .cf .is-active :is(.cf-capture, .cf-list li, .cf-numbers li, .cf-points li, iframe) {
     animation: none;
   }
+}
+
+/* ───────────────────────── Démonstrations (diapo-demos.html) ───────────────────────── */
+.cf .cf-demo {
+  grid-template-columns: 1fr 1.25fr;
+  align-items: center;
+  column-gap: calc(var(--u) * 5);
+}
+.cf .cf-demo-rev {
+  grid-template-columns: 1.25fr 1fr;
+}
+.cf .cf-demo-rev .cf-demo-text {
+  order: 2;
+}
+.cf-demo-text {
+  display: grid;
+  gap: calc(var(--u) * 1.4);
+}
+.cf-photo,
+.cf-trio figure,
+.cf-duo figure,
+.cf-move-hero {
+  margin: 0;
+  min-width: 0;
+}
+.cf-photo img,
+.cf-trio img,
+.cf-duo img,
+.cf-move-hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--u) * 0.5);
+}
+.cf-photo {
+  aspect-ratio: 3 / 2;
+}
+.cf-fine {
+  margin: 0;
+  max-width: 40ch;
+  font: 400 calc(var(--u) * 0.9) / 1.4 var(--mono);
+  color: color-mix(in srgb, var(--ink) 75%, var(--paper));
+}
+.cf-code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--accent);
+}
+
+/* Magic Move */
+.cf .cf-move-a {
+  align-content: center;
+  gap: calc(var(--u) * 2);
+}
+.cf-trio {
+  display: grid;
+  grid-template-columns: repeat(3, calc(var(--u) * 17));
+  gap: calc(var(--u) * 2.4);
+}
+.cf-trio figure,
+.cf-duo figure {
+  aspect-ratio: 1;
+}
+.cf .cf-move-b {
+  grid-template-columns: calc(var(--u) * 40) 1fr;
+  align-items: center;
+  column-gap: calc(var(--u) * 5);
+}
+.cf-move-hero {
+  aspect-ratio: 1;
+}
+.cf-move-side {
+  display: grid;
+  gap: calc(var(--u) * 1.4);
+  align-content: center;
+}
+.cf-duo {
+  display: grid;
+  grid-template-columns: repeat(2, calc(var(--u) * 9));
+  gap: calc(var(--u) * 1.2);
+  margin-top: calc(var(--u) * 1);
+}
+
+/* Lettre à lettre */
+.cf-letters {
+  font-family: var(--mono);
+  font-size: calc(var(--u) * 1.9);
+}
+
+/* Barres */
+.cf-chart {
+  display: grid;
+  grid-template-columns: repeat(4, calc(var(--u) * 7));
+  gap: calc(var(--u) * 2.4);
+  align-items: end;
+  height: calc(var(--u) * 13);
+  margin-top: calc(var(--u) * 1);
+}
+.cf-chart div {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+  gap: calc(var(--u) * 0.6);
+}
+.cf-chart i {
+  align-self: end;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+.cf-chart span {
+  font: 500 calc(var(--u) * 1.1) / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-align: center;
 }

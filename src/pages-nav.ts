@@ -34,6 +34,7 @@ export const PAGES = [
   { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
   { href: "kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },
   { href: "conference.html", name: "Conférence", text: "Un diaporama Presse : la 3D et l'IA, au clavier (F plein écran, P présentateur)" },
+  { href: "diapo-demos.html", name: "Diaporama · démos", text: "Transitions à deux images, Magic Move, mot à mot, chiffres, laser et loupe" },
   { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
 ];
 

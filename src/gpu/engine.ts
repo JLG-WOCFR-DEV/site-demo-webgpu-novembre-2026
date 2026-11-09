@@ -10,6 +10,7 @@ import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedA
 import { chapterPaper, PAPER_FLOATS, paperPack } from "./paper.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 import { renderScale } from "./governor.ts";
+import { SlideTransitionPass } from "./slide-transition.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -417,6 +418,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     addressModeV: "clamp-to-edge",
     maxAnisotropy: 8,
   });
+  // Diaporama : l'image d'une diapo qui s'en va, redessinée par-dessus la suivante (src/gpu/slide-transition.ts).
+  const slideTr = new SlideTransitionPass(device, format, linear);
   const frameBuf = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   const frameBind = device.createBindGroup({ layout: frameLayout, entries: [{ binding: 0, resource: { buffer: frameBuf } }] });
   const planeBuf = device.createBuffer({
@@ -861,7 +864,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
     /* Éléments de texte : seule la boîte de l'élément est relue. */
     const elems = text.elems;
-    if (elemData.length < elems.length * 12) elemData = new Float32Array(elems.length * 12);
+    if (elemData.length < elems.length * 16) elemData = new Float32Array(elems.length * 16);
     const boxes: number[] = [];
     elems.forEach((e, i) => {
       const r = e.el.getBoundingClientRect();
@@ -872,10 +875,14 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       const hideSpecimen = e.fx === 2 && settings.glyph.atlas;
       const ms = text.morphSince.get(e.el);
       const morph = ms === undefined || reduced ? 1 : Math.min(1, (now - ms) / MORPH_MS);
-      elemData.set([r.left, r.top, e.rv ? reveal : ease(reveal), e.fx, e.count, hideSpecimen ? 0 : inlineOpacity(e.el), morph, e.kin, e.rv, e.lh, e.lines, r.width], i * 12);
+      // Échelle CSS (loupe du diaporama, Magic Move, data-anim « zoom ») : la boîte transformée sur sa boîte de mise en page.
+      const ow = (e.el as HTMLElement).offsetWidth;
+      const sc0 = ow > 0 && r.width > 0 ? r.width / ow : 1;
+      const sc = Math.abs(sc0 - 1) < 0.002 ? 1 : sc0;
+      elemData.set([r.left, r.top, e.rv ? reveal : ease(reveal), e.fx, e.count, hideSpecimen ? 0 : inlineOpacity(e.el), morph, e.kin, e.rv, e.lh, e.lines, e.w0, sc, 0, 0, 0], i * 16);
       if (settings.dom.boxes && r.bottom > 0 && r.top < cssH) boxes.push(r.left, r.top, r.width, r.height, 0, 0.627, 0.863, 0.9);
     });
-    if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 12);
+    if (elemBuf && elems.length) device.queue.writeBuffer(elemBuf, 0, elemData, 0, elems.length * 16);
 
     /* Plans */
     type Job = { offset: number; bind: GPUBindGroup; shadow: boolean; peel: boolean };
@@ -1403,7 +1410,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       post.setBindGroup(1, boxBind);
       post.draw(4, nBoxes);
     }
+    slideTr.draw(post, now, w, h, dpr);
     post.end();
+    slideTr.capture(enc, outTex, now);
 
     let reader: (typeof readBufs)[number] | undefined;
     if (querySet && resolveBuf) {
@@ -1515,6 +1524,9 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     relayout: () => {
       needLayout = true;
     },
+    /** Diaporama : garde l'image en cours, puis la fait partir par-dessus la suivante (style, durée en s). Changez le
+     *  DOM quand la promesse est tenue. */
+    slideTransition: (style: string, dur: number) => slideTr.request(style, dur),
     pause: (v: boolean) => {
       paused = v;
     },
@@ -1543,6 +1555,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     destroy: () => {
       destroyed = true;
       cancelAnimationFrame(raf);
+      slideTr.destroy();
       removeEventListener("focusin", onFocus);
       for (const el of document.querySelectorAll(".is-printed")) el.classList.remove("is-printed");
       images.destroy();

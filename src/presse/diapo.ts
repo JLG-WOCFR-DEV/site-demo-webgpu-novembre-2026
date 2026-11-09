@@ -16,17 +16,95 @@
  *     </section>
  *   </main>
  *
+ * Transitions entre deux diapos (`data-transition`, SLIDE_TRANSITIONS : enchaine, feuille, bavure, mosaique, fonte,
+ * onde, portes, points) : l'image de la diapo qui part est gardée et redessinée par-dessus la suivante
+ * (src/gpu/slide-transition.ts). `data-transition="deplacement"` : Magic Move — chaque `[data-move="id"]` vole de sa
+ * place dans la diapo précédente à sa place dans celle-ci ; le reste entre en fondu.
+ *
+ * Apparitions : `data-step="mots"` ou `"lettres"` (mot à mot, lettre à lettre) ; `data-compte="87"` (le nombre
+ * compte jusqu'à sa valeur) et `data-barre="0.72"` (la barre monte, CSS : scale: 1 var(--h)) partent avec leur
+ * étape, ou à l'arrivée de la diapo s'ils n'en ont pas.
+ *
  * Clavier : → Espace Page suiv. Entrée (avancer), ← Page préc. Retour arrière (reculer), Début / Fin, un numéro puis
- * Entrée (aller à), F plein écran, B ou . écran noir, P vue présentateur (seconde fenêtre, synchronisée), ? l'aide.
- * L'adresse garde la diapo (#7) : un rechargement reprend au même endroit.
+ * Entrée (aller à), F plein écran, B ou . écran noir, L pointeur laser, Z loupe, P vue présentateur (seconde fenêtre,
+ * synchronisée), ? l'aide. L'adresse garde la diapo (#7) : un rechargement reprend au même endroit.
  */
 import "./diapo.css";
 import { settings, TRANSITIONS } from "../state.ts";
+import { SLIDE_TRANSITIONS, type SlideTransition } from "../gpu/slide-transition.ts";
 import { animOf, parseAnim, Timeline } from "./timeline.ts";
 
-type Api = { replay: () => void; relayout: () => void } | null;
+type Api = {
+  replay: () => void;
+  relayout: () => void;
+  engine?: { slideTransition?: (style: string, dur: number) => Promise<void>; relayout?: () => void } | null;
+} | null;
 type Step = { el: HTMLElement; tl: Timeline };
-type Slide = { el: HTMLElement; steps: Step[]; title: string; notes: string; transition: number };
+type Slide = { el: HTMLElement; steps: Step[]; enter: Timeline; title: string; notes: string; transition: number; overlay: SlideTransition | null; move: boolean; dur: number };
+
+/** Mot à mot, lettre à lettre : le texte est coupé en <span> (le GPU suit l'opacité et la position de chacun). */
+function splitText(el: HTMLElement, by: "mots" | "lettres") {
+  const out: HTMLElement[] = [];
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) nodes.push(t);
+  for (const t of nodes) {
+    const frag = document.createDocumentFragment();
+    for (const part of t.data.split(/(\s+)/)) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) {
+        frag.append(part);
+        continue;
+      }
+      const word = document.createElement("span");
+      word.className = "diapo-mot";
+      if (by === "mots") {
+        word.textContent = part;
+        out.push(word);
+      } else {
+        // Lettre à lettre : les lettres d'un mot restent ensemble (on ne coupe pas « t / ape » en fin de ligne).
+        for (const ch of part) {
+          const l = document.createElement("span");
+          l.className = "diapo-lettre";
+          l.textContent = ch;
+          word.append(l);
+          out.push(l);
+        }
+      }
+      frag.append(word);
+    }
+    t.replaceWith(frag);
+  }
+  el.setAttribute("aria-label", (el.textContent ?? "").replace(/\s+/g, " ").trim());
+  return out;
+}
+
+/** Les nombres qui comptent et les barres qui montent de `scope` (ceux que `own` retient), posés dans `tl` à `at`. */
+function fills(tl: Timeline, scope: HTMLElement, own: (el: HTMLElement) => boolean, at: number) {
+  let any = false;
+  for (const el of scope.querySelectorAll<HTMLElement>("[data-compte], [data-barre]")) {
+    if (!own(el)) continue;
+    any = true;
+    if (el.dataset.barre !== undefined) {
+      tl.fromTo(el, { "--h": 0 }, { "--h": Number(el.dataset.barre) || 0 }, { dur: 1.1, ease: "out", at });
+    }
+    if (el.dataset.compte !== undefined) {
+      const to = Number(el.dataset.compte) || 0;
+      const dec = (el.dataset.compte.split(".")[1] ?? "").length;
+      // Une cible sans style : la timeline y écrit la progression, on en fait le texte (le GPU relit le nombre).
+      const box = {
+        style: {
+          setProperty: (_: string, v: string) => {
+            const txt = (to * (Number.parseFloat(v) || 0)).toFixed(dec).replace(".", ",");
+            if (el.textContent !== txt) el.textContent = txt;
+          },
+        },
+      };
+      tl.fromTo(box, { "--t": 0 }, { "--t": 1 }, { dur: 1.3, ease: "out", at });
+    }
+  }
+  return any;
+}
 type Msg = { type: "etat"; i: number; step: number; n: number } | { type: "cmd"; cmd: "next" | "prev" | "goto"; i?: number } | { type: "hello" };
 
 const NAV_FWD = new Set(["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"]);
@@ -44,6 +122,8 @@ const notesOf = (el: HTMLElement) =>
 export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   const html = document.documentElement;
   const params = new URLSearchParams(location.search);
+  // ?ralenti=4 : transitions quatre fois plus lentes (pour les régler, ou les montrer).
+  const slow = Math.max(1, Number(params.get("ralenti")) || 1);
   const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel(`presse-diapo:${location.pathname}`) : null;
   const slides: Slide[] = [...root.querySelectorAll<HTMLElement>("[data-diapo-slide]")].map((el, k) => {
     el.dataset.glPrint = "page";
@@ -52,14 +132,33 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     el.setAttribute("role", "group");
     el.setAttribute("aria-roledescription", "diapositive");
     if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", `${k + 1}. ${titleOf(el)}`);
-    const steps = [...el.querySelectorAll<HTMLElement>("[data-step]")].map((s) => {
-      const [from, to] = parseAnim(s.dataset.step || "monte");
-      const tl = new Timeline().fromTo(s, from, to, { dur: Number(s.dataset.stepDur ?? 0.55), ease: "out" });
+    const stepEls = [...el.querySelectorAll<HTMLElement>("[data-step]")];
+    const ownedBy = (x: HTMLElement) => x.closest("[data-step]") as HTMLElement | null;
+    const steps = stepEls.map((s) => {
+      const kind = s.dataset.step || "monte";
+      const tl = new Timeline();
+      if (kind === "mots" || kind === "lettres") {
+        const [from, to] = parseAnim(kind === "mots" ? "y 0.5em 0em; opacity 0 1; blur 6 0" : "y 0.35em 0em; opacity 0 1");
+        tl.fromTo(splitText(s, kind), from, to, { dur: kind === "mots" ? 0.5 : 0.35, ease: "out", stagger: kind === "mots" ? 0.07 : 0.022 });
+      } else {
+        const [from, to] = parseAnim(kind);
+        tl.fromTo(s, from, to, { dur: Number(s.dataset.stepDur ?? 0.55), ease: "out" });
+      }
+      // Les nombres et barres de l'étape partent avec elle.
+      fills(tl, s, (x) => ownedBy(x) === s, 0.15);
       tl.seek(0);
       return { el: s, tl };
     });
-    const t = TRANSITIONS.indexOf((el.dataset.transition ?? root.dataset.transition ?? "impression") as (typeof TRANSITIONS)[number]);
-    return { el, steps, title: titleOf(el), notes: notesOf(el), transition: t >= 0 ? t : 0 };
+    // Ceux qui n'appartiennent à aucune étape partent à l'arrivée de la diapo.
+    const enter = new Timeline();
+    if (!fills(enter, el, (x) => !ownedBy(x), 0.35)) enter.duration = 0;
+    enter.seek(0);
+    const name = el.dataset.transition ?? root.dataset.transition ?? "impression";
+    const overlay = (SLIDE_TRANSITIONS as readonly string[]).includes(name) ? (name as SlideTransition) : null;
+    const move = name === "deplacement";
+    const t = overlay || move ? TRANSITIONS.indexOf("aucune") : TRANSITIONS.indexOf(name as (typeof TRANSITIONS)[number]);
+    const dur = Number(el.dataset.transitionDur ?? (overlay === "enchaine" ? 0.7 : 1.15));
+    return { el, steps, enter, title: titleOf(el), notes: notesOf(el), transition: t >= 0 ? t : 0, overlay, move, dur };
   });
   const n = slides.length;
   if (!n) return;
@@ -76,7 +175,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   if (root.dataset.diapoMotion !== "systeme") {
     (window as unknown as { __presseMotion?: { set(v: boolean, keep?: boolean): void } }).__presseMotion?.set(true, false);
   }
-  settings.transition.speed = Number(root.dataset.transitionSpeed ?? 1.7);
+  settings.transition.speed = Number(root.dataset.transitionSpeed ?? 1.7) / slow;
 
   let api: Api = null;
   let cur = -1;
@@ -104,6 +203,8 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     <dt>Un numéro puis Entrée</dt><dd>aller à la diapo</dd>
     <dt>F</dt><dd>plein écran</dd>
     <dt>B ou .</dt><dd>écran noir</dd>
+    <dt>L</dt><dd>pointeur laser</dd>
+    <dt>Z</dt><dd>loupe (suit le pointeur)</dd>
     <dt>P</dt><dd>vue présentateur (seconde fenêtre)</dd>
     <dt>?</dt><dd>cette aide · Échap la ferme</dd></dl>`;
   document.body.append(bar, black, live, toast, help);
@@ -166,6 +267,10 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   const render = (i: number, atEnd: boolean) => {
     const prev = slides[cur];
     const s = slides[i]!;
+    // Magic Move : où étaient les éléments partagés, avant de changer de diapo.
+    const from = new Map<string, DOMRect>();
+    if (prev && prev !== s && s.move) for (const m of prev.el.querySelectorAll<HTMLElement>("[data-move]")) from.set(m.dataset.move!, m.getBoundingClientRect());
+    zoomOff();
     if (prev && prev !== s) {
       prev.el.classList.remove("is-active");
       prev.el.setAttribute("aria-hidden", "true");
@@ -179,9 +284,13 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     s.el.removeAttribute("aria-hidden");
     s.el.inert = false;
     for (const a of s.el.querySelectorAll<HTMLElement>("[data-anim]")) animOf(a)?.restart();
+    if (s.enter.duration > 0) s.enter.restart();
+    if (from.size) magicMove(s, from);
     settings.transition.style = s.transition;
     api?.replay();
-    api?.relayout();
+    // Tout de suite (pas à l'image suivante) : la diapo masquée ne doit pas être dessinée une image de plus.
+    if (api?.engine?.relayout) api.engine.relayout();
+    else api?.relayout();
     bar.style.setProperty("--p", String(n > 1 ? i / (n - 1) : 1));
     live.textContent = `Diapositive ${i + 1} sur ${n} : ${s.title}`;
     history.replaceState(null, "", `#${i + 1}`);
@@ -189,9 +298,46 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     publish();
   };
 
-  const go = (i: number, atEnd = false) => {
+  /** Chaque élément partagé part de son ancienne boîte (translate + scale depuis le coin haut gauche) ; le reste entre en fondu. */
+  const magicMove = (s: Slide, from: Map<string, DOMRect>) => {
+    const tl = new Timeline();
+    const moved: HTMLElement[] = [];
+    for (const m of s.el.querySelectorAll<HTMLElement>("[data-move]")) {
+      const a = from.get(m.dataset.move!);
+      if (!a) continue;
+      const b = m.getBoundingClientRect();
+      if (!b.width || !b.height) continue;
+      // L'échelle de la largeur (un texte garde ses proportions ; une image change de cadrage sans se déformer).
+      const k = a.width / b.width;
+      tl.fromTo(m, { x: `${a.left - b.left}px`, y: `${a.top - b.top}px`, scale: k }, { x: "0px", y: "0px", scale: 1 }, { dur: 0.85, ease: "in-out", at: 0 });
+      moved.push(m);
+    }
+    // Le reste : les plus grands sous-arbres sans élément partagé (un paragraphe à côté d'un titre qui vole, etc.).
+    const rest: HTMLElement[] = [];
+    const collect = (node: Element) => {
+      for (const c of node.children) {
+        if (!(c instanceof HTMLElement) || c.matches("[data-notes]") || moved.includes(c)) continue;
+        if (moved.some((m) => c.contains(m))) collect(c);
+        else rest.push(c);
+      }
+    };
+    collect(s.el);
+    if (rest.length) tl.fromTo(rest, { opacity: 0, y: "0.6em" }, { opacity: 1, y: "0em" }, { dur: 0.6, ease: "out", at: 0.35, stagger: 0.06 });
+    tl.play();
+  };
+
+  let busy = false;
+  const go = async (i: number, atEnd = false) => {
     const k = Math.max(0, Math.min(n - 1, i));
     if (k === cur && !atEnd) return;
+    const target = slides[k]!;
+    const eng = api?.engine;
+    // Transition à deux images : le moteur garde celle qui part, puis on change de diapo (une image plus tard).
+    if (cur >= 0 && k !== cur && target.overlay && eng?.slideTransition && !busy) {
+      busy = true;
+      await Promise.race([eng.slideTransition(target.overlay, target.dur * slow), new Promise((r) => setTimeout(r, 160))]);
+      busy = false;
+    }
     render(k, atEnd);
   };
   const next = () => {
@@ -215,6 +361,67 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     }
     if (cur > 0) go(cur - 1, true);
   };
+
+  /* ───── Pointeur laser (L) et loupe (Z) ───── */
+  const laser = document.createElement("div");
+  laser.className = "diapo-laser";
+  laser.hidden = true;
+  laser.setAttribute("aria-hidden", "true");
+  laser.innerHTML = "<i></i><i></i><i></i><i></i><i></i><i></i>";
+  document.body.append(laser);
+  const ptr = { x: innerWidth / 2, y: innerHeight / 2 };
+  const trail = [...laser.children].map(() => ({ x: ptr.x, y: ptr.y })) as { x: number; y: number }[];
+  let laserRaf = 0;
+  const laserTick = () => {
+    laserRaf = requestAnimationFrame(laserTick);
+    trail.forEach((t, k) => {
+      const lead = k === 0 ? ptr : trail[k - 1]!;
+      const f = k === 0 ? 1 : 0.45;
+      t.x += (lead.x - t.x) * f;
+      t.y += (lead.y - t.y) * f;
+      (laser.children[k] as HTMLElement).style.translate = `${t.x}px ${t.y}px`;
+    });
+  };
+  const toggleLaser = () => {
+    laser.hidden = !laser.hidden;
+    html.classList.toggle("diapo-laser-on", !laser.hidden);
+    cancelAnimationFrame(laserRaf);
+    if (!laser.hidden) laserTick();
+  };
+  let zoomed = false;
+  const zoomAt = () => {
+    const s = slides[cur];
+    if (!s) return;
+    const r = s.el.getBoundingClientRect();
+    // L'origine dans la boîte non agrandie : la loupe glisse avec le pointeur.
+    const sc = zoomed ? Number(s.el.style.scale || 1) : 1;
+    const ox = (ptr.x - r.left) / sc;
+    const oy = (ptr.y - r.top) / sc;
+    s.el.style.transformOrigin = `${Math.max(0, ox)}px ${Math.max(0, oy)}px`;
+  };
+  function zoomOff() {
+    if (!zoomed) return;
+    zoomed = false;
+    const s = slides[cur];
+    if (s) s.el.style.scale = "";
+  }
+  const toggleZoom = () => {
+    const s = slides[cur];
+    if (!s) return;
+    if (zoomed) return zoomOff();
+    zoomAt();
+    zoomed = true;
+    s.el.style.scale = "2.2";
+  };
+  addEventListener(
+    "pointermove",
+    (e) => {
+      ptr.x = e.clientX;
+      ptr.y = e.clientY;
+      if (zoomed) zoomAt();
+    },
+    { passive: true },
+  );
 
   /* ───── Clavier ───── */
   let typed = "";
@@ -254,6 +461,8 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     else if (k === "f" || k === "F") toggleFullscreen();
     else if (k === "b" || k === "B" || k === ".") black.hidden = false;
     else if (k === "p" || k === "P") openPresenter();
+    else if (k === "l" || k === "L") toggleLaser();
+    else if (k === "z" || k === "Z") toggleZoom();
     else if (k === "?") help.hidden = false;
     else used = false;
     if (used && !relayed) e.preventDefault();

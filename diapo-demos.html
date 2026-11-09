@@ -1,0 +1,167 @@
+<!doctype html>
+<!--
+  Démonstrations du diaporama Presse : les transitions à deux images (src/gpu/slide-transition.ts), Magic Move,
+  le mot à mot et la lettre à lettre, les nombres et les barres, le pointeur laser et la loupe.
+  → / Espace avancer, ← reculer, F plein écran, L laser, Z loupe, P présentateur, ? aide.
+-->
+<html lang="fr" data-presse-transition="impression" data-presse-effects="bloom grain">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Diaporama Presse · démonstrations</title>
+    <meta name="description" content="Ce que le diaporama Presse sait faire : transitions GPU entre deux diapos, Magic Move, apparitions mot à mot, chiffres animés, laser et loupe." />
+    <meta name="theme-color" content="#efebe1" />
+    <script type="module" src="/src/conference/main.ts"></script>
+  </head>
+  <body class="cf cf-demos">
+    <main data-diapo aria-label="Diaporama Presse : démonstrations">
+      <section data-diapo-slide data-gl-print="page" data-transition="impression" class="cf-title-slide" aria-label="Diaporama Presse, démonstrations">
+        <p class="cf-kicker" data-gl-text>Presse · diaporama</p>
+        <h1 class="cf-h1" data-gl-text>Plus beau que Keynote&#8239;?</h1>
+        <p class="cf-sub" data-gl-text>Quinze diapos pour juger sur pièce. → ou Espace pour avancer, F pour le plein écran, ? pour le clavier.</p>
+        <aside data-notes>La première diapo s'imprime (transition d'impression, déjà existante). Les huit suivantes montrent les transitions à deux images.</aside>
+      </section>
+
+      <!-- Transitions à deux images -->
+      <section data-diapo-slide data-gl-print="page" data-transition="feuille" class="cf-demo" aria-label="Transition : feuille">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Transition 1 / 8 · feuille</p>
+          <h2 class="cf-h2" data-gl-text>La page se soulève</h2>
+          <p class="cf-lede" data-gl-text>L'ancienne diapo part vers le haut, légèrement inclinée&#8239;; son ombre glisse sur la suivante.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="bavure" class="cf-demo cf-demo-rev" aria-label="Transition : bavure">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Transition 2 / 8 · bavure</p>
+          <h2 class="cf-h2" data-gl-text>L'encre boit la page</h2>
+          <p class="cf-lede" data-gl-text>Un buvard absorbe l'ancienne diapo&#8239;; l'encre s'accumule sur le front avant de disparaître.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="mosaique" class="cf-demo" aria-label="Transition : mosaïque">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Transition 3 / 8 · mosaïque</p>
+          <h2 class="cf-h2" data-gl-text>Des carreaux qui tombent</h2>
+          <p class="cf-lede" data-gl-text>La page se découpe&#8239;; chaque carreau tourne, rapetisse et tombe, de gauche à droite.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées, ciel strié de traînées d'avion." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="fonte" class="cf-demo cf-demo-rev" aria-label="Transition : fonte">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Transition 4 / 8 · fonte</p>
+          <h2 class="cf-h2" data-gl-text>La page coule</h2>
+          <p class="cf-lede" data-gl-text>Par colonnes, chacune à sa vitesse&#8239;: l'ancienne diapo s'étire et goutte vers le bas.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/yosemite.jpg" width="1728" height="1150" alt="La vallée de Yosemite vue d'en haut : parois de granit, une cascade, la brume au fond." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="onde" class="cf-demo" aria-label="Transition : onde">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Transition 5 / 8 · onde</p>
+          <h2 class="cf-h2" data-gl-text>Une onde emporte tout</h2>
+          <p class="cf-lede" data-gl-text>Partie du centre, elle réfracte ce qu'elle emporte, comme une pierre dans l'eau.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/dunes.jpg" width="1728" height="1150" alt="Des dunes claires et un bois mort tordu, dans la Vallée de la Mort." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="portes" class="cf-demo cf-demo-rev" aria-label="Transition : portes">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Transition 6 / 8 · portes</p>
+          <h2 class="cf-h2" data-gl-text>Deux battants s'ouvrent</h2>
+          <p class="cf-lede" data-gl-text>L'ancienne diapo se fend au milieu&#8239;; ses arêtes s'assombrissent en tournant.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/cerf.jpg" width="1728" height="1150" alt="Un jeune cerf dans un jardin en pente, herbe verte et lumière rasante." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="points" class="cf-demo" aria-label="Transition : points">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Transition 7 / 8 · points</p>
+          <h2 class="cf-h2" data-gl-text>La page se défait en trame</h2>
+          <p class="cf-lede" data-gl-text>Une trame à 45° gagne de gauche à droite&#8239;; chaque point garde sa couleur, puis s'éteint.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/alcatraz.jpg" width="1728" height="1150" alt="L'île d'Alcatraz, son phare et ses bâtiments, au milieu de la baie bleue." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-statement" aria-label="Transition : fondu enchaîné">
+        <p class="cf-kicker" data-gl-text>Transition 8 / 8 · enchaîné</p>
+        <p class="cf-big" data-gl-text>Et le fondu enchaîné, pour les moments calmes.</p>
+        <p class="cf-sub" data-gl-text>Toutes sont des shaders WGSL&#8239;: on en écrit une nouvelle en quelques lignes.</p>
+      </section>
+
+      <!-- Magic Move -->
+      <section data-diapo-slide data-gl-print="page" data-transition="impression" class="cf-move-a" aria-label="Magic Move, avant">
+        <p class="cf-kicker" data-gl-text data-move="kick">Magic Move</p>
+        <h2 class="cf-h2" data-gl-text data-move="titre">Trois objets</h2>
+        <div class="cf-trio">
+          <figure data-move="figue"><img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue ouverte sur une pierre calcaire." /></figure>
+          <figure data-move="fleur"><img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="Une renoncule blanche sur fond gris." /></figure>
+          <figure data-move="acier"><img data-gl-img src="./plates/steel.jpg" width="1408" height="1408" alt="Un cylindre d'acier brossé sur une ardoise sombre." /></figure>
+        </div>
+        <aside data-notes>Avancer : les éléments qui portent le même data-move volent vers leur nouvelle place.</aside>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="deplacement" class="cf-move-b" aria-label="Magic Move, après">
+        <figure class="cf-move-hero" data-move="fleur"><img data-gl-img src="./plates/flower.jpg" width="1408" height="1408" alt="Une renoncule blanche sur fond gris." /></figure>
+        <div class="cf-move-side">
+          <p class="cf-kicker" data-gl-text data-move="kick">Magic Move</p>
+          <h2 class="cf-h3" data-gl-text data-move="titre">Trois objets</h2>
+          <p class="cf-lede" data-gl-text>Même attribut <span class="cf-code">data-move</span> sur deux diapos&#8239;: l'élément vole de l'une à l'autre. Le reste entre en fondu.</p>
+          <div class="cf-duo">
+            <figure data-move="figue"><img data-gl-img src="./plates/fig.jpg" width="1408" height="1408" alt="Une figue ouverte sur une pierre calcaire." /></figure>
+            <figure data-move="acier"><img data-gl-img src="./plates/steel.jpg" width="1408" height="1408" alt="Un cylindre d'acier brossé sur une ardoise sombre." /></figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mot à mot -->
+      <section data-diapo-slide data-gl-print="page" data-transition="enchaine" class="cf-statement" aria-label="Mot à mot, lettre à lettre">
+        <p class="cf-kicker" data-gl-text>Apparitions · deux appuis</p>
+        <p class="cf-big" data-gl-text data-step="mots">Une idée arrive mot à mot, au rythme de la parole.</p>
+        <p class="cf-sub cf-letters" data-gl-text data-step="lettres">Ou lettre à lettre, comme on la tape.</p>
+        <aside data-notes>Premier appui : la phrase mot à mot. Second : la ligne lettre à lettre. Le GPU suit chaque mot, rien n'est une image.</aside>
+      </section>
+
+      <!-- Chiffres -->
+      <section data-diapo-slide data-gl-print="page" data-transition="points" class="cf-figures" aria-label="Chiffres et barres">
+        <p class="cf-kicker" data-gl-text>Chiffres d'exemple · ils comptent, les barres montent</p>
+        <ul class="cf-numbers">
+          <li><b data-gl-text data-compte="87">0</b><span data-gl-text>% de diapos lues jusqu'au bout</span></li>
+          <li><b data-gl-text data-compte="12.5">0</b><span data-gl-text>Mo pour tout le diaporama</span></li>
+          <li><b data-gl-text data-compte="120">0</b><span data-gl-text>images par seconde visées</span></li>
+        </ul>
+        <div class="cf-chart" data-step="fondu" aria-label="Diagramme en barres, données d'exemple">
+          <div><i data-barre="0.35"></i><span data-gl-text>V1</span></div>
+          <div><i data-barre="0.52"></i><span data-gl-text>V2</span></div>
+          <div><i data-barre="0.71"></i><span data-gl-text>V3</span></div>
+          <div><i data-barre="0.94"></i><span data-gl-text>V4</span></div>
+        </div>
+        <aside data-notes>Données d'exemple. Les nombres comptent à l'arrivée ; un appui fait monter les barres.</aside>
+      </section>
+
+      <!-- Laser et loupe -->
+      <section data-diapo-slide data-gl-print="page" data-transition="bavure" class="cf-demo cf-demo-rev" aria-label="Laser et loupe">
+        <div class="cf-demo-text">
+          <p class="cf-kicker" data-gl-text>Pour l'orateur</p>
+          <h2 class="cf-h2" data-gl-text>L&#8239;: laser. Z&#8239;: loupe.</h2>
+          <p class="cf-lede" data-gl-text>Le pointeur devient un point rouge avec sa traîne. La loupe grossit sous le pointeur et suit la souris&#8239;: le texte reste net, il est redessiné par le GPU à chaque taille.</p>
+          <p class="cf-fine" data-gl-text>Petit texte pour essayer la loupe : les lettres sont des champs de distance, elles ne pixellisent pas quand on les agrandit.</p>
+        </div>
+        <figure class="cf-photo"><img data-gl-img src="./plates/yosemite.jpg" width="1728" height="1150" alt="La vallée de Yosemite vue d'en haut : parois de granit, une cascade, la brume au fond." /></figure>
+      </section>
+
+      <section data-diapo-slide data-gl-print="page" data-transition="feuille" class="cf-list-slide" aria-label="Et ensuite">
+        <p class="cf-kicker" data-gl-text>Et ensuite&#8239;?</p>
+        <ol class="cf-list">
+          <li data-gl-text data-step="monte"><b>Une scène 3D qui traverse</b> Le château reste chargé&#8239;; chaque diapo est une position de caméra.</li>
+          <li data-gl-text data-step="monte"><b>Deux écrans tout seuls</b> Projecteur et vue présentateur placés automatiquement&#8239;; le Mac ne s'endort pas.</li>
+          <li data-gl-text data-step="monte"><b>Aucun à-coup</b> Images et lettres de la diapo suivante chargées pendant qu'on parle.</li>
+          <li data-gl-text data-step="monte"><b>Écrire en Markdown</b> Une diapo par «&#8239;---&#8239;», les notes, les apparitions, des gabarits.</li>
+        </ol>
+      </section>
+    </main>
+  </body>
+</html>

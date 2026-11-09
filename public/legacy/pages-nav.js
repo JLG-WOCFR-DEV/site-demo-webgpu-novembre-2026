@@ -1828,6 +1828,11 @@ var Dn = [
 		text: "Un diaporama Presse : la 3D et l'IA, au clavier (F plein écran, P présentateur)"
 	},
 	{
+		href: "diapo-demos.html",
+		name: "Diaporama · démos",
+		text: "Transitions à deux images, Magic Move, mot à mot, chiffres, laser et loupe"
+	},
+	{
 		href: "legacy/index.html",
 		name: "WebGPU-demo-UBS v0",
 		text: "La toute première version, générée par Grok"
