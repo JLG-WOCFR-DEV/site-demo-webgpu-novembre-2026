@@ -618,3 +618,88 @@ fn weather_is_kept_as_a_memory() {
     assert_eq!((v[0].code, v[0].max), (61, 12.3));
     assert_eq!(v[1].code, 61);
 }
+
+#[test]
+fn recherche_sans_accents_ni_casse() {
+    let c = clock(1_794_000_000_000.0);
+    let mut nb = notebook(1, &c);
+    nb.add(Place::day(d("2026-11-02")), task("Appeler le Plombier"))
+        .unwrap();
+    nb.add(
+        Place::day(d("2026-11-08")),
+        task("Réserver le gîte pour Noël"),
+    )
+    .unwrap();
+    let past = nb
+        .add(Place::day(d("2026-10-01")), task("plombier : devis reçu"))
+        .unwrap();
+    let gone = nb
+        .add(Place::day(d("2026-11-09")), task("plombier oublié"))
+        .unwrap();
+    nb.delete(&gone).unwrap();
+    // Casse, accents, plusieurs mots (tous requis), les plus récentes d'abord, la corbeille exclue.
+    let h = nb.search("PLOMBIER", 10);
+    assert_eq!(
+        h.iter().map(|x| x.entry.text.as_str()).collect::<Vec<_>>(),
+        vec!["Appeler le Plombier", "plombier : devis reçu"]
+    );
+    assert_eq!(h[1].entry.id, past);
+    assert_eq!(nb.search("gite noel", 10).len(), 1);
+    assert_eq!(nb.search("gîte vacances", 10).len(), 0);
+    // Positions UTF-16 des passages, pour les surligner : « Noël » dans le texte d'origine.
+    let r = &nb.search("noel", 10)[0];
+    let t: Vec<u16> = r.entry.text.encode_utf16().collect();
+    let (a, b) = r.ranges[0];
+    assert_eq!(
+        String::from_utf16(&t[a as usize..b as usize]).unwrap(),
+        "Noël"
+    );
+    assert!(nb.search("   ", 10).is_empty());
+    assert_eq!(nb.search("plombier", 1).len(), 1);
+}
+
+#[test]
+fn annee_future_log() {
+    let c = clock(1_794_000_000_000.0);
+    let mut nb = notebook(1, &c);
+    let dec = Month { y: 2026, m: 12 };
+    nb.add(
+        Place {
+            scope: Scope::Month(dec),
+            day: Some(d("2026-12-24")),
+        },
+        NewEntry {
+            kind: Some(Kind::Event),
+            text: "Réveillon".into(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    nb.add(
+        Place {
+            scope: Scope::Month(dec),
+            day: None,
+        },
+        task("Cadeaux"),
+    )
+    .unwrap();
+    nb.add(Place::day(d("2026-11-08")), task("aujourd'hui"))
+        .unwrap();
+    nb.add(Place::day(d("2026-11-08")), task("encore")).unwrap();
+    let y = nb.year_view(2026, d("2026-11-08"));
+    assert_eq!(y.months.len(), 12);
+    let nov = &y.months[10];
+    assert!(nov.current && !nov.past);
+    assert_eq!(nov.days[7], 2);
+    let decm = &y.months[11];
+    assert_eq!(
+        decm.lines
+            .iter()
+            .map(|l| l.entry.text.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Réveillon", "Cadeaux"]
+    );
+    assert_eq!(decm.days[23], 1);
+    assert_eq!((decm.events, decm.open), (1, 1));
+    assert!(y.months[0].past);
+}

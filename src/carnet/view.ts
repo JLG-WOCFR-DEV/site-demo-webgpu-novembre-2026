@@ -15,11 +15,11 @@
  * suggestion gardée, vol entre les vues) reçoit une fois data-gl-morph-from :
  * ses lettres partent de la source.
  */
-import type { CollectionView, Core, DayView, Line, MonthView, Suggestion } from "./core.ts";
+import type { CollectionView, Core, DayView, Line, MonthView, Suggestion, YearMonth } from "./core.ts";
 import { addDays, isoWeek, parseDay, weekStart, type Day } from "./model.ts";
 import { describe, skyIcon } from "./weather.ts";
 
-export type View = "week" | "day" | "month" | "collections";
+export type View = "week" | "day" | "month" | "year" | "collections";
 export type RenderCtx = {
   core: Core;
   view: View;
@@ -73,6 +73,7 @@ export function addMonths(m: string, n: number) {
 export function titleFor(view: View, cur: Day) {
   if (view === "month") return cap(fMonth.format(parseDay(`${monthOf(cur)}-01`)));
   if (view === "collections") return "Collections";
+  if (view === "year") return `Année ${cur.slice(0, 4)}`;
   if (view === "day") return cap(`${fWeek.format(parseDay(cur))} ${fLong.format(parseDay(cur))}`);
   return `Semaine ${isoWeek(cur)} · ${weekRange(weekStart(cur))}`;
 }
@@ -378,6 +379,97 @@ function monthCalendar(host: HTMLElement, mv: MonthView, ctx: RenderCtx) {
   syncList(sec.querySelector("ol")!, specs);
 }
 
+/* ───── Année (future log) ───── */
+const fMonthName = new Intl.DateTimeFormat("fr-FR", { month: "long" });
+const YEAR_LINES = 6;
+/** Un mois de l'année : son nom (ouvre le mois), l'activité de ses jours, sa page (rendez-vous, tâches), une ligne pour y écrire. */
+function yearMonth(host: HTMLElement, ym: YearMonth, ctx: RenderCtx) {
+  let sec = host.querySelector<HTMLElement>(`:scope > .cn-ymonth[data-month="${ym.month}"]`);
+  if (!sec) {
+    sec = el("section", "cn-day cn-ymonth");
+    sec.dataset.month = ym.month;
+    const head = el("div", "cn-dhead");
+    const nm = el("button", "cn-dname");
+    nm.type = "button";
+    nm.dataset.openMonth = ym.month;
+    const stats = el("span", "cn-ystats");
+    stats.dataset.glIgnore = "";
+    head.append(nm, stats);
+    const heat = el("div", "cn-heat");
+    heat.setAttribute("aria-hidden", "true");
+    const ol = el("ol", "cn-log cn-ylog");
+    const more = el("button", "cn-ymore");
+    more.type = "button";
+    more.dataset.openMonth = ym.month;
+    const f = el("form", "cn-form");
+    f.dataset.month = ym.month;
+    f.autocomplete = "off";
+    const pr = el("span", "cn-prompt", "+");
+    pr.setAttribute("aria-hidden", "true");
+    const i = el("input");
+    i.type = "text";
+    i.id = `in-y-${ym.month}`;
+    i.setAttribute("aria-label", `Noter pour ${fMonthName.format(parseDay(`${ym.month}-01`))} (« 12 o 14:00 dentiste » pour une date)`);
+    f.append(pr, i);
+    sec.append(head, heat, ol, more, f);
+    host.append(sec);
+  }
+  const first = parseDay(`${ym.month}-01`);
+  sec.classList.toggle("is-past", ym.past);
+  sec.classList.toggle("is-current", ym.current);
+  const [head, heat, ol, more, form] = [...sec.children] as HTMLElement[];
+  const name = cap(fMonthName.format(first));
+  const nm = head!.firstElementChild as HTMLElement;
+  if (nm.textContent !== name) nm.textContent = name;
+  nm.setAttribute("aria-label", `Ouvrir ${name} ${ym.month.slice(0, 4)}`);
+  const total = ym.days.reduce((a, b) => a + b, 0);
+  (head!.lastElementChild as HTMLElement).textContent = [total ? `${total} entrée${total > 1 ? "s" : ""}` : "", ym.open ? `${ym.open} à faire` : ""].filter(Boolean).join(" · ");
+  // Activité : une case par jour, alignée sur le lundi ; plus foncée quand le jour est plus rempli.
+  const offset = (first.getDay() + 6) % 7;
+  const want = offset + ym.days.length;
+  if (heat!.childElementCount !== want) {
+    heat!.replaceChildren(...Array.from({ length: want }, (_, k) => el("span", k < offset ? "cn-heat-pad" : "cn-heat-day")));
+  }
+  ym.days.forEach((n, k) => {
+    const c = heat!.children[offset + k] as HTMLElement;
+    c.dataset.level = String(n === 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : 3);
+    c.classList.toggle("is-today", `${ym.month}-${String(k + 1).padStart(2, "0")}` === ctx.now);
+  });
+  const shown = ym.lines.slice(0, YEAR_LINES);
+  syncList(
+    ol!,
+    shown.map((l) => ({
+      key: `y:${l.id}`,
+      make: () => {
+        const li = el("li", "cn-row cn-yrow");
+        li.dataset.id = l.id;
+        const b = el("span", "cn-bullet");
+        const t = el("span", "cn-time");
+        const body = el("span", "cn-body");
+        const tx = el("span", "cn-text");
+        tx.dataset.glText = "";
+        tx.dataset.glMorphId = `y:${l.id}`;
+        body.append(tx);
+        li.append(el("span", "cn-mark"), b, t, body);
+        return li;
+      },
+      update: (li) => {
+        li.className = `cn-row cn-yrow kind-${l.kind} state-${l.state}`;
+        const [mark, b, t, body] = [...li.children] as HTMLElement[];
+        mark!.textContent = l.priority ? "*" : l.idea ? "!" : "";
+        b!.textContent = glyphOf(l);
+        t!.textContent = l.place.day ? String(Number(l.place.day.slice(8))) : "";
+        const tx = body!.firstElementChild as HTMLElement;
+        if (tx.textContent !== l.text) tx.textContent = l.text;
+      },
+    })),
+  );
+  const rest = ym.lines.length - shown.length;
+  more!.hidden = rest <= 0;
+  more!.textContent = rest > 0 ? `et ${rest} de plus` : "";
+  form!.hidden = ym.past && !ym.lines.length;
+}
+
 function monthPage(host: HTMLElement, mv: MonthView, ctx: RenderCtx, sugIndex: Map<string, Suggestion>) {
   let sec = host.querySelector<HTMLElement>(":scope > .cn-mpage");
   if (!sec) {
@@ -586,7 +678,15 @@ export function render(root: HTMLElement, ctx: RenderCtx): Map<string, Suggestio
   root.dataset.view = ctx.view;
   // Une autre page (semaine, jour, mois, collections) : on repart de feuilles vides.
   const page =
-    ctx.view === "week" ? `week:${weekStart(ctx.cur)}` : ctx.view === "day" ? `day:${ctx.cur}` : ctx.view === "month" ? `month:${monthOf(ctx.cur)}` : "collections";
+    ctx.view === "week"
+      ? `week:${weekStart(ctx.cur)}`
+      : ctx.view === "day"
+        ? `day:${ctx.cur}`
+        : ctx.view === "month"
+          ? `month:${monthOf(ctx.cur)}`
+          : ctx.view === "year"
+            ? `year:${ctx.cur.slice(0, 4)}`
+            : "collections";
   if (root.dataset.page !== page) {
     left.replaceChildren();
     right.replaceChildren();
@@ -605,6 +705,9 @@ export function render(root: HTMLElement, ctx: RenderCtx): Map<string, Suggestio
     monthCalendar(left, mv, ctx);
     monthPage(right, mv, ctx, sugIndex);
     trackersBlock(right, mv.month, ctx);
+  } else if (ctx.view === "year") {
+    const yv = ctx.core.yearView(Number(ctx.cur.slice(0, 4)), ctx.now);
+    yv.months.forEach((m, i) => yearMonth(i < 6 ? left : right, m, ctx));
   } else {
     const cols = collectionIndex(left, ctx);
     if (ctx.col && !cols.some((c) => c.id === ctx.col)) ctx.col = null;

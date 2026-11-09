@@ -70,6 +70,10 @@ export class Carnet {
      * Schéma qui a écrit ce carnet, et celui que ce module sait écrire.
      */
     schema(): number;
+    /**
+     * Recherche (sans accents ni casse), les plus récentes d'abord.
+     */
+    search(query: string, limit: number): any;
     setMarks(id: string, priority: boolean, idea: boolean): void;
     setState(id: string, state: string): void;
     /**
@@ -97,6 +101,10 @@ export class Carnet {
     weather(from: string, to: string): any;
     weekView(any_day: string, today: string): any;
     writable(): boolean;
+    /**
+     * L'année : page de chaque mois et activité de chaque jour.
+     */
+    yearView(year: number, today: string): any;
 }
 
 /**
@@ -160,6 +168,7 @@ export interface InitOutput {
     readonly carnet_restoreCollection: (a: number, b: number, c: number) => [number, number];
     readonly carnet_restoreTracker: (a: number, b: number, c: number) => [number, number];
     readonly carnet_schema: (a: number) => number;
+    readonly carnet_search: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly carnet_setMarks: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setState: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly carnet_setText: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -175,6 +184,7 @@ export interface InitOutput {
     readonly carnet_weather: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_weekView: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
     readonly carnet_writable: (a: number) => number;
+    readonly carnet_yearView: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly carnetpage_addPhoto: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
     readonly carnetpage_addSticker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number, number];
     readonly carnetpage_addStroke: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number, number];

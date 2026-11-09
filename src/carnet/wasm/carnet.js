@@ -457,6 +457,22 @@ export class Carnet {
         return ret >>> 0;
     }
     /**
+     * Recherche (sans accents ni casse), les plus récentes d'abord.
+     * @param {string} query
+     * @param {number} limit
+     * @returns {any}
+     */
+    search(query, limit) {
+        const val2 = +limit;
+        const ptr0 = passStringToWasm0(query, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnet_search(this.__wbg_ptr, ptr0, len0, val2);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
      * @param {string} id
      * @param {boolean} priority
      * @param {boolean} idea
@@ -709,6 +725,22 @@ export class Carnet {
     writable() {
         const ret = wasm.carnet_writable(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * L'année : page de chaque mois et activité de chaque jour.
+     * @param {number} year
+     * @param {string} today
+     * @returns {any}
+     */
+    yearView(year, today) {
+        const val2 = +year;
+        const ptr0 = passStringToWasm0(today, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnet_yearView(this.__wbg_ptr, val2, ptr0, len0);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
     }
 }
 if (Symbol.dispose) Carnet.prototype[Symbol.dispose] = Carnet.prototype.free;

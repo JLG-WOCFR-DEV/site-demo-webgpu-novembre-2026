@@ -4,6 +4,7 @@
 
 mod collection;
 pub mod date;
+mod find;
 pub mod id;
 mod import;
 pub mod notebook;
@@ -14,6 +15,7 @@ mod weather;
 
 pub use collection::{Collection, CollectionView};
 pub use date::{Day, Month};
+pub use find::{SearchHit, YearMonth, YearView};
 pub use import::ImportReport;
 pub use notebook::{
     text_splice, Departure, Entry, Env, Error, Kind, NewEntry, Notebook, Place, Scope, State,

@@ -37,3 +37,10 @@ jobs:
         run: ./tools/carnet-wasm.sh
       - name: Tests de la coquille (core wasm + IndexedDB simulé)
         run: npm test
+      - name: Parcours de bout en bout (page construite, Chromium)
+        run: |
+          npx playwright install --with-deps chromium
+          npm run build
+          npx vite preview --port 4317 --strictPort --host 127.0.0.1 &
+          for i in $(seq 30); do curl -sf http://127.0.0.1:4317/carnet.html >/dev/null && break; sleep 1; done
+          node tools/carnet-e2e.mjs http://127.0.0.1:4317/carnet.html

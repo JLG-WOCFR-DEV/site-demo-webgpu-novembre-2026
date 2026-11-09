@@ -24,8 +24,14 @@ pub const SCENE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// Effets de Carnet (P5) : source unique, partagée avec le moteur TypeScript, placée avant chaque module.
 pub const CARNET_FX_WGSL: &str = include_str!("../shaders/carnet-fx.wgsl");
-pub const TEXT_WGSL: &str = concat!(include_str!("../shaders/carnet-fx.wgsl"), include_str!("../shaders/text.wgsl"));
-pub const POST_WGSL: &str = concat!(include_str!("../shaders/carnet-fx.wgsl"), include_str!("../shaders/post.wgsl"));
+pub const TEXT_WGSL: &str = concat!(
+    include_str!("../shaders/carnet-fx.wgsl"),
+    include_str!("../shaders/text.wgsl")
+);
+pub const POST_WGSL: &str = concat!(
+    include_str!("../shaders/carnet-fx.wgsl"),
+    include_str!("../shaders/post.wgsl")
+);
 
 /// Ce que l'hôte donne à chaque image.
 #[derive(Clone, Copy, Debug)]

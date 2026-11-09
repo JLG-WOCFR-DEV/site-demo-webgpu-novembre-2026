@@ -26,7 +26,7 @@ import "./style.css";
 import { registerPwa } from "./pwa.ts";
 import { setMotionLevel } from "../motion-scale.ts";
 import { hourOf, LIGHT_OFF, lightChanged, paperLight, type PaperLight } from "./light.ts";
-import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core, type Place, type Suggestion } from "./core.ts";
+import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core, type Entry, type Place, type Suggestion } from "./core.ts";
 import { moveChoices, openMoveMenu } from "./move.ts";
 import { addDays, isSample, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
 import { Store, type SaveState } from "./store.ts";
@@ -64,7 +64,7 @@ function draw() {
   decor?.sync();
   title.textContent = titleFor(ctx.view, ctx.cur);
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === ctx.view));
-  const unit = { week: ["Semaine précédente", "Semaine suivante"], day: ["Jour précédent", "Jour suivant"], month: ["Mois précédent", "Mois suivant"], collections: ["", ""] }[ctx.view];
+  const unit = { week: ["Semaine précédente", "Semaine suivante"], day: ["Jour précédent", "Jour suivant"], month: ["Mois précédent", "Mois suivant"], year: ["Année précédente", "Année suivante"], collections: ["", ""] }[ctx.view];
   $("#prev").setAttribute("aria-label", unit[0]!);
   $("#next").setAttribute("aria-label", unit[1]!);
   // Les collections ne se feuillettent pas dans le temps.
@@ -240,6 +240,11 @@ spread.addEventListener("click", (ev) => {
     toast(`Collection « ${name} » mise à la corbeille`, { label: "Annuler", run: () => act(() => core.restoreCollection(id)) });
     return;
   }
+  const om = t.closest<HTMLElement>("[data-open-month]");
+  if (om) {
+    void openView("month", `${om.dataset.openMonth}-01`);
+    return;
+  }
   const open = t.closest<HTMLElement>("[data-open]");
   if (open) {
     void openView(open.dataset.open === "week" ? "week" : "day", open.dataset.open === "week" ? ctx.cur : open.dataset.open!);
@@ -361,9 +366,12 @@ async function openView(view: View, cur: Day) {
   if (fromBlock && !reduced) {
     for (const e of core.dayView(flyDay, ctx.now, 0).lines) ctx.from.set(`e:${e.id}`, `e:${e.id}`);
   }
+  const toYear = view === "year" && ctx.view !== "year";
   ctx.view = view;
   ctx.cur = cur;
   draw();
+  // L'année s'ouvre sur le mois en cours (sur téléphone, il est loin en bas).
+  if (toYear) spread.querySelector<HTMLElement>(".cn-ymonth.is-current")?.scrollIntoView({ block: "center" });
   const toBlock = spread.querySelector<HTMLElement>(`.cn-day[data-day="${flyDay}"]`);
   if (first && toBlock && !reduced) flyBetween(first, toBlock);
   engine?.wake();
@@ -371,7 +379,14 @@ async function openView(view: View, cur: Day) {
 
 function step(n: number) {
   if (ctx.view === "collections") return;
-  const cur = ctx.view === "week" ? addDays(ctx.cur, 7 * n) : ctx.view === "month" ? `${addMonths(monthOf(ctx.cur), n)}-01` : addDays(ctx.cur, n);
+  const cur =
+    ctx.view === "week"
+      ? addDays(ctx.cur, 7 * n)
+      : ctx.view === "month"
+        ? `${addMonths(monthOf(ctx.cur), n)}-01`
+        : ctx.view === "year"
+          ? `${Number(ctx.cur.slice(0, 4)) + n}-${ctx.cur.slice(5, 7)}-01`
+          : addDays(ctx.cur, n);
   void openView(ctx.view, cur);
 }
 $("#prev").addEventListener("click", () => step(-1));
@@ -385,6 +400,7 @@ document.addEventListener("keydown", (ev) => {
   if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
   if (ev.key === "[") step(-1);
   else if (ev.key === "]") step(1);
+  else if (ev.key === "/") (ev.preventDefault(), openSearch($("#cn-search")));
 });
 async function freshCore(sample: boolean) {
   await store.flush().catch(() => undefined);
@@ -580,6 +596,138 @@ $<HTMLInputElement>("#cn-ics-file").addEventListener("change", async (ev) => {
   if (r.unsupported) parts.push(`${r.unsupported} répétition${r.unsupported > 1 ? "s" : ""} non dépliée${r.unsupported > 1 ? "s" : ""}`);
   toast(`${parts.join(", ")}. Ils sont sur les pages des mois, et reviennent au crayon le jour dit.`);
 });
+
+/* ───── Recherche ───── */
+const fSearchDay = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+const fSearchMonth = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
+/** Où est une entrée, en mots : « dim. 8 nov. 2026 », « semaine du 2 nov. », « décembre 2026, le 24 », « Films à voir ». */
+function placeWords(pl: Place): string {
+  const sc = pl.scope;
+  if (sc === "day" && pl.day) return fSearchDay.format(parseDay(pl.day));
+  if (sc.startsWith("week:")) return `semaine du ${fLong.format(parseDay(sc.slice(5)))}`;
+  if (sc.startsWith("month:")) return `${fSearchMonth.format(parseDay(`${sc.slice(6)}-01`))}${pl.day ? `, le ${Number(pl.day.slice(8))}` : ""}`;
+  if (sc.startsWith("collection:")) return core.collections().find((c) => c.id === sc.slice(11))?.name ?? "une collection";
+  return "";
+}
+/** Ouvre la page d'une entrée, puis la montre (défilement, focus, reflet bref). */
+async function reveal(e: Entry) {
+  const sc = e.place.scope;
+  if (sc === "day" && e.place.day) await openView("day", e.place.day);
+  else if (sc.startsWith("week:")) await openView("week", sc.slice(5));
+  else if (sc.startsWith("month:")) await openView("month", `${sc.slice(6)}-01`);
+  else if (sc.startsWith("collection:")) {
+    ctx.col = sc.slice(11);
+    if (ctx.view === "collections") draw();
+    else await openView("collections", ctx.cur);
+  }
+  requestAnimationFrame(() => {
+    const li = spread.querySelector<HTMLElement>(`li[data-id="${CSS.escape(e.id)}"]`);
+    if (!li) return;
+    li.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    li.classList.remove("is-found");
+    void li.offsetWidth;
+    li.classList.add("is-found");
+    li.querySelector<HTMLElement>('[data-act="edit"]')?.focus({ preventScroll: true });
+  });
+}
+/** Le texte, avec les passages trouvés en <mark> (positions UTF-16 rendues par le core). */
+function marked(text: string, ranges: [number, number][]) {
+  const frag = document.createDocumentFragment();
+  let at = 0;
+  for (const [a, b] of ranges) {
+    if (a < at) continue;
+    frag.append(text.slice(at, a));
+    const m = document.createElement("mark");
+    m.textContent = text.slice(a, b);
+    frag.append(m);
+    at = b;
+  }
+  frag.append(text.slice(at));
+  return frag;
+}
+function openSearch(anchor: HTMLElement) {
+  document.querySelector(".cn-searchpanel")?.remove();
+  const panel = document.createElement("div");
+  panel.className = "cn-move cn-wxpanel cn-searchpanel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "Rechercher dans le carnet");
+  panel.dataset.glIgnore = "";
+  const q = document.createElement("input");
+  q.type = "search";
+  q.className = "cn-search-input";
+  q.placeholder = "Rechercher : plombier, « rendez-vous »…";
+  q.setAttribute("aria-label", "Rechercher dans le carnet");
+  q.setAttribute("aria-controls", "cn-search-results");
+  q.autocomplete = "off";
+  const list = document.createElement("div");
+  list.className = "cn-wx-results cn-search-results";
+  list.id = "cn-search-results";
+  list.setAttribute("role", "listbox");
+  const status = document.createElement("p");
+  status.className = "cn-wx-intro";
+  status.setAttribute("aria-live", "polite");
+  panel.append(q, status, list);
+  let timer = 0;
+  const run = () => {
+    const text = q.value.trim();
+    list.replaceChildren();
+    if (!text) {
+      status.textContent = "Sans accents ni majuscules ; plusieurs mots : tous doivent y être.";
+      return;
+    }
+    const hits = core.search(text, 50);
+    status.textContent = hits.length ? `${hits.length >= 50 ? "50 premiers résultats" : `${hits.length} résultat${hits.length > 1 ? "s" : ""}`}` : "Rien trouvé.";
+    for (const h of hits) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cn-move-item cn-hit";
+      b.setAttribute("role", "option");
+      const where = document.createElement("span");
+      where.className = "cn-hit-where";
+      where.textContent = placeWords(h.place);
+      const what = document.createElement("span");
+      what.className = "cn-hit-text";
+      what.append(marked(h.text, h.ranges));
+      b.append(what, where);
+      b.addEventListener("click", () => {
+        close();
+        void reveal(h);
+      });
+      list.append(b);
+    }
+  };
+  q.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = window.setTimeout(run, 120);
+  });
+  q.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") (ev.preventDefault(), list.querySelector<HTMLElement>(".cn-hit")?.click());
+    if (ev.key === "ArrowDown") (ev.preventDefault(), list.querySelector<HTMLElement>(".cn-hit")?.focus());
+  });
+  list.addEventListener("keydown", (ev) => {
+    const items = [...list.querySelectorAll<HTMLElement>(".cn-hit")];
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    if (ev.key === "ArrowDown") (ev.preventDefault(), items[Math.min(items.length - 1, i + 1)]?.focus());
+    if (ev.key === "ArrowUp") (ev.preventDefault(), i <= 0 ? q.focus() : items[i - 1]?.focus());
+  });
+  document.body.append(panel);
+  const r = anchor.getBoundingClientRect();
+  panel.style.left = `${Math.max(8, Math.min(innerWidth - panel.offsetWidth - 8, r.left)) + scrollX}px`;
+  panel.style.top = `${r.bottom + 6 + scrollY}px`;
+  run();
+  q.focus();
+  const onDown = (ev: PointerEvent) => !panel.contains(ev.target as Node) && ev.target !== anchor && close();
+  const onKey = (ev: KeyboardEvent) => ev.key === "Escape" && (close(), anchor.focus());
+  function close() {
+    clearTimeout(timer);
+    panel.remove();
+    removeEventListener("pointerdown", onDown, true);
+    removeEventListener("keydown", onKey, true);
+  }
+  addEventListener("pointerdown", onDown, true);
+  addEventListener("keydown", onKey, true);
+}
+$("#cn-search").addEventListener("click", (ev) => openSearch(ev.currentTarget as HTMLElement));
 
 /* ───── Sauvegardes (D10 : locales seulement) ───── */
 /** Le carnet complet au format `.carnet` ; avec les photos pour un export, sans pour une version (elles restent dans l'OPFS). */
@@ -838,7 +986,7 @@ async function boot() {
   $("#cn-draw").addEventListener("click", () => decor!.toggleDraw());
   // Raccourcis de l'icône installée (manifeste) : ?vue=jour | mois | collections.
   const vue = new URLSearchParams(location.search).get("vue");
-  const start: View = vue === "jour" ? "day" : vue === "mois" ? "month" : vue === "collections" ? "collections" : "week";
+  const start: View = vue === "jour" ? "day" : vue === "mois" ? "month" : vue === "annee" ? "year" : vue === "collections" ? "collections" : "week";
   ctx = { core, view: start, cur: today(), now: today(), from: new Map(), fresh: new Set(), col: null, weather: (d) => weatherOf(d) };
   if (opened.empty) {
     let v0: string | null = null;

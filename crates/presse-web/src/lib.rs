@@ -142,7 +142,17 @@ impl PresseWeb {
     /// Carnet, papier éclairé : direction (x, y), relief, 0 ; chaleur, flaque, centre (u, v).
     #[wasm_bindgen(js_name = setLight)]
     #[allow(clippy::too_many_arguments)]
-    pub fn set_light(&self, lx: f32, ly: f32, relief: f32, l3: f32, warm: f32, pool: f32, pu: f32, pv: f32) {
+    pub fn set_light(
+        &self,
+        lx: f32,
+        ly: f32,
+        relief: f32,
+        l3: f32,
+        warm: f32,
+        pool: f32,
+        pu: f32,
+        pv: f32,
+    ) {
         self.light.set([lx, ly, relief, l3, warm, pool, pu, pv]);
     }
 

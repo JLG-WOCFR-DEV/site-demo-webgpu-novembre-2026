@@ -373,6 +373,16 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
 - [ ] Temps GPU par passe dans presse-rs (timestamp-query) : la colonne « GPU » du banc reste vide en Rust
 - [ ] Mesures sur le téléphone (P3a) : taille, initialisation, temps par image — avec le banc
 
+#### P4c — améliorations (9 novembre)
+
+- [x] **Recherche** (core : `search`, sans accents ni casse, tous les mots, expressions entre guillemets, positions
+      UTF-16 des passages ; coquille : « Rechercher » ou `/`, résultats au clavier, la page s'ouvre sur l'entrée)
+- [x] **Année** (future log) : douze mois sur la double page, activité de chaque jour, page de chaque mois, une ligne
+      pour noter un rendez-vous ou une tâche à venir (« 24 o 19:00 … ») ; `?vue=annee`
+- [x] Parcours de bout en bout committé (`npm run carnet:e2e`, en CI) : écrire, garder, migrer, rechercher, année,
+      version et retour, export, rechargement, téléphone sans débordement
+- [x] `cargo fmt` rétabli sur presse-rs et presse-web (la CI l'exigeait)
+
 #### Sauvegardes locales (D10) — avancement
 
 - [x] Versions sur l'appareil (`versions.ts`, OPFS) : toutes les deux heures quand le carnet change, jamais

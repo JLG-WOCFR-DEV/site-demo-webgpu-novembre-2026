@@ -317,6 +317,17 @@ impl Carnet {
         to_js(&self.nb.day_view(day(d)?, day(today)?, limit as usize))
     }
 
+    /// Recherche (sans accents ni casse), les plus récentes d'abord.
+    pub fn search(&self, query: &str, limit: usize) -> Result<JsValue, JsError> {
+        to_js(&self.nb.search(query, limit))
+    }
+
+    /// L'année : page de chaque mois et activité de chaque jour.
+    #[wasm_bindgen(js_name = yearView)]
+    pub fn year_view(&self, year: i32, today: &str) -> Result<JsValue, JsError> {
+        to_js(&self.nb.year_view(year, day(today)?))
+    }
+
     #[wasm_bindgen(js_name = monthView)]
     pub fn month_view(&self, month: &str, today: &str) -> Result<JsValue, JsError> {
         let m: Month = month
