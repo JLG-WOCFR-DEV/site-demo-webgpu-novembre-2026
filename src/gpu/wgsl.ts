@@ -1806,9 +1806,12 @@ fn source(px: vec2f, lens: vec2f) -> vec3f {
   var p = px + lens;
   var col: vec3f;
   if (u.chain.y > 0.5) {
-    // Repérage des plaques : au repos, net ; en défilement, les canaux
+    // Repérage des plaques : au repos, net ; sur un défilement franc, les canaux
     // glissent dans le sens du papier, comme une feuille qui file sous les rouleaux.
-    let off = vec2f(0.0, u.paper.w * 4.0) * u.res.z;
+    // u.paper.w = vitesse / 4000 px/s. Zone morte sous 1500 px/s (0,375) : un défilement
+    // ordinaire, ou la traîne d'inertie d'un trackpad, laisse le texte net ; 4 px à 4000 px/s.
+    let slipK = sign(u.paper.w) * max(abs(u.paper.w) - 0.375, 0.0) / 0.625;
+    let off = vec2f(0.0, slipK * 4.0) * u.res.z;
     col = vec3f(
       textureSampleLevel(scene, samp, (p + off) / res, 0.0).r,
       textureSampleLevel(scene, samp, p / res, 0.0).g,

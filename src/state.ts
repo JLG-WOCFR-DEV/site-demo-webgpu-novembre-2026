@@ -50,7 +50,7 @@ export const settings: Settings = {
   dom: { boxes: false, hideGpu: false },
   quad: { radius: 6, shadow: 0.45, lift: 0.3, wire: false, peel: 0, hoverPeel: true },
   glyph: { wave: 0.35, ink: 0, scatter: 0, atlas: false },
-  chain: { distort: true, rgb: true, trame: true, bloom: true, grain: true, print: true, split: false, bend: false },
+  chain: { distort: true, rgb: false, trame: true, bloom: true, grain: true, print: true, split: false, bend: false },
   trame: { cell: 7, gain: 0.08, misreg: 0.15, mix: 1 },
   light: { bloom: 0.6, threshold: 0.03, naive: false },
   filter: { kind: 1, size: 6, amount: 0.5, source: 0 },
