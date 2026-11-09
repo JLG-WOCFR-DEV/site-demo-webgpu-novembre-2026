@@ -9,6 +9,7 @@ pub mod device;
 pub mod envelope;
 pub mod keys;
 pub mod store;
+pub mod vault;
 
 /// Ce qui peut mal tourner, en mots.
 #[derive(Debug, Clone, PartialEq, Eq)]

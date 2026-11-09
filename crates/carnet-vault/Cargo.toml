@@ -1,0 +1,16 @@
+[package]
+name = "carnet-vault"
+version = "0.1.0"
+description = "Carnet : sauvegarde chiffrée par phrase, module wasm chargé seulement quand on en a besoin"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+carnet-sync = { path = "../carnet-sync" }
+# Version figée : elle doit être celle de wasm-bindgen-cli (tools/carnet-wasm.sh).
+wasm-bindgen = "=0.2.130"

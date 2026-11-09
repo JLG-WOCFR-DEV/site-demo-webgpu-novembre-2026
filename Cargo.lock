@@ -213,6 +213,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "carnet-vault"
+version = "0.1.0"
+dependencies = [
+ "carnet-sync",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "carnet-wasm"
 version = "0.1.0"
 dependencies = [

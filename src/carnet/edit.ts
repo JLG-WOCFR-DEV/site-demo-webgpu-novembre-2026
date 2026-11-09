@@ -34,14 +34,22 @@ export type EditorHooks = {
   done: (text: string) => void;
 };
 
+export type EditorOptions = {
+  /** Note longue : Entrée va à la ligne ; Échap, Ctrl/⌘ + Entrée ou quitter le champ terminent. */
+  multiline?: boolean;
+  /** Texte ajouté à l'ouverture (par une opération, comme une frappe) : « \n » pour répondre sous une question. */
+  append?: string;
+};
+
 /** Ouvre l'éditeur sur un texte imprimé (`.cn-text`). Rend la fonction qui le ferme. */
-export function openEditor(span: HTMLElement, text: string, hooks: EditorHooks): () => void {
+export function openEditor(span: HTMLElement, text: string, hooks: EditorHooks, opts: EditorOptions = {}): () => void {
+  const multiline = !!opts.multiline;
   const ta = document.createElement("textarea");
-  ta.className = "cn-edit";
+  ta.className = multiline ? "cn-edit is-multiline" : "cn-edit";
   ta.rows = 1;
   ta.value = text;
   ta.spellcheck = true;
-  ta.enterKeyHint = "done";
+  ta.enterKeyHint = multiline ? "enter" : "done";
   ta.setAttribute("aria-label", "Modifier l’entrée");
   // Le champ est peint par le navigateur : Presse ne le relit pas.
   ta.dataset.glIgnore = "";
@@ -54,7 +62,7 @@ export function openEditor(span: HTMLElement, text: string, hooks: EditorHooks):
     ta.style.height = `${ta.scrollHeight}px`;
   };
   const sync = () => {
-    if (ta.value.includes("\n")) {
+    if (!multiline && ta.value.includes("\n")) {
       // Une ligne de carnet tient sur une ligne : un retour collé devient une espace.
       const at = ta.selectionStart;
       ta.value = ta.value.replace(/\r?\n/g, " ");
@@ -92,7 +100,8 @@ export function openEditor(span: HTMLElement, text: string, hooks: EditorHooks):
   });
   ta.addEventListener("keydown", (ev) => {
     if (ev.isComposing || composing) return;
-    if (ev.key === "Enter" || ev.key === "Escape") {
+    const finish = ev.key === "Escape" || (ev.key === "Enter" && (!multiline || ev.ctrlKey || ev.metaKey));
+    if (finish) {
       ev.preventDefault();
       close();
     }
@@ -101,6 +110,10 @@ export function openEditor(span: HTMLElement, text: string, hooks: EditorHooks):
 
   span.hidden = true;
   span.after(ta);
+  if (opts.append) {
+    ta.value = text + opts.append;
+    sync();
+  }
   fit();
   ta.focus({ preventScroll: true });
   ta.setSelectionRange(ta.value.length, ta.value.length);

@@ -18,6 +18,8 @@ pub enum Kind {
     Keybox = 4,
     /// Fiche d'un instantané : ce qu'il couvre, son schéma, l'empreinte de son corps (§ 6.1).
     SnapMeta = 5,
+    /// Sauvegarde `.carnet` chiffrée par phrase (vault.rs).
+    Backup = 6,
 }
 
 /// Contexte d'une entrée ou d'un instantané : `st (16) ‖ numéro (u64)`.
@@ -85,6 +87,7 @@ pub fn peek(env: &[u8]) -> Result<(Kind, u32), Error> {
         3 => Kind::Media,
         4 => Kind::Keybox,
         5 => Kind::SnapMeta,
+        6 => Kind::Backup,
         _ => return Err(Error::Unsupported("nature d'enveloppe inconnue")),
     };
     Ok((kind, u32::from_le_bytes(env[5..9].try_into().unwrap())))

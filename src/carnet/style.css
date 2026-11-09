@@ -1367,3 +1367,34 @@ body > .cn-wxpanel.cn-wxpanel.cn-wxpanel {
     outline-offset: 2px;
   }
 }
+
+/* ───── Notes longues et question du jour (P4c) ───── */
+.kind-note .cn-text {
+  white-space: pre-wrap;
+}
+.cn-edit.is-multiline {
+  white-space: pre-wrap;
+}
+.cn-ghost.is-prompt .cn-text {
+  font-style: italic;
+}
+
+/* ───── Phrase secrète (sauvegarde chiffrée) ───── */
+.cn-phrasepanel {
+  width: min(26em, calc(100vw - 16px));
+}
+.cn-phrase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 6px 8px;
+}
+.cn-phrase-actions > .cn-move-item {
+  width: auto;
+  flex: none;
+}
+.cn-phrase-actions > .cn-move-item.is-primary {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 600;
+}

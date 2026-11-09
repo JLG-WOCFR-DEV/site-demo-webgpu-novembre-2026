@@ -20,7 +20,7 @@ jobs:
         run: cargo fmt --all --check
       - name: Clippy
         run: |
-          cargo clippy -p carnet-core -p carnet-sync -p carnet-wasm -p presse-rs --all-targets -- -D warnings
+          cargo clippy -p carnet-core -p carnet-sync -p carnet-vault -p carnet-wasm -p presse-rs --all-targets -- -D warnings
           cargo clippy -p presse-web --target wasm32-unknown-unknown -- -D warnings
       - name: Tests (convergence : 2 000 scénarios)
         run: cargo test -p carnet-core -p carnet-sync -p presse-rs --release

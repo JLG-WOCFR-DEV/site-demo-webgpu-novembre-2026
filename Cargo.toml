@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/carnet-core", "crates/carnet-sync", "crates/carnet-wasm", "crates/presse-rs", "crates/presse-web"]
+members = ["crates/carnet-core", "crates/carnet-sync", "crates/carnet-vault", "crates/carnet-wasm", "crates/presse-rs", "crates/presse-web"]
 
 [workspace.package]
 edition = "2021"

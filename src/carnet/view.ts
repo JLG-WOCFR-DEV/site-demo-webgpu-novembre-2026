@@ -27,6 +27,8 @@ export type RenderCtx = {
   now: Day;
   /** Lignes à faire partir d'une source au prochain rendu : clé de la ligne → identifiant de morphing de la source. */
   from: Map<string, string>;
+  /** La question du jour d'un jour donné, au crayon (prompts.ts), ou rien. */
+  prompt?: (day: Day) => Suggestion | null;
   /** Entrées écrites ou recopiées à l'instant (encre fraîche, P5), vidé après chaque rendu. */
   fresh?: Set<string>;
   /** Place du bloc en cours de rendu (clé des traces « > »). */
@@ -201,6 +203,7 @@ const placeLabel = (day: Day | null) => (day ? fLong.format(parseDay(day)) : "un
 
 /** D'où vient une suggestion, en mots. */
 function sourceOf(s: Suggestion, day: Day) {
+  if (s.kind === "prompt") return "question du jour";
   if (s.kind === "plan") return "prévu ce mois";
   if (s.kind === "yearAgo") return "il y a un an";
   if (s.kind === "monthCarry") return "mois dernier";
@@ -218,7 +221,8 @@ function ghostSpec(s: Suggestion, day: Day): RowSpec {
       const li = el("li", "cn-row cn-ghost");
       li.tabIndex = 0;
       li.dataset.sug = s.key;
-      li.setAttribute("aria-label", `Suggestion au crayon : ${s.text}. Entrée pour garder, Suppr pour écarter.`);
+      li.classList.toggle("is-prompt", s.kind === "prompt");
+      li.setAttribute("aria-label", s.kind === "prompt" ? `Question du jour : ${s.text}. Entrée pour écrire, Suppr pour écarter.` : `Suggestion au crayon : ${s.text}. Entrée pour garder, Suppr pour écarter.`);
       const b = el("span", "cn-bullet", s.entryKind === "event" ? "○" : s.entryKind === "note" ? "–" : "•");
       const time = el("span", "cn-time", s.time ?? "");
       const body = el("span", "cn-body");
@@ -228,7 +232,7 @@ function ghostSpec(s: Suggestion, day: Day): RowSpec {
       t.dataset.glMat = "crayon";
       body.append(t, el("span", "cn-src", sourceOf(s, day)));
       const ops = el("span", "cn-gops");
-      const k = el("button", "cn-gbtn cn-keep", "Garder");
+      const k = el("button", "cn-gbtn cn-keep", s.kind === "prompt" ? "Écrire" : "Garder");
       k.type = "button";
       k.dataset.gact = "keep";
       const d = el("button", "cn-gbtn cn-drop", "Écarter");
@@ -300,11 +304,13 @@ function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<s
   input.placeholder = big ? "Écris une ligne…  « . appeler Marc »  « o 14:00 dentiste »" : "ajouter une ligne";
   input.setAttribute("aria-label", `Nouvelle entrée, ${fWeek.format(d)}`);
 
-  for (const s of v.suggestions) sugIndex.set(s.key, s);
+  const q = ctx.prompt?.(k);
+  const sugs = q ? [...v.suggestions, q] : v.suggestions;
+  for (const s of sugs) sugIndex.set(s.key, s);
   ctx.placeKey = k;
   // Les traces « > » d'abord, à leur place dans la journée : ce qui a été fait ici avant de partir.
   const lines = [...v.departed, ...v.lines];
-  const specs = [...v.suggestions.map((s) => ghostSpec(s, k)), ...lines.map((e) => entrySpec(e, ctx))];
+  const specs = [...sugs.map((s) => ghostSpec(s, k)), ...lines.map((e) => entrySpec(e, ctx))];
   syncList(sec.querySelector("ol")!, specs);
   return sec;
 }

@@ -382,6 +382,14 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
 - [x] Parcours de bout en bout committé (`npm run carnet:e2e`, en CI) : écrire, garder, migrer, rechercher, année,
       version et retour, export, rechargement, téléphone sans débordement
 - [x] `cargo fmt` rétabli sur presse-rs et presse-web (la CI l'exigeait)
+- [x] **Notes longues** : une note (–) s'écrit sur plusieurs lignes (Entrée va à la ligne ; Échap, Ctrl/⌘ + Entrée
+      ou quitter le champ terminent), imprimée telle quelle, par le GPU aussi
+- [x] **Question du jour** (`prompts.ts`) : au crayon, aujourd'hui seulement, la même sur tous les appareils ; « Écrire »
+      en fait une note longue, curseur sous la question ; écartée ou écrite, elle ne revient pas (clé dans le carnet) ;
+      désactivable
+- [x] **Export chiffré par phrase** (`crates/carnet-vault`, 65 Ko, chargé seulement à l'export ou à l'import) :
+      Argon2id 64 Mio + XChaCha20-Poly1305 (code de `carnet-sync`), phrase générée ou choisie (60 bits au moins) ;
+      l'import reconnaît le fichier et demande la phrase
 
 #### Sauvegardes locales (D10) — avancement
 
@@ -392,8 +400,7 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
 - [x] Ordinateur : dossier de sauvegarde automatique (`folder.ts`), une sauvegarde complète par jour où le carnet
       change, 7 gardées ; permission redemandée d'un appui
 - [ ] Recette sur le téléphone : feuille de partage vers Drive et Fichiers, retour à une version, espace occupé
-- [ ] Sauvegarde chiffrée par phrase (réutiliserait l'enveloppe et Argon2id de `carnet-sync`), si l'export part
-      vers un cloud
+- [x] Sauvegarde chiffrée par phrase : voir P4c
 
 #### P6 — avancement (en attente : D10)
 

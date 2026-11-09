@@ -3,8 +3,8 @@
  * Carnet — parcours de bout en bout (fumée), sur la page construite :
  *   npm run build && npx vite preview --port 4317   puis   node tools/carnet-e2e.mjs [url]
  *
- * Écrire, garder une suggestion au crayon, migrer, rechercher, l'année (future log), une version et le retour,
- * l'export, le rechargement (tout est enregistré), le téléphone (mise en page sans débordement). Sans WebGPU :
+ * Écrire, garder une suggestion au crayon, la question du jour (note longue), migrer, rechercher, l'année
+ * (future log), une version et le retour, l'export (en clair et chiffré), le rechargement (tout est enregistré), le téléphone (mise en page sans débordement). Sans WebGPU :
  * l'application doit fonctionner à l'identique, la page reste son HTML.
  * Sortie : une ligne par étape, code 1 au premier échec.
  */
@@ -59,6 +59,21 @@ await step("garder une suggestion au crayon", async () => {
   ok(n > 0, "aucune suggestion");
   await p.locator(".cn-ghost .cn-keep").first().dispatchEvent("click");
   await p.waitForFunction((k) => document.querySelectorAll(".cn-ghost").length === k - 1, n);
+});
+
+await step("question du jour : écrire une note longue", async () => {
+  const g = p.locator(".cn-ghost.is-prompt");
+  ok(await g.count(), "pas de question du jour");
+  await g.locator(".cn-keep").click();
+  await p.waitForSelector("textarea.cn-edit.is-multiline");
+  await p.keyboard.type("Première ligne de réponse");
+  await p.keyboard.press("Enter");
+  await p.keyboard.type("Seconde ligne");
+  await p.keyboard.press("Control+Enter");
+  await p.waitForSelector("textarea.cn-edit", { state: "detached" });
+  const t = await p.evaluate(() => window.__carnet.core.all().find((e) => e.text.includes("Seconde ligne"))?.text);
+  ok(t && t.split("\n").length === 3, `note : ${JSON.stringify(t)}`);
+  eq(await g.count(), 0, "question encore affichée");
 });
 
 await step("migrer une tâche (menu « Déplacer vers… »)", async () => {
@@ -118,6 +133,17 @@ await step("version, tout effacer, revenir à la version", async () => {
 await step("exporter", async () => {
   const [dl] = await Promise.all([p.waitForEvent("download"), p.click("#cn-backup")]);
   ok(/^carnet-\d{4}-\d{2}-\d{2}\.carnet$/.test(dl.suggestedFilename()), dl.suggestedFilename());
+});
+
+await step("exporter chiffré (phrase générée), sans texte en clair", async () => {
+  await p.click("#cn-versions");
+  await p.locator(".cn-move-item", { hasText: "chiffrée" }).click();
+  await p.locator(".cn-move-item", { hasText: "Générer" }).click();
+  const [dl] = await Promise.all([p.waitForEvent("download"), p.locator(".cn-phrasepanel .is-primary").click()]);
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync(await dl.path());
+  eq(bytes.subarray(0, 3).toString(), "CNS", "en-tête");
+  ok(!bytes.includes(Buffer.from("Tester Carnet")), "texte en clair dans le fichier chiffré");
 });
 
 await step("recharger : tout est enregistré", async () => {

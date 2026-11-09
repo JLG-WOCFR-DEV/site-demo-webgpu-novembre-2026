@@ -2,6 +2,7 @@
 # Construit les deux modules wasm de Carnet, commités pour que la coquille web se construise sans
 # chaîne Rust (à relancer après tout changement des crates) :
 #   crates/carnet-wasm → src/carnet/wasm/   le core (modèle, vues), chargé d'abord
+#   crates/carnet-vault → src/carnet/vault/ sauvegarde chiffrée par phrase, chargée seulement si besoin
 #   crates/presse-web  → src/presse/rs/     le rendu presse-rs (wgpu), chargé ensuite
 #   Prérequis : rustup target add wasm32-unknown-unknown ; cargo install wasm-bindgen-cli --version 0.2.130 ; npm ci
 set -euo pipefail
@@ -23,7 +24,10 @@ opt() {
 build carnet-wasm
 wasm-bindgen --target web --out-dir src/carnet/wasm --out-name carnet "target/$T/release/carnet_wasm.wasm"
 opt src/carnet/wasm/carnet_bg.wasm
+build carnet-vault
+wasm-bindgen --target web --out-dir src/carnet/vault --out-name vault "target/$T/release/carnet_vault.wasm"
+opt src/carnet/vault/vault_bg.wasm
 build presse-web
 wasm-bindgen --target web --out-dir src/presse/rs --out-name presse_web "target/$T/release/presse_web.wasm"
 opt src/presse/rs/presse_web_bg.wasm
-ls -l src/carnet/wasm src/presse/rs
+ls -l src/carnet/wasm src/carnet/vault src/presse/rs

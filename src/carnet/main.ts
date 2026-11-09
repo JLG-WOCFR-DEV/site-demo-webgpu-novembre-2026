@@ -26,6 +26,8 @@ import "./style.css";
 import { registerPwa } from "./pwa.ts";
 import { setMotionLevel } from "../motion-scale.ts";
 import { hourOf, LIGHT_OFF, lightChanged, paperLight, type PaperLight } from "./light.ts";
+import { promptFor, promptKey, promptsOn, setPromptsOn } from "./prompts.ts";
+import { askPhrase, isSealed, openBackup, sealBackup } from "./vault-ui.ts";
 import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core, type Entry, type Place, type Suggestion } from "./core.ts";
 import { moveChoices, openMoveMenu } from "./move.ts";
 import { addDays, isSample, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
@@ -193,11 +195,27 @@ spread.addEventListener("submit", (ev) => {
 
 /* ───── Actions sur les lignes ───── */
 function keepSuggestion(s: Suggestion) {
+  if (s.kind === "prompt") return writePrompt(s);
   const day = spread.querySelector<HTMLElement>(`.cn-ghost[data-sug="${CSS.escape(s.key)}"]`)?.closest<HTMLElement>(".cn-day")?.dataset.day ?? ctx.now;
   // Le crayon devient encre : les lettres de la ligne partent de la suggestion.
   ctx.from.set(`e:${s.entryId}`, `g:${s.key}`);
   act(() => core.keep(s.key, day));
   focusNextGhost();
+}
+/** La question du jour devient une note longue : la question, puis ta réponse en dessous, curseur prêt. */
+function writePrompt(s: Suggestion) {
+  const day = s.from.day ?? ctx.now;
+  const id = act(() => {
+    const id = core.add(dayPlace(day), { kind: "note", text: s.text });
+    core.dismiss(s.key);
+    ctx.fresh?.add(id);
+    return id;
+  });
+  if (!id) return;
+  requestAnimationFrame(() => {
+    const t = spread.querySelector<HTMLElement>(`li[data-id="${CSS.escape(id)}"] [data-act="edit"]`);
+    if (t) startEdit(t, "\n");
+  });
 }
 function dropSuggestion(s: Suggestion) {
   act(() => core.dismiss(s.key));
@@ -292,7 +310,7 @@ spread.addEventListener("keydown", (ev) => {
 // Édition : un <textarea> à la place du texte imprimé, chaque changement envoyé au core comme une
 // opération Y.Text (edit.ts). Un texte vidé met l'entrée à la corbeille.
 let editing: { id: string; close: () => void } | null = null;
-function startEdit(t: HTMLElement) {
+function startEdit(t: HTMLElement, append?: string) {
   const id = t.closest<HTMLElement>(".cn-row")?.dataset.id ?? "";
   const e = core.get(id);
   if (!e || editing?.id === id) return;
@@ -315,7 +333,7 @@ function startEdit(t: HTMLElement) {
       } else draw();
       t.focus({ preventScroll: true });
     },
-  });
+  }, { multiline: e.kind === "note", append });
   editing = { id, close };
 }
 spread.addEventListener("click", (ev) => {
@@ -596,6 +614,23 @@ $<HTMLInputElement>("#cn-ics-file").addEventListener("change", async (ev) => {
   if (r.unsupported) parts.push(`${r.unsupported} répétition${r.unsupported > 1 ? "s" : ""} non dépliée${r.unsupported > 1 ? "s" : ""}`);
   toast(`${parts.join(", ")}. Ils sont sur les pages des mois, et reviennent au crayon le jour dit.`);
 });
+
+/* ───── Question du jour ───── */
+function promptOf(day: Day): Suggestion | null {
+  if (readOnly || day !== ctx.now || !promptsOn() || core.isDismissed(promptKey(day))) return null;
+  return { key: promptKey(day), kind: "prompt", entryId: "", text: promptFor(day), entryKind: "note", time: null, from: dayPlace(day) };
+}
+{
+  const b = $<HTMLButtonElement>("#cn-prompts");
+  const sync = () => b.setAttribute("aria-pressed", String(promptsOn()));
+  sync();
+  b.addEventListener("click", () => {
+    setPromptsOn(!promptsOn());
+    sync();
+    draw();
+    toast(promptsOn() ? "Une question au crayon chaque jour, pour écrire un peu plus" : "Questions du jour désactivées");
+  });
+}
 
 /* ───── Recherche ───── */
 const fSearchDay = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -885,7 +920,26 @@ async function openBackupPanel(anchor: HTMLElement) {
   };
   panel.append(p("cn-wx-intro", `Ton carnet n'existe que sur cet appareil. Dernier export : ${ageLabel(lastExport())}.`));
   const first = btn("Exporter une sauvegarde complète", () => (close(), void exportNow()));
-  panel.append(first);
+  const sealed = btn("Exporter une sauvegarde chiffrée…", () => {
+    close();
+    void (async () => {
+      const phrase = await askPhrase(anchor, {
+        title: "Sauvegarde chiffrée",
+        intro: "Pour une copie dans un cloud (Drive, iCloud…) : seul qui connaît la phrase peut l'ouvrir. Elle n'est gardée nulle part.",
+        create: true,
+        action: "Chiffrer et exporter",
+      });
+      if (phrase === null) return;
+      toast("Chiffrement…");
+      try {
+        const zip = (await makeBackup(true)).bytes;
+        await exportNow(await sealBackup(zip, phrase), backupName().replace(/\.carnet$/, ".chiffree.carnet"));
+      } catch (e) {
+        toast(`Chiffrement impossible : ${e instanceof Error ? e.message : String(e)}`);
+      }
+    })();
+  });
+  panel.append(first, sealed);
   if (folderAvailable()) {
     const dir = await savedFolder();
     if (!dir) panel.append(btn("Choisir un dossier de sauvegarde automatique…", () => void pickFolder().then(() => (close(), lsSet("carnet.dossier", ""), void autoVersion().then(() => toast("Sauvegarde automatique : une par jour dans ce dossier, les 7 dernières gardées."))), () => undefined)));
@@ -954,8 +1008,15 @@ $<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) =>
   if (!f) return;
   try {
     // Fusion : la sauvegarde s'ajoute au carnet ouvert, rien n'est effacé.
+    let bytes: Uint8Array = new Uint8Array(await f.arrayBuffer());
+    if (isSealed(bytes)) {
+      const phrase = await askPhrase($("#cn-restore"), { title: "Sauvegarde chiffrée", intro: "Cette sauvegarde est chiffrée. Sa phrase secrète ?", create: false, action: "Ouvrir" });
+      if (phrase === null) return;
+      toast("Déchiffrement…");
+      bytes = await openBackup(bytes, phrase);
+    }
     const before = core.all().length;
-    const { manifest, update, pages: restored, media } = await restore(core, new Uint8Array(await f.arrayBuffer()));
+    const { manifest, update, pages: restored, media } = await restore(core, bytes);
     // Fichiers d'abord, références ensuite (§ 3.3).
     if (mediaAvailable()) for (const [sha, b] of media) await restoreMedia(sha, b);
     store.append([update]);
@@ -987,7 +1048,7 @@ async function boot() {
   // Raccourcis de l'icône installée (manifeste) : ?vue=jour | mois | collections.
   const vue = new URLSearchParams(location.search).get("vue");
   const start: View = vue === "jour" ? "day" : vue === "mois" ? "month" : vue === "annee" ? "year" : vue === "collections" ? "collections" : "week";
-  ctx = { core, view: start, cur: today(), now: today(), from: new Map(), fresh: new Set(), col: null, weather: (d) => weatherOf(d) };
+  ctx = { core, view: start, cur: today(), now: today(), from: new Map(), fresh: new Set(), col: null, weather: (d) => weatherOf(d), prompt: promptOf };
   if (opened.empty) {
     let v0: string | null = null;
     try {

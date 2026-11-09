@@ -30,7 +30,8 @@ export type Entry = {
 /** Une ligne de vue. `departedTo` non nul : ligne « > » d'une place quittée. */
 export type Line = Entry & { departedTo: Place | null };
 
-export type SuggestionKind = "carry" | "plan" | "yearAgo" | "monthCarry";
+/** `prompt` : la question du jour (prompts.ts), produite par la coquille, pas par le core. */
+export type SuggestionKind = "carry" | "plan" | "yearAgo" | "monthCarry" | "prompt";
 export type Suggestion = {
   key: string;
   kind: SuggestionKind;
