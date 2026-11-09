@@ -5,12 +5,13 @@
  *   matchMedia ; ici, on n'a qu'à appeler `__presseMotion.set()`, et chaque composant reçoit un changement de
  *   « prefers-reduced-motion », comme si le système l'avait annoncé.
  * - **Mode présentation** (pour une conférence) : animations rallumées sans rien garder, débogage et ligne d'état
- *   masqués, Maj + → / ← pour passer à la démo suivante ou précédente (un geste explicite : un clic, lui, ne change
- *   jamais de page). Gardé le temps de la session ; `?presentation` l'allume, `?presentation=0` l'éteint.
+ *   masqués, clavier de conférence (télécommande, Maj + → / ←, F plein écran, Maj + Échap pour sortir ; un clic, lui,
+ *   ne change jamais de page). Gardé le temps de la session ; `?presentation` l'allume, `?presentation=0` l'éteint.
  */
 type MotionApi = { readonly force: boolean; readonly system: boolean; set(v: boolean, keep?: boolean): void };
 const motionApi = () => (window as unknown as { __presseMotion?: MotionApi }).__presseMotion;
 const KEY = "presse-presentation";
+const ARRIVE = "presse-presentation-arrivee";
 
 export const presenting = () => document.documentElement.classList.contains("presse-presentation");
 
@@ -61,16 +62,33 @@ html.presse-presentation .bar .status { display: none !important; }
 `;
 
 let hintEl: HTMLElement | null = null;
-function hint() {
+function say(text: string) {
   hintEl?.remove();
   const h = document.createElement("p");
   h.className = "presse-hint";
   h.setAttribute("role", "status");
-  h.textContent = "Présentation · Maj + → démo suivante · Maj + ← précédente";
+  h.textContent = text;
   document.body.append(h);
   hintEl = h;
   setTimeout(() => h.setAttribute("data-out", ""), 3200);
   setTimeout(() => h.remove(), 4000);
+}
+const hint = () => say("Présentation · Page suiv. / → avance · Maj + → démo suivante · F plein écran · Maj + Échap quitte");
+
+/** Plein écran de la page. Il ne survit pas à un changement de page (règle des navigateurs) : pour enchaîner les
+ *  démos, le plein écran du système (⌃⌘F sur Mac, F11 ailleurs) tient, lui. Refusé dans un cadre sans
+ *  « allowfullscreen » : on le dit. */
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    void document.exitFullscreen().catch(() => {});
+    return;
+  }
+  const el = document.documentElement;
+  if (!document.fullscreenEnabled || !el.requestFullscreen) {
+    say("Plein écran indisponible ici : ouvrez la page dans son propre onglet (ou ⌃⌘F)");
+    return;
+  }
+  el.requestFullscreen().catch(() => say("Plein écran refusé par le navigateur : essayez ⌃⌘F (Mac) ou F11"));
 }
 
 /** Les réglages du menu, et le clavier du mode présentation. `pages` : l'ordre des démos. */
@@ -105,7 +123,7 @@ export function mountSettings(pop: HTMLElement, pages: { href: string }[], base:
     anim.querySelector(".pages-switch-state span")!.textContent = force ? "Toujours" : "Système";
     anim.disabled = presenting();
     pres.setAttribute("aria-pressed", String(presenting()));
-    pres.querySelector(".pages-text")!.textContent = "Animations, sans débogage ; Maj + ← → entre les démos";
+    pres.querySelector(".pages-text")!.textContent = "Animations, sans débogage ; télécommande (Page suiv., →), Maj + ← → entre les démos, F plein écran";
     pres.querySelector(".pages-switch-state span")!.textContent = presenting() ? "Oui" : "Non";
   };
   anim.addEventListener("click", () => {
@@ -121,18 +139,84 @@ export function mountSettings(pop: HTMLElement, pages: { href: string }[], base:
   sync();
   pop.append(box);
 
-  // Maj + → / ← : la démo suivante ou précédente, seulement en présentation.
-  addEventListener("keydown", (e) => {
-    if (!presenting() || !e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    const t = e.target as HTMLElement | null;
-    if (t?.closest?.("input, textarea, select, [contenteditable]")) return;
-    const demos = pages.filter((p) => !p.href.startsWith("legacy/"));
+  // Le clavier du mode présentation (rien ne change hors présentation) :
+  // - Maj + → / ← : la démo suivante ou précédente, directement ;
+  // - Page suiv. / Page préc. (ce qu'envoie une télécommande de présentation) : d'abord la page elle-même (le cran
+  //   suivant d'une scène épinglée, sinon un écran plus bas, comme le navigateur), puis, en bas de page, la démo
+  //   suivante ; en haut, la précédente, où l'on arrive par la fin ;
+  // - → / ← seules (d'autres télécommandes) : pareil, quand aucune démo ne s'en sert (galerie, orbite les gardent) ;
+  // - F : plein écran ; Maj + Échap : quitter la présentation.
+  // Une démo qui consomme la touche (preventDefault) garde la main : on décide après elle, au tour suivant.
+  const demos = pages.filter((p) => !p.href.startsWith("legacy/"));
+  const go = (d: 1 | -1) => {
     const here = location.pathname.split("/").pop() || "index.html";
     const i = Math.max(0, demos.findIndex((p) => p.href === here));
-    const next = demos[(i + (e.key === "ArrowRight" ? 1 : -1) + demos.length) % demos.length]!;
-    e.preventDefault();
+    const next = demos[(i + d + demos.length) % demos.length]!;
+    try {
+      // En reculant, on arrive par la fin de la démo précédente, comme on l'avait quittée.
+      sessionStorage.setItem(ARRIVE, d < 0 ? "fin" : "");
+    } catch {
+      /* rien */
+    }
     location.href = base + next.href;
+  };
+  const edge = () => {
+    const h = document.documentElement;
+    return { top: scrollY <= 4, bottom: scrollY + innerHeight >= h.scrollHeight - 4 };
+  };
+  addEventListener("keydown", (e) => {
+    if (!presenting() || e.altKey || e.ctrlKey || e.metaKey || !e.isTrusted) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest?.("input, textarea, select, [contenteditable]")) return;
+    if (e.shiftKey && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      if (e.defaultPrevented) return;
+      e.preventDefault();
+      go(e.key === "ArrowRight" ? 1 : -1);
+      return;
+    }
+    if (e.shiftKey && e.key === "Escape") {
+      e.preventDefault();
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+      setPresenting(false);
+      say("Présentation terminée");
+      return;
+    }
+    if (!e.shiftKey && (e.key === "f" || e.key === "F") && !e.repeat) {
+      if (e.defaultPrevented) return;
+      e.preventDefault();
+      toggleFullscreen();
+      return;
+    }
+    const page = e.key === "PageDown" || e.key === "PageUp";
+    const arrow = !e.shiftKey && (e.key === "ArrowRight" || e.key === "ArrowLeft");
+    if (!page && !arrow) return;
+    const fwd = e.key === "PageDown" || e.key === "ArrowRight";
+    const at = edge();
+    const onPage = t === document.body || t === document.documentElement || !t;
+    setTimeout(() => {
+      if (e.defaultPrevented) return;
+      if (arrow) {
+        if (!onPage) return;
+        // Relayée en Page suiv./préc. : une scène épinglée avance d'un cran.
+        const relay = new KeyboardEvent("keydown", { key: fwd ? "PageDown" : "PageUp", bubbles: true, cancelable: true });
+        document.body.dispatchEvent(relay);
+        if (relay.defaultPrevented) return;
+        if (fwd ? !at.bottom : !at.top) {
+          scrollBy({ top: (fwd ? 1 : -1) * innerHeight * 0.85, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+          return;
+        }
+      } else if (fwd ? !at.bottom : !at.top) return; // le navigateur a fait défiler la page
+      go(fwd ? 1 : -1);
+    }, 0);
   });
+  // Arrivée en reculant : par la fin de la page.
+  try {
+    if (sessionStorage.getItem(ARRIVE) === "fin") {
+      sessionStorage.removeItem(ARRIVE);
+      if (presenting()) addEventListener("load", () => requestAnimationFrame(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" })), { once: true });
+    }
+  } catch {
+    /* rien */
+  }
   if (presenting()) hint();
 }

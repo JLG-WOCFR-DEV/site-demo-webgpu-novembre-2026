@@ -952,12 +952,14 @@ export function mount(root: HTMLElement) {
     if (e.key === "0") return mode === "canevas" ? fitCanvas() : zoomTo(1);
     const c = mode === "canevas" ? cc : cam;
     const k = 900;
+    if (full && (e.target as Element | null)?.closest?.("input, textarea, select")) return;
     if (e.key === "ArrowLeft") c.vx += k;
     else if (e.key === "ArrowRight") c.vx -= k;
     else if (e.key === "ArrowUp") c.vy += k;
     else if (e.key === "ArrowDown") c.vy -= k;
     else return;
-    if (!full) e.preventDefault();
+    // Consommée : le mode présentation (télécommande) ne la prend pas pour « démo suivante ».
+    e.preventDefault();
   };
   (full ? window : root).addEventListener("keydown", onKey as EventListener);
 

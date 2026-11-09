@@ -126,26 +126,35 @@ function v(e) {
 }
 //#endregion
 //#region src/presse/presentation.ts
-var y = () => window.__presseMotion, b = "presse-presentation", x = () => document.documentElement.classList.contains("presse-presentation"), S = () => {
+var y = () => window.__presseMotion, b = "presse-presentation", x = "presse-presentation-arrivee", S = () => document.documentElement.classList.contains("presse-presentation"), C = () => {
 	try {
 		return localStorage.getItem("presse-animations") === "toujours";
 	} catch {
 		return !1;
 	}
 };
-function C(e) {
+function w(e) {
 	try {
 		sessionStorage.setItem(b, e ? "1" : "");
 	} catch {}
-	document.documentElement.classList.toggle("presse-presentation", e), y()?.set(e || S(), !1), e && E();
+	document.documentElement.classList.toggle("presse-presentation", e), y()?.set(e || C(), !1), e && O();
 }
-var w = "\nhtml.presse-presentation .dbg-btn,\nhtml.presse-presentation .pages-debug,\nhtml.presse-presentation .bar .status { display: none !important; }\n.pages-settings { display: grid; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(127, 127, 127, 0.5); }\n.pages-switch {\n  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; width: 100%; min-height: 44px;\n  padding: 8px 10px; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-switch:hover, .pages-switch:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-switch .pages-text { grid-column: 1; }\n.pages-switch-state {\n  grid-column: 2; grid-row: 1 / span 2; min-width: 4.6em; padding: 4px 8px; border: 1px solid currentColor; border-radius: 99px;\n  font: 500 11px/1 var(--f-mono, ui-monospace, monospace); letter-spacing: 0.08em; text-transform: uppercase; text-align: center;\n}\n.pages-switch[aria-pressed=\"true\"] .pages-switch-state { background: currentColor; }\n.pages-switch[aria-pressed=\"true\"] .pages-switch-state span { filter: invert(1); }\n.presse-hint {\n  position: fixed; z-index: 60; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); translate: -50% 0;\n  padding: 10px 16px; border-radius: 99px; background: rgba(22, 17, 13, 0.92); color: #efe6d2;\n  font: 500 13px/1.2 var(--f-mono, ui-monospace, monospace); letter-spacing: 0.04em; pointer-events: none;\n  transition: opacity 0.6s, translate 0.6s;\n}\n.presse-hint[data-out] { opacity: 0; translate: -50% 12px; }\n", T = null;
-function E() {
-	T?.remove();
-	let e = document.createElement("p");
-	e.className = "presse-hint", e.setAttribute("role", "status"), e.textContent = "Présentation · Maj + → démo suivante · Maj + ← précédente", document.body.append(e), T = e, setTimeout(() => e.setAttribute("data-out", ""), 3200), setTimeout(() => e.remove(), 4e3);
+var T = "\nhtml.presse-presentation .dbg-btn,\nhtml.presse-presentation .pages-debug,\nhtml.presse-presentation .bar .status { display: none !important; }\n.pages-settings { display: grid; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(127, 127, 127, 0.5); }\n.pages-switch {\n  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; width: 100%; min-height: 44px;\n  padding: 8px 10px; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-switch:hover, .pages-switch:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-switch .pages-text { grid-column: 1; }\n.pages-switch-state {\n  grid-column: 2; grid-row: 1 / span 2; min-width: 4.6em; padding: 4px 8px; border: 1px solid currentColor; border-radius: 99px;\n  font: 500 11px/1 var(--f-mono, ui-monospace, monospace); letter-spacing: 0.08em; text-transform: uppercase; text-align: center;\n}\n.pages-switch[aria-pressed=\"true\"] .pages-switch-state { background: currentColor; }\n.pages-switch[aria-pressed=\"true\"] .pages-switch-state span { filter: invert(1); }\n.presse-hint {\n  position: fixed; z-index: 60; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); translate: -50% 0;\n  padding: 10px 16px; border-radius: 99px; background: rgba(22, 17, 13, 0.92); color: #efe6d2;\n  font: 500 13px/1.2 var(--f-mono, ui-monospace, monospace); letter-spacing: 0.04em; pointer-events: none;\n  transition: opacity 0.6s, translate 0.6s;\n}\n.presse-hint[data-out] { opacity: 0; translate: -50% 12px; }\n", E = null;
+function D(e) {
+	E?.remove();
+	let t = document.createElement("p");
+	t.className = "presse-hint", t.setAttribute("role", "status"), t.textContent = e, document.body.append(t), E = t, setTimeout(() => t.setAttribute("data-out", ""), 3200), setTimeout(() => t.remove(), 4e3);
 }
-function D(e, t, n) {
+var O = () => D("Présentation · Page suiv. / → avance · Maj + → démo suivante · F plein écran · Maj + Échap quitte");
+function k() {
+	if (document.fullscreenElement) {
+		document.exitFullscreen().catch(() => {});
+		return;
+	}
+	let e = document.documentElement;
+	!document.fullscreenEnabled || !e.requestFullscreen ? D("Plein écran indisponible ici : ouvrez la page dans son propre onglet (ou ⌃⌘F)") : e.requestFullscreen().catch(() => D("Plein écran refusé par le navigateur : essayez ⌃⌘F (Mac) ou F11"));
+}
+function ee(e, t, n) {
 	let r = document.createElement("div");
 	r.className = "pages-settings";
 	let i = (e) => {
@@ -153,37 +162,96 @@ function D(e, t, n) {
 		return t.type = "button", t.className = "pages-switch", t.innerHTML = "<span class=\"pages-name\"></span><span class=\"pages-text\"></span><span class=\"pages-switch-state\"><span></span></span>", t.querySelector(".pages-name").textContent = e, r.append(t), t;
 	}, a = i("Animations"), o = i("Mode présentation"), s = () => {
 		let e = y(), t = !!e?.force, n = !!e?.system;
-		a.hidden = !n && !S(), a.setAttribute("aria-pressed", String(t)), a.querySelector(".pages-text").textContent = x() ? "Rallumées par le mode présentation" : n ? t ? "Rallumées sur tout le site (votre système en demande moins)" : "Coupées : votre système demande moins d'animations" : "Comme le système", a.querySelector(".pages-switch-state span").textContent = t ? "Toujours" : "Système", a.disabled = x(), o.setAttribute("aria-pressed", String(x())), o.querySelector(".pages-text").textContent = "Animations, sans débogage ; Maj + ← → entre les démos", o.querySelector(".pages-switch-state span").textContent = x() ? "Oui" : "Non";
+		a.hidden = !n && !C(), a.setAttribute("aria-pressed", String(t)), a.querySelector(".pages-text").textContent = S() ? "Rallumées par le mode présentation" : n ? t ? "Rallumées sur tout le site (votre système en demande moins)" : "Coupées : votre système demande moins d'animations" : "Comme le système", a.querySelector(".pages-switch-state span").textContent = t ? "Toujours" : "Système", a.disabled = S(), o.setAttribute("aria-pressed", String(S())), o.querySelector(".pages-text").textContent = "Animations, sans débogage ; télécommande (Page suiv., →), Maj + ← → entre les démos, F plein écran", o.querySelector(".pages-switch-state span").textContent = S() ? "Oui" : "Non";
 	};
 	a.addEventListener("click", () => {
 		y()?.set(!y()?.force), s();
 	}), o.addEventListener("click", () => {
-		C(!x()), s();
-	}), e.addEventListener("toggle", s), matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", s), s(), e.append(r), addEventListener("keydown", (e) => {
-		if (!x() || !e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented || e.key !== "ArrowRight" && e.key !== "ArrowLeft" || e.target?.closest?.("input, textarea, select, [contenteditable]")) return;
-		let r = t.filter((e) => !e.href.startsWith("legacy/")), i = location.pathname.split("/").pop() || "index.html", a = r[(Math.max(0, r.findIndex((e) => e.href === i)) + (e.key === "ArrowRight" ? 1 : -1) + r.length) % r.length];
-		e.preventDefault(), location.href = n + a.href;
-	}), x() && E();
+		w(!S()), s();
+	}), e.addEventListener("toggle", s), matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", s), s(), e.append(r);
+	let c = t.filter((e) => !e.href.startsWith("legacy/")), l = (e) => {
+		let t = location.pathname.split("/").pop() || "index.html", r = Math.max(0, c.findIndex((e) => e.href === t)), i = c[(r + e + c.length) % c.length];
+		try {
+			sessionStorage.setItem(x, e < 0 ? "fin" : "");
+		} catch {}
+		location.href = n + i.href;
+	}, u = () => {
+		let e = document.documentElement;
+		return {
+			top: scrollY <= 4,
+			bottom: scrollY + innerHeight >= e.scrollHeight - 4
+		};
+	};
+	addEventListener("keydown", (e) => {
+		if (!S() || e.altKey || e.ctrlKey || e.metaKey || !e.isTrusted) return;
+		let t = e.target;
+		if (t?.closest?.("input, textarea, select, [contenteditable]")) return;
+		if (e.shiftKey && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+			if (e.defaultPrevented) return;
+			e.preventDefault(), l(e.key === "ArrowRight" ? 1 : -1);
+			return;
+		}
+		if (e.shiftKey && e.key === "Escape") {
+			e.preventDefault(), document.fullscreenElement && document.exitFullscreen().catch(() => {}), w(!1), D("Présentation terminée");
+			return;
+		}
+		if (!e.shiftKey && (e.key === "f" || e.key === "F") && !e.repeat) {
+			if (e.defaultPrevented) return;
+			e.preventDefault(), k();
+			return;
+		}
+		let n = e.key === "PageDown" || e.key === "PageUp", r = !e.shiftKey && (e.key === "ArrowRight" || e.key === "ArrowLeft");
+		if (!n && !r) return;
+		let i = e.key === "PageDown" || e.key === "ArrowRight", a = u(), o = t === document.body || t === document.documentElement || !t;
+		setTimeout(() => {
+			if (!e.defaultPrevented) {
+				if (r) {
+					if (!o) return;
+					let e = new KeyboardEvent("keydown", {
+						key: i ? "PageDown" : "PageUp",
+						bubbles: !0,
+						cancelable: !0
+					});
+					if (document.body.dispatchEvent(e), e.defaultPrevented) return;
+					if (i ? !a.bottom : !a.top) {
+						scrollBy({
+							top: (i ? 1 : -1) * innerHeight * .85,
+							behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
+						});
+						return;
+					}
+				} else if (i ? !a.bottom : !a.top) return;
+				l(i ? 1 : -1);
+			}
+		}, 0);
+	});
+	try {
+		sessionStorage.getItem(x) === "fin" && (sessionStorage.removeItem(x), S() && addEventListener("load", () => requestAnimationFrame(() => scrollTo({
+			top: document.documentElement.scrollHeight,
+			behavior: "instant"
+		})), { once: !0 }));
+	} catch {}
+	S() && O();
 }
 //#endregion
 //#region src/presse/flight.ts
-var O = "presse:flight", k = 15e3, ee = () => matchMedia("(prefers-reduced-motion: reduce)").matches, te = () => {
+var A = "presse:flight", te = 15e3, ne = () => matchMedia("(prefers-reduced-motion: reduce)").matches, re = () => {
 	try {
-		return JSON.parse(sessionStorage.getItem(O) ?? "null");
+		return JSON.parse(sessionStorage.getItem(A) ?? "null");
 	} catch {
 		return null;
 	}
-}, ne = (e) => {
+}, ie = (e) => {
 	try {
-		e ? sessionStorage.setItem(O, JSON.stringify(e)) : sessionStorage.removeItem(O);
+		e ? sessionStorage.setItem(A, JSON.stringify(e)) : sessionStorage.removeItem(A);
 	} catch {}
-}, re = (e) => {
-	if (Date.now() - e.t > k) return !1;
+}, ae = (e) => {
+	if (Date.now() - e.t > te) return !1;
 	if (e.to === null) return !0;
 	let t = new URL(e.to, location.href);
 	return t.pathname === location.pathname && t.search === location.search;
 };
-function ie(e) {
+function oe(e) {
 	let t = e instanceof HTMLImageElement ? e : e.querySelector("img"), n = t ?? e;
 	return {
 		img: t,
@@ -191,9 +259,9 @@ function ie(e) {
 		rect: n.getBoundingClientRect()
 	};
 }
-function ae(e, t, n) {
+function se(e, t, n) {
 	let r = e.rect;
-	return !e.src || r.w < 8 || r.h < 8 || r.y + r.h < 0 || r.y > innerHeight || r.x + r.w < 0 || r.x > innerWidth ? !1 : (ne({
+	return !e.src || r.w < 8 || r.h < 8 || r.y + r.h < 0 || r.y > innerHeight || r.x + r.w < 0 || r.x > innerWidth ? !1 : (ie({
 		id: t,
 		src: e.src,
 		x: r.x,
@@ -203,26 +271,26 @@ function ae(e, t, n) {
 		r: e.radius,
 		t: Date.now(),
 		to: n,
-		tt: ce(t) ?? void 0
+		tt: ue(t) ?? void 0
 	}), !0);
 }
-function oe(e) {
+function ce(e) {
 	for (let t of document.querySelectorAll(`[data-flight-title="${CSS.escape(e)}"]`)) {
-		let e = se(t);
+		let e = le(t);
 		if (e.width > 4 && e.bottom > 0 && e.top < innerHeight && getComputedStyle(t).visibility !== "hidden") return t;
 	}
 	return null;
 }
-function se(e) {
+function le(e) {
 	let t = document.createRange();
 	t.selectNodeContents(e);
 	let n = t.getBoundingClientRect();
 	return n.width ? n : e.getBoundingClientRect();
 }
-function ce(e) {
-	let t = oe(e);
+function ue(e) {
+	let t = ce(e);
 	if (!t) return null;
-	let n = getComputedStyle(t), r = se(t);
+	let n = getComputedStyle(t), r = le(t);
 	return {
 		text: (t.getAttribute("aria-label") ?? t.textContent ?? "").trim(),
 		x: r.left,
@@ -237,9 +305,9 @@ function ce(e) {
 		fvs: n.fontVariationSettings
 	};
 }
-function le(e, t, n) {
-	let { img: r, el: i, rect: a } = ie(e), o = e.dataset.flightSrc || r?.currentSrc || r?.src || "", s = parseFloat(getComputedStyle(i).borderTopLeftRadius) || parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0;
-	return ae({
+function de(e, t, n) {
+	let { img: r, el: i, rect: a } = oe(e), o = e.dataset.flightSrc || r?.currentSrc || r?.src || "", s = parseFloat(getComputedStyle(i).borderTopLeftRadius) || parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0;
+	return se({
 		rect: {
 			x: a.left,
 			y: a.top,
@@ -250,37 +318,37 @@ function le(e, t, n) {
 		radius: s
 	}, t, n);
 }
-var ue = /* @__PURE__ */ new Map(), de = (e, t) => {
+var fe = /* @__PURE__ */ new Map(), pe = (e, t) => {
 	let n = `[data-flight-id="${CSS.escape(e)}"]`;
 	return (t?.closest(n) ?? t?.closest("[data-presse-component]")?.querySelector(n) ?? document.querySelector(n)) || null;
-}, fe = /* @__PURE__ */ new Set(), pe = 0, me = /* @__PURE__ */ new Set(), A = null;
-function he(e) {
+}, me = /* @__PURE__ */ new Set(), he = 0, ge = /* @__PURE__ */ new Set(), _e = null;
+function ve(e) {
 	let t = new Image();
 	return t.src = e.src, t.alt = "", t.decoding = "sync", t.setAttribute("aria-hidden", "true"), t.className = "presse-flight", t.style.cssText = `position:fixed;z-index:2147483000;left:${e.x}px;top:${e.y}px;width:${e.w}px;height:${e.h}px;object-fit:cover;border-radius:${e.r}px;pointer-events:none;margin:0;max-width:none`, document.documentElement.append(t), t;
 }
-function ge(e) {
+function ye(e) {
 	let t = document.createElement("div");
 	return t.className = "presse-flight-title", t.setAttribute("aria-hidden", "true"), t.textContent = e.text, t.style.cssText = `position:fixed;z-index:2147483001;left:${e.x}px;top:${e.y}px;margin:0;white-space:pre;pointer-events:none;transform-origin:0 0;font:${e.font};color:${e.color};letter-spacing:${e.ls};text-transform:${e.tt};font-variation-settings:${e.fvs}`, document.documentElement.append(t), t;
 }
-async function _e(e) {
+async function be(e) {
 	let t = e.tt, n = e.d.tt;
 	if (!t || !n) return;
 	e.tt = null;
-	let r = oe(e.d.id);
-	if (!r || ee()) {
+	let r = ce(e.d.id);
+	if (!r || ne()) {
 		j(t, 260);
 		return;
 	}
-	let i = se(r), a = Number.parseFloat(getComputedStyle(r).fontSize) / Math.max(1, n.size), o = r.style.opacity;
+	let i = le(r), a = Number.parseFloat(getComputedStyle(r).fontSize) / Math.max(1, n.size), o = r.style.opacity;
 	r.style.opacity = "0", await t.animate([{ transform: "translate(0, 0) scale(1)" }, { transform: `translate(${i.left - n.x}px, ${i.top - n.y}px) scale(${a})` }], {
 		duration: 820,
 		easing: "cubic-bezier(0.65, 0, 0.15, 1)",
 		fill: "forwards"
 	}).finished.catch(() => void 0), r.style.transition = "opacity 0.32s", r.style.opacity = o || "1", window.setTimeout(() => r.style.transition = "", 400), j(t, 320);
 }
-async function ve(e, t, n) {
+async function xe(e, t, n) {
 	await Promise.race([e.decode().catch(() => void 0), new Promise((e) => setTimeout(e, 250))]);
-	let r = e.getBoundingClientRect(), i = ee() ? 0 : Math.min(950, 560 + Math.hypot(t.x - r.left, t.y - r.top) * .35), a = {
+	let r = e.getBoundingClientRect(), i = ne() ? 0 : Math.min(950, 560 + Math.hypot(t.x - r.left, t.y - r.top) * .35), a = {
 		left: `${t.x}px`,
 		top: `${t.y}px`,
 		width: `${t.w}px`,
@@ -310,19 +378,19 @@ async function ve(e, t, n) {
 	}).finished.catch(() => void 0), Object.assign(e.style, a);
 }
 function j(e, t = 220) {
-	ee() && (t = 0), e.animate([{ opacity: 1 }, { opacity: 0 }], {
+	ne() && (t = 0), e.animate([{ opacity: 1 }, { opacity: 0 }], {
 		duration: t,
 		fill: "forwards"
 	}).finished.catch(() => void 0).then(() => e.remove());
 }
-async function ye(e) {
+async function Se(e) {
 	if (e.claimed) return;
-	e.claimed = !0, A === e && (A = null), _e(e);
-	let t = de(e.d.id);
+	e.claimed = !0, _e === e && (_e = null), be(e);
+	let t = pe(e.d.id);
 	if (t) {
-		let { el: n, rect: r } = ie(t);
+		let { el: n, rect: r } = oe(t);
 		if (r.width > 8 && r.bottom > 0 && r.top < innerHeight) {
-			await ve(e.el, {
+			await xe(e.el, {
 				x: r.left,
 				y: r.top,
 				w: r.width,
@@ -332,7 +400,7 @@ async function ye(e) {
 		}
 	}
 	if ((document.documentElement.dataset.flightFill ?? "").split(/\s+/).includes(e.d.id)) {
-		await ve(e.el, {
+		await xe(e.el, {
 			x: 0,
 			y: 0,
 			w: innerWidth,
@@ -343,82 +411,82 @@ async function ye(e) {
 		j(e.el, 520);
 	} else j(e.el, 300);
 }
-var be = new Promise((e) => e);
-function xe(e, t, n = null) {
-	if (ne(null), !e || !re(e)) {
+var Ce = new Promise((e) => e);
+function M(e, t, n = null) {
+	if (ie(null), !e || !ae(e)) {
 		t?.remove(), n?.remove();
 		return;
 	}
 	let r = {
 		d: e,
-		el: t ?? he(e),
-		tt: n ?? (e.tt ? ge(e.tt) : null),
+		el: t ?? ve(e),
+		tt: n ?? (e.tt ? ye(e.tt) : null),
 		claimed: !1
 	};
-	A = r;
-	for (let t of me) r.claimed || t(e.id);
-	Promise.race([be.then(() => new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e)))), new Promise((e) => setTimeout(e, 1500))]).then(() => ye(r));
+	_e = r;
+	for (let t of ge) r.claimed || t(e.id);
+	Promise.race([Ce.then(() => new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e)))), new Promise((e) => setTimeout(e, 1500))]).then(() => Se(r));
 }
-var Se = !1;
-function Ce() {
-	if (Se || typeof window > "u") return;
-	Se = !0, document.addEventListener("click", (e) => {
+var we = !1;
+function Te() {
+	if (we || typeof window > "u") return;
+	we = !0, document.addEventListener("click", (e) => {
 		if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 		let t = e.target?.closest?.("a[data-flight]");
 		if (!t || t.target && t.target !== "_self" || t.origin !== location.origin) return;
-		let n = t.dataset.flight, r = ue.get(t.closest("[data-presse-component]"))?.(n), i = r ? null : de(n, t);
-		(r && ae(r, n, t.href) || i && le(i, n, t.href)) && (pe = Date.now());
+		let n = t.dataset.flight, r = fe.get(t.closest("[data-presse-component]"))?.(n), i = r ? null : pe(n, t);
+		(r && se(r, n, t.href) || i && de(i, n, t.href)) && (he = Date.now());
 	});
 	let e = (e) => {
-		if (!(Date.now() - pe < 3e3)) for (let t of fe) {
+		if (!(Date.now() - he < 3e3)) for (let t of me) {
 			let n = t();
-			if (n && ("box" in n ? le(n.box, n.id, e) : ae(n.source, n.id, e))) return;
+			if (n && ("box" in n ? de(n.box, n.id, e) : se(n.source, n.id, e))) return;
 		}
 	};
 	addEventListener("pageswap", ((t) => {
 		t.activation?.navigationType === "traverse" && e(t.activation.entry.url);
 	})), addEventListener("pageshow", (e) => {
-		pe = 0, e.persisted && xe(te(), null);
+		he = 0, e.persisted && M(re(), null);
 	});
 	let t = window;
-	t.__presseFlight ? (xe(t.__presseFlight.f, t.__presseFlight.el, t.__presseFlight.tt ?? null), delete t.__presseFlight) : xe(te(), null);
+	t.__presseFlight ? (M(t.__presseFlight.f, t.__presseFlight.el, t.__presseFlight.tt ?? null), delete t.__presseFlight) : M(re(), null);
 }
 //#endregion
 //#region src/presse/tokens.ts
-var M = {
+var N = {
 	out: "cubic-bezier(0.16, 1, 0.3, 1)",
 	inOut: "cubic-bezier(0.65, 0, 0.35, 1)",
 	spring: ""
-}, N = {
+}, P = {
 	1: 240,
 	2: 520,
 	3: 900,
 	4: 1400
 };
-function we(e, t = .62, n = 11) {
+function Ee(e, t = .62, n = 11) {
 	if (e >= 1) return 1;
 	let r = n * Math.sqrt(1 - t * t);
 	return 1 - Math.exp(-t * n * e) * (Math.cos(r * e) + t * n / r * Math.sin(r * e));
 }
-M.spring = `linear(${Array.from({ length: 33 }, (e, t) => +we(t / 32).toFixed(4)).join(", ")})`;
-var Te = !1;
-function Ee() {
-	if (Te || typeof document > "u") return;
-	Te = !0;
+N.spring = `linear(${Array.from({ length: 33 }, (e, t) => +Ee(t / 32).toFixed(4)).join(", ")})`;
+var De = !1;
+function Oe() {
+	if (De || typeof document > "u") return;
+	De = !0;
 	let e = document.createElement("style");
-	e.dataset.presseTokens = "", e.textContent = `:root { --ease-out: ${M.out}; --ease-in-out: ${M.inOut}; --ease-spring: ${M.spring}; ${Object.entries(N).map(([e, t]) => `--dur-${e}: ${t}ms;`).join(" ")} }`, document.head.prepend(e);
+	e.dataset.presseTokens = "", e.textContent = `:root { --ease-out: ${N.out}; --ease-in-out: ${N.inOut}; --ease-spring: ${N.spring}; ${Object.entries(P).map(([e, t]) => `--dur-${e}: ${t}ms;`).join(" ")} }`, document.head.prepend(e);
 }
 //#endregion
 //#region src/presse/cursor.ts
-var De = `
+var ke = `
 html.presse-cursor-on, html.presse-cursor-on * { cursor: none !important; }
 html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [contenteditable="true"]) { cursor: text !important; }
 .presse-cursor { position: fixed; inset: 0 auto auto 0; z-index: 2147482990; pointer-events: none; mix-blend-mode: difference; opacity: 0; transition: opacity 0.25s; }
 .presse-cursor.is-on { opacity: 1; }
 .presse-cursor.is-text { opacity: 0; }
 .pc-dot, .pc-ring { position: fixed; left: 0; top: 0; border-radius: 999px; will-change: transform; }
-.pc-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; transition: scale 0.25s ${M.out}; }
-.pc-ring { box-sizing: border-box; border: 1.5px solid #fff; display: grid; place-items: center; transition: width 0.35s ${M.out}, height 0.35s ${M.out}, border-radius 0.35s ${M.out}, background 0.25s, border-width 0.25s; }
+.pc-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; transition: scale 0.25s ${N.out}; }
+.pc-ring { box-sizing: border-box; border: 1.5px solid #fff; display: grid; place-items: center; transition: width 0.35s ${N.out}, height 0.35s ${N.out}, border-radius 0.35s ${N.out}, background 0.25s, border-width 0.25s; }
 .pc-label { font: 500 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: #000; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
 .presse-cursor.is-link .pc-dot { scale: 0; }
 .presse-cursor.is-label .pc-ring { background: #fff; }
@@ -426,15 +494,15 @@ html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [conten
 .presse-cursor.is-down .pc-ring { border-width: 3px; }
 .presse-cursor.is-stuck .pc-dot { scale: 0; }
 .presse-cursor.is-stuck .pc-ring { background: transparent; }
-[data-magnet] { transition: translate 0.5s ${M.out}; }
-`, Oe = "a[href], button, [role=button], label[for], summary, input[type=checkbox], input[type=radio], input[type=range]", ke = ".gr-gl, .gx-gl, .or-gl, .ob-gl, .lq-card, [data-cursor=glisser]", Ae = "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]", je = !1;
-function Me() {
-	if (je || typeof window > "u") return;
+[data-magnet] { transition: translate 0.5s ${N.out}; }
+`, Ae = "a[href], button, [role=button], label[for], summary, input[type=checkbox], input[type=radio], input[type=range]", je = ".gr-gl, .gx-gl, .or-gl, .ob-gl, .lq-card, [data-cursor=glisser]", Me = "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]", Ne = !1;
+function Pe() {
+	if (Ne || typeof window > "u") return;
 	let e = document.documentElement;
 	if (e.dataset.presseCursor === void 0 || !matchMedia("(hover: hover) and (pointer: fine)").matches || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-	je = !0;
+	Ne = !0;
 	let t = document.createElement("style");
-	t.dataset.presseCursor = "", t.textContent = De, document.head.append(t);
+	t.dataset.presseCursor = "", t.textContent = ke, document.head.append(t);
 	let n = document.createElement("div");
 	n.className = "presse-cursor", n.setAttribute("aria-hidden", "true"), n.innerHTML = "<span class=\"pc-ring\"><span class=\"pc-label\"></span></span><span class=\"pc-dot\"></span>", e.append(n), e.classList.add("presse-cursor-on");
 	let r = n.querySelector(".pc-dot"), i = n.querySelector(".pc-ring"), a = n.querySelector(".pc-label"), o = {
@@ -447,7 +515,7 @@ function Me() {
 		h: 34
 	}, c = null, l = null, u = 0, d = performance.now(), f = (e) => {
 		c = e;
-		let t = e?.closest("[data-cursor]"), r = !!e?.closest(Ae), i = !!e?.closest(Oe), o = !i && !!e?.closest(ke), s = t && t.dataset.cursor !== "glisser" ? t.dataset.cursor : o || t?.dataset.cursor === "glisser" ? "↔" : "";
+		let t = e?.closest("[data-cursor]"), r = !!e?.closest(Me), i = !!e?.closest(Ae), o = !i && !!e?.closest(je), s = t && t.dataset.cursor !== "glisser" ? t.dataset.cursor : o || t?.dataset.cursor === "glisser" ? "↔" : "";
 		a.textContent = s, n.classList.toggle("is-text", r), n.classList.toggle("is-link", i || !!s), n.classList.toggle("is-label", !!s);
 		let u = e?.closest("[data-magnet]") ?? null;
 		u !== l && (l && (l.style.translate = ""), l = u);
@@ -478,23 +546,23 @@ function Me() {
 }
 //#endregion
 //#region src/presse/intro.ts
-var Ne = `
+var Fe = `
 html.presse-intro-pending [data-intro] { opacity: 0; translate: 0 26px; filter: blur(6px); }
-html.presse-intro-done [data-intro] { transition: opacity ${N[3]}ms ${M.out}, translate ${N[3]}ms ${M.out}, filter ${N[3]}ms ${M.out}; transition-delay: calc(var(--intro-i, 0) * 70ms + 120ms); }
+html.presse-intro-done [data-intro] { transition: opacity ${P[3]}ms ${N.out}, translate ${P[3]}ms ${N.out}, filter ${P[3]}ms ${N.out}; transition-delay: calc(var(--intro-i, 0) * 70ms + 120ms); }
 .presse-intro .pi-num { font-variant-numeric: tabular-nums; }
-`, Pe = [
+`, Ie = [
 	"liquide",
 	"grille",
 	"galerie",
 	"objet",
 	"orbite"
 ];
-function Fe() {
+function Le() {
 	let e = window, t = e.__presseIntro, n = document.documentElement, r = () => document.querySelectorAll("[data-intro]").forEach((e, t) => e.style.setProperty("--intro-i", e.dataset.intro || String(t)));
 	if (!t) return;
 	delete e.__presseIntro;
 	let i = document.createElement("style");
-	i.textContent = Ne, document.head.append(i);
+	i.textContent = Fe, document.head.append(i);
 	let a = 0, o = 0, s = 0, c = 0, l = (e) => {
 		c++, e.catch(() => void 0).then(() => {
 			s++, a = s / c;
@@ -506,7 +574,7 @@ function Fe() {
 			t.width > 0 && t.top < innerHeight && t.bottom > 0 && l(Promise.race([e.decode(), u(3500)]));
 		}
 		for (let e of document.querySelectorAll("[data-presse-component]")) {
-			if (!Pe.includes(e.dataset.presseComponent ?? "")) continue;
+			if (!Ie.includes(e.dataset.presseComponent ?? "")) continue;
 			let t = e.getBoundingClientRect();
 			t.bottom < 0 || t.top > innerHeight || l(Promise.race([e.dataset.painted === void 0 ? new Promise((t) => e.addEventListener("presse:painted", t, { once: !0 })) : Promise.resolve(), u(3800)]));
 		}
@@ -523,25 +591,25 @@ function Fe() {
 	let f = performance.now(), p = (e) => {
 		let n = (e - f) / 1e3;
 		f = e;
-		let r = (e - t.t0) / N[3], i = Math.min(a, r, 1);
+		let r = (e - t.t0) / P[3], i = Math.min(a, r, 1);
 		if (o += (i - o) * (1 - Math.exp(-n * 7)), i >= 1 && o > .995 && (o = 1), e - t.t0 > 4e3 && (o = 1), t.num.textContent = String(Math.round(o * 100)).padStart(3, "0"), t.bar.style.scale = `${o} 1`, o < 1) return void requestAnimationFrame(p);
 		m();
 	};
 	requestAnimationFrame(p);
 	let m = () => {
 		let e = t.el.animate([{ clipPath: "inset(0 0 0 0)" }, { clipPath: "inset(0 0 100% 0)" }], {
-			duration: N[3],
-			easing: M.inOut,
+			duration: P[3],
+			easing: N.inOut,
 			fill: "forwards"
 		});
 		window.setTimeout(() => {
 			n.classList.add("presse-intro-done"), n.classList.remove("presse-intro-pending");
-		}, N[3] * .35), e.finished.then(() => t.el.remove());
+		}, P[3] * .35), e.finished.then(() => t.el.remove());
 	};
 }
 //#endregion
 //#region src/presse/look.ts
-var Ie = {
+var Re = {
 	neutre: {
 		grain: 0,
 		vignette: 0
@@ -616,8 +684,8 @@ var Ie = {
 		grain: .06,
 		vignette: .22
 	}
-}, P = ([e, t, n]) => Array.from({ length: 33 }, (r, i) => (e + (n - e) * (i / 32) ** t).toFixed(4)).join(" ");
-function Le(e = 160) {
+}, F = ([e, t, n]) => Array.from({ length: 33 }, (r, i) => (e + (n - e) * (i / 32) ** t).toFixed(4)).join(" ");
+function ze(e = 160) {
 	let t = document.createElement("canvas");
 	t.width = t.height = e;
 	let n = t.getContext("2d"), r = n.createImageData(e, e);
@@ -627,48 +695,48 @@ function Le(e = 160) {
 	}
 	return n.putImageData(r, 0, 0), t.toDataURL("image/png");
 }
-var Re = !1, ze = "", F = {};
-function Be() {
-	if (Re || typeof document > "u") return;
+var Be = !1, Ve = "", I = {};
+function He() {
+	if (Be || typeof document > "u") return;
 	let e = document.documentElement.dataset;
-	(e.presseLook !== void 0 || e.presseGrain !== void 0 || e.presseVignette !== void 0) && (Re = !0, Ve(e.presseLook ?? "neutre", {
+	(e.presseLook !== void 0 || e.presseGrain !== void 0 || e.presseVignette !== void 0) && (Be = !0, Ue(e.presseLook ?? "neutre", {
 		grain: e.presseGrain === void 0 ? void 0 : Number(e.presseGrain),
 		vignette: e.presseVignette === void 0 ? void 0 : Number(e.presseVignette)
 	}));
 }
-function Ve(e, t = {}) {
+function Ue(e, t = {}) {
 	let n = document.documentElement;
 	n.dataset.presseLook = e;
-	let r = Ie[e] ?? Ie.neutre, i = t.grain ?? r.grain, a = t.vignette ?? r.vignette, o = matchMedia("(prefers-reduced-motion: reduce)").matches;
-	if (F.svg?.remove(), F.svg = void 0, n.style.filter = "", r.curves || r.saturate !== void 0 && r.saturate !== 1) {
+	let r = Re[e] ?? Re.neutre, i = t.grain ?? r.grain, a = t.vignette ?? r.vignette, o = matchMedia("(prefers-reduced-motion: reduce)").matches;
+	if (I.svg?.remove(), I.svg = void 0, n.style.filter = "", r.curves || r.saturate !== void 0 && r.saturate !== 1) {
 		let e = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 		e.setAttribute("aria-hidden", "true"), e.setAttribute("style", "position:absolute;width:0;height:0;overflow:hidden");
 		let t = r.curves;
-		e.innerHTML = `<filter id="presse-look" color-interpolation-filters="sRGB">${r.saturate === void 0 ? "" : `<feColorMatrix type="saturate" values="${r.saturate}"/>`}${t ? `<feComponentTransfer><feFuncR type="table" tableValues="${P(t[0])}"/><feFuncG type="table" tableValues="${P(t[1])}"/><feFuncB type="table" tableValues="${P(t[2])}"/></feComponentTransfer>` : ""}</filter>`, document.body.prepend(e), F.svg = e, n.style.filter = "url(#presse-look)";
+		e.innerHTML = `<filter id="presse-look" color-interpolation-filters="sRGB">${r.saturate === void 0 ? "" : `<feColorMatrix type="saturate" values="${r.saturate}"/>`}${t ? `<feComponentTransfer><feFuncR type="table" tableValues="${F(t[0])}"/><feFuncG type="table" tableValues="${F(t[1])}"/><feFuncB type="table" tableValues="${F(t[2])}"/></feComponentTransfer>` : ""}</filter>`, document.body.prepend(e), I.svg = e, n.style.filter = "url(#presse-look)";
 	}
-	if (F.style ??= document.head.appendChild(Object.assign(document.createElement("style"), { textContent: "" })), F.style.dataset.presseLook = "", F.style.textContent = `
+	if (I.style ??= document.head.appendChild(Object.assign(document.createElement("style"), { textContent: "" })), I.style.dataset.presseLook = "", I.style.textContent = `
 .presse-grain, .presse-vignette { position: fixed; pointer-events: none; z-index: 2147482980; }
 .presse-grain { inset: -50%; background-image: var(--presse-grain-tile); opacity: ${i}; mix-blend-mode: soft-light; ${o ? "" : "animation: presse-grain 0.5s steps(6) infinite;"} }
 @keyframes presse-grain { 0% { translate: 0 0 } 17% { translate: -7% 4% } 33% { translate: 5% -9% } 50% { translate: -11% -3% } 67% { translate: 9% 7% } 83% { translate: -3% 11% } 100% { translate: 0 0 } }
 .presse-vignette { inset: 0; background: radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0, 0, 0, ${a}) 100%); mix-blend-mode: multiply; }
-`, i > 0 && !F.grain) {
-		ze ||= Le();
+`, i > 0 && !I.grain) {
+		Ve ||= ze();
 		let e = document.createElement("div");
-		e.className = "presse-grain", e.setAttribute("aria-hidden", "true"), e.style.setProperty("--presse-grain-tile", `url(${ze})`), n.append(e), F.grain = e;
-	} else i <= 0 && F.grain && (F.grain.remove(), F.grain = void 0);
-	if (a > 0 && !F.vignette) {
+		e.className = "presse-grain", e.setAttribute("aria-hidden", "true"), e.style.setProperty("--presse-grain-tile", `url(${Ve})`), n.append(e), I.grain = e;
+	} else i <= 0 && I.grain && (I.grain.remove(), I.grain = void 0);
+	if (a > 0 && !I.vignette) {
 		let e = document.createElement("div");
-		e.className = "presse-vignette", e.setAttribute("aria-hidden", "true"), n.append(e), F.vignette = e;
-	} else a <= 0 && F.vignette && (F.vignette.remove(), F.vignette = void 0);
+		e.className = "presse-vignette", e.setAttribute("aria-hidden", "true"), n.append(e), I.vignette = e;
+	} else a <= 0 && I.vignette && (I.vignette.remove(), I.vignette = void 0);
 }
 //#endregion
 //#region src/presse/scroll.ts
-var He = () => matchMedia("(prefers-reduced-motion: reduce)").matches, Ue = 9, We = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", Ge = /* @__PURE__ */ new Set(), Ke = !1;
-function qe() {
-	if (Ke || typeof window > "u") return;
-	Ke = !0;
+var We = () => matchMedia("(prefers-reduced-motion: reduce)").matches, Ge = 9, Ke = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", qe = /* @__PURE__ */ new Set(), Je = !1;
+function Ye() {
+	if (Je || typeof window > "u") return;
+	Je = !0;
 	let e = document.documentElement, t = document.createElement("style");
-	t.dataset.presseScroll = "", t.textContent = We, document.head.append(t);
+	t.dataset.presseScroll = "", t.textContent = Ke, document.head.append(t);
 	let n = 0, r = performance.now(), i = scrollY, a = 0, o = 0, s = (t) => {
 		n = 0;
 		let c = Math.min(.1, Math.max(.001, (t - r) / 1e3));
@@ -677,16 +745,16 @@ function qe() {
 		i = u;
 		let f = Math.abs(d) > innerHeight * .9 ? 0 : d / c;
 		a += (f - a) * (1 - Math.exp(-c * 10)), Math.abs(a) < 2 ? a = 0 : l = !0, e.style.setProperty("--v", Math.max(-1, Math.min(1, a / 3e3)).toFixed(3)), b();
-		for (let e of Ge) e({
+		for (let e of qe) e({
 			y: u,
 			v: a
 		});
 		(l || t < o) && (n = requestAnimationFrame(s));
 	}, c = (e = 120) => {
 		o = Math.max(o, performance.now() + e), n ||= (r = performance.now(), requestAnimationFrame(s));
-	}, l = () => e.dataset.presseScroll === "doux" && !He(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
+	}, l = () => e.dataset.presseScroll === "doux" && !We(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
 	function m(e) {
-		return f ? (d += (u - d) * (1 - Math.exp(-e * Ue)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
+		return f ? (d += (u - d) * (1 - Math.exp(-e * Ge)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
 	}
 	let h = (t, n, r) => {
 		for (let i = t; i && i !== document.body && i !== e; i = i.parentElement) {
@@ -742,9 +810,9 @@ function qe() {
 }
 //#endregion
 //#region src/gpu/clock.ts
-var Je = 1, I = 0, Ye = 0, Xe = !0, L = 1e3 / 60, R = -1, z = -1, Ze = 0;
-function Qe(e) {
-	if (Xe && e !== R) {
+var Xe = 1, Ze = 0, Qe = 0, $e = !0, L = 1e3 / 60, R = -1, z = -1, et = 0;
+function tt(e) {
+	if ($e && e !== R) {
 		if (Math.abs(e - performance.now()) > 250) z = -1, R = -1;
 		else {
 			if (R > 0) {
@@ -755,26 +823,26 @@ function Qe(e) {
 		}
 	}
 }
-var $e = () => {
+var nt = () => {
 	let e = performance.now(), t = z > 0 && e - R < L ? z : e;
-	return Ze = Math.max(Ze, t);
-}, et = () => $e();
+	return et = Math.max(et, t);
+}, rt = () => nt();
 function B() {
-	let e = et();
-	return Je === 1 && I === 0 ? e : Ye + (e - I) / Je;
+	let e = rt();
+	return Xe === 1 && Ze === 0 ? e : Qe + (e - Ze) / Xe;
 }
-function tt(e) {
+function it(e) {
 	let t = B();
-	I = et(), Ye = t, Je = e > 0 ? e : 1;
+	Ze = rt(), Qe = t, Xe = e > 0 ? e : 1;
 }
 if (typeof location < "u") {
-	new URLSearchParams(location.search).get("presse-heure") === "maintenant" && (Xe = !1);
+	new URLSearchParams(location.search).get("presse-heure") === "maintenant" && ($e = !1);
 	let e = Number(new URLSearchParams(location.search).get("presse-ralenti"));
-	e > 0 && e !== 1 && tt(e);
+	e > 0 && e !== 1 && it(e);
 }
 //#endregion
 //#region src/presse/motion-lint.ts
-var nt = /* @__PURE__ */ new Set([
+var at = /* @__PURE__ */ new Set([
 	"x",
 	"y",
 	"translate",
@@ -783,7 +851,7 @@ var nt = /* @__PURE__ */ new Set([
 	"width",
 	"height",
 	"scale-px"
-]), rt = /* @__PURE__ */ new Set(["opacity", "alpha"]), it = class {
+]), ot = /* @__PURE__ */ new Set(["opacity", "alpha"]), st = class {
 	findings = [];
 	ch = /* @__PURE__ */ new Map();
 	o;
@@ -814,7 +882,7 @@ var nt = /* @__PURE__ */ new Set([
 			o.v = n;
 			return;
 		}
-		let c = (n - o.v) / s, l = n - o.v, u = nt.has(t) || t.endsWith("-px"), d = rt.has(t);
+		let c = (n - o.v) / s, l = n - o.v, u = at.has(t) || t.endsWith("-px"), d = ot.has(t);
 		if (!i && s <= .05) {
 			u && Math.abs(l) > this.o.jump * Math.max(1, s * 60) && Math.abs(o.vel) < 1 && this.add("saut", e, t, r, `${l.toFixed(1)} px en une image`), d && Math.abs(l) > this.o.opacityStep && this.add(l > 0 ? "apparition-seche" : "disparition-seche", e, t, r, `${o.v.toFixed(2)} → ${n.toFixed(2)} en une image`);
 			let i = d ? 3 : this.o.stopSpeed, a = d && Math.abs(o.vel) > 20;
@@ -844,15 +912,15 @@ var nt = /* @__PURE__ */ new Set([
 		};
 		this.findings.push(o), this.onFinding?.(o);
 	}
-}, V = null, at = /* @__PURE__ */ new WeakMap(), ot = 0;
-function st(e) {
-	let t = at.get(e);
+}, V = null, ct = /* @__PURE__ */ new WeakMap(), lt = 0;
+function ut(e) {
+	let t = ct.get(e);
 	if (t) return t;
 	let n = e, r = typeof n.className == "string" ? n.className.split(/\s+/).filter(Boolean)[0] : "";
-	return t = n.id ? `#${n.id}` : `${n.tagName?.toLowerCase() ?? "objet"}${r ? `.${r}` : ""}#${++ot}`, at.set(e, t), t;
+	return t = n.id ? `#${n.id}` : `${n.tagName?.toLowerCase() ?? "objet"}${r ? `.${r}` : ""}#${++lt}`, ct.set(e, t), t;
 }
-function ct(e) {
-	V ??= new it(e);
+function dt(e) {
+	V ??= new st(e);
 	let t = window;
 	t.__presse ??= {}, t.__presse.lint = V.findings;
 	let n = [], r = 0;
@@ -864,14 +932,14 @@ function ct(e) {
 		}, 400);
 	}, V;
 }
-var lt = () => V !== null;
-function ut(e, t, n, r, i = !1) {
-	V && V.sample(typeof e == "string" ? e : st(e), t, n, r, i);
+var ft = () => V !== null;
+function pt(e, t, n, r, i = !1) {
+	V && V.sample(typeof e == "string" ? e : ut(e), t, n, r, i);
 }
-typeof location < "u" && new URLSearchParams(location.search).has("presse-lint") && ct();
+typeof location < "u" && new URLSearchParams(location.search).has("presse-lint") && dt();
 //#endregion
 //#region src/presse/timeline.ts
-function H(e, t, n, r) {
+function mt(e, t, n, r) {
 	let i = 3 * e, a = 3 * (n - e) - i, o = 1 - i - a, s = 3 * t, c = 3 * (r - t) - s, l = 1 - s - c, u = (e) => ((o * e + a) * e + i) * e, d = (e) => ((l * e + c) * e + s) * e, f = (e) => (3 * o * e + 2 * a) * e + i;
 	return (e) => {
 		if (e <= 0) return 0;
@@ -894,33 +962,33 @@ function H(e, t, n, r) {
 		return d(t);
 	};
 }
-var dt = {
+var ht = {
 	lineaire: (e) => e,
-	out: H(.16, 1, .3, 1),
-	"in-out": H(.65, 0, .35, 1),
-	in: H(.55, 0, 1, .45),
+	out: mt(.16, 1, .3, 1),
+	"in-out": mt(.65, 0, .35, 1),
+	in: mt(.55, 0, 1, .45),
 	expo: (e) => e >= 1 ? 1 : 1 - 2 ** (-10 * e),
-	ressort: (e) => we(e)
-}, ft = (e) => typeof e == "function" ? e : dt[e ?? "out"] ?? dt.out, U = /* @__PURE__ */ new Set(), W = 0, pt = 0;
-function mt(e) {
-	W = 0, e !== void 0 && Qe(e);
-	let t = B(), n = (t - pt) / 1e3;
-	pt = t, n > 1 && (n = 1 / 60), ht(n), U.size && (W = requestAnimationFrame(mt));
+	ressort: (e) => Ee(e)
+}, gt = (e) => typeof e == "function" ? e : ht[e ?? "out"] ?? ht.out, H = /* @__PURE__ */ new Set(), U = 0, _t = 0;
+function vt(e) {
+	U = 0, e !== void 0 && tt(e);
+	let t = B(), n = (t - _t) / 1e3;
+	_t = t, n > 1 && (n = 1 / 60), yt(n), H.size && (U = requestAnimationFrame(vt));
 }
-function ht(e) {
-	for (let t of [...U]) t.step(e) || U.delete(t);
-	for (let e of gt) e();
-	Et();
+function yt(e) {
+	for (let t of [...H]) t.step(e) || H.delete(t);
+	for (let e of bt) e();
+	At();
 }
-var gt = /* @__PURE__ */ new Set();
-function G(e) {
-	U.add(e), !(W || typeof requestAnimationFrame > "u") && (pt = B(), W = requestAnimationFrame(mt));
+var bt = /* @__PURE__ */ new Set();
+function W(e) {
+	H.add(e), !(U || typeof requestAnimationFrame > "u") && (_t = B(), U = requestAnimationFrame(vt));
 }
-var _t = null, vt = null;
-function yt() {
-	return vt === null ? typeof matchMedia > "u" ? !1 : (_t ??= matchMedia("(prefers-reduced-motion: reduce)"), _t.matches) : vt;
+var xt = null, St = null;
+function Ct() {
+	return St === null ? typeof matchMedia > "u" ? !1 : (xt ??= matchMedia("(prefers-reduced-motion: reduce)"), xt.matches) : St;
 }
-var K = /* @__PURE__ */ new WeakMap(), q = /* @__PURE__ */ new Set(), bt = {
+var G = /* @__PURE__ */ new WeakMap(), K = /* @__PURE__ */ new Set(), wt = {
 	x: "px",
 	y: "px",
 	rotate: "deg",
@@ -928,10 +996,10 @@ var K = /* @__PURE__ */ new WeakMap(), q = /* @__PURE__ */ new Set(), bt = {
 	clip: "%",
 	"clip-x": "%",
 	"clip-top": "%"
-}, xt = {
+}, Tt = {
 	scale: 1,
 	opacity: 1
-}, St = [
+}, Et = [
 	"x",
 	"y",
 	"scale",
@@ -942,46 +1010,46 @@ var K = /* @__PURE__ */ new WeakMap(), q = /* @__PURE__ */ new Set(), bt = {
 	"clip-x",
 	"clip-top"
 ];
-function Ct(e, t) {
+function Dt(e, t) {
 	if (typeof e == "number") return {
 		n: e,
-		unit: bt[t] ?? ""
+		unit: wt[t] ?? ""
 	};
 	let n = /^(-?[\d.]+(?:e-?\d+)?)([a-z%]*)$/i.exec(e.trim());
 	if (!n) throw Error(`[presse:anim] valeur illisible pour ${t} : « ${e} »`);
 	return {
 		n: Number(n[1]),
-		unit: n[2] || bt[t] || ""
+		unit: n[2] || wt[t] || ""
 	};
 }
-function wt(e, t) {
-	return K.get(e)?.get(t) ?? {
-		n: xt[t] ?? 0,
-		unit: bt[t] ?? ""
+function Ot(e, t) {
+	return G.get(e)?.get(t) ?? {
+		n: Tt[t] ?? 0,
+		unit: wt[t] ?? ""
 	};
 }
-function Tt(e, t, n) {
-	let r = K.get(e);
-	r || K.set(e, r = /* @__PURE__ */ new Map()), r.set(t, n), q.add(e);
+function kt(e, t, n) {
+	let r = G.get(e);
+	r || G.set(e, r = /* @__PURE__ */ new Map()), r.set(t, n), K.add(e);
 }
-var J = (e, t) => e ? `${+e.n.toFixed(4)}${e.unit}` : t;
-function Et() {
-	if (lt()) {
+var q = (e, t) => e ? `${+e.n.toFixed(4)}${e.unit}` : t;
+function At() {
+	if (ft()) {
 		let e = B();
-		for (let t of q) for (let [n, r] of K.get(t)) ut(t, n, r.n, e);
+		for (let t of K) for (let [n, r] of G.get(t)) pt(t, n, r.n, e);
 	}
-	for (let e of q) {
-		let t = K.get(e), n = e.style;
-		if ((t.has("x") || t.has("y")) && n.setProperty("translate", `${J(t.get("x"), "0px")} ${J(t.get("y"), "0px")}`), t.has("scale") && n.setProperty("scale", J(t.get("scale"), "1")), t.has("rotate") && n.setProperty("rotate", J(t.get("rotate"), "0deg")), t.has("opacity") && n.setProperty("opacity", String(+Math.min(1, Math.max(0, t.get("opacity").n)).toFixed(4))), t.has("blur")) {
+	for (let e of K) {
+		let t = G.get(e), n = e.style;
+		if ((t.has("x") || t.has("y")) && n.setProperty("translate", `${q(t.get("x"), "0px")} ${q(t.get("y"), "0px")}`), t.has("scale") && n.setProperty("scale", q(t.get("scale"), "1")), t.has("rotate") && n.setProperty("rotate", q(t.get("rotate"), "0deg")), t.has("opacity") && n.setProperty("opacity", String(+Math.min(1, Math.max(0, t.get("opacity").n)).toFixed(4))), t.has("blur")) {
 			let e = t.get("blur");
-			n.setProperty("filter", e.n > .01 ? `blur(${J(e, "0px")})` : "");
+			n.setProperty("filter", e.n > .01 ? `blur(${q(e, "0px")})` : "");
 		}
-		(t.has("clip") || t.has("clip-x") || t.has("clip-top")) && n.setProperty("clip-path", `inset(${J(t.get("clip-top"), "0%")} ${J(t.get("clip-x"), "0%")} ${J(t.get("clip"), "0%")} 0%)`);
-		for (let [e, r] of t) e.startsWith("--") && n.setProperty(e, J(r, "0"));
+		(t.has("clip") || t.has("clip-x") || t.has("clip-top")) && n.setProperty("clip-path", `inset(${q(t.get("clip-top"), "0%")} ${q(t.get("clip-x"), "0%")} ${q(t.get("clip"), "0%")} 0%)`);
+		for (let [e, r] of t) e.startsWith("--") && n.setProperty(e, q(r, "0"));
 	}
-	q.clear();
+	K.clear();
 }
-var Dt = class {
+var jt = class {
 	tracks = [];
 	calls = [];
 	labels = /* @__PURE__ */ new Map();
@@ -1012,11 +1080,11 @@ var Dt = class {
 		return this.labels.set(e, this.at(t)), this;
 	}
 	add(e, t, n, r, i) {
-		let a = Array.isArray(e) ? e : [e], o = this.at(r.at), s = Math.max(0, r.dur ?? N[3] / 1e3), c = ft(r.ease), l = r.stagger ?? 0;
+		let a = Array.isArray(e) ? e : [e], o = this.at(r.at), s = Math.max(0, r.dur ?? P[3] / 1e3), c = gt(r.ease), l = r.stagger ?? 0;
 		return a.forEach((e, r) => {
 			for (let [a, u] of Object.entries(n)) {
 				if (u === void 0) continue;
-				let n = Ct(u, a), d = t && t[a] !== void 0 ? Ct(t[a], a) : null;
+				let n = Dt(u, a), d = t && t[a] !== void 0 ? Dt(t[a], a) : null;
 				if (d && d.unit !== n.unit && d.n !== 0 && n.n !== 0) throw Error(`[presse:anim] ${a} : unités différentes (${d.unit} → ${n.unit})`);
 				d && d.unit !== n.unit && (d.n === 0 ? d.unit = n.unit : n.unit = d.unit), this.tracks.push({
 					t: e,
@@ -1037,8 +1105,8 @@ var Dt = class {
 	from(e, t, n = {}) {
 		let r = Array.isArray(e) ? e : [e], i = {};
 		for (let e of Object.keys(t)) {
-			let n = wt(r[0], e);
-			i[e] = `${n.n}${Ct(t[e], e).unit || n.unit}`;
+			let n = Ot(r[0], e);
+			i[e] = `${n.n}${Dt(t[e], e).unit || n.unit}`;
 		}
 		return this.add(e, t, i, n, !1);
 	}
@@ -1076,7 +1144,7 @@ var Dt = class {
 		return this.playing ? new Promise((e) => this.resolveDone = e) : Promise.resolve();
 	}
 	go(e) {
-		return this.rate = e, yt() ? (this.playing = !1, this.seek(e > 0 ? this.duration : 0), this) : e > 0 && this.time >= this.duration || e < 0 && this.time <= 0 ? (this.playing = !1, this.render(this.time), this) : (this.playing = !0, G(this), this);
+		return this.rate = e, Ct() ? (this.playing = !1, this.seek(e > 0 ? this.duration : 0), this) : e > 0 && this.time >= this.duration || e < 0 && this.time <= 0 ? (this.playing = !1, this.render(this.time), this) : (this.playing = !0, W(this), this);
 	}
 	step(e) {
 		if (!this.playing) return !1;
@@ -1092,19 +1160,19 @@ var Dt = class {
 			r || n.set(e.t, r = /* @__PURE__ */ new Map());
 			let i = !r.has(e.prop);
 			if (t < e.start && !i) continue;
-			e.lazy && !e.from && t >= e.start && (e.from = { ...wt(e.t, e.prop) }, e.from.unit !== e.to.unit && e.from.n === 0 && (e.from.unit = e.to.unit));
-			let a = e.from ?? wt(e.t, e.prop), o = e.dur === 0 ? +(t >= e.start) : Math.min(1, Math.max(0, (t - e.start) / e.dur)), s = e.ease(o);
+			e.lazy && !e.from && t >= e.start && (e.from = { ...Ot(e.t, e.prop) }, e.from.unit !== e.to.unit && e.from.n === 0 && (e.from.unit = e.to.unit));
+			let a = e.from ?? Ot(e.t, e.prop), o = e.dur === 0 ? +(t >= e.start) : Math.min(1, Math.max(0, (t - e.start) / e.dur)), s = e.ease(o);
 			r.set(e.prop, {
 				n: a.n + (e.to.n - a.n) * s,
 				unit: e.to.unit || a.unit
 			});
 		}
-		for (let [e, t] of n) for (let [n, r] of t) Tt(e, n, r);
+		for (let [e, t] of n) for (let [n, r] of t) kt(e, n, r);
 		if (t > e) for (let n of this.calls) !n.done && n.at > e && n.at <= t && (n.done = !0, n.fn());
 		if (t < e) for (let e of this.calls) e.at > t && (e.done = !1);
-		this.onUpdate?.(this), U.has(this) || Et();
+		this.onUpdate?.(this), H.has(this) || At();
 	}
-}, Ot = {
+}, Mt = {
 	monte: "y 1.1em 0em; opacity 0 1",
 	fondu: "opacity 0 1",
 	glisse: "x -1.5em 0em; opacity 0 1",
@@ -1113,45 +1181,45 @@ var Dt = class {
 	rideau: "clip-x 100 0",
 	flou: "blur 14 0; opacity 0 1",
 	bascule: "rotate -5 0; y 0.8em 0em; opacity 0 1"
-}, kt = [
+}, Nt = [
 	"entree",
 	"defilement",
 	"survol",
 	"appui",
 	"chargement"
 ];
-function At(e) {
-	let t = Ot[e.trim()] ?? e, n = {}, r = {};
+function Pt(e) {
+	let t = Mt[e.trim()] ?? e, n = {}, r = {};
 	for (let e of t.split(";")) {
 		let t = e.trim().split(/\s+/).filter(Boolean);
 		if (!t.length) continue;
 		if (t.length !== 3) throw Error(`[presse:anim] « ${e.trim()} » : il faut « propriété de vers »`);
 		let [i, a, o] = t;
-		if (!i.startsWith("--") && !St.includes(i)) throw Error(`[presse:anim] propriété inconnue : « ${i} » (${St.join(", ")}, ou --variable)`);
+		if (!i.startsWith("--") && !Et.includes(i)) throw Error(`[presse:anim] propriété inconnue : « ${i} » (${Et.join(", ")}, ou --variable)`);
 		n[i] = a, r[i] = o;
 	}
 	return [n, r];
 }
-var jt = /* @__PURE__ */ new WeakMap(), Mt = /* @__PURE__ */ new Set(), Nt = null, Pt = null, Ft = { step(e) {
+var Ft = /* @__PURE__ */ new WeakMap(), It = /* @__PURE__ */ new Set(), Lt = null, Rt = null, zt = { step(e) {
 	let t = !1;
-	for (let n of Mt) {
+	for (let n of It) {
 		if (!n.visible) continue;
-		let r = n.el.getBoundingClientRect(), i = innerHeight, a = Math.min(1, Math.max(0, (i - r.top) / (i + r.height))), o = yt() || n.smooth <= 0 ? 1 : 1 - Math.exp(-e / n.smooth);
+		let r = n.el.getBoundingClientRect(), i = innerHeight, a = Math.min(1, Math.max(0, (i - r.top) / (i + r.height))), o = Ct() || n.smooth <= 0 ? 1 : 1 - Math.exp(-e / n.smooth);
 		n.p += (a - n.p) * o, Math.abs(a - n.p) < 1e-4 ? n.p = a : t = !0, n.tl.progress(n.p);
 	}
 	return t;
-} }, It = !1;
-function Lt(e) {
-	if (jt.has(e)) return;
+} }, Bt = !1;
+function Vt(e) {
+	if (Ft.has(e)) return;
 	let t = e.dataset, n, r;
 	try {
-		[n, r] = At(t.anim ?? "");
+		[n, r] = Pt(t.anim ?? "");
 	} catch (t) {
 		console.warn(t, e), e.dataset.animReady = "";
 		return;
 	}
-	let i = kt.includes(t.animTrigger ?? "") ? t.animTrigger : "entree", a = Number(t.animStagger ?? 0), o = a > 0 ? [...e.children] : [e], s = new Dt().fromTo(o, n, r, {
-		dur: t.animDur ? Number(t.animDur) : i === "survol" || i === "appui" ? N[2] / 1e3 : N[3] / 1e3,
+	let i = Nt.includes(t.animTrigger ?? "") ? t.animTrigger : "entree", a = Number(t.animStagger ?? 0), o = a > 0 ? [...e.children] : [e], s = new jt().fromTo(o, n, r, {
+		dur: t.animDur ? Number(t.animDur) : i === "survol" || i === "appui" ? P[2] / 1e3 : P[3] / 1e3,
 		ease: t.animEase ?? (i === "defilement" ? "lineaire" : "out"),
 		stagger: a,
 		at: Number(t.animDelay ?? 0)
@@ -1164,19 +1232,19 @@ function Lt(e) {
 		p: 0,
 		visible: !1
 	};
-	if (jt.set(e, c), s.seek(0), e.dataset.animReady = "", i === "entree") Nt ??= new IntersectionObserver((e) => {
+	if (Ft.set(e, c), s.seek(0), e.dataset.animReady = "", i === "entree") Lt ??= new IntersectionObserver((e) => {
 		for (let t of e) {
-			let e = jt.get(t.target);
-			e && (t.isIntersecting ? (e.tl.play(), e.repeat || Nt.unobserve(e.el)) : e.repeat && t.boundingClientRect.top > 0 && e.tl.reverse());
+			let e = Ft.get(t.target);
+			e && (t.isIntersecting ? (e.tl.play(), e.repeat || Lt.unobserve(e.el)) : e.repeat && t.boundingClientRect.top > 0 && e.tl.reverse());
 		}
-	}, { rootMargin: "0px 0px -15% 0px" }), Nt.observe(e);
-	else if (i === "defilement") Mt.add(c), Pt ??= new IntersectionObserver((e) => {
+	}, { rootMargin: "0px 0px -15% 0px" }), Lt.observe(e);
+	else if (i === "defilement") It.add(c), Rt ??= new IntersectionObserver((e) => {
 		for (let t of e) {
-			let e = [...Mt].find((e) => e.el === t.target);
+			let e = [...It].find((e) => e.el === t.target);
 			e && (e.visible = t.isIntersecting);
 		}
-		G(Ft);
-	}, { rootMargin: "20% 0px" }), Pt.observe(e), It || (It = !0, addEventListener("scroll", () => G(Ft), { passive: !0 }), addEventListener("resize", () => G(Ft)));
+		W(zt);
+	}, { rootMargin: "20% 0px" }), Rt.observe(e), Bt || (Bt = !0, addEventListener("scroll", () => W(zt), { passive: !0 }), addEventListener("resize", () => W(zt)));
 	else if (i === "survol") e.addEventListener("pointerenter", (e) => e.pointerType !== "touch" && s.play()), e.addEventListener("pointerleave", () => s.reverse()), e.addEventListener("focusin", () => s.play()), e.addEventListener("focusout", () => s.reverse());
 	else if (i === "appui") {
 		e.addEventListener("pointerdown", () => s.play());
@@ -1199,12 +1267,12 @@ function Lt(e) {
 		}
 	}
 }
-function Rt(e = document) {
+function Ht(e = document) {
 	if (typeof document > "u") return;
 	window.__presseAnim = !0;
-	let t = (e) => e.querySelectorAll("[data-anim]").forEach(Lt);
+	let t = (e) => e.querySelectorAll("[data-anim]").forEach(Vt);
 	t(e), e === document && new MutationObserver((e) => {
-		for (let n of e) for (let e of n.addedNodes) e instanceof HTMLElement && (e.matches("[data-anim]") && Lt(e), t(e));
+		for (let n of e) for (let e of n.addedNodes) e instanceof HTMLElement && (e.matches("[data-anim]") && Vt(e), t(e));
 	}).observe(document.body, {
 		childList: !0,
 		subtree: !0
@@ -1212,33 +1280,33 @@ function Rt(e = document) {
 }
 //#endregion
 //#region src/components/device.ts
-var Y = globalThis.__presseDevice ??= {
+var J = globalThis.__presseDevice ??= {
 	promise: null,
 	listeners: /* @__PURE__ */ new Set()
-}, zt = Y.listeners;
-function Bt() {
-	return Y.promise ??= (async () => {
+}, Ut = J.listeners;
+function Wt() {
+	return J.promise ??= (async () => {
 		if (!navigator.gpu) throw Error("WebGPU absent");
 		let e = await navigator.gpu.requestAdapter();
 		if (!e) throw Error("Aucun adaptateur WebGPU");
-		let t = await e.requestDevice(), n = Y.promise;
+		let t = await e.requestDevice(), n = J.promise;
 		return t.lost.then((e) => {
-			if (Y.promise === n && (Y.promise = null), e.reason !== "destroyed") {
+			if (J.promise === n && (J.promise = null), e.reason !== "destroyed") {
 				console.warn("[presse] appareil WebGPU perdu :", e.message || e.reason);
-				for (let t of [...zt]) try {
+				for (let t of [...Ut]) try {
 					t(e.message || String(e.reason));
 				} catch (e) {
 					console.warn("[presse] reprise après perte", e);
 				}
 			}
 		}), t;
-	})(), Y.promise;
+	})(), J.promise;
 }
 //#endregion
 //#region src/presse/sweep.ts
-var Vt = "presse:sweep", Ht = 9, Ut = 16, Wt = 520, Gt = 720, Kt = " .,:;-=+*%#@aeinorstuldcmphbgfvqjykxwz", qt = () => matchMedia("(prefers-reduced-motion: reduce)").matches, Jt = () => document.querySelector("meta[name=\"presse-transition\"]")?.getAttribute("content") === "ascii" && !!navigator.gpu && !qt(), Yt = /* @__PURE__ */ new Set();
-function Xt(e, t, n, r, i, a) {
-	let o = Zt.get(t);
+var Gt = "presse:sweep", Kt = 9, qt = 16, Jt = 520, Yt = 720, Xt = " .,:;-=+*%#@aeinorstuldcmphbgfvqjykxwz", Zt = () => matchMedia("(prefers-reduced-motion: reduce)").matches, Qt = () => document.querySelector("meta[name=\"presse-transition\"]")?.getAttribute("content") === "ascii" && !!navigator.gpu && !Zt(), $t = /* @__PURE__ */ new Set();
+function en(e, t, n, r, i, a) {
+	let o = tn.get(t);
 	if (o) {
 		let t = o.width / o.height, [s, c] = [o.width, o.height];
 		t > i / a ? s = i / a * c : c = s / (i / a), e.drawImage(o, (o.width - s) / 2, (o.height - c) / 2, s, c, n, r, i, a);
@@ -1247,42 +1315,42 @@ function Xt(e, t, n, r, i, a) {
 		e.fillStyle = o && o !== "rgba(0, 0, 0, 0)" ? o : "#8a877c", e.fillRect(n, r, i, a);
 	}
 }
-var Zt = /* @__PURE__ */ new WeakMap(), X = /* @__PURE__ */ new WeakSet();
-function Z() {
-	en(Math.ceil(innerWidth / Ht), Math.ceil(innerHeight / Ut));
+var tn = /* @__PURE__ */ new WeakMap(), nn = /* @__PURE__ */ new WeakSet();
+function Y() {
+	an(Math.ceil(innerWidth / Kt), Math.ceil(innerHeight / qt));
 	for (let e of document.images) {
-		if (Zt.has(e) || X.has(e) || !e.complete || !e.naturalWidth || e.classList.contains("presse-flight")) continue;
+		if (tn.has(e) || nn.has(e) || !e.complete || !e.naturalWidth || e.classList.contains("presse-flight")) continue;
 		let t = e.getBoundingClientRect();
-		t.width > 0 && (t.bottom < -innerHeight || t.top > innerHeight * 2) || (X.add(e), createImageBitmap(e, {
+		t.width > 0 && (t.bottom < -innerHeight || t.top > innerHeight * 2) || (nn.add(e), createImageBitmap(e, {
 			resizeWidth: 96,
 			resizeHeight: Math.max(1, Math.round(96 * e.naturalHeight / e.naturalWidth)),
 			resizeQuality: "medium"
-		}).then((t) => Zt.set(e, t)).catch(() => void 0).finally(() => X.delete(e)));
+		}).then((t) => tn.set(e, t)).catch(() => void 0).finally(() => nn.delete(e)));
 	}
 }
-var Qt = (e) => "requestIdleCallback" in window ? requestIdleCallback(e, { timeout: 1500 }) : setTimeout(e, 300), $t = () => {
+var X = (e) => "requestIdleCallback" in window ? requestIdleCallback(e, { timeout: 1500 }) : setTimeout(e, 300), rn = () => {
 	for (let e of [document.body, document.documentElement]) {
 		let t = getComputedStyle(e).backgroundColor;
 		if (t && t !== "transparent" && !/rgba\(.*,\s*0\)$/.test(t)) return t;
 	}
 	return "#efeee8";
-}, Q = null;
-function en(e, t) {
-	if (!Q) {
+}, Z = null;
+function an(e, t) {
+	if (!Z) {
 		let n = new OffscreenCanvas(e, t), r = new OffscreenCanvas(e, t);
-		Q = {
+		Z = {
 			img: n,
 			txt: r,
 			gi: n.getContext("2d"),
 			gt: r.getContext("2d")
 		};
 	}
-	for (let n of [Q.img, Q.txt]) (n.width !== e || n.height !== t) && (n.width = e, n.height = t);
-	for (let n of [Q.gi, Q.gt]) n.setTransform(1, 0, 0, 1, 0, 0), n.clearRect(0, 0, e, t);
-	return Q;
+	for (let n of [Z.img, Z.txt]) (n.width !== e || n.height !== t) && (n.width = e, n.height = t);
+	for (let n of [Z.gi, Z.gt]) n.setTransform(1, 0, 0, 1, 0, 0), n.clearRect(0, 0, e, t);
+	return Z;
 }
-function tn(e, t) {
-	let { img: n, txt: r, gi: i, gt: a } = en(e, t), o = e / innerWidth, s = t / innerHeight;
+function on(e, t) {
+	let { img: n, txt: r, gi: i, gt: a } = an(e, t), o = e / innerWidth, s = t / innerHeight;
 	i.imageSmoothingQuality = "high", i.setTransform(o, 0, 0, s, 0, 0);
 	for (let e of document.images) {
 		if (e.classList.contains("presse-flight")) continue;
@@ -1290,10 +1358,10 @@ function tn(e, t) {
 		if (t.width < 12 || t.height < 12 || t.bottom < 0 || t.top > innerHeight || t.right < 0 || t.left > innerWidth) continue;
 		let n = getComputedStyle(e);
 		if (n.visibility !== "hidden" && n.display !== "none") try {
-			Xt(i, e, t.left, t.top, t.width, t.height);
+			en(i, e, t.left, t.top, t.width, t.height);
 		} catch {}
 	}
-	for (let e of Yt) try {
+	for (let e of $t) try {
 		i.save(), e(i), i.restore();
 	} catch {}
 	a.setTransform(o, 0, 0, s, 0, 0);
@@ -1318,13 +1386,13 @@ function tn(e, t) {
 		txt: r
 	};
 }
-var nn = "\nstruct U { size: vec2f, cell: vec2f, p: f32, dir: f32, t: f32, n: f32, hole: vec4f, paper: vec4f };\n@group(0) @binding(0) var<uniform> u: U;\n@group(0) @binding(1) var imgT: texture_2d<f32>;\n@group(0) @binding(2) var txtT: texture_2d<f32>;\n@group(0) @binding(3) var atlas: texture_2d<f32>;\n@group(0) @binding(4) var samp: sampler;\n\n@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {\n  let p = vec2f(f32((i << 1u) & 2u), f32(i & 2u));\n  return vec4f(p * 2.0 - 1.0, 0.0, 1.0);\n}\nfn hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }\n\n@fragment fn fs(@builtin(position) fc: vec4f) -> @location(0) vec4f {\n  let px = fc.xy;\n  // La photo en passage n'est pas balayée.\n  if (px.x >= u.hole.x && px.y >= u.hole.y && px.x < u.hole.x + u.hole.z && px.y < u.hole.y + u.hole.w) { return vec4f(0.0); }\n  let cell = floor(px / u.cell);\n  let local = fract(px / u.cell);\n  let dims = vec2f(textureDimensions(imgT));\n  let ci = vec2i(clamp(cell, vec2f(0.0), dims - 1.0));\n  let im = textureLoad(imgT, ci, 0);\n  let tx = textureLoad(txtT, ci, 0);\n  // Le front : une diagonale, un peu déchiquetée cellule par cellule.\n  let q = (cell + 0.5) * u.cell / u.size;\n  let f = (q.x * 0.78 + q.y * 0.22) * 0.86 + hash(cell) * 0.14;\n  let band = 0.22;\n  let s = (u.p * (1.0 + band * 2.0) - band) - f;   // > 0 : le front est passé\n  // Sortie : page → caractères → papier. Entrée (dir < 0) : papier → caractères → page.\n  var k = clamp(s / band, 0.0, 1.0);\n  if (u.dir < 0.0) { k = 1.0 - k; }\n  // k : 0 = la page telle quelle, 1 = papier ; entre les deux, les caractères.\n  if (k <= 0.0) { return vec4f(0.0); }\n  let ground = smoothstep(0.0, 0.35, k);\n  let paper = u.paper.rgb;\n  // Le caractère : image (densité de la rampe), sinon texte (une lettre), sinon rien.\n  let lum = dot(im.rgb, vec3f(0.299, 0.587, 0.114));\n  let flick = floor(u.t * 18.0 + hash(cell + 3.1) * 7.0);\n  let busy = 1.0 - abs(k * 2.0 - 1.0);\n  var g = -1.0;\n  var col = vec3f(0.0);\n  if (tx.a > 0.25) {\n    g = 12.0 + floor(hash(cell + vec2f(flick * busy, 0.0)) * 26.0);\n    col = tx.rgb / max(tx.a, 0.001);\n  } else if (im.a > 0.25) {\n    // Sur papier clair, l'ombre de la photo est la plus dense ; les caractères gardent sa couleur.\n    let d = clamp(1.0 - lum + (hash(cell + flick) - 0.5) * 0.25 * busy, 0.0, 1.0);\n    g = floor(d * 11.0 + 0.5);\n    col = im.rgb / max(im.a, 0.001);\n  }\n  // Après le front, les caractères s'éteignent dans le papier.\n  let glyphA = select(0.0, 1.0, g > 0.0) * (1.0 - smoothstep(0.55, 1.0, k));\n  var a = 0.0;\n  if (g > 0.0) {\n    let uv = vec2f((g + mix(0.08, 0.92, local.x)) / u.n, mix(0.04, 0.96, local.y));\n    a = textureSampleLevel(atlas, samp, uv, 0.0).r;\n  }\n  let rgb = mix(paper, col, a * glyphA);\n  // La page apparaît entre les caractères pendant que le fond se pose.\n  let alpha = max(ground, a * glyphA);\n  return vec4f(rgb * alpha, alpha);\n}\n";
-function rn() {
+var sn = "\nstruct U { size: vec2f, cell: vec2f, p: f32, dir: f32, t: f32, n: f32, hole: vec4f, paper: vec4f };\n@group(0) @binding(0) var<uniform> u: U;\n@group(0) @binding(1) var imgT: texture_2d<f32>;\n@group(0) @binding(2) var txtT: texture_2d<f32>;\n@group(0) @binding(3) var atlas: texture_2d<f32>;\n@group(0) @binding(4) var samp: sampler;\n\n@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {\n  let p = vec2f(f32((i << 1u) & 2u), f32(i & 2u));\n  return vec4f(p * 2.0 - 1.0, 0.0, 1.0);\n}\nfn hash(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }\n\n@fragment fn fs(@builtin(position) fc: vec4f) -> @location(0) vec4f {\n  let px = fc.xy;\n  // La photo en passage n'est pas balayée.\n  if (px.x >= u.hole.x && px.y >= u.hole.y && px.x < u.hole.x + u.hole.z && px.y < u.hole.y + u.hole.w) { return vec4f(0.0); }\n  let cell = floor(px / u.cell);\n  let local = fract(px / u.cell);\n  let dims = vec2f(textureDimensions(imgT));\n  let ci = vec2i(clamp(cell, vec2f(0.0), dims - 1.0));\n  let im = textureLoad(imgT, ci, 0);\n  let tx = textureLoad(txtT, ci, 0);\n  // Le front : une diagonale, un peu déchiquetée cellule par cellule.\n  let q = (cell + 0.5) * u.cell / u.size;\n  let f = (q.x * 0.78 + q.y * 0.22) * 0.86 + hash(cell) * 0.14;\n  let band = 0.22;\n  let s = (u.p * (1.0 + band * 2.0) - band) - f;   // > 0 : le front est passé\n  // Sortie : page → caractères → papier. Entrée (dir < 0) : papier → caractères → page.\n  var k = clamp(s / band, 0.0, 1.0);\n  if (u.dir < 0.0) { k = 1.0 - k; }\n  // k : 0 = la page telle quelle, 1 = papier ; entre les deux, les caractères.\n  if (k <= 0.0) { return vec4f(0.0); }\n  let ground = smoothstep(0.0, 0.35, k);\n  let paper = u.paper.rgb;\n  // Le caractère : image (densité de la rampe), sinon texte (une lettre), sinon rien.\n  let lum = dot(im.rgb, vec3f(0.299, 0.587, 0.114));\n  let flick = floor(u.t * 18.0 + hash(cell + 3.1) * 7.0);\n  let busy = 1.0 - abs(k * 2.0 - 1.0);\n  var g = -1.0;\n  var col = vec3f(0.0);\n  if (tx.a > 0.25) {\n    g = 12.0 + floor(hash(cell + vec2f(flick * busy, 0.0)) * 26.0);\n    col = tx.rgb / max(tx.a, 0.001);\n  } else if (im.a > 0.25) {\n    // Sur papier clair, l'ombre de la photo est la plus dense ; les caractères gardent sa couleur.\n    let d = clamp(1.0 - lum + (hash(cell + flick) - 0.5) * 0.25 * busy, 0.0, 1.0);\n    g = floor(d * 11.0 + 0.5);\n    col = im.rgb / max(im.a, 0.001);\n  }\n  // Après le front, les caractères s'éteignent dans le papier.\n  let glyphA = select(0.0, 1.0, g > 0.0) * (1.0 - smoothstep(0.55, 1.0, k));\n  var a = 0.0;\n  if (g > 0.0) {\n    let uv = vec2f((g + mix(0.08, 0.92, local.x)) / u.n, mix(0.04, 0.96, local.y));\n    a = textureSampleLevel(atlas, samp, uv, 0.0).r;\n  }\n  let rgb = mix(paper, col, a * glyphA);\n  // La page apparaît entre les caractères pendant que le fond se pose.\n  let alpha = max(ground, a * glyphA);\n  return vec4f(rgb * alpha, alpha);\n}\n";
+function cn() {
 	let e = new OffscreenCanvas(1216, 56), t = e.getContext("2d");
-	return t.fillStyle = "#fff", t.textAlign = "center", t.textBaseline = "middle", t.font = "500 40px \"IBM Plex Mono\", ui-monospace, monospace", [...Kt].forEach((e, n) => t.fillText(e, n * 32 + 16, 56 * .54)), e;
+	return t.fillStyle = "#fff", t.textAlign = "center", t.textBaseline = "middle", t.font = "500 40px \"IBM Plex Mono\", ui-monospace, monospace", [...Xt].forEach((e, n) => t.fillText(e, n * 32 + 16, 56 * .54)), e;
 }
-async function an(e, t, n, r, i) {
-	let a = await Bt(), o = Math.min(devicePixelRatio || 1, 2), s = Math.ceil(innerWidth / Ht), c = Math.ceil(innerHeight / Ut), l = performance.now(), u = tn(s, c);
+async function ln(e, t, n, r, i) {
+	let a = await Wt(), o = Math.min(devicePixelRatio || 1, 2), s = Math.ceil(innerWidth / Kt), c = Math.ceil(innerHeight / qt), l = performance.now(), u = on(s, c);
 	performance.measure("presse:capture", {
 		start: l,
 		end: performance.now()
@@ -1347,7 +1415,7 @@ async function an(e, t, n, r, i) {
 			texture: t,
 			premultipliedAlpha: !0
 		}, [e.width, e.height]), t;
-	}, h = m(u.img), g = m(u.txt), _ = m(rn()), v = a.createShaderModule({ code: nn }), y = await a.createRenderPipelineAsync({
+	}, h = m(u.img), g = m(u.txt), _ = m(cn()), v = a.createShaderModule({ code: sn }), y = await a.createRenderPipelineAsync({
 		layout: "auto",
 		vertex: {
 			module: v,
@@ -1418,8 +1486,8 @@ async function an(e, t, n, r, i) {
 		C.set([
 			d.width,
 			d.height,
-			Ht * o,
-			Ut * o,
+			Kt * o,
+			qt * o,
 			t,
 			e,
 			n,
@@ -1461,11 +1529,11 @@ async function an(e, t, n, r, i) {
 		]) e.destroy();
 	};
 }
-var on = (e) => {
+var un = (e) => {
 	try {
-		e ? sessionStorage.setItem(Vt, JSON.stringify(e)) : sessionStorage.removeItem(Vt);
+		e ? sessionStorage.setItem(Gt, JSON.stringify(e)) : sessionStorage.removeItem(Gt);
 	} catch {}
-}, sn = () => {
+}, dn = () => {
 	try {
 		let e = JSON.parse(sessionStorage.getItem("presse:flight") ?? "null");
 		return e && Date.now() - e.t < 2e3 ? {
@@ -1477,51 +1545,51 @@ var on = (e) => {
 	} catch {
 		return null;
 	}
-}, cn = !1, ln = !1, un = [
+}, fn = !1, Q = !1, pn = [
 	"liquide",
 	"grille",
 	"galerie",
 	"objet",
 	"orbite"
 ];
-async function dn() {
+async function mn() {
 	document.readyState === "loading" && await new Promise((e) => document.addEventListener("DOMContentLoaded", e, { once: !0 }));
 	let e = [...document.querySelectorAll("[data-presse-component]")].filter((e) => {
-		if (!un.includes(e.dataset.presseComponent ?? "")) return !1;
+		if (!pn.includes(e.dataset.presseComponent ?? "")) return !1;
 		let t = e.getBoundingClientRect();
 		return t.bottom > 0 && t.top < innerHeight && t.width > 0;
 	}), t = Promise.all(e.map((e) => e.dataset.painted === void 0 ? new Promise((t) => e.addEventListener("presse:painted", t, { once: !0 })) : null));
 	await Promise.race([t, new Promise((e) => setTimeout(e, 1400))]);
 }
-function fn() {
-	if (cn || typeof window > "u") return;
-	cn = !0;
+function hn() {
+	if (fn || typeof window > "u") return;
+	fn = !0;
 	let e = window;
 	if (e.__presseSweep) {
 		let { d: t, cover: n } = e.__presseSweep;
-		delete e.__presseSweep, on(null);
+		delete e.__presseSweep, un(null);
 		let r = () => n.remove();
-		Jt() ? (async () => {
-			await dn(), await new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e))), (await an(-1, Gt, t.paper, null, r).catch(() => (r(), null)))?.();
+		Qt() ? (async () => {
+			await mn(), await new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e))), (await ln(-1, Yt, t.paper, null, r).catch(() => (r(), null)))?.();
 		})() : r();
-	} else on(null);
-	if (Jt()) {
-		addEventListener("load", () => Qt(() => Z()), { once: !0 }), document.readyState === "complete" && Qt(() => Z());
+	} else un(null);
+	if (Qt()) {
+		addEventListener("load", () => X(() => Y()), { once: !0 }), document.readyState === "complete" && X(() => Y());
 		let e = 0;
-		addEventListener("scroll", () => (clearTimeout(e), e = window.setTimeout(() => Qt(() => Z()), 250)), { passive: !0 }), document.addEventListener("pointerover", (e) => e.target?.closest?.("a[href]") && Z(), { passive: !0 });
+		addEventListener("scroll", () => (clearTimeout(e), e = window.setTimeout(() => X(() => Y()), 250)), { passive: !0 }), document.addEventListener("pointerover", (e) => e.target?.closest?.("a[href]") && Y(), { passive: !0 });
 	}
 	document.addEventListener("click", (e) => {
-		if (ln || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !Jt()) return;
+		if (Q || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !Qt()) return;
 		let t = e.target?.closest?.("a[href]");
 		if (!t || t.target && t.target !== "_self" || t.hasAttribute("download") || t.origin !== location.origin || t.dataset.transition === "none" || t.closest("[data-transition=none]")) return;
 		let n = new URL(t.href);
 		if (n.pathname === location.pathname || !/(\/|\.html)$/.test(n.pathname)) return;
-		e.preventDefault(), ln = !0;
+		e.preventDefault(), Q = !0;
 		for (let e of document.querySelectorAll(":popover-open")) e.hidePopover();
 		let r = document.createElement("link");
 		r.rel = "prefetch", r.href = n.href, document.head.append(r);
-		let i = $t(), a = () => {
-			on({
+		let i = rn(), a = () => {
+			un({
 				t: Date.now(),
 				to: n.href,
 				paper: i
@@ -1535,18 +1603,18 @@ function fn() {
 			} catch {}
 			location.href = n.href;
 		};
-		an(1, Wt, i, sn()).then(() => a()).catch(() => a());
+		ln(1, Jt, i, dn()).then(() => a()).catch(() => a());
 	}), addEventListener("pageshow", (e) => {
 		if (e.persisted) {
-			ln = !1;
+			Q = !1;
 			for (let e of document.querySelectorAll("canvas.presse-sweep, .presse-sweep-cover")) e.remove();
 		}
 	});
 }
 //#endregion
 //#region src/presse/script.ts
-var pn = "[data-presse-component], [data-gl-text], [data-gl-img], [data-gl-filter], [data-anim], [data-presse-match], a[href], button, input, select, textarea, h1, h2, h3, [role]";
-function mn(e) {
+var gn = "[data-presse-component], [data-gl-text], [data-gl-img], [data-gl-filter], [data-anim], [data-presse-match], a[href], button, input, select, textarea, h1, h2, h3, [role]";
+function _n(e) {
 	if (e.id) return `#${e.id}`;
 	let t = e.getAttribute("data-presse-match") ?? e.getAttribute("data-id") ?? e.getAttribute("name"), n = [], r = e;
 	for (; r && r !== document.body;) {
@@ -1559,7 +1627,7 @@ function mn(e) {
 	}
 	return t ? `${n.join(">")}[${t}]` : n.join(">");
 }
-var hn = (e) => e.getAttribute("role") ?? {
+var vn = (e) => e.getAttribute("role") ?? {
 	A: "lien",
 	BUTTON: "bouton",
 	INPUT: "champ",
@@ -1569,30 +1637,30 @@ var hn = (e) => e.getAttribute("role") ?? {
 	H2: "titre",
 	H3: "titre",
 	IMG: "image"
-}[e.tagName] ?? (e.hasAttribute("data-presse-component") ? `composant:${e.getAttribute("data-presse-component")}` : "bloc"), gn = (e) => (e.getAttribute("aria-label") ?? e.getAttribute("alt") ?? e.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
-function _n(e) {
+}[e.tagName] ?? (e.hasAttribute("data-presse-component") ? `composant:${e.getAttribute("data-presse-component")}` : "bloc"), yn = (e) => (e.getAttribute("aria-label") ?? e.getAttribute("alt") ?? e.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+function bn(e) {
 	let t = 1;
 	for (let n = e; n; n = n.parentElement) t *= Number(getComputedStyle(n).opacity) || 0;
 	return +t.toFixed(3);
 }
-function vn() {
-	return [...document.querySelectorAll(pn)].filter((e) => !e.closest("[hidden], .pk")).map((e) => {
+function xn() {
+	return [...document.querySelectorAll(gn)].filter((e) => !e.closest("[hidden], .pk")).map((e) => {
 		let t = e.getBoundingClientRect();
 		return {
-			id: mn(e),
-			role: hn(e),
-			name: gn(e),
+			id: _n(e),
+			role: vn(e),
+			name: yn(e),
 			rect: [
 				Math.round(t.x),
 				Math.round(t.y + scrollY),
 				Math.round(t.width),
 				Math.round(t.height)
 			],
-			opacity: _n(e)
+			opacity: bn(e)
 		};
 	}).filter((e) => e.rect[2] > 0 && e.rect[3] > 0);
 }
-var yn = (e) => {
+var Sn = (e) => {
 	if (e.target) {
 		let t = document.querySelector(e.target);
 		if (!t) throw Error(`[presse:script] introuvable : ${e.target}`);
@@ -1620,13 +1688,13 @@ var yn = (e) => {
 	isPrimary: !0,
 	button: 0,
 	buttons: i
-})), bn = () => new Promise((e) => requestAnimationFrame(e));
-async function xn(e, t) {
-	for (; B() - e < t * 1e3;) await bn();
+})), Cn = () => new Promise((e) => requestAnimationFrame(e));
+async function wn(e, t) {
+	for (; B() - e < t * 1e3;) await Cn();
 }
-async function Sn(e) {
+async function Tn(e) {
 	let t = B(), n = [];
-	for (let r of [...e].sort((e, t) => e.at - t.at)) if (await xn(t, r.at), r.type !== "wait") {
+	for (let r of [...e].sort((e, t) => e.at - t.at)) if (await wn(t, r.at), r.type !== "wait") {
 		if (r.type === "scroll") scrollBy({
 			top: r.dy,
 			behavior: "instant"
@@ -1642,11 +1710,11 @@ async function Sn(e) {
 			let e = (r.target ? document.querySelector(r.target) : document.activeElement) ?? null;
 			e && "value" in e && (e.value += r.text, e.dispatchEvent(new Event("input", { bubbles: !0 })));
 		} else {
-			let e = yn(r);
+			let e = Sn(r);
 			if ($(e.el, "pointerover", e.x, e.y, 0), $(e.el, "pointerdown", e.x, e.y, 1), r.type === "drag") {
 				let t = (r.dur ?? .4) * 1e3, n = B(), i = 0;
 				for (; i < 1;) {
-					await bn(), i = Math.min(1, (B() - n) / t);
+					await Cn(), i = Math.min(1, (B() - n) / t);
 					let a = i * i * (3 - 2 * i);
 					$(e.el, "pointermove", e.x + r.dx * a, e.y + r.dy * a, 1);
 				}
@@ -1657,23 +1725,23 @@ async function Sn(e) {
 	}
 	return n;
 }
-function Cn() {
+function En() {
 	let e = window;
 	e.__presse = Object.assign(e.__presse ?? {}, {
-		tree: vn,
-		play: Sn
+		tree: xn,
+		play: Tn
 	});
 	let t = new URLSearchParams(location.search).get("presse-script");
 	t && (async () => {
 		let e = t.trim().startsWith("[") ? JSON.parse(t) : await (await fetch(t)).json();
 		await new Promise((e) => setTimeout(e, 300));
-		let n = await Sn(e);
+		let n = await Tn(e);
 		document.documentElement.dataset.presseScript = "fini", console.info(`[presse:script] ${n.length} gestes rejoués`);
 	})();
 }
 //#endregion
 //#region src/pages-nav.ts
-var wn = [
+var Dn = [
 	{
 		href: "index.html",
 		name: "WebGPU-demo-UBS",
@@ -1759,17 +1827,17 @@ var wn = [
 		name: "WebGPU-demo-UBS v0",
 		text: "La toute première version, générée par Grok"
 	}
-], Tn = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
-function En(e = "./") {
-	Cn(), Ee(), Be(), Fe(), Ce(), fn(), qe(), Rt(), Me();
+], On = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
+function kn(e = "./") {
+	En(), Oe(), He(), Le(), Te(), hn(), Ye(), Ht(), Pe();
 	let t = document.createElement("style");
-	t.textContent = Tn + w, document.head.append(t);
+	t.textContent = On + T, document.head.append(t);
 	let n = document.querySelector("[data-pages-trigger]");
 	n || (n = document.createElement("button"), n.type = "button", n.className = "pages-pill", n.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(n));
 	let r = document.createElement("nav");
 	r.id = "pages-pop", r.className = "pages-pop", r.setAttribute("popover", ""), r.setAttribute("aria-label", "Pages");
 	let i = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0].split("?")[0], a = document.createElement("ul");
-	for (let t of wn) {
+	for (let t of Dn) {
 		let n = document.createElement("li"), r = document.createElement("a");
 		r.href = e + t.href, r.href === i && r.setAttribute("aria-current", "page"), r.innerHTML = "<span class=\"pages-name\"></span><span class=\"pages-text\"></span>", r.querySelector(".pages-name").textContent = t.name, r.querySelector(".pages-text").textContent = t.text, n.append(r), a.append(n);
 	}
@@ -1777,11 +1845,11 @@ function En(e = "./") {
 	let o = document.createElement("button");
 	o.type = "button", o.className = "pages-debug", o.innerHTML = "<span class=\"pages-name\">Débogage</span><span class=\"pages-text\">Fil de fer, grille, capture vidéo</span>", o.addEventListener("click", () => {
 		r.hidePopover(), _(n);
-	}), r.append(o), D(r, wn, e), document.body.append(r), n.setAttribute("popovertarget", "pages-pop"), n.setAttribute("aria-haspopup", "true"), n.setAttribute("aria-controls", "pages-pop"), r.addEventListener("toggle", (e) => {
+	}), r.append(o), ee(r, Dn, e), document.body.append(r), n.setAttribute("popovertarget", "pages-pop"), n.setAttribute("aria-haspopup", "true"), n.setAttribute("aria-controls", "pages-pop"), r.addEventListener("toggle", (e) => {
 		if (e.newState !== "open") return;
 		let t = n.getBoundingClientRect();
 		r.style.left = `${Math.max(8, Math.min(t.left, innerWidth - r.offsetWidth - 8))}px`, r.style.top = `${t.bottom + 8}px`, r.style.maxHeight = `${Math.max(200, innerHeight - t.bottom - 24)}px`;
 	});
 }
-En("../"), v();
+kn("../"), v();
 //#endregion
