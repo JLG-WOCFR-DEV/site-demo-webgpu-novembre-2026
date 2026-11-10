@@ -67,8 +67,9 @@ html.diapo-on.diapo-idle * {
 .diapo-toast {
   position: fixed !important;
   z-index: 60 !important;
-  right: calc(var(--u) * 2);
-  bottom: calc(var(--u) * 2);
+  /* En haut au centre : jamais sur le numéro de page ni sur le pied de diapo. */
+  left: 50%;
+  top: calc(var(--u) * 1.5);
   margin: 0;
   padding: 0.6em 1em;
   border-radius: 99px;
@@ -76,13 +77,13 @@ html.diapo-on.diapo-idle * {
   color: #efe6d2;
   font: 500 15px/1.2 "IBM Plex Mono", ui-monospace, monospace;
   opacity: 0;
-  translate: 0 8px;
+  translate: -50% -8px;
   transition: opacity 0.3s, translate 0.3s;
   pointer-events: none;
 }
 .diapo-toast[data-on] {
   opacity: 1;
-  translate: 0 0;
+  translate: -50% 0;
 }
 .diapo-aide {
   position: fixed !important;

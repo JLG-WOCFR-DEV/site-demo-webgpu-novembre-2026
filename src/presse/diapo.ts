@@ -349,7 +349,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
       return;
     }
     if (cur < n - 1) go(cur + 1);
-    else say("Fin du diaporama");
+    // Dernière diapo : rien ne s'affiche devant le public (la vue présentateur indique « Fin »).
   };
   const prev = () => {
     const s = slides[cur]!;
