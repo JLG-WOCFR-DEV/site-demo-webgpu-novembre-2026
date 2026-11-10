@@ -423,6 +423,14 @@ presse-rs (P3a), et les effets de P5 sont nés partagés. Restait à basculer, e
       et ne compte pas comme doigt d'une tape ; parcours e2e en événements tactiles réels (Pixel 7)
 - [ ] À essayer sur l'appareil : S Pen (bouton latéral, pression), paume posée, défilement au doigt en mode Dessin
 
+#### P7 — « un carnet qu'on a envie d'ouvrir » (à faire)
+
+Feuille de route d'exécution détaillée : [`docs/carnet/ROADMAP_P7.md`](docs/carnet/ROADMAP_P7.md) (10 novembre).
+Dix lots : L0 préférences dans le carnet, L1 ménage d'interface et exemple décoré, L2 thème du mois, L3 titres
+dessinés, surlignage, washi, L4 mouvement (tourner la page, coche tracée, autocollants), L5 Mois en grille et Année
+en couleur, L6 rituels (migration mensuelle, bilan, gratitude, clé, rubans), L7 suivis dessinés et modèles,
+L8 fonds et encres, L9 écriture manuscrite et couverture.
+
 #### Sauvegardes locales (D10) — avancement
 
 - [x] Versions sur l'appareil (`versions.ts`, OPFS) : toutes les deux heures quand le carnet change, jamais
