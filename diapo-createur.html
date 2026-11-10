@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Créateur de diaporama · Presse</title>
+    <meta name="description" content="Le Créateur de diaporama de Presse : l'ordre des diapos, leurs transitions, leurs apparitions, leurs textes et leurs notes, avec l'aperçu WebGPU au centre." />
+    <meta name="theme-color" content="#1b1612" />
+    <script type="module" src="/src/diapo-createur/main.ts"></script>
+  </head>
+  <body class="dc">
+    <header class="dc-bar">
+      <a class="dc-logo" href="./presse.html" title="Presse, la documentation">Créateur <span>de diaporama</span></a>
+      <label class="dc-doc"><span class="dc-sr">Diaporama</span>
+        <select data-dc-doc>
+          <option value="conference.html">Conférence · Kerguéhennec</option>
+          <option value="diapo-demos.html">Diaporama · démos</option>
+        </select>
+      </label>
+      <span class="dc-saved" data-dc-saved aria-live="polite"></span>
+      <div class="dc-seg" role="group" aria-label="Mode">
+        <button type="button" data-dc-mode="edit" title="Choisir et modifier les éléments">Éditer</button>
+        <button type="button" data-dc-mode="try" title="Le diaporama comme en conférence : étapes, clavier">Essayer</button>
+      </div>
+      <button type="button" class="dc-btn" data-dc-replay title="Rejouer l'arrivée de cette diapo (sa transition)">▶ Rejouer</button>
+      <div class="dc-end">
+        <button type="button" class="dc-icon" data-dc-undo title="Annuler (Ctrl/⌘ Z)" aria-label="Annuler">↶</button>
+        <button type="button" class="dc-icon" data-dc-redo title="Rétablir (Maj Ctrl/⌘ Z)" aria-label="Rétablir">↷</button>
+        <button type="button" class="dc-btn" data-dc-styles title="Régler les styles de paragraphe (corps, graisse, couleur) dans l'aperçu">Styles…</button>
+        <button type="button" class="dc-btn" data-dc-reset>Revenir à la source</button>
+        <button type="button" class="dc-btn" data-dc-export>Télécharger le HTML</button>
+        <button type="button" class="dc-btn dc-btn--fill" data-dc-present title="Ouvrir le diaporama à cette diapo, dans un onglet">Présenter ↗</button>
+      </div>
+    </header>
+
+    <aside class="dc-left" aria-label="Les diapos">
+      <ol class="dc-slides" data-dc-slides></ol>
+      <div class="dc-add">
+        <label>Nouvelle diapo, sur le modèle de
+          <select data-dc-model></select>
+        </label>
+        <button type="button" class="dc-btn" data-dc-add>＋ Ajouter après</button>
+      </div>
+    </aside>
+
+    <main class="dc-stage">
+      <div class="dc-frame"><iframe data-dc-frame title="Aperçu du diaporama" allow="fullscreen"></iframe></div>
+      <p class="dc-hint" data-dc-hint></p>
+    </main>
+
+    <aside class="dc-right" aria-label="Inspecteur">
+      <section class="dc-sec" data-dc-slide-panel></section>
+      <section class="dc-sec" data-dc-els-panel></section>
+      <section class="dc-sec" data-dc-el-panel></section>
+      <section class="dc-sec" data-dc-deck-panel></section>
+    </aside>
+  </body>
+</html>

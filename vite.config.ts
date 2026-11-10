@@ -19,6 +19,6 @@ export default defineConfig({
     assetsInlineLimit: 0,
     modulePreload: { polyfill: false },
     // Deux pages : la démo PLI et l'idée Kerguéhennec, 1910.
-    rollupOptions: { input: { main: "index.html", kerguehennec: "kerguehennec.html", regards: "kerguehennec-styles.html", sampler: "sampler.html", liquide: "liquide.html", grille: "grille.html", galerie: "galerie.html", atelier: "atelier.html", presse: "presse.html", orbite: "orbite.html", matieres: "matieres.html", defilement: "defilement.html", fluide: "fluide.html", tissu: "tissu.html", lave: "lave.html", createur: "createur.html", "createur-apercu": "createur-apercu.html", "createur-site": "createur-site.html", conference: "conference.html", "diapo-demos": "diapo-demos.html" } },
+    rollupOptions: { input: { main: "index.html", kerguehennec: "kerguehennec.html", regards: "kerguehennec-styles.html", sampler: "sampler.html", liquide: "liquide.html", grille: "grille.html", galerie: "galerie.html", atelier: "atelier.html", presse: "presse.html", orbite: "orbite.html", matieres: "matieres.html", defilement: "defilement.html", fluide: "fluide.html", tissu: "tissu.html", lave: "lave.html", createur: "createur.html", "createur-apercu": "createur-apercu.html", "createur-site": "createur-site.html", conference: "conference.html", "diapo-demos": "diapo-demos.html", "diapo-createur": "diapo-createur.html" } },
   },
 });

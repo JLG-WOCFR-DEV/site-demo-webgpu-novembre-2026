@@ -376,3 +376,8 @@ html.diapo-edit {
 .de-panel[hidden] {
   display: none !important;
 }
+
+.de-link {
+  color: #9db8ff;
+  text-underline-offset: 3px;
+}

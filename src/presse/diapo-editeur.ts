@@ -27,7 +27,7 @@ export const STYLES: ParaStyle[] = [
   { cls: "cf-legend", label: "Note" },
   { cls: "cf-part", label: "Numéro de partie" },
 ];
-const STYLE_CLASSES = STYLES.map((s) => s.cls);
+export const STYLE_CLASSES = STYLES.map((s) => s.cls);
 /** Ce qui peut recevoir un style de paragraphe (les listes gardent leur mise en forme). */
 const PARA = "p, h1, h2, h3";
 /** Ce qui se corrige en place. */
@@ -36,7 +36,8 @@ const EDITABLE = "[data-gl-text], p, h1, h2, h3";
 type Def = { size?: number; weight?: number; stretch?: number; lh?: number; track?: number; color?: string };
 type Saved = { v: 1; els: Record<string, { html?: string; cls?: string }>; styles: Record<string, Def>; running?: string };
 
-const KEY = () => `presse-diapo-edits:${location.pathname}`;
+export const editsKey = (pathname: string) => `presse-diapo-edits:${pathname}`;
+const KEY = () => editsKey(location.pathname);
 const COLORS: [string, string][] = [
   ["", "Du style"],
   ["var(--ink)", "Encre"],
@@ -45,18 +46,18 @@ const COLORS: [string, string][] = [
   ["var(--todo)", "Ocre (à remplir)"],
 ];
 
-const load = (): Saved => {
+const load = (key = KEY()): Saved => {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY()) ?? "") as Saved;
+    const s = JSON.parse(localStorage.getItem(key) ?? "") as Saved;
     if (s && s.v === 1) return { ...s, els: s.els ?? {}, styles: s.styles ?? {} };
   } catch {
     /* rien de gardé */
   }
   return { v: 1, els: {}, styles: {} };
 };
-const store = (s: Saved) => {
+const store = (s: Saved, key = KEY()) => {
   try {
-    localStorage.setItem(KEY(), JSON.stringify(s));
+    localStorage.setItem(key, JSON.stringify(s));
   } catch {
     /* navigation privée : les modifications valent pour la page ouverte */
   }
@@ -84,7 +85,7 @@ function cleanHtml(el: HTMLElement) {
 }
 
 /** Feuille générée : les réglages de styles, après celles du site (elle gagne à spécificité égale). */
-function styleSheet(defs: Record<string, Def>) {
+export function styleSheet(defs: Record<string, Def>) {
   let css = "";
   for (const [cls, d] of Object.entries(defs)) {
     const r: string[] = [];
@@ -108,6 +109,40 @@ const sheetEl = () => {
   return st;
 };
 const relayout = () => dispatchEvent(new Event("pli:relayout"));
+
+/** Les réglages gardés d'un diaporama (styles de paragraphe, titre courant) : pour le Créateur et l'export. */
+export const savedSettings = (pathname: string) => {
+  const s = load(editsKey(pathname));
+  return { styles: s.styles, running: s.running };
+};
+export function saveRunning(pathname: string, running: string) {
+  const s = load(editsKey(pathname));
+  s.running = running;
+  store(s, editsKey(pathname));
+}
+/**
+ * Le Créateur prend la main : les corrections de texte et de style faites avec E (repérées par leur rang dans la
+ * diapo) sont inscrites dans son modèle, puis oubliées ; sinon un changement d'ordre des diapos les déplacerait.
+ */
+export function bakeSavedEdits(root: HTMLElement, pathname: string) {
+  const key = editsKey(pathname);
+  const saved = load(key);
+  const paths = Object.entries(saved.els);
+  if (!paths.length) return false;
+  const slides = [...root.querySelectorAll<HTMLElement>("[data-diapo-slide]")];
+  for (const [path, e] of paths) {
+    const el = find(slides, path);
+    if (!el) continue;
+    if (e.html !== undefined) el.innerHTML = e.html;
+    if (e.cls) {
+      el.classList.remove(...STYLE_CLASSES);
+      el.classList.add(e.cls);
+    }
+  }
+  saved.els = {};
+  store(saved, key);
+  return true;
+}
 
 /** Avant le diaporama : remet les textes, styles et réglages gardés. */
 export function applySavedEdits(root: HTMLElement) {
@@ -153,6 +188,7 @@ export function mountEditor(root: HTMLElement) {
     </section>
     <section><h3>Titre courant</h3><input type="text" class="de-running" aria-label="Titre courant, en pied de chaque diapo" /></section>
     <footer>
+      <a class="de-link" href="./diapo-createur.html?doc=${encodeURIComponent(location.pathname.split("/").pop() || "conference.html")}">Ouvrir dans le Créateur (ordre, transitions, notes) ↗</a>
       <button type="button" data-de-download>Télécharger le HTML</button>
       <button type="button" data-de-forget>Tout annuler</button>
     </footer>`;

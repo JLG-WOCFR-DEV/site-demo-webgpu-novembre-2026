@@ -4,7 +4,7 @@
  * pour zoomer, on glisse de côté pour passer d'une image à l'autre. Ici, tout est dessiné par la carte graphique :
  *
  * - le fond est l'image elle-même, très floue (un niveau de mipmap lointain), assombrie et vignettée : la visionneuse
- *   prend la couleur de chaque photo, et le fond se fond d'une photo à la suivante ;
+ *   prend la couleur de chaque photo, et le fond se fond d'une photo à la suivante (fondu de 0,45 s) ;
  * - la photo a des coins arrondis antialiasés au pixel et une ombre douce, calculées dans le shader (champ de distance) ;
  * - le zoom lit la texture mipmappée : nette à toutes les tailles, sans scintillement au dézoom.
  *
@@ -19,12 +19,14 @@
  */
 import { getDevice } from "../components/device.ts";
 import { springStep, SPRINGS, type Spring } from "./tokens.ts";
+import { lintOn, lintSample } from "./motion-lint.ts";
 
 type Item = { trigger: HTMLElement; thumb: HTMLImageElement; src: string; caption: string; alt: string };
 type Rect = { x: number; y: number; w: number; h: number };
 type Draw = { kind: 0 | 1 | 2; k: number; rect: Rect; alpha: number; radius: number; uv?: [number, number, number, number] };
 
 const OPEN: Spring = SPRINGS.ouverture;
+const CLOSE: Spring = { k: 320, zeta: 1 };
 const SNAP: Spring = SPRINGS.vif;
 const ZOOM: Spring = { k: 220, zeta: 1 };
 const GAP = 40;
@@ -147,9 +149,8 @@ struct VO { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
 `;
 
 /** La partie de l'image que montre une vignette en object-fit: cover (ou toute l'image en contain/fill). */
-function coverUv(box: Rect, aspect: number, im: HTMLImageElement): readonly [number, number, number, number] {
-  const fitMode = getComputedStyle(im).objectFit;
-  if (fitMode !== "cover" || !box.h || !aspect) return [0, 0, 1, 1];
+function coverUv(box: Rect, aspect: number, cover: boolean): readonly [number, number, number, number] {
+  if (!cover || !box.h || !aspect) return [0, 0, 1, 1];
   const ba = box.w / box.h;
   if (aspect > ba) {
     const f = ba / aspect;
@@ -161,7 +162,7 @@ function coverUv(box: Rect, aspect: number, im: HTMLImageElement): readonly [num
 
 /* ───────────────────────── Rendu WebGPU ───────────────────────── */
 
-type Tex = { tex: GPUTexture; bind: GPUBindGroup; w: number; h: number; full: boolean };
+type Tex = { tex: GPUTexture; bind: GPUBindGroup; w: number; h: number; used: number };
 
 class GpuView {
   private ctx: GPUCanvasContext;
@@ -174,10 +175,13 @@ class GpuView {
   private texs = new Map<string, Tex>();
   private loading = new Set<string>();
   private stride = 256;
+  private data = new Float32Array((256 / 4) * 16);
+  /** Vrai pendant un vol (ouverture, fermeture) : l'envoi d'une grande image au GPU attend la fin, pour ne pas voler une image au ressort. */
+  busy = false;
+  onReady: () => void = () => {};
   constructor(
-    private device: GPUDevice,
+    readonly device: GPUDevice,
     private canvas: HTMLCanvasElement,
-    private onReady: () => void,
   ) {
     this.ctx = canvas.getContext("webgpu")!;
     this.ctx.configure({ device, format: this.format, alphaMode: "premultiplied" });
@@ -212,27 +216,39 @@ class GpuView {
     const have = this.texs.get(item.src) ?? this.texs.get(item.thumb.currentSrc || item.thumb.src);
     if (!this.texs.has(item.src) && !this.loading.has(item.src)) {
       this.loading.add(item.src);
-      void this.load(item.src).then(() => this.onReady());
       const ts = item.thumb.currentSrc || item.thumb.src;
-      if (ts !== item.src && !this.texs.has(ts) && !this.loading.has(ts) && item.thumb.complete) {
+      const viaThumb = ts !== item.src && !this.texs.has(ts) && !this.loading.has(ts) && item.thumb.complete && item.thumb.naturalWidth > 0;
+      if (viaThumb) {
         this.loading.add(ts);
-        void this.load(ts, item.thumb).then(() => this.onReady());
+        void this.load(ts, item.thumb).then(() => (this.loading.delete(ts), this.onReady()));
       }
+      // Sans vignette prête à servir, la grande image est la seule : elle n'attend pas.
+      void this.load(item.src, undefined, viaThumb || this.texs.has(ts)).then(() => (this.loading.delete(item.src), this.onReady()));
     }
+    if (have) have.used = ++this.clock;
     return have ?? null;
   }
 
-  private async load(src: string, el?: HTMLImageElement) {
+  private clock = 0;
+  private async load(src: string, el?: HTMLImageElement, patient = false) {
     try {
       let bmp: ImageBitmap;
       if (el && el.complete && el.naturalWidth) bmp = await createImageBitmap(el);
       else {
-        const im = new Image();
-        im.crossOrigin = "anonymous";
-        im.src = src;
-        await im.decode();
-        bmp = await createImageBitmap(im);
+        try {
+          // fetch + createImageBitmap(blob) : le décodage se fait hors du fil principal.
+          const blob = await fetch(src, { mode: "cors" }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))));
+          bmp = await createImageBitmap(blob);
+        } catch {
+          const im = new Image();
+          im.crossOrigin = "anonymous";
+          im.src = src;
+          await im.decode();
+          bmp = await createImageBitmap(im);
+        }
       }
+      // L'envoi au GPU (copie + mipmaps) coûte une image : il attend la fin du vol.
+      if (patient) while (this.busy) await new Promise((r) => setTimeout(r, 60));
       const max = this.device.limits.maxTextureDimension2D;
       const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
       const w = Math.max(1, Math.round(bmp.width * k));
@@ -251,7 +267,7 @@ class GpuView {
           { binding: 2, resource: tex.createView() },
         ],
       });
-      this.texs.set(src, { tex, bind, w, h, full: !el });
+      this.texs.set(src, { tex, bind, w, h, used: ++this.clock });
     } catch (e) {
       console.warn("[presse:lightbox] image illisible", src, e);
     }
@@ -284,7 +300,7 @@ class GpuView {
       this.canvas.height = ch;
     }
     const list: { t: Tex; o: number }[] = [];
-    const data = new Float32Array((this.stride / 4) * Math.min(16, draws.length));
+    const data = this.data;
     draws.slice(0, 16).forEach((dr, n) => {
       const t = this.tex(items[dr.k]!);
       if (!t) return;
@@ -296,7 +312,7 @@ class GpuView {
       data.set([r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr, ...uv, dr.radius * dpr, dr.alpha, dr.kind, lod, 28 * dpr, cw, ch, 1], o);
       list.push({ t, o: n * this.stride });
     });
-    this.device.queue.writeBuffer(this.ubuf, 0, data);
+    this.device.queue.writeBuffer(this.ubuf, 0, data, 0, (this.stride / 4) * Math.min(16, draws.length));
     const enc = this.device.createCommandEncoder();
     const pass = enc.beginRenderPass({ colorAttachments: [{ view: this.ctx.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
     pass.setPipeline(this.pipe);
@@ -313,10 +329,15 @@ class GpuView {
     const t = this.texs.get(item.src) ?? this.texs.get(item.thumb.currentSrc || item.thumb.src);
     return t ? t.w / t.h : 0;
   }
-  destroy() {
-    for (const t of this.texs.values()) t.tex.destroy();
-    this.texs.clear();
-    this.ubuf.destroy();
+  /** Garde les textures les plus récentes (rouvrir la même image est immédiat), rend les autres. */
+  trim(max = 14) {
+    const old = [...this.texs.entries()].sort((a, b) => b[1].used - a[1].used).slice(max);
+    for (const [k, t] of old) (t.tex.destroy(), this.texs.delete(k));
+  }
+  clear() {
+    const enc = this.device.createCommandEncoder();
+    enc.beginRenderPass({ colorAttachments: [{ view: this.ctx.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] }).end();
+    this.device.queue.submit([enc.finish()]);
   }
 }
 
@@ -360,6 +381,11 @@ class DomView {
 /* ───────────────────────── La visionneuse ───────────────────────── */
 
 let overlay: ReturnType<typeof build> | null = null;
+/** La vue GPU est gardée d'une ouverture à l'autre (pipelines et textures) ; refaite si l'appareil a changé. */
+let view: GpuView | null = null;
+/** L'ouverture en cours : en ouvrir une autre la termine d'abord, net. */
+let active: { end: () => void } | null = null;
+let opening = 0;
 
 function build() {
   const st = document.createElement("style");
@@ -404,6 +430,8 @@ export async function openLightbox(group: HTMLElement, index: number) {
   const O = overlay;
   const items = itemsOf(group);
   if (!items.length) return;
+  active?.end();
+  const ticket = ++opening;
   const reduced = reducedQ();
   let i = clamp(index, 0, items.length - 1);
   let W = innerWidth;
@@ -415,7 +443,9 @@ export async function openLightbox(group: HTMLElement, index: number) {
   let dom: DomView | null = null;
   try {
     const device = await getDevice();
-    gpu = new GpuView(device, O.canvas, () => wake());
+    if (!view || view.device !== device) view = new GpuView(device, O.canvas);
+    gpu = view;
+    gpu.onReady = () => wake();
     O.canvas.hidden = false;
     O.dom.hidden = true;
   } catch {
@@ -423,6 +453,10 @@ export async function openLightbox(group: HTMLElement, index: number) {
     O.canvas.hidden = true;
     O.dom.hidden = false;
   }
+
+  // Deux clics rapprochés : seule la dernière ouverture demandée vit.
+  if (ticket !== opening) return;
+  active?.end();
 
   // État.
   let o = reduced ? 1 : 0; // ouverture 0 → 1
@@ -445,6 +479,11 @@ export async function openLightbox(group: HTMLElement, index: number) {
   let lastTap = { t: 0, x: 0, y: 0 };
   let raf = 0;
   let last = performance.now();
+  let bgFrom = -1; // le fond de l'image précédente, qui se fond dans le nouveau
+  let bgMix = 1;
+  let ended = false;
+  let dimAtClose = 1;
+  let switched = 0; // l'image suivie vient de changer : le linter ne doit pas y voir un saut
   const hidden = new Set<HTMLImageElement>();
 
   const aspectOf = (k: number) => {
@@ -463,7 +502,18 @@ export async function openLightbox(group: HTMLElement, index: number) {
     if (h > ah) ((h = ah), (w = h * a));
     return { x: (W - w) / 2, y: top + (ah - h) / 2, w, h };
   };
-  const thumbRadius = (k: number) => Number.parseFloat(getComputedStyle(items[k]!.thumb).borderTopLeftRadius) || 0;
+  // Le style d'une vignette ne change pas pendant que la visionneuse est ouverte : lu une fois, pas à chaque image.
+  const styleCache = new Map<number, { radius: number; cover: boolean }>();
+  const styleOf = (k: number) => {
+    let c = styleCache.get(k);
+    if (!c) {
+      const cs = getComputedStyle(items[k]!.thumb);
+      c = { radius: Number.parseFloat(cs.borderTopLeftRadius) || 0, cover: cs.objectFit === "cover" };
+      styleCache.set(k, c);
+    }
+    return c;
+  };
+  const thumbRadius = (k: number) => styleOf(k).radius;
   const visible = (r: Rect) => r.w > 2 && r.x < W && r.y < H && r.x + r.w > 0 && r.y + r.h > 0;
   /** Les limites du déplacement de l'image zoomée (centrée tant qu'elle tient dans l'écran). */
   const panLimit = (k: number, zz: number) => {
@@ -490,11 +540,15 @@ export async function openLightbox(group: HTMLElement, index: number) {
     O.next.disabled = i === items.length - 1;
     O.prev.hidden = O.next.hidden = items.length < 2;
     O.thumbs.querySelectorAll("button").forEach((b, k) => b.setAttribute("aria-current", String(k === i)));
-    O.thumbs.querySelector<HTMLElement>(`button:nth-child(${i + 1})`)?.scrollIntoView({ block: "nearest", inline: "center", behavior: reduced ? "auto" : "smooth" });
+    // La bande défile seule (scrollIntoView pourrait aussi faire défiler la page dessous).
+    const tb = O.thumbs.querySelector<HTMLElement>(`button:nth-child(${i + 1})`);
+    if (tb) O.thumbs.scrollTo({ left: tb.offsetLeft - (O.thumbs.clientWidth - tb.offsetWidth) / 2, behavior: reduced ? "auto" : "smooth" });
     // La vignette de l'image ouverte s'efface de la page (elle est dans la visionneuse) ; les autres reviennent.
     for (const im of hidden) if (im !== it.thumb) ((im.style.opacity = ""), hidden.delete(im));
     it.thumb.style.opacity = "0";
     hidden.add(it.thumb);
+    // Les voisines sont prêtes avant qu'on glisse vers elles.
+    for (const k of [i + 1, i - 1]) if (items[k]) gpu?.tex(items[k]!);
   };
   O.thumbs.replaceChildren(
     ...(items.length > 1
@@ -520,6 +574,9 @@ export async function openLightbox(group: HTMLElement, index: number) {
       return;
     }
     const dir = k > i ? 1 : -1;
+    bgFrom = i;
+    bgMix = reduced ? 1 : 0;
+    switched = 3;
     // Le glissé repart de là où il en est : la nouvelle image arrive depuis le côté.
     sx += dir * (fit(i).w / 2 + fit(k).w / 2 + GAP) * (Math.abs(k - i) === 1 ? 1 : 1);
     i = k;
@@ -550,30 +607,46 @@ export async function openLightbox(group: HTMLElement, index: number) {
     if (closing) return;
     closing = true;
     frozen = live();
+    dimAtClose = 1 - Math.min(1, Math.abs(dy) / (H * 0.45));
+    // La page redevient cliquable tout de suite : on peut ouvrir une autre image sans attendre la fin du retour.
+    O.root.style.pointerEvents = "none";
     sx = dy = 0;
     z = zT = 1;
     pan = panT = { x: 0, y: 0 };
     oT = 0;
     // Les commandes partent tout de suite ; l'image revient dans sa vignette.
+    // Un lâcher vers le bas garde son élan : la fermeture part à la vitesse du geste.
+    ov = clamp(-Math.abs(dyv) / Math.max(200, H), -3, 0);
     if (reduced) o = 0;
     wake();
   };
   const finish = () => {
+    if (ended) return;
+    ended = true;
+    if (active === me) active = null;
     cancelAnimationFrame(raf);
     raf = 0;
     O.root.hidden = true;
+    O.root.style.pointerEvents = "";
     for (const im of hidden) im.style.opacity = "";
     hidden.clear();
     dom?.clear();
-    gpu?.destroy();
+    if (gpu) {
+      gpu.busy = false;
+      gpu.onReady = () => {};
+      gpu.clear();
+      gpu.trim();
+    }
     removeEventListener("keydown", onKey, true);
     removeEventListener("resize", onResize);
     O.root.onpointerdown = O.root.onpointermove = O.root.onpointerup = O.root.onpointercancel = null;
     O.root.onwheel = O.root.ondblclick = null;
     O.close.onclick = O.prev.onclick = O.next.onclick = null;
-    document.documentElement.style.overflow = "";
     back?.focus?.({ preventScroll: true });
   };
+  const me = { end: finish };
+  active = me;
+  if (gpu && !reduced) gpu.busy = true;
 
   /* ── Une image ── */
   const frame = (now: number) => {
@@ -588,7 +661,9 @@ export async function openLightbox(group: HTMLElement, index: number) {
       else return [t, 0];
       return r;
     };
-    [o, ov] = step(o, ov, oT, OPEN);
+    // Ouvrir : un souffle d'élan. Fermer : amorti critique, l'image se pose sur sa vignette sans la dépasser ni s'y cogner.
+    [o, ov] = step(o, ov, oT, closing ? CLOSE : OPEN);
+    if (gpu) gpu.busy = closing || Math.abs(o - oT) > 0.02;
     if (!drag || drag.mode !== "x") [sx, sxv] = step(sx, sxv, 0, SNAP);
     if (!drag || drag.mode !== "y") [dy, dyv] = step(dy, dyv, 0, SNAP);
     if (!drag || (drag.mode !== "pinch" && drag.mode !== "pan")) {
@@ -613,9 +688,16 @@ export async function openLightbox(group: HTMLElement, index: number) {
     const fly = !closing || visible(thumb);
     const end = closing && frozen ? frozen : live();
     const r = fly ? lerpRect(thumb, end, o) : end;
-    const dimDrag = 1 - Math.min(1, Math.abs(dy) / (H * 0.45));
+    // À la fermeture, le fond repart de l'opacité qu'il avait sous le doigt (sinon il se rallume d'un coup avant de s'éteindre).
+    const dimDrag = closing ? dimAtClose : 1 - Math.min(1, Math.abs(dy) / (H * 0.45));
     const bdA = clamp(o, 0, 1) * dimDrag;
-    draws.push({ kind: 2, k: i, rect: fit(i), alpha: bdA, radius: 0 });
+    if (bgMix < 1) {
+      bgMix = Math.min(1, bgMix + dt / 0.45);
+      moving = true;
+    }
+    const mix = bgMix * bgMix * (3 - 2 * bgMix);
+    if (bgFrom >= 0 && mix < 1) draws.push({ kind: 2, k: bgFrom, rect: fit(bgFrom), alpha: bdA, radius: 0 });
+    draws.push({ kind: 2, k: i, rect: fit(i), alpha: bdA * (bgFrom >= 0 ? mix : 1), radius: 0 });
     // Les voisines, pendant un glissé.
     if (!closing && o > 0.98 && z < 1.02) {
       for (const k of [i - 1, i + 1]) {
@@ -633,17 +715,30 @@ export async function openLightbox(group: HTMLElement, index: number) {
     const rad = lerp(tr, 10, clamp(o, 0, 1));
     const a = fly ? 1 : clamp(o, 0, 1);
     // La vignette est souvent recadrée (object-fit: cover) : le vol part de ce recadrage et s'ouvre sur l'image entière.
-    const crop = fly ? coverUv(thumb, aspectOf(i), items[i]!.thumb) : ([0, 0, 1, 1] as const);
+    const crop = fly ? coverUv(thumb, aspectOf(i), styleOf(i).cover) : ([0, 0, 1, 1] as const);
     const e = clamp(o, 0, 1);
     const uv: [number, number, number, number] = [lerp(crop[0], 0, e), lerp(crop[1], 0, e), lerp(crop[2], 1, e), lerp(crop[3], 1, e)];
     draws.push({ kind: 1, k: i, rect: r, alpha: e * a, radius: rad });
     draws.push({ kind: 0, k: i, rect: r, alpha: a, radius: rad, uv });
+    if (lintOn()) {
+      // Le linter de mouvement (?presse-lint) regarde le vol : un saut, un arrêt net ou un tremblement s'y lisent.
+      const intent = !!drag || switched > 0;
+      if (switched) switched--;
+      lintSample("visionneuse", "x", r.x, now, intent);
+      lintSample("visionneuse", "y", r.y, now, intent);
+      lintSample("visionneuse", "width", r.w, now, intent);
+      lintSample("visionneuse-fond", "opacity", bdA, now, intent);
+    }
     O.root.classList.toggle("plb-zoomed", zT > 1.02);
     if (gpu) gpu.draw(draws, items, W, H, Math.min(devicePixelRatio || 1, 2));
     else dom?.draw(draws, items);
-    O.ui.style.opacity = String(clamp(o * 1.4 - 0.4, 0, 1) * (1 - Math.min(1, Math.abs(dy) / 160)) * (closing ? 0 : 1));
+    O.ui.style.opacity = String(clamp(o * 1.4 - 0.4, 0, 1) * (1 - Math.min(1, Math.abs(dy) / 160)) * (closing ? clamp(o * 3 - 2, 0, 1) : 1));
 
-    if (closing && o <= 0.002) return finish();
+    // Fini quand l'image est à moins d'un demi-pixel de sa vignette (et non à un seuil du ressort : le dernier saut ne se voit pas).
+    if (closing) {
+      const far = fly ? Math.max(Math.abs(r.x - thumb.x), Math.abs(r.y - thumb.y), Math.abs(r.x + r.w - thumb.x - thumb.w), Math.abs(r.y + r.h - thumb.y - thumb.h)) : o * 100;
+      if (far < 0.5 || o <= 0) return finish();
+    }
     if (moving || drag) wake();
   };
   function wake() {
@@ -731,8 +826,8 @@ export async function openLightbox(group: HTMLElement, index: number) {
       else if ((sx > w * 0.2 || d.vx > 500) && i > 0) goTo(i - 1);
       sxv = d.vx;
     } else if (d.mode === "y") {
+      dyv = d.vy;
       if (dy > 120 || d.vy > 800) close();
-      else dyv = d.vy;
     } else if (d.mode === "pan") {
       panV = { x: d.vx, y: d.vy };
       const lim = panLimit(i, zT);
@@ -751,7 +846,8 @@ export async function openLightbox(group: HTMLElement, index: number) {
     lastTap = { t: now, x, y };
     const r = live();
     const out = x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h;
-    if (out && zT <= 1.02) setTimeout(() => lastTap.t === now && close(), 330);
+    // Hors de l'image, un double-tap ne veut rien dire : on ferme sans attendre.
+    if (out && zT <= 1.02) close();
   };
   R.onpointerup = release;
   R.onpointercancel = release;
@@ -760,6 +856,7 @@ export async function openLightbox(group: HTMLElement, index: number) {
   let wheelMode: "" | "x" | "y" = "";
   R.onwheel = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (closing) return;
     if (e.ctrlKey) return zoomAt(zT * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
     if (zT > 1.02) {
@@ -793,8 +890,12 @@ export async function openLightbox(group: HTMLElement, index: number) {
 
   /* ── Clavier ── */
   function onKey(e: KeyboardEvent) {
-    if (closing) return;
     const k = e.key;
+    const scrolls = k === " " || k === "PageDown" || k === "PageUp" || k.startsWith("Arrow") || k === "Home" || k === "End";
+    if (closing) {
+      if (scrolls || k === "Escape") (e.preventDefault(), e.stopPropagation());
+      return;
+    }
     let used = true;
     if (k === "Escape") close();
     else if (k === "ArrowRight" && zT <= 1.02) goTo(i + 1);
@@ -817,7 +918,7 @@ export async function openLightbox(group: HTMLElement, index: number) {
       const f = [...O.root.querySelectorAll<HTMLElement>("button:not([disabled]):not([hidden])")].filter((b) => b.offsetParent);
       const at = f.indexOf(document.activeElement as HTMLElement);
       f[(at + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus();
-    } else used = false;
+    } else used = scrolls;
     if (used) {
       e.preventDefault();
       e.stopPropagation();
@@ -833,7 +934,6 @@ export async function openLightbox(group: HTMLElement, index: number) {
 
   O.root.hidden = false;
   O.ui.style.opacity = "0";
-  document.documentElement.style.overflow = "hidden";
   setUi();
   O.close.focus({ preventScroll: true });
   wake();

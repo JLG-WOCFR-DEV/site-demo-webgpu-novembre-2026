@@ -246,6 +246,8 @@ export function mount(root: HTMLElement) {
   let lastSwitch = -1e9;
   /** Ouverture. */
   const sel = { idx: null as number | null, last: null as number | null, a: 0, av: 0, target: 0 };
+  /** Le linter suit encore l'image quelques images après la fin du retour : le dernier saut, s'il y en a un, est là. */
+  let lintTail: { idx: number; n: number } | null = null;
   let presentIdx: number[] = [];
   const bg = items[0]!.palette.map((c) => [...c]);
   let focusK = 0;
@@ -866,10 +868,13 @@ export function mount(root: HTMLElement) {
     else {
       [sel.a, sel.av] = springStep(sel.a, sel.av, sel.target, dt, SPRINGS.ouverture);
     }
+    // L'ouverture, en px (600 px de course) : le linter y lit un saut ou un arrêt net au retour.
+    if (lintOn()) lintSample(root, "width", sel.a * 600, now, calm);
     if (sel.target === 0 && Math.abs(sel.a) < 0.002 && Math.abs(sel.av) < 0.01) {
       sel.a = 0;
       sel.av = 0;
       if (sel.last !== null) {
+        lintTail = { idx: sel.last, n: 4 };
         sel.last = null;
         if (detail) detail.hidden = true;
         if (strip) strip.hidden = true;
@@ -978,7 +983,15 @@ export function mount(root: HTMLElement) {
       d.t = [q[0] + zpx, q[1] + zpy, q[2] + PIVOT + dolly];
       d.hl = focusVisible && d.idx === focusIdx() && !d.key.includes("@") ? 1 : 0;
       d.chroma = d.key.includes("@") || d.idx !== sel.last ? chroma : 0;
+      // La pose réellement dessinée de l'image ouverte (aller et retour) : c'est elle que le linter doit voir.
+      if (lintOn() && d.idx === (sel.last ?? lintTail?.idx) && !d.key.includes("@")) {
+        lintSample("galerie-ouverte", "x", d.t[0], now, calm);
+        lintSample("galerie-ouverte", "y", d.t[1], now, calm);
+        lintSample("galerie-ouverte", "width", d.p.w, now, calm);
+        lintSample("galerie-ouverte", "opacity", d.p.o, now, calm);
+      }
     }
+    if (lintTail && sel.last === null && --lintTail.n <= 0) lintTail = null;
     drawn = out.filter((d) => d.p.o > 0.003 && d.p.w > 1 && d.t[2] < cfg.perspective * 0.85).sort((x, y) => x.t[2] - y.t[2]);
 
     // Le panneau révélé suit l'image ouverte.

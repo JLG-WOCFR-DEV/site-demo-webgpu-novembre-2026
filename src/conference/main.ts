@@ -7,12 +7,19 @@ import { presseFromHtml } from "../presse/index.ts";
 import { mountDiapo } from "../presse/diapo.ts";
 import { applySavedEdits, mountEditor } from "../presse/diapo-editeur.ts";
 import { initAnim } from "../presse/timeline.ts";
+import { applySavedDoc, tagIds } from "../presse/diapo-doc.ts";
 
 const root = document.querySelector<HTMLElement>("[data-diapo]");
 // La vue présentateur (?presentateur) n'imprime rien : pas de moteur, pas de second contexte GPU.
 const presenter = new URLSearchParams(location.search).has("presentateur");
 // Les corrections gardées par l'éditeur (E) d'abord : le diaporama découpe ensuite les textes tels quels.
-if (root) applySavedEdits(root);
+// D'abord le document gardé par le Créateur de diaporama (diapo-createur.html), s'il y en a un ; dans son aperçu
+// (?createur), chaque élément reçoit l'identifiant par lequel le Créateur le retrouve.
+if (root) {
+  applySavedDoc(root);
+  if (new URLSearchParams(location.search).has("createur")) tagIds(root);
+  applySavedEdits(root);
+}
 if (root && presenter) mountDiapo(root, Promise.resolve(null));
 else if (root) {
   mountEditor(root);

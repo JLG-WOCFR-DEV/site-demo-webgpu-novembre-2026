@@ -1,0 +1,83 @@
+/* Créateur de diaporama : barre, liste des diapos, aperçu, inspecteur. Même encre que l'éditeur (E) du diaporama. */
+.dc {
+  --bg: #16110d;
+  --panel: #1b1612;
+  --line: rgba(239, 230, 210, 0.16);
+  --ink: #efe6d2;
+  --dim: rgba(239, 230, 210, 0.62);
+  --blue: #2a63f2;
+  margin: 0;
+  height: 100vh;
+  display: grid;
+  grid-template: 52px minmax(0, 1fr) / 264px minmax(0, 1fr) 348px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 13px/1.4 "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  overflow: hidden;
+}
+.dc * { box-sizing: border-box; }
+.dc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.dc-bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); min-width: 0; }
+.dc-logo { color: var(--ink); text-decoration: none; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.dc-logo span { color: var(--dim); font-weight: 400; }
+.dc-saved { color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.dc-end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.dc button, .dc select, .dc input, .dc textarea { font: inherit; color: inherit; background: rgba(239, 230, 210, 0.07); border: 1px solid rgba(239, 230, 210, 0.24); border-radius: 5px; padding: 6px 9px; min-height: 30px; }
+.dc select option, .dc select optgroup { background: #221b15; color: var(--ink); }
+.dc button { cursor: pointer; white-space: nowrap; }
+.dc button:hover:not(:disabled) { background: rgba(239, 230, 210, 0.15); }
+.dc button:disabled { opacity: 0.35; cursor: default; }
+.dc :focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.dc-btn--fill { background: var(--ink) !important; color: #16110d !important; border-color: var(--ink) !important; font-weight: 600; }
+.dc-icon { width: 32px; padding: 0 !important; font-size: 16px !important; }
+.dc-seg { display: flex; }
+.dc-seg button { border-radius: 0; margin-left: -1px; }
+.dc-seg button:first-child { border-radius: 5px 0 0 5px; margin-left: 0; }
+.dc-seg button:last-child { border-radius: 0 5px 5px 0; }
+.dc-seg button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); }
+
+.dc-left { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
+.dc-slides { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 8px; list-style: none; display: grid; gap: 4px; align-content: start; }
+.dc-slide { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 6px; padding: 7px 8px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.dc-slide:hover { background: rgba(239, 230, 210, 0.06); }
+.dc-slide[aria-current="true"] { background: rgba(42, 99, 242, 0.22); border-color: var(--blue); }
+.dc-slide.is-over { box-shadow: 0 -2px 0 var(--blue); }
+.dc-slide b { grid-row: span 2; color: var(--dim); font-weight: 500; text-align: right; }
+.dc-slide span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-slide small { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-slide-tools { grid-column: 1 / -1; display: none; gap: 4px; margin-top: 4px; }
+.dc-slide[aria-current="true"] .dc-slide-tools { display: flex; }
+.dc-slide-tools button { flex: 1; min-height: 26px; padding: 2px 4px; font-size: 12px; }
+.dc-add { padding: 10px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
+.dc-add label { display: grid; gap: 4px; color: var(--dim); font-size: 12px; }
+
+.dc-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; padding: 16px; gap: 8px; min-width: 0; min-height: 0; }
+.dc-frame { display: grid; place-items: center; min-height: 0; container-type: size; }
+.dc-frame iframe { width: min(100cqw, 177.78cqh); height: min(100cqh, 56.25cqw); border: 0; border-radius: 4px; background: #efebe1; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
+.dc-hint { margin: 0; color: var(--dim); font-size: 12px; text-align: center; min-height: 1.4em; }
+
+.dc-right { overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 4px 14px 30px; }
+.dc-sec { padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.dc-sec:empty { display: none; }
+.dc-sec h2 { margin: 0; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.dc-field { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: center; }
+.dc-field.is-col { grid-template-columns: 1fr; gap: 4px; }
+.dc-field > span { color: var(--dim); }
+.dc-field output { color: var(--dim); font-size: 12px; }
+.dc-field .dc-range { display: grid; grid-template-columns: minmax(0, 1fr) 54px; gap: 8px; align-items: center; }
+.dc input[type="range"] { padding: 0; border: 0; background: none; accent-color: var(--blue); }
+.dc textarea { width: 100%; resize: vertical; min-height: 74px; line-height: 1.45; }
+.dc-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.dc-row button { flex: 1; }
+.dc-els { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.dc-els button { display: grid; grid-template-columns: 86px minmax(0, 1fr) auto; gap: 8px; width: 100%; text-align: left; border-color: transparent; background: none; min-height: 28px; padding: 4px 6px; }
+.dc-els button small { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+.dc-els button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-els button i { font-style: normal; color: #ffd27a; font-size: 11px; }
+.dc-els button[aria-current="true"] { background: rgba(42, 99, 242, 0.25); border-color: var(--blue); }
+.dc-note { margin: 0; color: var(--dim); font-size: 12px; }
+@media (max-width: 1100px) {
+  .dc { grid-template-columns: 200px minmax(0, 1fr) 300px; }
+  .dc-saved, .dc-logo span { display: none; }
+}
+.dc-add select, .dc-field select, .dc-field input[type="text"] { width: 100%; min-width: 0; }
