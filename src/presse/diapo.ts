@@ -197,7 +197,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   help.className = "diapo-aide";
   help.hidden = true;
   help.innerHTML = `<h2>Clavier</h2><dl>
-    <dt>→ Espace Page suiv. Entrée</dt><dd>avancer (étape, puis diapo)</dd>
+    <dt>→ Espace Page suiv. Entrée</dt><dd>avancer (étape, puis diapo) ; molette aussi</dd>
     <dt>← Page préc. Retour arrière</dt><dd>reculer</dd>
     <dt>Début / Fin</dt><dd>première / dernière diapo</dd>
     <dt>Un numéro puis Entrée</dt><dd>aller à la diapo</dd>
@@ -470,6 +470,34 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     if (used && !relayed) e.preventDefault();
   }
   addEventListener("keydown", (e) => onKey(e));
+  // Molette : vers le bas, on avance (étape, puis diapo) ; vers le haut, on recule. Un cran de souris (≥ 50 px) = un
+  // pas ; un geste de pavé tactile (une rafale d'événements) = un pas aussi, quelle que soit sa longueur. Le geste
+  // suivant commence après 180 ms de silence. Rien dans le panneau d'édition ni dans l'aide.
+  let wheelAcc = 0;
+  let wheelUsed = false;
+  let wheelLast = 0;
+  addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey || (e.target as Element | null)?.closest?.(".de-panel, .diapo-aide")) return;
+      e.preventDefault();
+      if (!black.hidden) return;
+      const now = performance.now();
+      if (now - wheelLast > 180) {
+        wheelAcc = 0;
+        wheelUsed = false;
+      }
+      wheelLast = now;
+      if (wheelUsed) return;
+      const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY;
+      wheelAcc += dy;
+      if (Math.abs(wheelAcc) < 30) return;
+      wheelUsed = true;
+      if (wheelAcc > 0) next();
+      else prev();
+    },
+    { passive: false },
+  );
   let idle = 0;
   const wakePointer = () => {
     html.classList.remove("diapo-idle");
