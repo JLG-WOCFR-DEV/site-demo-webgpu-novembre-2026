@@ -205,9 +205,9 @@
         <aside data-notes>Partie de Jérôme. Garder quatre ou cinq mots techniques, les autres en passant.</aside>
       </section>
 
-      <section data-diapo-slide data-gl-print="page" data-transition="composition" class="cf-list-slide" aria-label="Une image, une suite de passes">
+      <section data-diapo-slide data-gl-print="page" data-transition="composition" class="cf-list-slide" aria-label="Une image, sept étapes">
         <p class="cf-kicker" data-gl-text>Le pipeline de rendu</p>
-        <h2 class="cf-h2" data-gl-text>Une image, une suite de passes</h2>
+        <h2 class="cf-h2" data-gl-text>Une image, sept étapes</h2>
         <ol class="cf-passes">
           <li data-gl-text data-step="glisse"><b>01</b> Le processeur prépare&#8239;: soleil, bougies, objets qui bougent.</li>
           <li data-gl-text data-step="glisse"><b>02</b> Les ombres&#8239;: du soleil, puis des bougies, dans six directions.</li>
@@ -218,7 +218,7 @@
           <li data-gl-text data-step="glisse"><b>07</b> La finition&#8239;: halo, vignette, couleurs pour l'écran.</li>
         </ol>
         <aside data-notes>
-          Chaque passe dessine dans une image intermédiaire, que la suivante relit. Mots techniques en passant : shadow maps,
+          Chaque étape (render pass, en anglais) dessine dans une image intermédiaire, que la suivante relit. Éviter le mot « passe » à l'oral. Mots techniques en passant : shadow maps,
           scene pass, SSGI, TRAA, sun beams, tone mapping. Le tout s'écrit en TSL : le même graphe donne du WGSL pour WebGPU et
           du GLSL pour WebGL.
         </aside>
@@ -293,7 +293,7 @@
         <p class="cf-kicker" data-gl-text>Et l'IA&#8239;?</p>
         <h2 class="cf-h2" data-gl-text>Un développement assisté, encadré par la mesure</h2>
         <ol class="cf-list">
-          <li data-gl-text data-step="monte"><b>Elle écrit</b> Shaders, passes, outils&#8239;: ce qu'on sait décrire, elle le code.</li>
+          <li data-gl-text data-step="monte"><b>Elle écrit</b> Shaders, étapes de rendu, outils&#8239;: ce qu'on sait décrire, elle le code.</li>
           <li data-gl-text data-step="monte"><b>Elle ne voit pas</b> Il faut lui montrer l'écran, capture à l'appui.</li>
           <li data-gl-text data-step="monte"><b>On mesure</b> Profiler intégré, comparaisons A/B dans la même page, les pires images plutôt que la moyenne.</li>
           <li data-gl-text data-step="monte"><b>On garde les preuves</b> Chaque optimisation se coupe et se compare&#8239;; captures et mesures sont archivées.</li>
