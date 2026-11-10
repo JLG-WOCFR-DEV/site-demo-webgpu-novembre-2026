@@ -252,6 +252,13 @@ body[data-preset="film"] .x-galerie {
   aspect-ratio: 2.39;
   background: #000;
   box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55);
+  transition: background-color 0.3s ease, box-shadow 0.4s ease;
+}
+/* À la fermeture, la boîte reste en place le temps du retour de l'image : sans fond, sinon l'image rentre dans le
+   rang sous un rectangle noir qui disparaît d'un coup à la fin. */
+.x-galerie[data-preset="film"]:not(.gx-open) .gx-detail-frame {
+  background-color: transparent;
+  box-shadow: 0 0 0 100vmax transparent;
 }
 .x-galerie[data-preset="film"] .gx-detail-media img {
   object-fit: cover;

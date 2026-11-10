@@ -918,9 +918,13 @@ export function mount(root: HTMLElement) {
       if (sel.last !== null) {
         const sp = selectionPose(inst, p, openInst?.pose ?? null, c, Math.max(0, stripOrder.indexOf(idx)), stripOrder.length);
         if (sp) {
-          // Un léger décalage d'arrivée selon la distance : les vignettes partent en vague.
+          // Un léger décalage d'arrivée selon la distance : les vignettes partent en vague. Une courbe (puissance) et
+          // non un retard : à l'aller comme au retour, elle vaut 0 quand sel.a vaut 0. Avec un retard soustrait, les
+          // voisines finissaient le retour au-delà de leur place (jusqu'à −0,2) et y sautaient quand l'ouverture
+          // s'éteignait : le tressaut de fin.
           const delay = idx === sel.last ? 0 : Math.min(0.25, Math.abs(inst.rel) * 0.03);
-          const ai = clamp((sel.a - delay) / (1 - delay), -0.2, 1.15);
+          const aa = clamp(sel.a, -0.2, 1.15);
+          const ai = aa > 0 ? aa ** (1 + 4 * delay) : aa;
           p = mix(p, sp, ai);
         }
       }
