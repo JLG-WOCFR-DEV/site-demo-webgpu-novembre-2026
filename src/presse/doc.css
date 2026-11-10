@@ -488,3 +488,26 @@ body.pd {
 .pd-blur-r output {
   min-width: 5em;
 }
+
+/* La visionneuse ([data-lightbox]) : une planche de vignettes. */
+.pd-lb {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+.pd-lb figure {
+  margin: 0;
+}
+.pd-lb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.pd-lb figcaption {
+  display: none;
+}
