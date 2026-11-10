@@ -18,13 +18,16 @@
   <body class="cf">
     <main data-diapo data-transition="impression" aria-label="Diaporama : Modéliser la bibliothèque du château de Kerguéhennec">
       <!-- ───────────── Ouverture ───────────── -->
-      <section data-diapo-slide data-gl-print="page" data-transition="impression" class="cf-cover" aria-label="Modéliser la bibliothèque du château de Kerguéhennec">
-        <div class="cf-cover-text">
+      <section data-diapo-slide data-gl-print="page" data-transition="impression" class="cf-ubs" aria-label="Modéliser la bibliothèque du château de Kerguéhennec">
+        <figure class="cf-ubs-photo"><img data-gl-img data-gl-flat src="./conference/piece-16h.jpg" width="1920" height="960" alt="La bibliothèque modélisée, vue de départ à 16 h : boiseries sculptées, bureau, suspension à opaline et deux fenêtres au sud." /></figure>
+        <!-- Le bandeau de signature de la charte UBS : son coin haut gauche arrondi mord sur la photo. -->
+        <svg class="cf-ubs-notch" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path d="M60 0 L1000 0 L1000 100 L0 100 L0 60 A60 60 0 0 1 60 0 Z" /></svg>
+        <img class="cf-ubs-logo" src="./conference/llshs-logo.svg" alt="Université Bretagne Sud, Faculté lettres, langues, sciences humaines et sociales" />
+        <div class="cf-ubs-text">
           <p class="cf-kicker" data-gl-text>La Bretagne et le numérique #3 · La 3D, pour quoi faire&#8239;? · Lorient, 13 novembre 2026</p>
           <h1 class="cf-h1" data-gl-text>Modéliser la bibliothèque du château de Kerguéhennec</h1>
-          <p class="cf-by" data-gl-text data-step="fondu">Jérôme Le Gousse, Axelle Charlet, Amélie Corlay, Bénédicte Osmont<br />Master Métiers du livre et de l'édition · Université Bretagne Sud</p>
+          <p class="cf-by" data-gl-text data-step="fondu">Jérôme Le Gousse, Axelle Charlet, Amélie Corlay, Bénédicte Osmont<br />Master Métiers du livre et de l'édition</p>
         </div>
-        <figure class="cf-cover-img"><img data-gl-img src="./conference/piece-16h.jpg" width="1920" height="960" alt="La bibliothèque modélisée, vue de départ à 16 h : boiseries sculptées, bureau, suspension à opaline et deux fenêtres au sud." /></figure>
         <aside data-notes>
           Session « La 3D vue des projets culturels », troisième intervention, après l'ArchéoMusée Coriosolis et Néotopia.
           Public : professionnels de la culture et du patrimoine, collectivités, étudiants des masters.
@@ -205,6 +208,33 @@
         <aside data-notes>Partie de Jérôme. Garder quatre ou cinq mots techniques, les autres en passant.</aside>
       </section>
 
+      <section data-diapo-slide data-gl-print="page" data-transition="portes" class="cf-versus" aria-label="WebGL et WebGPU">
+        <p class="cf-kicker" data-gl-text>Deux façons de parler à la carte graphique</p>
+        <div class="cf-vs-col">
+          <h2 class="cf-h2" data-gl-text>WebGL</h2>
+          <ul class="cf-points">
+            <li data-gl-text data-step="monte">Depuis 2011, d'après OpenGL&#8239;: partout, même sur les vieux appareils.</li>
+            <li data-gl-text data-step="monte">Le navigateur revérifie chaque consigne, à chaque image&#8239;: le processeur s'essouffle avant la carte.</li>
+            <li data-gl-text data-step="monte">Il dessine, il ne calcule pas&#8239;: pas de calcul général sur la carte.</li>
+          </ul>
+        </div>
+        <div class="cf-vs-col">
+          <h2 class="cf-h2" data-gl-text>WebGPU</h2>
+          <ul class="cf-points">
+            <li data-gl-text data-step="monte">Conçu d'après Vulkan, Metal et Direct3D&#8239;12, les langages des jeux actuels.</li>
+            <li data-gl-text data-step="monte">Les recettes de rendu sont préparées à l'avance&#8239;: moins de travail à chaque image, mais une préparation à soigner.</li>
+            <li data-gl-text data-step="monte">La carte calcule aussi&#8239;: lumière, particules, simulation. Et elle se mesure, étape par étape.</li>
+          </ul>
+        </div>
+        <p class="cf-caption cf-vs-foot" data-gl-text data-step="fondu"><b>Dans l'application&#8239;:</b> WebGPU d'abord, WebGL&#8239;2 en secours, le même code pour les deux. WebGPU est dans Chrome et Edge, Safari depuis la version&#8239;26, Firefox sous Windows.</p>
+        <aside data-notes>
+          La « recette » préparée à l'avance, c'est le pipeline : d'où la partie sur le préchauffage, juste après.
+          Le même code : les matériaux sont écrits en TSL, Three.js en tire du WGSL pour WebGPU et du GLSL pour WebGL.
+          En WebGL, le profiler ne donne que le temps global de l'image ; en WebGPU, le coût de chaque étape.
+          Vérifier la ligne navigateurs le jour J si la question vient.
+        </aside>
+      </section>
+
       <section data-diapo-slide data-gl-print="page" data-transition="composition" class="cf-list-slide" aria-label="Une image, sept étapes">
         <p class="cf-kicker" data-gl-text>Le pipeline de rendu</p>
         <h2 class="cf-h2" data-gl-text>Une image, sept étapes</h2>
@@ -246,7 +276,7 @@
 
       <section data-diapo-slide data-gl-print="page" data-transition="points" class="cf-figures" aria-label="Le préchauffage des shaders">
         <p class="cf-kicker" data-gl-text>Shaders · le préchauffage</p>
-        <h2 class="cf-h2" data-gl-text>Un visiteur bloqué, c'est pire qu'une saccade</h2>
+        <h2 class="cf-h2" data-gl-text>Une attente trop longue peut entraîner un abandon</h2>
         <p class="cf-legend" data-gl-text>Temps de préparation&#8239;: en gris, pipelines compilés un par un&#8239;; <b>en rouge, tous en parallèle</b>.</p>
         <div class="cf-hbars" data-step="fondu" aria-label="Durée de préparation avant et après le préchauffage parallèle, en secondes">
           <div><span data-gl-text>WebGPU Économique</span><i data-barre="0.233"></i><i data-barre="0.109" class="after"></i><em data-gl-text>18,7 → 8,7&#8239;s</em></div>
@@ -310,7 +340,7 @@
         <ol class="cf-steps">
           <li data-gl-text data-step="monte"><b>01</b> Comprendre l'outil pour savoir corriger l'IA.</li>
           <li data-gl-text data-step="monte"><b>02</b> Le son et le jeu font comprendre la pièce sans l'expliquer.</li>
-          <li data-gl-text data-step="monte"><b>03</b> Un visiteur bloqué, c'est pire qu'une saccade.</li>
+          <li data-gl-text data-step="monte"><b>03</b> Une attente trop longue peut entraîner un abandon.</li>
           <li data-gl-text data-step="monte"><b>04</b> Mesurer avant d'annoncer un gain.</li>
         </ol>
         <aside data-notes>Suite : essais sur vraie tablette et vrais PC anciens ; réouverture du domaine au printemps 2027.</aside>

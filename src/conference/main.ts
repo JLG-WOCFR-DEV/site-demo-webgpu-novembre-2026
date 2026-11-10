@@ -5,13 +5,17 @@
 import "./style.css";
 import { presseFromHtml } from "../presse/index.ts";
 import { mountDiapo } from "../presse/diapo.ts";
+import { applySavedEdits, mountEditor } from "../presse/diapo-editeur.ts";
 import { initAnim } from "../presse/timeline.ts";
 
 const root = document.querySelector<HTMLElement>("[data-diapo]");
 // La vue présentateur (?presentateur) n'imprime rien : pas de moteur, pas de second contexte GPU.
 const presenter = new URLSearchParams(location.search).has("presentateur");
+// Les corrections gardées par l'éditeur (E) d'abord : le diaporama découpe ensuite les textes tels quels.
+if (root) applySavedEdits(root);
 if (root && presenter) mountDiapo(root, Promise.resolve(null));
 else if (root) {
+  mountEditor(root);
   let resolve!: (a: { replay: () => void; relayout: () => void } | null) => void;
   // Les diapos d'abord (data-gl-print="page", la première affichée), le moteur ensuite : il les trouve prêtes.
   mountDiapo(root, new Promise((r) => (resolve = r)));

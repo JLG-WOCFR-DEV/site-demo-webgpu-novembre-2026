@@ -922,7 +922,8 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
       }
       const q = settings.quad;
       const radius = p.quad ? q.radius : p.radius;
-      const shadow = p.quad ? q.shadow : 0.32;
+      // data-gl-flat : une image posée à plat, sans ombre portée (une photo à fond perdu, un bandeau).
+      const shadow = p.img.hasAttribute("data-gl-flat") ? 0 : p.quad ? q.shadow : 0.32;
       const lift = p.quad ? q.lift : 0.15;
       const uv = coverUV(r.width, r.height, p.width, p.height);
       // D4 : la révélation part quand l'image entre aux 85 % de l'écran, une seule fois.

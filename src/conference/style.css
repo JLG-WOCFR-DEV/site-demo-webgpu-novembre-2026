@@ -43,7 +43,7 @@ body.cf {
   color: color-mix(in srgb, var(--ink) 55%, var(--paper));
 }
 .cf [data-diapo-slide]::before {
-  content: "Kerguéhennec · la bibliothèque";
+  content: var(--titre-courant, "Kerguéhennec · la bibliothèque");
   position: absolute;
   left: calc(var(--u) * 7);
   bottom: calc(var(--u) * 2.4);
@@ -56,7 +56,7 @@ body.cf {
   content: none;
 }
 .cf-demos [data-diapo-slide]::before {
-  content: "Presse · diaporama";
+  content: var(--titre-courant, "Presse · diaporama");
 }
 
 /* ───── Typographie ───── */
@@ -120,7 +120,7 @@ body.cf {
 
 /* ───── Deux colonnes (le domaine) ───── */
 .cf .cf-split {
-  grid-template-columns: 1fr 1.15fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   align-items: center;
   column-gap: calc(var(--u) * 6);
 }
@@ -146,7 +146,7 @@ body.cf {
 
 /* ───── Texte + média ───── */
 .cf .cf-media {
-  grid-template-columns: 1fr 1.25fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   align-items: center;
   column-gap: calc(var(--u) * 5);
 }
@@ -225,7 +225,7 @@ body.cf {
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: calc(var(--u) * 2.6) calc(var(--u) * 5);
 }
 .cf-list li {
@@ -295,7 +295,7 @@ body.cf {
 
 /* ───── Comparaison ───── */
 .cf .cf-compare {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: auto auto 1fr;
   column-gap: calc(var(--u) * 3);
   align-content: center;
@@ -350,12 +350,12 @@ body.cf {
 
 /* ───────────────────────── Démonstrations (diapo-demos.html) ───────────────────────── */
 .cf .cf-demo {
-  grid-template-columns: 1fr 1.25fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   align-items: center;
   column-gap: calc(var(--u) * 5);
 }
 .cf .cf-demo-rev {
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
 }
 .cf .cf-demo-rev .cf-demo-text {
   order: 2;
@@ -465,7 +465,7 @@ body.cf {
 
 /* ───────────────────────── Conférence : couverture, pleine image, intercalaires ───────────────────────── */
 .cf .cf-cover {
-  grid-template-columns: 1fr 1.1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
   align-items: center;
   column-gap: calc(var(--u) * 4);
 }
@@ -538,7 +538,7 @@ body.cf {
   font-size: calc(var(--u) * 8.5);
 }
 .cf .cf-media-rev {
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
 }
 .cf .cf-media-rev .cf-media-text {
   order: 2;
@@ -578,7 +578,7 @@ body.cf {
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: calc(var(--u) * 1.1) calc(var(--u) * 4);
 }
 .cf-passes li {
@@ -675,4 +675,104 @@ body.cf {
 }
 .cf-drone {
   justify-self: stretch;
+}
+
+/* Texte courant : le style de paragraphe par défaut d'un texte de diapo. */
+.cf-text {
+  margin: 0;
+  max-width: 52ch;
+  font: 400 calc(var(--u) * 1.75) / 1.4 var(--sans);
+}
+
+/* WebGL et WebGPU, côte à côte. */
+.cf .cf-versus {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: calc(var(--u) * 5);
+  row-gap: calc(var(--u) * 2);
+  align-content: center;
+}
+.cf-versus .cf-kicker,
+.cf-vs-foot {
+  grid-column: 1 / -1;
+}
+.cf-vs-col {
+  display: grid;
+  gap: calc(var(--u) * 1.2);
+  align-content: start;
+  padding-top: calc(var(--u) * 1.2);
+  border-top: 2px solid var(--ink);
+}
+.cf-vs-col + .cf-vs-col {
+  border-top-color: var(--accent);
+}
+.cf .cf-vs-foot {
+  max-width: none;
+}
+
+/* ───── Couverture à la charte UBS (principe d'annonce presse) : photo en haut, bandeau de signature au coin
+   arrondi, logo de la faculté LLSHS, couleur de la composante. ───── */
+.cf .cf-ubs {
+  --ubs: #008899;
+  padding: 0;
+  grid-template-columns: calc(var(--u) * 24) minmax(0, 1fr);
+  grid-template-rows: 57% minmax(0, 1fr);
+  column-gap: calc(var(--u) * 3);
+  align-content: stretch;
+}
+.cf-ubs::before {
+  content: none !important;
+}
+.cf-ubs-photo {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin: 0;
+  min-height: 0;
+}
+.cf-ubs-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 62%;
+}
+.cf-ubs-notch {
+  position: absolute;
+  left: 0;
+  top: calc(57% - var(--u) * 4 + 1px);
+  width: 100%;
+  height: calc(var(--u) * 4);
+  fill: var(--paper);
+  pointer-events: none;
+}
+.cf-ubs-logo {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  width: calc(var(--u) * 17);
+  height: auto;
+  margin-left: calc(var(--u) * 4);
+  position: relative;
+}
+.cf-ubs-text {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  display: grid;
+  gap: calc(var(--u) * 1.1);
+  padding-right: calc(var(--u) * 5);
+  padding-top: calc(var(--u) * 2);
+}
+.cf-ubs .cf-kicker {
+  color: var(--ubs);
+  font-size: calc(var(--u) * 1);
+}
+.cf-ubs .cf-h1 {
+  max-width: none;
+  font-size: calc(var(--u) * 3.6);
+  line-height: 1.02;
+}
+.cf-ubs .cf-by {
+  margin: 0;
+  font-size: calc(var(--u) * 1.05);
 }

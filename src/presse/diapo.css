@@ -242,3 +242,137 @@ html.diapo-laser-on,
 html.diapo-laser-on * {
   cursor: none !important;
 }
+
+/* ───── Éditeur (E) ───── */
+html.diapo-edit .de-sel {
+  outline: 2px solid #2a63f2;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+html.diapo-edit [data-diapo-slide] :is([data-gl-text], p, h1, h2, h3):hover {
+  outline: 1px dashed rgba(42, 99, 242, 0.7);
+  outline-offset: 4px;
+  cursor: text;
+}
+html.diapo-edit [contenteditable="true"] {
+  caret-color: #2a63f2;
+  outline: 2px solid #2a63f2 !important;
+}
+html.diapo-edit,
+html.diapo-edit * {
+  cursor: auto;
+}
+html.diapo-edit [data-diapo-slide] {
+  /* Place pour le panneau : la diapo se décale à gauche. */
+  left: calc(50% - 170px);
+  width: min(calc(100vw - 360px), 177.7778vh);
+  height: min(100vh, calc((100vw - 360px) * 0.5625));
+}
+html.diapo-edit {
+  --u: calc(min(100vw - 360px, 177.7778vh) / 100);
+}
+.de-panel {
+  position: fixed !important;
+  z-index: 80 !important;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 16px 18px;
+  background: #1b1612;
+  color: #efe6d2;
+  font: 400 13px/1.4 "IBM Plex Mono", ui-monospace, monospace;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  cursor: auto;
+}
+.de-panel header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.de-panel header b {
+  font-size: 15px;
+}
+.de-where {
+  opacity: 0.6;
+  margin-right: auto;
+}
+.de-panel h3 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.de-hint {
+  margin: 0;
+  opacity: 0.7;
+}
+.de-panel button,
+.de-panel select,
+.de-panel input[type="text"] {
+  font: inherit;
+  color: inherit;
+  background: rgba(239, 230, 210, 0.08);
+  border: 1px solid rgba(239, 230, 210, 0.25);
+  border-radius: 4px;
+  padding: 6px 9px;
+  min-height: 30px;
+}
+.de-panel button:hover:not(:disabled) {
+  background: rgba(239, 230, 210, 0.16);
+}
+.de-panel button:disabled {
+  opacity: 0.35;
+}
+.de-styles {
+  display: grid;
+  gap: 3px;
+}
+.de-styles button {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  text-align: left;
+}
+.de-styles button small {
+  opacity: 0.5;
+  font-size: 10px;
+}
+.de-styles button[aria-selected="true"] {
+  background: #2a63f2;
+  border-color: #2a63f2;
+}
+.de-def {
+  display: grid;
+  gap: 6px;
+}
+.de-def label {
+  display: grid;
+  grid-template-columns: 82px 1fr 64px;
+  align-items: center;
+  gap: 8px;
+}
+.de-def label:has(select) {
+  grid-template-columns: 82px 1fr;
+}
+.de-def output {
+  text-align: right;
+  opacity: 0.8;
+}
+.de-running {
+  width: 100%;
+  box-sizing: border-box;
+}
+.de-panel footer {
+  display: grid;
+  gap: 6px;
+}
+
+.de-panel[hidden] {
+  display: none !important;
+}

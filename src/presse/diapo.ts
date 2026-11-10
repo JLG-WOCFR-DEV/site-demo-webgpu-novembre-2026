@@ -206,6 +206,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     <dt>L</dt><dd>pointeur laser</dd>
     <dt>Z</dt><dd>loupe (suit le pointeur)</dd>
     <dt>P</dt><dd>vue présentateur (seconde fenêtre)</dd>
+    <dt>E</dt><dd>édition : styles de paragraphe, textes</dd>
     <dt>?</dt><dd>cette aide · Échap la ferme</dd></dl>`;
   document.body.append(bar, black, live, toast, help);
 
@@ -294,6 +295,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     bar.style.setProperty("--p", String(n > 1 ? i / (n - 1) : 1));
     live.textContent = `Diapositive ${i + 1} sur ${n} : ${s.title}`;
     history.replaceState(null, "", `#${i + 1}`);
+    dispatchEvent(new CustomEvent("diapo:change", { detail: { i } }));
     syncMedia();
     publish();
   };
@@ -498,6 +500,15 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   }
   const start = Number(location.hash.slice(1));
   go(start >= 1 ? start - 1 : 0);
+  // L'éditeur (diapo-editeur.ts) demande la diapo en entier : toutes ses étapes visibles.
+  addEventListener("diapo:reveal", () => {
+    const s = slides[cur];
+    if (!s) return;
+    step = s.steps.length;
+    s.steps.forEach((st) => st.tl.pause().seek(st.tl.duration));
+    s.enter.pause().seek(s.enter.duration);
+    publish();
+  });
   void ready.then((a) => {
     api = a;
     // Le moteur arrive après la première diapo : il l'imprime.
