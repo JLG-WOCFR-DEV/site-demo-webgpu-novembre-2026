@@ -323,6 +323,11 @@ function dayBlock(host: HTMLElement, v: DayView, ctx: RenderCtx, sugIndex: Map<s
   const lines = [...v.departed, ...v.lines];
   const specs = [...sugs.map((s) => ghostSpec(s, k)), ...lines.map((e) => entrySpec(e, ctx))];
   syncList(sec.querySelector("ol")!, specs);
+  // Pages vides (P7-L1) : un jour à venir sans rien prend moins de place ; un jour passé le dit au crayon.
+  const empty = !specs.length;
+  sec.classList.toggle("is-empty", empty);
+  sec.classList.toggle("is-past-empty", empty && !big && k < ctx.now);
+  if (!big && empty && k < ctx.now) input.placeholder = "rien de noté";
   return sec;
 }
 

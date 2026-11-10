@@ -148,6 +148,7 @@ export class Decor {
   private picked: { key: string; ids: string[] } | null = null;
   private pickBox: HTMLElement | null = null;
   private undoBtn: HTMLButtonElement | null = null;
+  private penBox: HTMLInputElement | null = null;
   private redoBtn: HTMLButtonElement | null = null;
   private lastFocusBlock: string | null = null;
   private tray: HTMLElement;
@@ -636,10 +637,8 @@ export class Decor {
     const box = document.createElement("input");
     box.type = "checkbox";
     box.checked = this.penAnywhere;
-    box.addEventListener("change", () => {
-      this.penAnywhere = box.checked;
-      setPref(PEN_KEY, box.checked ? "oui" : "non");
-    });
+    box.addEventListener("change", () => (this.penEverywhere = box.checked));
+    this.penBox = box;
     pen.append(box, document.createTextNode(" Stylet partout"));
     const done = document.createElement("button");
     done.type = "button";
@@ -648,6 +647,16 @@ export class Decor {
     done.addEventListener("click", () => this.toggleDraw(false));
     bar.append(tools, colors, size, hist, pen, done);
     this.renderDrawBar();
+  }
+
+  /** Le stylet écrit hors du mode Dessin (réglage de cet appareil). */
+  get penEverywhere() {
+    return this.penAnywhere;
+  }
+  set penEverywhere(on: boolean) {
+    this.penAnywhere = on;
+    setPref(PEN_KEY, on ? "oui" : "non");
+    if (this.penBox) this.penBox.checked = on;
   }
 
   private setTool(t: Tool) {

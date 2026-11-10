@@ -105,10 +105,35 @@ export function seed(core: Core) {
   // Un rendez-vous noté sur la page du mois : il revient au crayon le jour dit (« prévu ce mois »).
   core.add({ scope: `month:${now.slice(0, 7)}`, day: now }, { kind: "event", text: "Dentiste", time: "14:00" });
   core.add({ scope: `month:${now.slice(0, 7)}`, day: null }, { kind: "task", text: "Renouveler l’assurance habitation", priority: true });
-  // Un suivi, coché les jours passés de la semaine.
+  // Deux suivis, cochés sur les sept derniers jours (5 et 3) : la grille du mois a déjà de la couleur.
   const water = core.createTracker("Boire 1,5 l d’eau");
-  for (const d of [y2, y]) core.toggleTracker(water, d);
-  core.createTracker("Lire 20 minutes");
+  for (const k of [6, 5, 3, 2, 1]) core.toggleTracker(water, addDays(now, -k));
+  const read = core.createTracker("Lire 20 minutes");
+  for (const k of [6, 4, 1]) core.toggleTracker(read, addDays(now, -k));
+  // L'humeur des six jours passés (pas aujourd'hui : c'est à toi de la noter).
+  [4, 3, 5, 2, 4, 3].forEach((level, i) => core.setMood(addDays(now, -(i + 1)), level));
+  // Le mois dernier, quelques jours écrits : l'année n'est pas une grille vide.
+  const pm = (() => {
+    const d = parseDay(now);
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1);
+    return dayKey(d).slice(0, 7);
+  })();
+  const past: [number, Kind, string, string?, boolean?][] = [
+    [3, "event", "Anniversaire de Léa", "19:00"],
+    [5, "task", "Réserver le train", undefined, true],
+    [8, "note", "Marché : premières clémentines"],
+    [11, "task", "Déclarer les impôts", undefined, true],
+    [14, "event", "Concert au Liberté", "20:30"],
+    [17, "task", "Changer les pneus du vélo", undefined, true],
+    [20, "note", "Lu : un roman entier en un week-end"],
+    [23, "event", "Dîner chez Paul", "20:00"],
+    [26, "task", "Trier les photos de l'été", undefined, false],
+  ];
+  for (const [d, kind, text, time, done] of past) {
+    const id = add(`${pm}-${pad(d)}`, kind, text, { time });
+    if (done) core.setState(id, "done");
+  }
   // Deux collections : ce qui ne dépend pas d'un jour.
   const films = core.createCollection("Films et séries à voir");
   core.add(collectionPlace(films), { kind: "task", text: "Past Lives" });

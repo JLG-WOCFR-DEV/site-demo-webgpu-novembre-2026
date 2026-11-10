@@ -10,6 +10,7 @@ mod import;
 mod mood;
 pub mod notebook;
 pub mod page;
+mod prefs;
 mod tracker;
 pub mod view;
 mod weather;

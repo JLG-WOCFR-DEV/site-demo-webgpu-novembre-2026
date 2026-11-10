@@ -377,6 +377,33 @@ export class Carnet {
         return this;
     }
     /**
+     * Une préférence du carnet, si elle est posée.
+     * @param {string} key
+     * @returns {string | undefined}
+     */
+    pref(key) {
+        const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.carnet_pref(this.__wbg_ptr, ptr0, len0);
+        let v2;
+        if (ret[0] !== 0) {
+            v2 = getStringFromWasm0(ret[0], ret[1]);
+            wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        }
+        return v2;
+    }
+    /**
+     * Toutes les préférences posées : `[[clé, valeur], …]`, triées par clé.
+     * @returns {any}
+     */
+    prefs() {
+        const ret = wasm.carnet_prefs(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
      * Vide la corbeille des entrées de plus de 30 jours. Rend leur nombre.
      * @returns {number}
      */
@@ -512,6 +539,30 @@ export class Carnet {
         const ptr0 = passStringToWasm0(d, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.carnet_setMood(this.__wbg_ptr, ptr0, len0, val2);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] !== 0;
+    }
+    /**
+     * Pose une préférence du carnet (P7), ou la retire (`undefined` / `null`). Vrai si elle a changé.
+     * @param {string} key
+     * @param {string | null} [value]
+     * @returns {boolean}
+     */
+    setPref(key, value) {
+        let ptr0, len0, ptr1, len1;
+        try {
+            ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            len0 = WASM_VECTOR_LEN;
+            ptr1 = isLikeNone(value) ? 0 : passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            len1 = WASM_VECTOR_LEN;
+        } catch (e) {
+            if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 1, 1); }
+            if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 1, 1); }
+            throw e;
+        }
+        const ret = wasm.carnet_setPref(this.__wbg_ptr, ptr0, len0, ptr1, len1);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }

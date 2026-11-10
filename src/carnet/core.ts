@@ -101,6 +101,10 @@ export interface Core {
   trackers(month: string): TrackerRow[];
   setWeather(day: Day, code: number, max: number, min: number, today: Day): boolean;
   weather(from: Day, to: Day): WeatherDay[];
+  /** Préférences du carnet (P7) : elles voyagent avec lui (sauvegarde, versions). `null` retire la clé. */
+  setPref(key: string, value: string | null): boolean;
+  pref(key: string): string | undefined;
+  prefs(): [string, string][];
   /** Schéma qui a écrit ce carnet (0 : jamais marqué) et schéma que ce module sait écrire. */
   schema(): number;
   supportedSchema(): number;

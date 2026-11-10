@@ -38,6 +38,11 @@ const p = await ctx.newPage();
 const errors = [];
 p.on("pageerror", (e) => errors.push(e.message));
 const live = () => p.evaluate(() => window.__carnet.core.all().filter((e) => !e.deletedAt).map((e) => e.text));
+/** Les sauvegardes, la météo, etc. vivent dans les Réglages (P7-L1). */
+const openSettings = async (page) => {
+  if (await page.locator("#cn-settings").isHidden()) await page.click("#cn-settings-open");
+  await page.waitForSelector("#cn-settings:not([hidden])");
+};
 
 await step("démarrage, carnet d'exemple", async () => {
   await p.goto(url);
@@ -132,27 +137,33 @@ await step("année : noter au future log, ouvrir le mois", async () => {
 
 await step("version, tout effacer, revenir à la version", async () => {
   const before = (await live()).sort();
+  await p.evaluate(() => window.__carnet.core.setPref("titres", "banniere"));
   await p.evaluate(() => window.__carnet.autoVersion());
   await p.evaluate(() => {
     const c = window.__carnet.core;
     for (const e of c.all()) c.delete(e.id);
+    c.setPref("titres", null);
     window.__carnet.store.commit();
   });
   eq((await live()).length, 0, "effacement");
+  await openSettings(p);
   await p.click("#cn-versions");
   const back = p.locator(".cn-version .cn-move-item").first();
   await back.click();
   await back.click();
   await p.waitForFunction((n) => window.__carnet.core.all().filter((e) => !e.deletedAt).length === n, before.length);
   eq((await live()).sort(), before, "contenu après retour");
+  eq(await p.evaluate(() => window.__carnet.core.pref("titres")), "banniere", "préférence après retour");
 });
 
 await step("exporter", async () => {
+  await openSettings(p);
   const [dl] = await Promise.all([p.waitForEvent("download"), p.click("#cn-backup")]);
   ok(/^carnet-\d{4}-\d{2}-\d{2}\.carnet$/.test(dl.suggestedFilename()), dl.suggestedFilename());
 });
 
 await step("exporter chiffré (phrase générée), sans texte en clair", async () => {
+  await openSettings(p);
   await p.click("#cn-versions");
   await p.locator(".cn-move-item", { hasText: "chiffrée" }).click();
   await p.locator(".cn-move-item", { hasText: "Générer" }).click();
@@ -296,9 +307,12 @@ await step("accessibilité (axe, WCAG 2 A/AA) : vues, thèmes, panneaux", async 
     await q.waitForSelector(".cn-hit");
     await audit(q, `${scheme} recherche`);
     await q.keyboard.press("Escape");
+    await openSettings(q);
+    await audit(q, `${scheme} réglages`);
     await q.click("#cn-versions");
     await q.waitForSelector(".cn-bkpanel");
     await audit(q, `${scheme} versions`);
+    await q.keyboard.press("Escape");
     await q.keyboard.press("Escape");
     await q.click("#cn-stickers");
     await audit(q, `${scheme} autocollants`);
@@ -320,7 +334,9 @@ await step("téléphone : chaque vue sans débordement horizontal", async () => 
   for (const v of ["", "?vue=jour", "?vue=mois", "?vue=annee", "?vue=collections"]) {
     await q.goto(url + v);
     await q.waitForFunction(() => window.__carnet?.core);
-    const over = await q.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+    // Comparé à l'écran, pas à innerWidth : un contenu trop large élargit la fenêtre de mise en page
+    // du téléphone (innerWidth suit), et l'ancien test ne voyait rien.
+    const over = await q.evaluate(() => Math.max(document.documentElement.scrollWidth, innerWidth) - screen.width);
     ok(over <= 1, `${v || "semaine"} déborde de ${over} px`);
   }
   eq(errs, [], "erreurs");
@@ -330,7 +346,7 @@ await step("téléphone : chaque vue sans débordement horizontal", async () => 
 await step("téléphone sans stylet actif : le doigt dessine, deux doigts défilent ou annulent, la paume est ignorée", async () => {
   const m = await b.newContext({ ...devices["Pixel 7"] });
   const q = await m.newPage();
-  await q.goto(url + "?vue=jour");
+  await q.goto(url);
   await q.waitForFunction(() => window.__carnet?.core);
   const t = await m.newCDPSession(q);
   const touch = async (frames, radius = 4) => {
@@ -344,7 +360,8 @@ await step("téléphone sans stylet actif : le doigt dessine, deux doigts défil
     const k = document.querySelector("#spread [data-block]").dataset.block;
     return window.__carnet.decor.items(k).filter((i) => i.type === "stroke").length;
   });
-  await q.tap("#cn-draw");
+  await q.tap("#cn-more-open");
+  await q.tap('#cn-more [data-proxy="cn-draw"]');
   const at = await q.evaluate(() => {
     const b = document.querySelector("#spread [data-block]");
     b.scrollIntoView({ block: "start" });
@@ -357,14 +374,104 @@ await step("téléphone sans stylet actif : le doigt dessine, deux doigts défil
   await touch(Array.from({ length: 10 }, (_, i) => [[at[0] - 40 + i * 8, at[1] + 20]]), 30);
   eq(await count(), n0 + 1, "la paume a dessiné");
   const y0 = await q.evaluate(() => scrollY);
-  // Les doigts descendent : la page remonte (le jour est en bas de la page, on ne peut que remonter).
-  await touch(Array.from({ length: 12 }, (_, i) => [[at[0] - 40, at[1] + 40 + i * 12], [at[0] + 40, at[1] + 40 + i * 12]]));
-  const dy = y0 - (await q.evaluate(() => scrollY));
-  ok(dy > 100, `deux doigts : défilé de ${dy} px (depuis ${y0})`);
+  // Deux doigts glissent : la page défile dans le sens où elle le peut (vers le haut si l'on est en bas).
+  const room = await q.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+  const sign = y0 > room / 2 ? 1 : -1;
+  await touch(Array.from({ length: 12 }, (_, i) => [[at[0] - 40, at[1] + 160 + sign * i * 12], [at[0] + 40, at[1] + 160 + sign * i * 12]]));
+  const dy = Math.abs(y0 - (await q.evaluate(() => scrollY)));
+  ok(dy > 100, `deux doigts : défilé de ${dy} px (depuis ${y0}, marge ${room})`);
   eq(await count(), n0 + 1, "deux doigts ont dessiné");
   await touch([[[at[0] - 40, at[1] + 100], [at[0] + 40, at[1] + 100]], [[at[0] - 40, at[1] + 101], [at[0] + 40, at[1] + 100]]]);
   eq(await count(), n0, "toucher à deux doigts : annuler");
   await m.close();
+});
+
+await step("ordinateur : un pied de page sans liens techniques, Réglages au clavier", async () => {
+  eq(await p.locator(".cn-foot a, .cn-foot button:not(.cn-link)").count(), 0, "liens dans le pied de page");
+  await p.keyboard.press("Escape");
+  await p.focus("#cn-settings-open");
+  await p.keyboard.press("Enter");
+  await p.waitForSelector("#cn-settings:not([hidden])");
+  eq(await p.evaluate(() => document.activeElement?.id), "cn-settings-close", "focus dans les Réglages");
+  await p.keyboard.press("Escape");
+  await p.waitForSelector("#cn-settings", { state: "hidden" });
+  eq(await p.evaluate(() => document.activeElement?.id), "cn-settings-open", "focus rendu");
+});
+
+await step("téléphone : la page d'abord ; barre basse, feuille « Plus », « + », Réglages", async () => {
+  const m = await b.newContext({ ...devices["Pixel 7"] });
+  const q = await m.newPage();
+  await q.goto(url + "?vue=jour");
+  await q.waitForFunction(() => window.__carnet?.core);
+  const first = await q.evaluate(() => {
+    const r = document.querySelector("#spread .cn-row:not(.cn-ghost), #spread .cn-ghost, #spread .cn-form")?.getBoundingClientRect();
+    return { top: r?.top ?? 9999, h: innerHeight, head: document.querySelector("#spread")?.getBoundingClientRect().top ?? 9999 };
+  });
+  ok(first.top < first.h - 120, `première ligne à ${Math.round(first.top)} px sur ${first.h}`);
+  ok(first.head < first.h * 0.22, `l'en-tête prend ${Math.round(first.head)} px sur ${first.h} (> 22 %)`);
+  for (const [v, want] of [["week", "week"], ["month", "month"], ["year", "year"], ["day", "day"]]) {
+    await q.tap(`#cn-tab [data-view="${v}"]`);
+    eq(await q.evaluate(() => document.querySelector("#spread").dataset.view), want, `barre basse : ${v}`);
+  }
+  // « Plus » au clavier : focus dans la feuille, Tab y tourne, Échap la referme.
+  await q.focus("#cn-more-open");
+  await q.keyboard.press("Enter");
+  await q.waitForSelector("#cn-more:not([hidden])");
+  for (let i = 0; i < 6; i++) await q.keyboard.press("Tab");
+  ok(await q.evaluate(() => document.querySelector("#cn-more").contains(document.activeElement)), "focus sorti de la feuille");
+  const axe = readFileSync(new URL("../node_modules/axe-core/axe.min.js", import.meta.url), "utf8");
+  await q.addScriptTag({ content: axe });
+  const v1 = await q.evaluate(async () => (await window.axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "best-practice"] })).violations.map((x) => `${x.id} (${x.nodes[0].target.join(" ")})`));
+  await q.keyboard.press("Escape");
+  await q.waitForSelector("#cn-more", { state: "hidden" });
+  // « + » : le champ d'aujourd'hui, même depuis l'Année.
+  await q.tap('#cn-tab [data-view="year"]');
+  await q.tap("#cn-fab");
+  await q.waitForFunction(() => document.activeElement?.closest?.(".cn-form")?.dataset.day === window.__carnet.ctx.now);
+  await q.keyboard.press("Escape");
+  // Réglages par « Plus ».
+  await q.tap("#cn-more-open");
+  await q.tap('#cn-more [data-proxy="cn-settings-open"]');
+  await q.waitForSelector("#cn-settings:not([hidden])");
+  const v2 = await q.evaluate(async () => (await window.axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "best-practice"] })).violations.map((x) => `${x.id} (${x.nodes[0].target.join(" ")})`));
+  eq([...v1, ...v2], [], "violations (feuille, réglages)");
+  const over = await q.evaluate(() => Math.max(document.documentElement.scrollWidth, innerWidth) - screen.width);
+  ok(over <= 1, `déborde de ${over} px`);
+  await m.close();
+});
+
+await step("carnet vidé : trois lignes pour démarrer, écartées pour de bon", async () => {
+  const c = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const q = await c.newPage();
+  await q.goto(url);
+  await q.waitForFunction(() => window.__carnet?.core);
+  await q.click("#cn-reset");
+  await q.waitForSelector(".cn-help");
+  await q.locator(".cn-help .cn-link").click();
+  await q.waitForSelector(".cn-help", { state: "detached" });
+  eq(await q.evaluate(() => window.__carnet.core.pref("nav.aide")), "non", "préférence");
+  await q.reload();
+  await q.waitForFunction(() => window.__carnet?.core);
+  eq(await q.locator(".cn-help").count(), 0, "encart revenu");
+  await c.close();
+});
+
+await step("exemple décoré : autocollants, surligneur, dessin, suivis et humeurs", async () => {
+  const c = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const q = await c.newPage();
+  await q.goto(url);
+  await q.waitForFunction(() => window.__carnet?.core);
+  await q.waitForFunction(() => document.querySelectorAll("#spread .cn-sticker").length >= 2);
+  const r = await q.evaluate(() => {
+    const t = window.__carnet.ctx.now;
+    const items = window.__carnet.decor.items(`day:${t}`);
+    const month = t.slice(0, 7);
+    const trk = window.__carnet.core.trackers(month).map((x) => x.count);
+    return { stickers: items.filter((i) => i.type === "sticker").length, strokes: items.map((i) => i.type === "stroke" && i.tool).filter(Boolean).sort() };
+  });
+  ok(r.stickers >= 2, `autocollants du jour : ${r.stickers}`);
+  eq(r.strokes, ["encre", "surligneur"], "traits du jour");
+  await c.close();
 });
 
 await b.close();

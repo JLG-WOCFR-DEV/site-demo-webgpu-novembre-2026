@@ -333,6 +333,22 @@ impl Carnet {
         Ok(self.nb.mood(day(d)?))
     }
 
+    /// Pose une préférence du carnet (P7), ou la retire (`undefined` / `null`). Vrai si elle a changé.
+    #[wasm_bindgen(js_name = setPref)]
+    pub fn set_pref(&mut self, key: &str, value: Option<String>) -> Result<bool, JsError> {
+        self.nb.set_pref(key, value.as_deref()).map_err(err)
+    }
+
+    /// Une préférence du carnet, si elle est posée.
+    pub fn pref(&self, key: &str) -> Option<String> {
+        self.nb.pref(key)
+    }
+
+    /// Toutes les préférences posées : `[[clé, valeur], …]`, triées par clé.
+    pub fn prefs(&self) -> Result<JsValue, JsError> {
+        to_js(&self.nb.prefs())
+    }
+
     /// L'année : page de chaque mois et activité de chaque jour.
     #[wasm_bindgen(js_name = yearView)]
     pub fn year_view(&self, year: i32, today: &str) -> Result<JsValue, JsError> {

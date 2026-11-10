@@ -44,6 +44,9 @@ import { getMedia, mediaAvailable, prepare, putMedia, restoreMedia, sweep } from
 import { fetchDaily, isStale, locate, savedPlace, savePlace, searchPlaces, type Daily, type Place as WxPlace } from "./weather.ts";
 import { addMonths, monthOf, render, titleFor, type RenderCtx, type View } from "./view.ts";
 import { flyBetween } from "./flight.ts";
+import { initShell, sampleBannerHidden, showSampleBanner } from "./shell.ts";
+import { seedDecor } from "./sample-decor.ts";
+import { choice, signature } from "./prefs.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
 const spread = $("#spread");
@@ -72,7 +75,60 @@ function draw() {
   $("#next").setAttribute("aria-label", unit[1]!);
   // Les collections ne se feuillettent pas dans le temps.
   for (const id of ["#prev", "#next", "#today"]) $(id).hidden = ctx.view === "collections";
-  $("#cn-sample").hidden = !isSample();
+  $("#cn-sample").hidden = !isSample() || sampleBannerHidden();
+  helpCard();
+  // Préférences du carnet (P7) : l'apparence ne se réapplique que si elles ont changé (ici, dans un
+  // autre onglet, ou par une restauration).
+  const sig = signature(core);
+  if (sig !== prefSig) {
+    prefSig = sig;
+    applyAppearance();
+  }
+}
+let prefSig: string | null = null;
+/** L'apparence qui dépend des préférences du carnet (thème du mois, L2 ; fond, encre, L8). */
+function applyAppearance() {
+  /* rempli par les lots suivants */
+}
+
+/** Carnet vide, première ouverture : trois lignes au crayon pour démarrer (écartables). */
+function helpCard() {
+  const right = spread.querySelector<HTMLElement>(".cn-right")!;
+  let card = right.querySelector<HTMLElement>(":scope > .cn-help");
+  const want = !readOnly && !isSample() && choice(core, "nav.aide") === "oui" && ctx.view === "week" && !core.all().some((e) => !e.deletedAt);
+  if (!want) return void card?.remove();
+  if (card) return;
+  card = document.createElement("aside");
+  card.className = "cn-help";
+  card.setAttribute("aria-label", "Pour commencer");
+  for (const t of ["Écris une ligne : un point pour une tâche, « o » pour un rendez-vous.", "Le stylet écrit partout ; le doigt fait défiler.", "Autocollants, dessin et thèmes : dans la barre, ou Plus sur téléphone."]) {
+    const p = document.createElement("p");
+    p.textContent = t;
+    card.append(p);
+  }
+  const x = document.createElement("button");
+  x.type = "button";
+  x.className = "cn-link";
+  x.textContent = "Compris";
+  x.addEventListener("click", () => {
+    act(() => core.setPref("nav.aide", "non"));
+    spread.querySelector<HTMLInputElement>(`.cn-form[data-day="${today()}"] input`)?.focus();
+  });
+  card.append(x);
+  right.prepend(card);
+}
+
+/** Le bouton « + » : la ligne d'aujourd'hui, dans la semaine ou la page du jour. */
+function writeToday() {
+  const t = today();
+  const field = () => spread.querySelector<HTMLInputElement>(`.cn-form[data-day="${t}"] input`);
+  const go = (i: HTMLInputElement | null) => {
+    i?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    i?.focus({ preventScroll: true });
+  };
+  const here = ctx.view === "week" || ctx.view === "day" ? field() : null;
+  if (here) return go(here);
+  void openView("day", t).then(() => go(field()));
 }
 
 /** Une commande sur le carnet : exécutée, enregistrée, redessinée. Une erreur du core s'affiche. */
@@ -440,11 +496,24 @@ async function freshCore(sample: boolean) {
   store.commit();
   ctx.from.clear();
   draw();
+  if (sample) decorateSample();
+}
+/** Le décor du carnet d'exemple : posé d'après la page dessinée, une fois (P7-L1). */
+function decorateSample() {
+  if (ctx.view !== "week") return;
+  try {
+    seedDecor(spread, pages, today());
+  } catch (e) {
+    console.warn("[carnet] décor d'exemple", e);
+  }
 }
 $("#cn-reset").addEventListener("click", () => {
   void freshCore(false).then(() => toast("Carnet vidé. Page blanche."));
 });
-$("#cn-reseed").addEventListener("click", () => void freshCore(true));
+$("#cn-reseed").addEventListener("click", () => {
+  showSampleBanner();
+  void freshCore(true);
+});
 
 /* ───── Photos : collées au jour de leur prise de vue ───── */
 $("#cn-photo").addEventListener("click", () => {
@@ -1110,10 +1179,16 @@ async function boot() {
   decor = new Decor(spread, { pages, today, toast, readOnly: () => readOnly });
   $("#cn-stickers").addEventListener("click", () => decor!.toggleTray());
   $("#cn-draw").addEventListener("click", () => decor!.toggleDraw());
+  initShell({
+    writeToday,
+    settingsOpened: () => {},
+    pen: { get: () => decor!.penEverywhere, set: (on) => (decor!.penEverywhere = on) },
+  });
   // Raccourcis de l'icône installée (manifeste) : ?vue=jour | mois | collections.
   const vue = new URLSearchParams(location.search).get("vue");
   const start: View = vue === "jour" ? "day" : vue === "mois" ? "month" : vue === "annee" ? "year" : vue === "collections" ? "collections" : "week";
   ctx = { core, view: start, cur: today(), now: today(), from: new Map(), fresh: new Set(), col: null, weather: (d) => weatherOf(d), prompt: promptOf };
+  let seeded = false;
   if (opened.empty) {
     let v0: string | null = null;
     try {
@@ -1127,6 +1202,7 @@ async function boot() {
       else {
         setSample(true);
         seed(core);
+        seeded = true;
       }
     });
     if (filled && v0 && report) {
@@ -1165,6 +1241,7 @@ async function boot() {
     if (document.hidden) void store.flush();
   });
   draw();
+  if (seeded) decorateSample();
   void refreshWeather();
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) void refreshWeather();

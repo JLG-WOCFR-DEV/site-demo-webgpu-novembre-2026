@@ -1173,6 +1173,9 @@ body.is-erasing .cn-ink path {
 }
 .cn-trk-wrap {
   overflow-x: auto;
+  max-width: 100%;
+  /* Les textes pour lecteurs d'écran (position absolue) restent dans le cadre qui défile. */
+  position: relative;
   margin-left: calc(var(--g) * -0.2);
   padding-bottom: 4px;
 }
@@ -1600,4 +1603,303 @@ body > .cn-wxpanel.cn-wxpanel.cn-wxpanel {
   grid-column: 1 / -1;
   justify-self: start;
   margin: 4px 0 8px;
+}
+
+/* ───── P7-L1 : la coquille (Réglages, barre basse du téléphone, « + », bandeau, pages vides) ───── */
+.cn-sample {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  font-size: 11.5px;
+  padding: 3px 4px 3px 10px;
+  margin-top: 6px;
+}
+.cn-sample > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.cn-sample .cn-btn {
+  padding: 6px 9px;
+}
+.cn-sample .cn-icon {
+  width: 30px;
+  border-color: transparent;
+}
+
+/* Réglages : un panneau latéral (ordinateur), une feuille basse (téléphone). */
+.cn-settings {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 19;
+  width: min(380px, 100vw);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  box-shadow: -18px 0 40px -28px var(--shadow);
+  font: 13px/1.5 var(--mono);
+}
+body > .cn-settings.cn-settings.cn-settings {
+  position: fixed;
+  z-index: 19;
+}
+.cn-settings[hidden] {
+  display: none;
+}
+.cn-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.cn-settings-head h2 {
+  margin: 0;
+}
+.cn-set {
+  margin-top: 14px;
+}
+.cn-set h3 {
+  margin: 0 0 2px;
+  font: 500 10.5px/2 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.cn-set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  font: 13px var(--mono);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.cn-set-row:hover {
+  background: var(--hover);
+}
+.cn-set-row[aria-pressed]::after {
+  content: "non";
+  font-size: 11px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 1px 9px;
+}
+.cn-set-row[aria-pressed="true"]::after {
+  content: "oui";
+  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.cn-set-note {
+  margin: 8px 4px 2px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+#cn-appearance:empty {
+  display: none;
+}
+
+/* Carnet vide : trois lignes au crayon pour démarrer. */
+.cn-help {
+  margin: calc(var(--g) / 2) 0 var(--g);
+  padding: 6px 0 6px 14px;
+  border-left: 2px solid var(--pencil);
+  font: italic 16px / var(--g) var(--serif);
+  color: var(--pencil);
+}
+.cn-help p {
+  margin: 0;
+}
+.cn-help .cn-link {
+  font: 11.5px var(--mono);
+  color: var(--ink-soft);
+}
+
+/* Pages vides : un jour à venir sans rien prend moins de place ; un jour passé le dit au crayon. */
+.cn-spread[data-view="week"] .cn-day.is-empty {
+  min-height: calc(var(--g) * 3.5);
+}
+.cn-day.is-past-empty .cn-form input::placeholder {
+  color: var(--pencil);
+  font-style: italic;
+}
+
+/* Barre basse, « + » et feuille « Plus » : téléphone seulement. */
+.cn-tab,
+.cn-fab,
+.cn-sheet {
+  display: none;
+}
+@media (max-width: 600px) {
+  .cn-wide,
+  .cn-brand,
+  .cn-views {
+    display: none !important;
+  }
+  body.cn {
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  .cn-bar {
+    justify-content: flex-end;
+    margin-bottom: 0;
+  }
+  .cn-bar .cn-btn {
+    min-height: 40px;
+  }
+  .cn-title {
+    margin-top: 2px;
+    font-size: 28px;
+  }
+  .cn-foot {
+    margin-top: 8px;
+  }
+  .cn-tab {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 18;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -10px 24px -20px var(--shadow);
+  }
+  .cn-tab button {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-height: 54px;
+    padding: 6px 0 4px;
+    border: 0;
+    background: none;
+    color: var(--ink-soft);
+    font: 500 10.5px var(--mono);
+    cursor: pointer;
+  }
+  .cn-tab svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .cn-tab circle {
+    fill: currentColor;
+    stroke: none;
+  }
+  .cn-tab button[aria-pressed="true"],
+  .cn-tab button[aria-expanded="true"] {
+    color: var(--accent);
+  }
+  .cn-tab button[aria-pressed="true"] svg {
+    stroke-width: 2.1;
+  }
+  .cn-fab {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    z-index: 18;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: 0 10px 24px -8px var(--shadow);
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s var(--ease-out, ease-out);
+  }
+  .cn-fab svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+  .cn-fab:active {
+    transform: scale(0.94);
+  }
+  .cn-sheet:not([hidden]) {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    z-index: 21;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 8px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px -12px var(--shadow);
+  }
+  .cn-sheet button {
+    min-height: 48px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: none;
+    color: var(--ink);
+    font: 500 13px var(--mono);
+    cursor: pointer;
+  }
+  .cn-sheet button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  /* Ce qui prend le bas de l'écran (dessin, planche, Réglages, toast) fait place. */
+  body.is-drawing .cn-tab,
+  body.is-drawing .cn-fab,
+  body.has-settings .cn-fab,
+  body:has(#cn-tray:not([hidden])) .cn-tab,
+  body:has(#cn-tray:not([hidden])) .cn-fab,
+  body:has(#cn-toast:not([hidden])) .cn-fab {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .cn-toast {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  body.is-drawing .cn-toast {
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+  .cn-settings {
+    top: auto;
+    left: 0;
+    width: 100%;
+    max-height: 84vh;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -18px 40px -20px var(--shadow);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cn-fab {
+    transition: none;
+  }
+}
+
+/* Un tableau large (suivis) défile dans son cadre au lieu d'élargir la page (téléphone). */
+.cn-page,
+.cn-trackers {
+  min-width: 0;
 }
