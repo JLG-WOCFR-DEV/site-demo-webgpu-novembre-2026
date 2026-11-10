@@ -46,7 +46,8 @@ import { addMonths, monthOf, render, titleFor, type RenderCtx, type View } from 
 import { flyBetween } from "./flight.ts";
 import { initShell, sampleBannerHidden, showSampleBanner } from "./shell.ts";
 import { seedDecor } from "./sample-decor.ts";
-import { choice, signature } from "./prefs.ts";
+import { choice, monthTheme, signature } from "./prefs.ts";
+import { accents, borderMask, pageMonth, THEMES, themeFor, type Theme } from "./themes.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
 const spread = $("#spread");
@@ -66,6 +67,8 @@ let engine: Renderer | null = null;
 function draw() {
   ctx.core = core;
   ctx.now = today();
+  ctx.theme = ctx.view === "year" ? null : themeFor(themeMonth(), monthTheme(core, themeMonth()));
+  applyTheme(ctx.theme);
   sugIndex = render(spread, ctx);
   decor?.sync();
   title.textContent = titleFor(ctx.view, ctx.cur);
@@ -86,6 +89,71 @@ function draw() {
   }
 }
 let prefSig: string | null = null;
+
+/** Le mois dont la page prend le thème : celui de la page (jeudi de la semaine), ou ce mois-ci. */
+function themeMonth() {
+  return ctx.view === "collections" || ctx.view === "year" ? ctx.now.slice(0, 7) : pageMonth(ctx.view, ctx.cur);
+}
+/** Le thème du mois sur la double page : accent lisible (clair et sombre), trois couleurs, bordure. */
+let themeOn: string | null = "";
+function applyTheme(t: Theme | null) {
+  if ((t?.id ?? null) === themeOn) return;
+  themeOn = t?.id ?? null;
+  const st = spread.style;
+  if (!t) {
+    delete spread.dataset.monthTheme;
+    for (const k of ["--th-l", "--th-d", "--theme-1", "--theme-2", "--theme-3", "--th-border"]) st.removeProperty(k);
+    return;
+  }
+  const a = accents(t);
+  spread.dataset.monthTheme = t.id;
+  st.setProperty("--th-l", a.light);
+  st.setProperty("--th-d", a.dark);
+  st.setProperty("--theme-1", t.a);
+  st.setProperty("--theme-2", t.b);
+  st.setProperty("--theme-3", t.c);
+  st.setProperty("--th-border", borderMask(t));
+  decor?.setSeason(t.season);
+}
+
+/** Réglages → Apparence : le thème du mois affiché (automatique, l'un des douze, aucun). */
+function buildAppearance() {
+  const host = $("#cn-appearance");
+  const month = themeMonth();
+  const chosen = monthTheme(core, month);
+  const name = new Intl.DateTimeFormat("fr-FR", { month: "long" }).format(parseDay(`${month}-01`));
+  host.replaceChildren();
+  const label = document.createElement("p");
+  label.className = "cn-set-note";
+  label.id = "cn-theme-label";
+  label.textContent = `Thème de ${name}`;
+  const grid = document.createElement("div");
+  grid.className = "cn-themes";
+  grid.setAttribute("role", "group");
+  grid.setAttribute("aria-labelledby", label.id);
+  const auto = themeFor(month, null)!;
+  const opts: [string | null, string, Theme | null][] = [[null, `Automatique (${auto.name})`, auto], ...THEMES.map((t): [string, string, Theme] => [t.id, t.name, t]), ["aucun", "Aucun", null]];
+  for (const [v, text, t] of opts) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cn-theme";
+    b.setAttribute("aria-pressed", String(chosen === v));
+    if (t) b.style.cssText = `--s1:${t.a};--s2:${t.b};--s3:${t.c}`;
+    else b.classList.add("is-none");
+    const sw = document.createElement("span");
+    sw.className = "cn-theme-sw";
+    sw.setAttribute("aria-hidden", "true");
+    b.append(sw, document.createTextNode(text));
+    b.addEventListener("click", () => {
+      act(() => core.setPref(`theme:${month}`, v));
+      draw();
+      buildAppearance();
+      $("#cn-appearance").querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
+    });
+    grid.append(b);
+  }
+  host.append(label, grid);
+}
 /** L'apparence qui dépend des préférences du carnet (thème du mois, L2 ; fond, encre, L8). */
 function applyAppearance() {
   /* rempli par les lots suivants */
@@ -229,6 +297,17 @@ spread.addEventListener("submit", (ev) => {
   }
   let raw = input.value;
   let place: Place;
+  if (f.dataset.intent !== undefined && f.dataset.month) {
+    // Intention du mois (page de garde, P7-L2) : une note « idée » sans date sur la page du mois.
+    const text = raw.trim();
+    if (!text) return;
+    const id = act(() => core.add(monthPlace(f.dataset.month!), { kind: "note", text, time: null, priority: false, idea: true }));
+    if (id === undefined) return;
+    ctx.fresh?.add(id);
+    input.value = "";
+    draw();
+    return;
+  }
   if (f.dataset.month) {
     // Page du mois : « 12 o 14:00 dentiste » note un rendez-vous daté du 12.
     const m = raw.match(/^\s*(\d{1,2})(?:\s+|$)/);
@@ -1181,13 +1260,16 @@ async function boot() {
   $("#cn-draw").addEventListener("click", () => decor!.toggleDraw());
   initShell({
     writeToday,
-    settingsOpened: () => {},
+    settingsOpened: buildAppearance,
     pen: { get: () => decor!.penEverywhere, set: (on) => (decor!.penEverywhere = on) },
   });
   // Raccourcis de l'icône installée (manifeste) : ?vue=jour | mois | collections.
   const vue = new URLSearchParams(location.search).get("vue");
   const start: View = vue === "jour" ? "day" : vue === "mois" ? "month" : vue === "annee" ? "year" : vue === "collections" ? "collections" : "week";
-  ctx = { core, view: start, cur: today(), now: today(), from: new Map(), fresh: new Set(), col: null, weather: (d) => weatherOf(d), prompt: promptOf };
+  // ?date=AAAA-MM-JJ : ouvrir une autre page que celle d'aujourd'hui (captures, recette).
+  const asked = new URLSearchParams(location.search).get("date");
+  const cur0 = asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) && !Number.isNaN(parseDay(asked).getTime()) ? asked : today();
+  ctx = { core, view: start, cur: cur0, now: today(), from: new Map(), fresh: new Set(), col: null, weather: (d) => weatherOf(d), prompt: promptOf };
   let seeded = false;
   if (opened.empty) {
     let v0: string | null = null;

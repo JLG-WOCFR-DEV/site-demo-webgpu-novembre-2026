@@ -431,6 +431,10 @@ dessinés, surlignage, washi, L4 mouvement (tourner la page, coche tracée, auto
 en couleur, L6 rituels (migration mensuelle, bilan, gratitude, clé, rubans), L7 suivis dessinés et modèles,
 L8 fonds et encres, L9 écriture manuscrite et couverture.
 
+- [x] **J1 (L0–L2), 11 novembre** : préférences dans le carnet ; téléphone avec barre basse, « Plus », « + » et
+      Réglages ; exemple décoré ; jours vides allégés ; douze thèmes du mois (accent lisible vérifié, page de garde
+      dessinée à la plume, intention du mois, bordure de marge). e2e 25 étapes ; JS gzip 57,3 Ko.
+
 #### Sauvegardes locales (D10) — avancement
 
 - [x] Versions sur l'appareil (`versions.ts`, OPFS) : toutes les deux heures quand le carnet change, jamais

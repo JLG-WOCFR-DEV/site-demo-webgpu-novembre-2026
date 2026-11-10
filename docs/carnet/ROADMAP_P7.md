@@ -93,15 +93,15 @@ Charge indicative en sessions de travail d'agent (une session ≈ un lot moyen).
 
 **But** : un seul changement Rust pour tous les réglages de P7.
 
-- [ ] `crates/carnet-core/src/prefs.rs` : `meta.prefs` (`Y.Map` clé → chaîne, dernière écriture gagne).
+- [x] `crates/carnet-core/src/prefs.rs` : `meta.prefs` (`Y.Map` clé → chaîne, dernière écriture gagne).
       `set_pref(key, Option<&str>)` (None retire), `pref(key) -> Option<String>`, `prefs() -> Vec<(String, String)>`.
       Clés ≤ 64 caractères `[a-z0-9:._-]`, valeurs ≤ 2 000 caractères ; sinon `Error::Invalid`.
       Ajout pur : **pas d'incrément de `SCHEMA`** (à vérifier contre la règle de `notebook.rs` l. 172).
-- [ ] `crates/carnet-wasm` : `setPref`, `pref`, `prefs` ; types dans `src/carnet/core.ts`.
-- [ ] `src/carnet/prefs.ts` : lecture typée avec valeurs par défaut, `onPrefs(cb)` rappelé après chaque
+- [x] `crates/carnet-wasm` : `setPref`, `pref`, `prefs` ; types dans `src/carnet/core.ts`.
+- [x] `src/carnet/prefs.ts` : lecture typée avec valeurs par défaut, `onPrefs(cb)` rappelé après chaque
       `draw()` si une préférence a changé (autre onglet, restauration).
-- [ ] Tests Rust (convergence de deux répliques, bornes), test JS (défauts, valeur inconnue ignorée).
-- [ ] La sauvegarde / restauration et les versions emportent `meta.prefs` (vérifier par un test e2e :
+- [x] Tests Rust (convergence de deux répliques, bornes), test JS (défauts, valeur inconnue ignorée).
+- [x] La sauvegarde / restauration et les versions emportent `meta.prefs` (vérifier par un test e2e :
       poser une préférence, version, effacer, revenir).
 
 Clés réservées par les lots suivants : `theme:<AAAA-MM>`, `titres`, `fond`, `encre`, `ecriture`,
@@ -112,47 +112,47 @@ Clés réservées par les lots suivants : `theme:<AAAA-MM>`, `titres`, `fond`, `
 **But** : la première impression. Sur téléphone, la première ligne du jour visible sans défiler.
 
 **L1.1 Barre du téléphone** (`carnet.html`, `style.css`, `main.ts`)
-- [ ] ≤ 600 px : l'en-tête ne garde que le titre de la page (le `h1` actuel, réduit à 28 px) et
+- [x] ≤ 600 px : l'en-tête ne garde que le titre de la page (le `h1` actuel, réduit à 28 px) et
       `‹ Aujourd'hui ›`. « Carnet · v0 · sur Presse » disparaît de l'écran (reste dans Réglages).
-- [ ] Barre basse fixe `nav.cn-tab` (au-dessus de `env(safe-area-inset-bottom)`), 5 entrées avec icône
+- [x] Barre basse fixe `nav.cn-tab` (au-dessus de `env(safe-area-inset-bottom)`), 5 entrées avec icône
       SVG 24 px + libellé 11 px : **Jour, Semaine, Mois, Année, Plus**. « Plus » ouvre une feuille basse
       (`role="dialog"`, piège à focus, Échap) : Collections, Rechercher, Autocollants, Dessiner, Photos,
       Réglages. Vue active : `aria-current="page"`.
-- [ ] Bouton flottant « + » (56 px, bas droite, au-dessus de la barre) : met le focus dans le champ
+- [x] Bouton flottant « + » (56 px, bas droite, au-dessus de la barre) : met le focus dans le champ
       « ajouter une ligne » du jour courant (vue Jour d'aujourd'hui si l'on est ailleurs).
-- [ ] En mode Dessin ou planche ouverte : la barre basse et le « + » se masquent (la barre de dessin
+- [x] En mode Dessin ou planche ouverte : la barre basse et le « + » se masquent (la barre de dessin
       prend la place).
-- [ ] ≥ 601 px : rien ne change, sauf les points L1.2 et L1.3.
+- [x] ≥ 601 px : rien ne change, sauf les points L1.2 et L1.3.
 
 **L1.2 Panneau Réglages** (nouveau `src/carnet/settings.ts`, chargé à la demande)
-- [ ] Bouton « Réglages » (icône engrenage) dans l'en-tête ; `aside` latéral (ordinateur) ou feuille
+- [x] Bouton « Réglages » (icône engrenage) dans l'en-tête ; `aside` latéral (ordinateur) ou feuille
       basse (téléphone). Sections : **Apparence** (L2, L3 y ajoutent leurs choix), **Écriture** (questions
       du jour, saisie rapide : rappel des signes), **Sauvegardes** (Exporter, Versions, Importer, dossier),
       **Agenda et météo** (import .ics, météo), **Appareil** (lumière de l'heure, stylet partout, état
       GPU, « Enregistré »), **À propos** (version, liens banc et recette, « Recharger l'exemple »).
-- [ ] Le pied de page ne garde que l'état d'enregistrement (`#cn-save`) et, sur ordinateur, le rappel
+- [x] Le pied de page ne garde que l'état d'enregistrement (`#cn-save`) et, sur ordinateur, le rappel
       de saisie. Les `id` existants (`#cn-backup`, `#cn-versions`, `#cn-restore`, `#cn-ics`, `#cn-meteo`,
       `#cn-light`, `#cn-prompts`, `#cn-reseed`) sont **conservés** sur les nouveaux boutons : l'e2e et
       `main.ts` s'y accrochent. Adapter l'e2e (ouvrir Réglages avant de cliquer).
-- [ ] Bandeau « Carnet d'exemple » : une ligne compacte, refermable (préférence d'appareil), avec
+- [x] Bandeau « Carnet d'exemple » : une ligne compacte, refermable (préférence d'appareil), avec
       « Vider le carnet » ; sur téléphone, sous le titre, 1 ligne.
 
 **L1.3 Carnet d'exemple décoré** (`src/carnet/model.ts` `seed`, plus un `seedDecor(pages)` appelé après)
-- [ ] Jour courant : 2 autocollants de saison, 1 trait de surligneur sous une ligne, un petit dessin
+- [x] Jour courant : 2 autocollants de saison, 1 trait de surligneur sous une ligne, un petit dessin
       (un cœur ou une étoile en encre, points codés en dur, pression variable).
-- [ ] Semaine : 1 autocollant « activité » sur le jour de la course, 1 photo absente (ne pas embarquer
+- [x] Semaine : 1 autocollant « activité » sur le jour de la course, 1 photo absente (ne pas embarquer
       d'image).
-- [ ] Suivis : « Boire 1,5 l » coché 5 jours sur 7, « Lire 20 minutes » 3 jours ; humeur notée sur les
+- [x] Suivis : « Boire 1,5 l » coché 5 jours sur 7, « Lire 20 minutes » 3 jours ; humeur notée sur les
       6 derniers jours (valeurs variées).
-- [ ] Mois précédent : 8 à 10 entrées réparties, pour que l'Année ne soit pas vide.
-- [ ] Tout est déterministe par rapport à « aujourd'hui » (tests reproductibles).
+- [x] Mois précédent : 8 à 10 entrées réparties, pour que l'Année ne soit pas vide.
+- [x] Tout est déterministe par rapport à « aujourd'hui » (tests reproductibles).
 
 **L1.4 Pages vides habitées** (`view.ts`, `style.css`)
-- [ ] Un jour sans entrée, à venir : une seule ligne discrète « + ajouter une ligne » (déjà là), **et**
+- [x] Un jour sans entrée, à venir : une seule ligne discrète « + ajouter une ligne » (déjà là), **et**
       le bloc se réduit (hauteur mini 3 lignes au lieu de 5) pour laisser la place aux jours remplis.
-- [ ] Un jour passé sans entrée : mention au crayon « rien de noté » (pas un champ), cliquable pour
+- [x] Un jour passé sans entrée : mention au crayon « rien de noté » (pas un champ), cliquable pour
       écrire quand même.
-- [ ] Première ouverture d'un carnet vide : dans la page de droite, un encart au crayon de trois lignes
+- [x] Première ouverture d'un carnet vide : dans la page de droite, un encart au crayon de trois lignes
       (« Écris une ligne. », « Le stylet écrit partout. », « Autocollants et thèmes : Plus → Réglages. »),
       écartable (`nav.aide`).
 
@@ -185,34 +185,34 @@ dessin, suivis colorés.
 | novembre | brume | #8b5a3c | #c9b79a | #6d7f86 | parapluie, feuilles | gouttes |
 | décembre | sapin | #2f6b52 | #b23a3a | #e6c56a | sapin, étoile | guirlande |
 
-- [ ] Chaque thème : `{ id, name, accent, second, glow, sombre: { accent, second, glow }, header: svg,
+- [x] Chaque thème : `{ id, name, accent, second, glow, sombre: { accent, second, glow }, header: svg,
       border: svg-pattern, corner: svg }`. Contraste : `accent` sur `--paper` ≥ 4,5:1 en clair **et** sa
       variante sombre sur le papier sombre (test unitaire qui calcule le rapport pour les 12 × 2).
-- [ ] `themeFor(month, prefs)` : préférence `theme:<AAAA-MM>` sinon le thème du mois civil ;
+- [x] `themeFor(month, prefs)` : préférence `theme:<AAAA-MM>` sinon le thème du mois civil ;
       valeur `aucun` = le carnet neutre actuel.
-- [ ] Application : `main.ts` pose `data-theme-month` sur `#spread` et les variables `--accent`,
+- [x] Application : `main.ts` pose `data-theme-month` sur `#spread` et les variables `--accent`,
       `--theme-2`, `--theme-3` **sur `#spread` seulement** (l'en-tête et les panneaux gardent l'accent
       de base). La vue Semaine à cheval sur deux mois prend le mois du jeudi (règle ISO).
 
 **L2.2 Page de garde du mois** (`view.ts` `monthPage`, `style.css`)
-- [ ] En tête de la page de droite de la vue Mois : bandeau de 120 px (88 px au téléphone) avec le motif
+- [x] En tête de la page de droite de la vue Mois : bandeau de 120 px (88 px au téléphone) avec le motif
       d'en-tête, le nom du mois en grand (Newsreader, 56 px) et une ligne libre « intention du mois »
       (entrée normale, note, place `month:<AAAA-MM>` avec `day: null`, marquée `idea` — pas de champ
       nouveau dans le core ; la première note « idée » de la page du mois s'affiche là).
-- [ ] Motifs : SVG au trait (`stroke: var(--ink)`, aplats en variables de thème), 12 dessins originaux,
+- [x] Motifs : SVG au trait (`stroke: var(--ink)`, aplats en variables de thème), 12 dessins originaux,
       ≤ 1,5 Ko chacun, dans `themes.ts`. Chargés avec le module (pas d'image externe).
-- [ ] Bordure de marge : motif répété sur 14 px le long du bord extérieur des deux pages, opacité 0,5 ;
+- [x] Bordure de marge : motif répété sur 14 px le long du bord extérieur des deux pages, opacité 0,5 ;
       absent sous 600 px.
 
 **L2.3 Choisir** (Réglages → Apparence)
-- [ ] « Thème de ce mois » : 12 pastilles + « Aucun » + « Automatique » ; aperçu immédiat ; écrit
+- [x] « Thème de ce mois » : 12 pastilles + « Aucun » + « Automatique » ; aperçu immédiat ; écrit
       `theme:<AAAA-MM>` (ou retire la clé).
-- [ ] Le sélecteur de saison de la planche d'autocollants prend par défaut la palette du thème courant.
+- [x] Le sélecteur de saison de la planche d'autocollants prend par défaut la palette du thème courant.
 
 **L2.4 Animation d'entrée** (une fois par ouverture du mois, pas à chaque rendu)
-- [ ] Le motif d'en-tête se **dessine** : `stroke-dasharray` / `pathLength="1"`, 900 ms `EASE.out`,
+- [x] Le motif d'en-tête se **dessine** : `stroke-dasharray` / `pathLength="1"`, 900 ms `EASE.out`,
       tracés décalés de 60 ms ; puis les aplats montent en opacité (240 ms).
-- [ ] Mouvement réduit : motif posé d'emblée.
+- [x] Mouvement réduit : motif posé d'emblée.
 
 **Tests** : unitaires (12 thèmes complets, contrastes, règle du jeudi, préférence inconnue → auto) ;
 e2e (changer de thème, recharger : conservé ; version / retour : conservé) ; axe sur la vue Mois des
@@ -220,6 +220,20 @@ e2e (changer de thème, recharger : conservé ; version / retour : conservé) ; 
 dans `main.ts`).
 
 **Sortie** : planche de captures des 12 pages de garde, clair et sombre, dans `docs/carnet/p7-themes.png`.
+
+#### Jalon J1 (L0–L2) — fait le 11 novembre 2026
+
+- Mesures : e2e 25 étapes (dont axe sur les 12 pages de garde, clair et sombre), 80 tests JS, tests Rust ;
+  `carnet-*.js` gzip 50,7 → 57,3 Ko (L1 +2,1, L2 +4,5) ; `pwa-*.css` 8,4 Ko.
+- Écarts assumés : pas de « photo absente » dans l'exemple (le cadre vide ressemble à une panne) ;
+  Réglages en HTML statique et non chargés à la demande (les `id` restent branchés, coût < 1 Ko) ;
+  barre basse en `aria-pressed` comme l'en-tête (boutons, pas des liens) ; « rien de noté » est le
+  texte d'attente du champ ; la planche prend la **saison** du thème (les autocollants ont 4 palettes,
+  pas 12) ; le nom du mois de la page de garde est en DOM (pas d'atlas pour 56 px).
+- Corrigé au passage : le tableau des suivis élargissait la page du téléphone ; le test de débordement
+  le masquait (il comparait à `innerWidth`). Il compare maintenant à la largeur de l'écran.
+- Téléphone, une colonne : la page de garde ouvre le mois, avant le calendrier.
+- Non vérifié sur un vrai téléphone.
 
 ### L3 — Titres dessinés, surlignage, washi (1,5 session)
 

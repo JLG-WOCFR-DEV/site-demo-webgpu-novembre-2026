@@ -1903,3 +1903,195 @@ body > .cn-settings.cn-settings.cn-settings {
 .cn-trackers {
   min-width: 0;
 }
+
+/* ───── P7-L2 : le thème du mois ───── */
+/* L'accent lisible du thème (texte 4,5:1) sur la double page seulement ; l'en-tête garde le sien. */
+#spread[data-month-theme] {
+  --accent: var(--th-l);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #spread[data-month-theme] {
+    --accent: var(--th-d);
+  }
+}
+:root[data-theme="dark"] #spread[data-month-theme] {
+  --accent: var(--th-d);
+}
+/* Bordure de marge : le petit motif du mois, répété le long des bords extérieurs. */
+#spread[data-month-theme]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--theme-1);
+  opacity: 0.45;
+  -webkit-mask: var(--th-border) left 2px top 6px / 14px 28px repeat-y, var(--th-border) right 2px top 20px / 14px 28px repeat-y;
+  mask: var(--th-border) left 2px top 6px / 14px 28px repeat-y, var(--th-border) right 2px top 20px / 14px 28px repeat-y;
+}
+@media (max-width: 600px) {
+  #spread[data-month-theme]::after {
+    display: none;
+  }
+}
+
+/* Page de garde du mois */
+.cn-cover {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: end;
+  gap: 0 14px;
+  min-height: 120px;
+  margin: 0 0 calc(var(--g) / 2);
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+.cn-cover-art-wrap {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+.cn-cover-art {
+  display: block;
+  width: 300px;
+  height: 100px;
+  overflow: visible;
+}
+.cn-cover-name {
+  margin: 0;
+  font: 400 56px/1 var(--serif);
+  letter-spacing: -0.015em;
+  color: var(--accent);
+}
+.cn-intent-slot {
+  min-height: var(--g);
+  margin-top: 6px;
+}
+.cn-intent.cn-row {
+  display: block;
+  padding: 0;
+}
+.cn-intent .cn-text {
+  font: italic 19px / var(--g) var(--serif);
+  color: var(--ink-soft);
+  cursor: text;
+}
+.cn-intent-form {
+  display: block;
+}
+.cn-intent-form input {
+  width: 100%;
+  font: italic 19px / var(--g) var(--serif);
+  color: var(--ink-soft);
+}
+.cn-cover-art .k {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cn-cover-art .a {
+  fill: var(--theme-1);
+}
+.cn-cover-art .b {
+  fill: var(--theme-2);
+}
+.cn-cover-art .c {
+  fill: var(--theme-3);
+}
+/* Le motif se dessine à la plume, puis les aplats montent. */
+.cn-cover.is-new .cn-cover-art .k {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: cn-cover-ink var(--dur-3, 900ms) var(--ease-out, ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.cn-cover.is-new .cn-cover-art :is(.a, .b, .c) {
+  fill-opacity: 0;
+  animation: cn-cover-fill var(--dur-1, 240ms) ease-out forwards;
+  animation-delay: 620ms;
+}
+@keyframes cn-cover-ink {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes cn-cover-fill {
+  to {
+    fill-opacity: 1;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cn-cover-art :is(.a, .b, .c) {
+    opacity: 0.85;
+  }
+}
+@media (max-width: 600px) {
+  .cn-cover {
+    min-height: 88px;
+    grid-template-columns: minmax(0, 1fr) 150px;
+  }
+  .cn-cover-art {
+    width: 150px;
+    height: 50px;
+  }
+  .cn-cover-name {
+    font-size: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cn-cover.is-new .cn-cover-art .k,
+  .cn-cover.is-new .cn-cover-art :is(.a, .b, .c) {
+    animation: none;
+    stroke-dashoffset: 0;
+    fill-opacity: 1;
+  }
+}
+
+/* Réglages → Apparence : les douze thèmes */
+.cn-themes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 4px;
+}
+.cn-theme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: 12px var(--mono);
+  text-align: left;
+  cursor: pointer;
+}
+.cn-theme[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.cn-theme:first-child,
+.cn-theme.is-none {
+  grid-column: 1 / -1;
+}
+.cn-theme-sw {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: conic-gradient(var(--s1) 0 50%, var(--s2) 0 75%, var(--s3) 0);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.cn-theme.is-none .cn-theme-sw {
+  background: repeating-linear-gradient(135deg, transparent 0 4px, var(--line) 4px 5px);
+}
+/* Téléphone, une seule colonne : la page de garde (page de droite) ouvre le mois, avant le calendrier. */
+@media (max-width: 860px) {
+  .cn-spread[data-view="month"][data-month-theme] .cn-right {
+    order: -1;
+  }
+}

@@ -302,6 +302,14 @@ await step("accessibilité (axe, WCAG 2 A/AA) : vues, thèmes, panneaux", async 
       await q.waitForFunction(() => window.__carnet?.core);
       await audit(q, `${scheme} ${v || "semaine"}`);
     }
+    // Les douze pages de garde (thème du mois, P7-L2).
+    for (let mo = 1; mo <= 12; mo++) {
+      await q.goto(`${url}?vue=mois&date=2027-${String(mo).padStart(2, "0")}-15`);
+      await q.waitForSelector(".cn-cover");
+      await audit(q, `${scheme} thème ${mo}`);
+    }
+    await q.goto(url);
+    await q.waitForFunction(() => window.__carnet?.core);
     await q.click("#cn-search");
     await q.fill(".cn-search-input", "plombier");
     await q.waitForSelector(".cn-hit");
@@ -471,6 +479,49 @@ await step("exemple décoré : autocollants, surligneur, dessin, suivis et humeu
   });
   ok(r.stickers >= 2, `autocollants du jour : ${r.stickers}`);
   eq(r.strokes, ["encre", "surligneur"], "traits du jour");
+  await c.close();
+});
+
+await step("thème du mois : page de garde, intention, choix gardé, la semaine prend le mois du jeudi", async () => {
+  const c = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const q = await c.newPage();
+  await q.goto(`${url}?vue=mois&date=2026-11-15`);
+  await q.waitForFunction(() => window.__carnet?.core);
+  await q.waitForSelector('.cn-cover[data-theme="brume"]');
+  ok((await q.locator(".cn-cover-art .k").count()) >= 4, "motif au trait");
+  // Intention du mois : écrite sur la page de garde, absente de la liste en dessous.
+  await q.fill("#in-intent-2026-11", "Ralentir, marcher le soir");
+  await q.press("#in-intent-2026-11", "Enter");
+  await q.waitForSelector(".cn-intent .cn-text");
+  eq((await q.textContent(".cn-intent .cn-text")).trim(), "Ralentir, marcher le soir", "intention");
+  eq(await q.locator(".cn-mpage .cn-log .cn-text", { hasText: "Ralentir" }).count(), 0, "intention en double dans la liste");
+  // Choisir « Sapin » pour novembre dans les Réglages : accent et page de garde suivent, et c'est gardé.
+  await openSettings(q);
+  await q.locator(".cn-theme", { hasText: "Sapin" }).click();
+  await q.waitForSelector('.cn-cover[data-theme="sapin"]');
+  const acc = await q.evaluate(() => getComputedStyle(document.querySelector("#spread")).getPropertyValue("--accent").trim());
+  ok(acc && acc !== "#2c6a56", `accent : ${acc}`);
+  await q.reload();
+  await q.waitForSelector('.cn-cover[data-theme="sapin"]');
+  // « Aucun » : plus de page de garde, l'accent de base.
+  await openSettings(q);
+  await q.locator(".cn-theme", { hasText: "Aucun" }).click();
+  await q.waitForSelector(".cn-cover", { state: "detached" });
+  eq(await q.evaluate(() => document.querySelector("#spread").dataset.monthTheme ?? null), null, "thème retiré");
+  // Une semaine à cheval : lundi 30 novembre 2026 → jeudi 3 décembre → thème de décembre.
+  await q.goto(`${url}?date=2026-11-30`);
+  await q.waitForFunction(() => window.__carnet?.core);
+  eq(await q.evaluate(() => document.querySelector("#spread").dataset.monthTheme), "sapin", "semaine du 30 novembre");
+  await c.close();
+});
+
+await step("mouvement réduit : la page de garde est posée d'emblée", async () => {
+  const c = await b.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
+  const q = await c.newPage();
+  await q.goto(`${url}?vue=mois`);
+  await q.waitForSelector(".cn-cover");
+  const running = await q.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && a.effect?.target?.closest?.(".cn-cover")).length);
+  eq(running, 0, "animations en cours");
   await c.close();
 });
 

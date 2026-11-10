@@ -19,6 +19,7 @@ import type { CollectionView, Core, DayView, Line, MonthView, Suggestion, YearMo
 import { moodName, yearMode } from "./mood.ts";
 import { addDays, isoWeek, parseDay, weekStart, type Day } from "./model.ts";
 import { describe, skyIcon } from "./weather.ts";
+import { headerSvg, type Theme } from "./themes.ts";
 
 export type View = "week" | "day" | "month" | "year" | "collections";
 export type RenderCtx = {
@@ -38,6 +39,8 @@ export type RenderCtx = {
   col: string | null;
   /** Page du mois : la colonne d'heure porte aussi le jour du rendez-vous. */
   dated?: boolean;
+  /** Thème du mois affiché (P7-L2), ou null (carnet neutre). */
+  theme?: Theme | null;
   /** Météo d'un jour (notée, ou prévue) ; absente si la météo n'est pas activée. */
   weather?: (day: Day) => { code: number; max: number; min: number; forecast: boolean } | null;
 };
@@ -545,9 +548,76 @@ function monthPage(host: HTMLElement, mv: MonthView, ctx: RenderCtx, sugIndex: M
   for (const s of mv.suggestions) sugIndex.set(s.key, s);
   ctx.placeKey = `month:${mv.month}`;
   ctx.dated = true;
-  const specs = [...mv.suggestions.map((s) => ghostSpec(s, ctx.now)), ...[...mv.departed, ...mv.lines].map((e) => entrySpec(e, ctx))];
+  // L'intention du mois : la première note « idée » sans date, en tête, sur la page de garde.
+  const intent = mv.lines.find((e) => e.kind === "note" && e.idea && !e.place.day && !e.departedTo) ?? null;
+  monthCover(sec, mv.month, intent, ctx);
+  const lines = [...mv.departed, ...mv.lines].filter((e) => e !== intent);
+  const specs = [...mv.suggestions.map((s) => ghostSpec(s, ctx.now)), ...lines.map((e) => entrySpec(e, ctx))];
   ctx.dated = false;
   syncList(sec.querySelector("ol")!, specs);
+}
+
+/* ───── Page de garde du mois (P7-L2) : motif du thème, nom du mois, intention ───── */
+const fMonthOnly = new Intl.DateTimeFormat("fr-FR", { month: "long" });
+function monthCover(sec: HTMLElement, month: string, intent: Line | null, ctx: RenderCtx) {
+  const t = ctx.theme ?? null;
+  let cover = sec.querySelector<HTMLElement>(":scope > .cn-cover");
+  if (!t) return void cover?.remove();
+  if (!cover) {
+    cover = el("header", "cn-cover");
+    const name = el("p", "cn-cover-name");
+    const slot = el("div", "cn-intent-slot");
+    cover.append(el("div", "cn-cover-art-wrap"), name, slot);
+    sec.prepend(cover);
+  }
+  const name = cap(fMonthOnly.format(parseDay(`${month}-01`)));
+  cover.setAttribute("aria-label", `Page de garde de ${name}, thème ${t.name}`);
+  cover.querySelector(".cn-cover-name")!.textContent = name;
+  if (cover.dataset.theme !== t.id || cover.dataset.month !== month) {
+    // Nouveau mois, ou thème changé : le motif se redessine (une fois).
+    cover.dataset.theme = t.id;
+    cover.dataset.month = month;
+    const wrap = cover.querySelector<HTMLElement>(".cn-cover-art-wrap")!;
+    wrap.innerHTML = headerSvg(t);
+    wrap.querySelectorAll<SVGElement>(".k").forEach((n, i) => {
+      n.setAttribute("pathLength", "1");
+      n.style.setProperty("--i", String(i));
+    });
+    cover.classList.remove("is-new");
+    void cover.offsetWidth;
+    cover.classList.add("is-new");
+  }
+  // L'intention : un texte à toucher pour le modifier, ou un champ pour l'écrire.
+  const slot = cover.querySelector<HTMLElement>(".cn-intent-slot")!;
+  const sig = intent ? `e:${intent.id}:${intent.text}` : `f:${month}`;
+  if (slot.dataset.sig === sig) return;
+  slot.dataset.sig = sig;
+  slot.replaceChildren();
+  if (intent) {
+    const row = el("div", "cn-row cn-intent");
+    row.dataset.id = intent.id;
+    const tx = el("span", "cn-text", intent.text);
+    tx.dataset.act = "edit";
+    tx.dataset.glText = "";
+    tx.dataset.glMorphId = `e:${intent.id}`;
+    tx.tabIndex = 0;
+    tx.setAttribute("role", "button");
+    tx.setAttribute("aria-label", `Intention du mois : ${intent.text}. Modifier`);
+    row.append(tx);
+    slot.append(row);
+  } else {
+    const f = el("form", "cn-form cn-intent-form");
+    f.autocomplete = "off";
+    f.dataset.month = month;
+    f.dataset.intent = "";
+    const i = el("input");
+    i.type = "text";
+    i.id = `in-intent-${month}`;
+    i.placeholder = "Intention du mois…";
+    i.setAttribute("aria-label", `Intention de ${name}`);
+    f.append(i);
+    slot.append(f);
+  }
 }
 
 /* ───── Suivis : une grille par mois, une ligne par habitude ───── */

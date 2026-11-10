@@ -649,6 +649,14 @@ export class Decor {
     this.renderDrawBar();
   }
 
+  /** Saison par défaut de la planche et des encres (celle du thème du mois, P7-L2). */
+  setSeason(s: Season) {
+    if (s === this.season) return;
+    this.season = s;
+    if (this.tray.hidden) this.buildTray();
+    if (!this.drawing) this.buildDrawBar();
+  }
+
   /** Le stylet écrit hors du mode Dessin (réglage de cet appareil). */
   get penEverywhere() {
     return this.penAnywhere;
