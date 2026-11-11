@@ -503,3 +503,42 @@ html.gl-on [data-diapo] [data-diapo-slide] [data-gl-text][style*="--couleur"],
 html.gl-on [data-diapo] [data-diapo-slide] [data-gl-text] [style*="--couleur"] {
   color: transparent !important;
 }
+
+/* Menu de sortie : en haut à gauche, visible quand le pointeur bouge (ou gardé par Échap). */
+.diapo-menu {
+  position: fixed !important;
+  z-index: 65 !important;
+  left: 12px;
+  top: 12px;
+  display: flex;
+  gap: 6px;
+  opacity: 0.92;
+  transition: opacity 0.35s;
+}
+html.diapo-idle .diapo-menu:not([data-fixe]):not(:focus-within):not(:hover),
+html.diapo-laser-on .diapo-menu:not([data-fixe]) {
+  opacity: 0;
+  pointer-events: none;
+}
+.diapo-menu a,
+.diapo-menu button {
+  padding: 0.5em 0.9em;
+  border: 0;
+  border-radius: 99px;
+  background: rgba(22, 17, 13, 0.88);
+  color: #efe6d2;
+  font: 500 13px/1.2 "IBM Plex Mono", ui-monospace, monospace;
+  text-decoration: none;
+  cursor: pointer !important;
+}
+.diapo-menu a:hover,
+.diapo-menu button:hover {
+  background: #000;
+}
+.diapo-menu :focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media print {
+  .diapo-menu { display: none !important; }
+}

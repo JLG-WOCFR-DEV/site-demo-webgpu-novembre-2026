@@ -260,6 +260,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     <dt>I</dt><dd>les images de la diapo en grand</dd>
     <dt>P</dt><dd>vue présentateur (seconde fenêtre)</dd>
     <dt>E</dt><dd>édition : styles de paragraphe, textes</dd>
+    <dt>Échap</dt><dd>menu de sortie (accueil, Créateur)</dd>
     <dt>?</dt><dd>cette aide · Échap la ferme</dd></dl>`;
   document.body.append(bar, black, live, toast, help);
 
@@ -497,6 +498,8 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     const t = e.target as HTMLElement | null;
     if (!relayed && t?.closest?.("input, textarea, select, [contenteditable]")) return;
     const k = e.key;
+    // Sur un lien du menu de sortie, Entrée et Espace l'activent (ils n'avancent pas le diaporama).
+    if (!relayed && t?.closest?.(".diapo-menu") && (k === "Enter" || k === " ")) return;
     let used = true;
     if (!help.hidden && (k === "Escape" || k === "?")) help.hidden = true;
     else if (!black.hidden && (k === "b" || k === "B" || k === "." || k === "Escape")) black.hidden = true;
@@ -506,6 +509,11 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     } else if (k === "Enter" && typed) {
       go(Number(typed) - 1);
       typed = "";
+    } else if (k === "Escape" && !typed && !embedded && !document.fullscreenElement) {
+      // Échap, sans rien à fermer : le menu de sortie paraît et reste (un second Échap le range).
+      menu.toggleAttribute("data-fixe");
+      if (menu.hasAttribute("data-fixe")) menu.querySelector("a")!.focus();
+      else (document.activeElement as HTMLElement | null)?.blur?.();
     } else if (k === "Escape" && typed) {
       typed = "";
       say("Annulé", 800);
@@ -557,6 +565,17 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     { passive: false },
   );
   let idle = 0;
+  // Le menu de sortie : un diaporama occupe tout l'écran, il faut pouvoir en revenir. Trois liens discrets en haut à
+  // gauche, qui paraissent quand le pointeur bouge et s'effacent avec lui ; Échap les fait paraître et les garde.
+  // Pas dans le Créateur (aperçu, essai, vignettes) ni dans la vue présentateur : ils ont leurs propres sorties.
+  const embedded = ["createur", "essai", "vignette", "presentateur", "impression"].some((k) => params.has(k));
+  const menu = document.createElement("nav");
+  menu.className = "diapo-menu";
+  menu.setAttribute("aria-label", "Sortir du diaporama");
+  const file = location.pathname.split("/").pop() || "conference.html";
+  menu.innerHTML = `<a href="./index.html" title="Revenir à l'accueil du site">← Accueil</a><a href="./diapo-createur.html?doc=${encodeURIComponent(file)}" title="Ouvrir ce diaporama dans le Créateur">Créateur</a><button type="button" title="Les touches du diaporama">? Aide</button>`;
+  menu.querySelector("button")!.addEventListener("click", () => (help.hidden = false));
+  if (!embedded) document.body.append(menu);
   const wakePointer = () => {
     html.classList.remove("diapo-idle");
     clearTimeout(idle);
