@@ -1693,7 +1693,7 @@ struct Post {
   tears: array<vec4f, ${MAX_TEARS}>, // y, gauche, droite (px), 0
   grid: vec4f,     // masque (1 colonnes, 2 rangées, 4 centre), x gauche, x droite, gouttière (px)
   grid2: vec4f,    // nombre de colonnes, pas des rangées (px), défilement (px), 0
-  cui: vec4f,      // effet Canvas UI (0 aucun…10), intensité, taille, 0
+  cui: vec4f,      // effet Canvas UI (index de CUI_EFFECTS, 0 aucun), intensité, taille, activité du défilement (laser)
   cui2: vec4f,     // pointeur amorti x, y (px), présent, défilement (px)
   ripples: array<vec4f, ${MAX_RIPPLES}>, // clics : x, y (px), départ (s), force
   pfk: array<vec4f, ${MAX_STAGES / 4}>,      // filtre de Paper de chaque plaque (0 aucun, 1…6)

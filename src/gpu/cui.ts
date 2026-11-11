@@ -8,8 +8,12 @@
  * scène (ondes, pli de cube, tuiles, déplacement, onde de choc, tranches du
  * glitch, ondulation de la bande VHS), puis cui_color() agit sur la couleur
  * (bavure de chroma, blocs corrompus, loupe ASCII ou tramée, laser…).
+ *
+ * Le tableau u.ripples (huit vec4) porte selon l'effet : les ondes des clics (x, y, date, force) ; pour « deplacement »,
+ * les poussées du pointeur (x, y, poussée x, y) ; pour « bulle », la traîne de la goutte (x, y, rayon relatif, présence).
+ * u.cui.w : l'activité du défilement (laser).
  */
-export const CUI_EFFECTS = ["aucun", "ondes", "vhs", "glitch", "pli", "tuiles", "ascii", "tramage", "deplacement", "champ", "laser", "eclats", "particules", "sable", "tissu", "dechiffrer", "pluie", "hexagones"] as const;
+export const CUI_EFFECTS = ["aucun", "ondes", "vhs", "glitch", "pli", "tuiles", "ascii", "tramage", "deplacement", "champ", "laser", "eclats", "particules", "sable", "tissu", "dechiffrer", "pluie", "hexagones", "bulle", "gouttes"] as const;
 export type CuiEffect = (typeof CUI_EFFECTS)[number];
 export const MAX_RIPPLES = 8;
 
@@ -111,7 +115,15 @@ fn cui_cloth_h(p: vec2f) -> f32 {
   let t = u.res.w;
   let q = p / dpr;
   let pin = 0.3 + 0.7 * (p.y / u.res.y);
-  var h = (sin(q.x * 0.012 + t * 1.7 + sin(q.y * 0.008 + t) * 1.5) * 0.65 + sin(q.x * 0.031 - t * 2.3 + q.y * 0.012) * 0.25) * pin;
+  // Le vent souffle par rafales lentes ; l'étoffe se gonfle vers le bas, libre.
+  let gust = 0.62 + 0.38 * sin(t * 0.37) * sin(t * 0.21 + 1.3);
+  var h = (sin(q.x * 0.012 + t * 1.7 + sin(q.y * 0.008 + t) * 1.5) * 0.65 + sin(q.x * 0.031 - t * 2.3 + q.y * 0.012) * 0.25) * pin * gust;
+  h += pin * pin * 0.5 * (gust - 0.62);
+  // Le pointeur soulève l'étoffe sous lui ; l'empreinte le suit avec un temps de retard (pointeur amorti).
+  if (u.cui2.z > 0.5) {
+    let dv = (p - u.cui2.xy) / (150.0 * dpr);
+    h += exp(-dot(dv, dv) * 2.2) * 1.5;
+  }
   for (var i = 0; i < ${MAX_RIPPLES}; i++) {
     let r = u.ripples[i];
     if (r.w <= 0.0) { continue; }
@@ -133,6 +145,124 @@ fn cui_hex(px: vec2f, S: f32) -> vec4f {
   let b = (p - h) - r * floor((p - h) / r) - h;
   let g = select(b, a, dot(a, a) < dot(b, b));
   return vec4f((p - g) * S, g);
+}
+
+fn cui_vn(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let w = f * f * (3.0 - 2.0 * f);
+  return mix(mix(cui_h(i), cui_h(i + vec2f(1.0, 0.0)), w.x), mix(cui_h(i + vec2f(0.0, 1.0)), cui_h(i + vec2f(1.0, 1.0)), w.x), w.y);
+}
+
+// Déplacement : la page en cellules ; chaque cellule reçoit la somme des poussées du pointeur qui l'atteignent,
+// plus le désordre du chargement, qui se range en une seconde.
+fn cui_push(px: vec2f) -> vec2f {
+  let dpr = u.res.z;
+  let cell = max(u.res.x / 50.0, 12.0 * dpr) * u.cui.z;
+  let id = floor(px / cell);
+  let c = (id + 0.5) * cell;
+  let reach = 6.0 * cell;
+  var p = vec2f(0.0);
+  for (var i = 0; i < ${MAX_RIPPLES}; i++) {
+    let r = u.ripples[i];
+    p += r.zw * (1.0 - smoothstep(0.0, 1.0, length(c - r.xy) / reach));
+  }
+  p += (cui_h2(id + 5.5) - 0.5) * 90.0 * dpr * exp(-u.res.w * 4.0);
+  return p * u.cui.y;
+}
+
+// Bulle : la hauteur (px) d'une goutte de verre faite de sphères fondues (la tête et sa traîne).
+// Chaque sphère est un paraboloïde ; leur maximum lissé (log-somme-exp) les soude ; la racine rend le dôme.
+fn cui_bub_h(px: vec2f) -> f32 {
+  let R = 44.0 * u.res.z * u.cui.z;
+  let k = 7.0 / R;
+  var sum = 1e-12;
+  for (var i = 0; i < ${MAX_RIPPLES}; i++) {
+    let b = u.ripples[i];
+    let r = R * b.z;
+    let v = px - b.xy;
+    sum += exp(k * (r * r - dot(v, v)) / (2.0 * r));
+  }
+  return sqrt(max(log(sum) / k * 2.0 * R, 0.0));
+}
+fn cui_bub_n(px: vec2f) -> vec3f {
+  let e = 1.25 * u.res.z;
+  let gx = cui_bub_h(px + vec2f(e, 0.0)) - cui_bub_h(px - vec2f(e, 0.0));
+  let gy = cui_bub_h(px + vec2f(0.0, e)) - cui_bub_h(px - vec2f(0.0, e));
+  return normalize(vec3f(-gx, -gy, 2.0 * e));
+}
+
+// Gouttes : une couche de gouttes qui glissent sur la vitre. La page est découpée en colonnes ; chaque colonne
+// descend à sa vitesse, par à-coups (elle colle, puis file) ; dans chaque case, une goutte en forme d'œuf, et
+// au-dessus d'elle la traînée qu'elle laisse, semée de perles. Renvoie (hauteur 0–1, vitre essuyée 0–1).
+fn cui_rain_layer(uv: vec2f, t: f32, seed: f32) -> vec2f {
+  let tall = 3.6;
+  let colId = floor(uv.x);
+  let cr = cui_h(vec2f(colId, seed));
+  let tt = t * (0.16 + 0.34 * cr) + cr * 23.0;
+  let slide = tt + 0.36 * sin(tt * 2.4 + cr * 6.2831);
+  let y = uv.y / tall - slide;
+  let row = floor(y);
+  let n = cui_h2(vec2f(colId, row) + vec2f(seed * 7.1, seed));
+  if (n.y > u.cui.y * 0.62) { return vec2f(0.0); }
+  let fy = fract(y);
+  let lx = fract(uv.x);
+  // La trajectoire serpente : la traînée, lue à la hauteur de chaque point, suit le même chemin.
+  let cx = 0.5 + (n.x - 0.5) * 0.3 + sin(uv.y * 1.9 + n.x * 6.2831) * 0.07;
+  let cy = 0.82;
+  var q = vec2f(lx - cx, (fy - cy) * tall);
+  q.y *= select(1.0, 0.55, q.y < 0.0);
+  let r = 0.12 + 0.08 * fract(n.y * 13.7);
+  let d = length(q) / r;
+  let drop = max(1.0 - d * d, 0.0);
+  let above = (cy - fy) * tall;
+  let reach = 2.7;
+  let fade = clamp(1.0 - above / reach, 0.0, 1.0);
+  let w = r * 0.6 * (0.35 + 0.65 * fade);
+  let trail = step(0.0, above) * fade * (1.0 - smoothstep(w * 0.4, w, abs(lx - cx)));
+  let b = vec2f((lx - cx) / (r * 0.42), (fract(uv.y * 4.5 + n.x) - 0.5) / 0.42);
+  let bead = max(1.0 - dot(b, b), 0.0) * trail;
+  return vec2f(max(drop, bead * 0.3), max(step(d, 1.0), trail));
+}
+// Les perles immobiles : elles se forment, tiennent, puis s'évaporent.
+fn cui_rain_static(uv: vec2f, t: f32) -> f32 {
+  let id = floor(uv);
+  let n = cui_h2(id + 31.7);
+  let life = fract(t * 0.045 + n.x);
+  // La perle tient tout entière dans sa case : pas d'arête à la frontière, donc pas de pente parasite.
+  let v = fract(uv) - 0.3 - 0.4 * cui_h2(id + 3.3);
+  let r = 0.08 + 0.14 * n.y;
+  let grow = smoothstep(0.0, 0.08, life) * (1.0 - smoothstep(0.7, 1.0, life));
+  return max(1.0 - dot(v, v) / (r * r), 0.0) * grow * step(n.y, 0.7);
+}
+// La vitre entière : deux couches de gouttes, les perles, et l'essuyage autour du pointeur. (hauteur en px, vitre claire)
+fn cui_rain(px: vec2f) -> vec2f {
+  let dpr = u.res.z;
+  let t = u.res.w;
+  let S = 96.0 * dpr * u.cui.z;
+  let a = cui_rain_layer(px / S, t, 1.0);
+  let b = cui_rain_layer(px / (S * 0.56) + vec2f(3.7, 1.3), t * 1.25, 2.0);
+  let clear = max(a.y, b.y);
+  let st = cui_rain_static(px / (S * 0.3), t) * (1.0 - clear) * 0.55;
+  let wipe = 1.0 - 0.92 * select(0.0, 1.0 - smoothstep(0.55, 1.0, length(px - u.cui2.xy) / (u.res.y * 0.2)), u.cui2.z > 0.5);
+  return vec2f((a.x * 0.5 + b.x * 0.28 + st * 0.16) * S * 0.3 * wipe, clear * wipe);
+}
+fn cui_rain_g(px: vec2f) -> vec2f {
+  let e = 1.25 * u.res.z;
+  return vec2f(cui_rain(px + vec2f(e, 0.0)).x - cui_rain(px - vec2f(e, 0.0)).x, cui_rain(px + vec2f(0.0, e)).x - cui_rain(px - vec2f(0.0, e)).x) / (2.0 * e);
+}
+
+// Laser : la ligne du faisceau (y, px), son enveloppe sur la largeur (0–1), et la bande de révélation au-dessus (0–1).
+fn cui_laser(px: vec2f) -> vec3f {
+  let dpr = u.res.z;
+  let t = u.res.w;
+  let nx = (px.x - u.res.x * 0.5) / (u.res.x * 0.5 * 0.72);
+  let env = pow(max(1.0 - nx * nx, 0.0), 1.5);
+  let wav = (cui_vn(vec2f(px.x / (170.0 * dpr), t * 0.35)) - 0.5) * 20.0 * dpr * env;
+  let ly = u.res.y - 140.0 * dpr * u.cui.z + wav;
+  let k = clamp((ly - px.y) / (400.0 * dpr * u.cui.z), 0.0, 1.0);
+  let band = exp(-3.0 * k) * (1.0 - smoothstep(0.8, 1.0, k)) * step(px.y, ly) * (0.25 + 0.75 * env);
+  return vec3f(ly, env, band);
 }
 
 fn cui_offset(px: vec2f) -> vec2f {
@@ -214,12 +344,24 @@ fn cui_offset(px: vec2f) -> vec2f {
     let sc = 0.93 + 0.1 * lift;
     off += hx.xy + (px - hx.xy) / sc - px + vec2f(0.0, 6.0 * dpr * lift);
   } else if (cui_is(8.0)) {
-    // Champ de déplacement : une grille qui s'écarte du pointeur.
-    let cell = 22.0 * dpr * u.cui.z;
-    let c = (floor(px / cell) + 0.5) * cell;
-    let d = c - u.cui2.xy;
-    let k = amt * 46.0 * dpr * exp(-length(d) / (190.0 * dpr)) * u.cui2.z;
-    off -= normalize(d + vec2f(1e-3)) * k;
+    // Déplacement : chaque cellule glisse d'un bloc, de la poussée qu'elle a reçue.
+    off -= cui_push(px);
+  } else if (cui_is(10.0)) {
+    // Laser : au-dessus du faisceau, l'air chaud fait trembler la page.
+    let L = cui_laser(px);
+    let q = px / (38.0 * dpr) + vec2f(0.0, t * 1.4);
+    off += (vec2f(cui_vn(q), cui_vn(q + 19.3)) - 0.5) * 2.0 * 12.0 * dpr * L.z * (0.35 + 0.9 * u.cui.w) * amt;
+  } else if (cui_is(18.0)) {
+    // Bulle : la goutte réfracte (loi de Snell, indice 1,33) ; presque rien au centre, de plus en plus vers le bord.
+    let h = cui_bub_h(px);
+    if (h > 0.0) {
+      let n = cui_bub_n(px);
+      let rf = refract(vec3f(0.0, 0.0, -1.0), n, 1.0 / 1.33);
+      off += rf.xy * (80.0 * dpr * amt) / max(abs(rf.z), 0.35) * smoothstep(0.0, 3.0 * dpr, h) * u.ripples[0].w;
+    }
+  } else if (cui_is(19.0)) {
+    // Gouttes : chaque goutte est une petite lentille ; la pente de sa surface dévie la lecture.
+    off -= cui_rain_g(px) * 34.0 * dpr;
   }
   return off;
 }
@@ -349,6 +491,9 @@ fn cui_color(px: vec2f, col_in: vec3f, lens: vec2f) -> vec3f {
     let gy = (cui_cloth_h(px + vec2f(0.0, e)) - cui_cloth_h(px - vec2f(0.0, e))) / (2.0 * e);
     // Lumière venue du haut à gauche, et la trame du tissage.
     col *= clamp(1.0 - (gx * 0.6 + gy * 0.8) * 1.4, 0.7, 1.25);
+    // Un lustre sur la crête des plis.
+    let nn = normalize(vec3f(-gx, -gy, 0.35));
+    col += vec3f(1.0) * pow(max(dot(nn, normalize(vec3f(-0.45, -0.6, 0.66))), 0.0), 22.0) * 0.1 * amt;
     let weave = sin(px.x * 3.14159 / (1.6 * dpr)) * sin(px.y * 3.14159 / (1.6 * dpr));
     col *= 1.0 - 0.035 * amt * (weave * 0.5 + 0.5);
   } else if (cui_is(15.0) || cui_is(16.0)) {
@@ -358,15 +503,29 @@ fn cui_color(px: vec2f, col_in: vec3f, lens: vec2f) -> vec3f {
     let c = source((id + 0.5) * cell, vec2f(0.0));
     let ink = clamp(1.0 - luma(c) / u.paper.g, 0.0, 1.0);
     if (cui_is(15.0)) {
-      // Déchiffrer : la page est un chiffre ; autour du pointeur elle se déchiffre.
-      let R = 170.0 * dpr * u.cui.z;
-      let dc = select(1e9, length(px - u.cui2.xy), u.cui2.z > 0.5);
-      let clear = 1.0 - smoothstep(R * 0.65, R, dc);
+      // Déchiffrer : la page est un chiffre ; autour du pointeur elle se déchiffre. Au bord du cercle, un front
+      // d'onde : les signes s'y affolent, s'éclairent et verdissent, et la page déchiffrée y est frangée de couleur.
+      let R = 300.0 * dpr * u.cui.z;
+      let on = step(0.5, u.cui2.z);
+      let dc = select(1e9, length(px - u.cui2.xy), on > 0.5);
+      let clear = 1.0 - smoothstep(R * 0.5, R, dc);
+      let bw = R * 0.1;
+      let bd = dc - R * 0.75;
+      let ring = exp(-bd * bd / (2.0 * bw * bw)) * on;
+      let green = vec3f(0.29, 0.87, 0.5);
+      if (ring > 0.01) {
+        let ab = vec2f(10.0 * dpr * ring, 0.0);
+        col = vec3f(source(px, lens + ab).r, col.g, source(px, lens - ab).b);
+        col = mix(col, col * 0.75 + green * 0.25, ring * 0.35);
+      }
       if (clear < 0.999) {
-        let rate = mix(9.0, 30.0, smoothstep(R * 1.5, R, dc));
-        let idx = 6 + i32(cui_h(id + floor(t * rate + cui_h(id) * 7.0)) * 10.0);
+        // Au repos, un signe sur dix continue de changer ; dans le front, tous.
+        let live = step(cui_h(id + 3.1), 0.1 + ring);
+        let idx = 6 + i32(cui_h(id + live * floor(t * mix(6.0, 30.0, ring) + cui_h(id) * 7.0)) * 10.0);
         let g = cui_glyph(local, cell, idx) * step(0.1, ink);
-        let cipher = mix(u.paper.rgb, mix(vec3f(0.07), c * 0.85, 0.5), g);
+        let signe = mix(mix(vec3f(0.07), c * 0.85, 0.5), green * 0.62, ring * 0.75);
+        var cipher = mix(u.paper.rgb, signe, g * min(1.0, 1.0 + ring));
+        cipher = mix(cipher, col, 0.15);
         col = mix(cipher, col, clear) * amt + col * (1.0 - amt);
       }
     } else {
@@ -406,11 +565,13 @@ fn cui_color(px: vec2f, col_in: vec3f, lens: vec2f) -> vec3f {
       col = mix(col, vec3f(1.0), (1.0 - smoothstep(0.0, 0.03, edge)) * 0.35);
     }
   } else if (cui_is(8.0)) {
-    // Franges de couleur là où la grille s'écarte, et un grain fin.
-    let o = cui_offset(px);
-    let k = length(o) / (46.0 * dpr);
-    col = vec3f(source(px, lens * 1.12).r, col.g, source(px, lens * 0.88).b);
-    col += (cui_h(px + floor(t * 24.0)) - 0.5) * 0.05 * k;
+    // Les cellules déplacées se frangent de couleur et prennent du grain ; les autres restent nettes.
+    let p = cui_push(px);
+    let k = smoothstep(1.5 * dpr, 18.0 * dpr, length(p));
+    if (k > 0.0) {
+      col = vec3f(source(px, lens + p * 0.3).r, col.g, source(px, lens - p * 0.3).b);
+      col += (cui_h(floor(px / dpr) + floor(t * 24.0) * 1.7) - 0.5) * 0.16 * k;
+    }
   } else if (cui_is(9.0)) {
     // Champ de force : un bouclier hexagonal qui luit près du pointeur, et l'éclair des chocs.
     // Grille hexagonale : deux réseaux décalés, on garde le centre le plus proche.
@@ -438,24 +599,59 @@ fn cui_color(px: vec2f, col_in: vec3f, lens: vec2f) -> vec3f {
       col += vec3f(0.3, 0.6, 0.8) * exp(-d / (120.0 * dpr)) * exp(-age * 9.0) * amt;
     }
   } else if (cui_is(10.0)) {
-    // Laser : sous le faisceau, la page attend dans le noir ; elle se révèle en passant au-dessus.
-    let ly = u.res.y * (1.0 - 0.18 * u.cui.z);
-    let d = px.y - ly;
-    let flick = 0.85 + 0.15 * cui_h(vec2f(floor(t * 40.0), 1.0));
+    // Laser : un faisceau effilé près du bas de l'écran. Sous lui la page attend dans le noir ; en le franchissant
+    // (faites défiler) elle sort chauffée : une lueur, des paillettes, qui s'éteignent en montant.
+    let L = cui_laser(px);
+    let d = px.y - L.x;
+    let act = u.cui.w;
+    let beam = vec3f(0.05, 0.35, 1.0);
+    let flick = 1.0 - 0.2 * cui_h(vec2f(floor(t * 30.0), 1.0));
     if (d > 0.0) {
-      let lum = dot(col, vec3f(0.299, 0.587, 0.114));
-      let scan = 0.5 + 0.5 * sin(px.y * 3.14159 / (2.0 * dpr) + t * 6.0);
-      col = mix(col, vec3f(0.05, 0.03, 0.03) + vec3f(0.5, 0.05, 0.04) * (1.0 - lum) * 0.2 * scan, clamp(amt * 0.95, 0.0, 0.95));
+      let hide = smoothstep(0.0, 8.0 * dpr, d) * clamp(amt * 0.96, 0.0, 0.96);
+      col = mix(col, vec3f(0.02, 0.025, 0.05), hide);
     } else {
-      col = mix(col, col * vec3f(1.15, 0.75, 0.7), exp(d / (60.0 * dpr)) * 0.5 * amt);
+      let ink = clamp(1.0 - luma(col) / u.paper.g, 0.0, 1.0);
+      let heat = L.z * (1.0 + act) * amt;
+      // L'encre fraîchement révélée luit ; le papier se teinte à peine.
+      col = mix(col, beam * 1.25 + vec3f(0.25), ink * clamp(heat * 1.5, 0.0, 0.9));
+      col = mix(col, col * (vec3f(0.82, 0.9, 1.08)), clamp(heat, 0.0, 1.0) * 0.6);
+      let q = px / (7.0 * dpr) + vec2f(0.0, t * 2.0);
+      let sp = pow(cui_vn(q) * cui_vn(q * 0.37 + 11.0), 3.0);
+      col += beam * sp * 2.2 * heat * 0.25 * 4.0;
     }
-    let core = exp(-abs(d) / (1.2 * dpr));
-    let glow = exp(-abs(d) / (14.0 * dpr));
-    col += (vec3f(1.0, 0.95, 0.9) * core + vec3f(1.0, 0.12, 0.08) * glow * 0.9) * flick * amt;
-    // Étincelles le long du faisceau.
-    let sx = floor(px.x / (6.0 * dpr));
-    let sp = cui_h(vec2f(sx, floor(t * 18.0)));
-    if (sp > 0.985 && d < 0.0 && d > -40.0 * dpr * fract(sp * 97.0)) { col += vec3f(1.0, 0.4, 0.2) * amt * 0.8; }
+    let ad = abs(d);
+    let core = exp(-pow(ad / (3.0 * dpr), 2.0)) * L.y;
+    let rad = 20.0 * dpr;
+    let glow = pow(rad / (ad + rad * 0.25), 0.9) * exp(-0.55 * ad / rad) * L.y;
+    let emit = (beam * glow * 2.0 * (0.6 + 0.8 * act) + vec3f(1.0) * core * 2.5) * flick * amt;
+    col = 1.0 - (1.0 - col) * exp(-emit);
+  } else if (cui_is(18.0)) {
+    // Bulle : dispersion des couleurs, bord assombri, éclat, et un film irisé qui roule sur la surface.
+    let h = cui_bub_h(px);
+    let m = smoothstep(0.0, 2.0 * dpr, h) * u.ripples[0].w;
+    if (m > 0.0) {
+      let n = cui_bub_n(px);
+      col = vec3f(source(px, lens * 1.07).r, col.g, source(px, lens * 0.93).b);
+      let edge = pow(1.0 - n.z, 1.5);
+      col *= 1.0 - 0.5 * edge * m;
+      let rfl = reflect(vec3f(0.0, 0.0, -1.0), n);
+      let s1 = cui_vn(rfl.xy * 2.6 + vec2f(t * 0.5, 0.0) + n.z);
+      let s2 = cui_vn(rfl.yx * 3.4 - vec2f(0.0, t * 0.4) + 7.0);
+      let film = (vec3f(0.29, 0.455, 0.72) * s1 + vec3f(0.62, 0.45, 0.75) * s2) * (0.25 + 0.75 * edge);
+      col += film * 0.28 * amt * m;
+      col += vec3f(1.0) * pow(s1 * s2 * 1.6, 7.0) * 0.4 * edge * m;
+      col += vec3f(1.0) * pow(max(dot(rfl, normalize(vec3f(-0.5, -0.7, 0.6))), 0.0), 60.0) * 0.6 * m;
+    }
+  } else if (cui_is(19.0)) {
+    // Gouttes : hors des gouttes la vitre est un peu embuée ; sur chaque goutte, un bord sombre et un éclat.
+    let r = cui_rain(px);
+    let g = cui_rain_g(px);
+    let slope = length(g);
+    let on = smoothstep(0.0, 1.5 * dpr, r.x);
+    col = mix(col, mix(col, u.paper.rgb, 0.1) * 0.97, (1.0 - r.y) * (1.0 - on) * amt);
+    col *= 1.0 - 0.2 * smoothstep(0.5, 1.3, slope) * on;
+    let n = normalize(vec3f(-g, 0.9));
+    col += vec3f(1.0) * pow(max(dot(n, normalize(vec3f(-0.45, -0.65, 0.6))), 0.0), 34.0) * 0.55 * on;
   }
   return col;
 }

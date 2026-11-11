@@ -806,6 +806,41 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     lastStroke = { x: e.clientX, y: e.clientY, t: now };
     if (v > 0.25) pushRipple(e.clientX, e.clientY, Math.min(1, v / 2.5));
   });
+  // Déplacement : un geste vif du pointeur pousse les cellules voisines dans son sens ; la poussée retombe seule.
+  // Huit impulsions (position, poussée en px) tournent dans le tableau des ondes, que cet effet n'emploie pas.
+  const cuiPush = Array.from({ length: MAX_RIPPLES }, () => ({ x: 0, y: 0, vx: 0, vy: 0 }));
+  let cuiPushAt = 0;
+  let lastMove = { x: 0, y: 0, t: 0 };
+  addEventListener(
+    "pointermove",
+    (e) => {
+      if (settings.cui.effect !== 8) return;
+      const now = performance.now();
+      const ms = now - lastMove.t;
+      const dx = e.clientX - lastMove.x;
+      const dyp = e.clientY - lastMove.y;
+      lastMove = { x: e.clientX, y: e.clientY, t: now };
+      if (ms <= 0 || ms > 160) return;
+      const speed = (Math.hypot(dx, dyp) / ms) * 1000; // px/s
+      // Sous 500 px/s la page reste nette ; la poussée monte en douceur au-delà.
+      const gate = Math.min(1, Math.max(0, (speed - 500) / 900));
+      if (gate <= 0) return;
+      const len = Math.hypot(dx, dyp) || 1;
+      const push = Math.min(70, speed * 0.022) * gate;
+      const cur = cuiPush[cuiPushAt]!;
+      // Près de la dernière impulsion : on la renforce ; plus loin : une nouvelle.
+      const slot = Math.hypot(cur.x - e.clientX, cur.y - e.clientY) < 26 ? cur : cuiPush[(cuiPushAt = (cuiPushAt + 1) % MAX_RIPPLES)]!;
+      if (slot !== cur) Object.assign(slot, { x: e.clientX, y: e.clientY, vx: 0, vy: 0 });
+      slot.vx = Math.max(-90, Math.min(90, slot.vx + (dx / len) * push));
+      slot.vy = Math.max(-90, Math.min(90, slot.vy + (dyp / len) * push));
+    },
+    { passive: true },
+  );
+  // Bulle : la goutte de verre suit le pointeur, et une traîne de sphères la suit, chacune tirée par la précédente.
+  const cuiTrail = Array.from({ length: MAX_RIPPLES }, () => ({ x: 0, y: 0 }));
+  let cuiTrailK = 0;
+  // Laser : l'activité du défilement (0–1), qui attise le faisceau et retombe.
+  let cuiAct = 0;
   // Couche d'écran du froissé : décalage de défilement en reste (texels), et remise à zéro.
   let creaseCarry = 0;
   let creaseWas = false;
@@ -1216,12 +1251,38 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
     // Effets d'après Canvas UI : pointeur amorti (celui de la lentille) et ondes des clics.
     const cu = settings.cui;
-    postData.set([menuOpen ? 0 : cu.effect, cu.amount, cu.scale, 0], CUI_AT);
+    cuiAct = reduced ? 0 : Math.max(cuiAct * Math.exp(-dt * 2.5), Math.min(1, Math.abs(dy) / dt / 2600));
+    postData.set([menuOpen ? 0 : cu.effect, cu.amount, cu.scale, cuiAct], CUI_AT);
     postData.set([lensP.x * dpr, lensP.y * dpr, pointer.inside && !menuOpen && !reduced ? 1 : 0, scrollY * dpr], CUI_AT + 4);
-    for (let i = 0; i < MAX_RIPPLES; i++) {
-      const r = cuiRipples[i];
-      if (r && r.t < 0) r.t = time;
-      postData.set(r ? [r.x * dpr, r.y * dpr, r.t, r.s] : [0, 0, 0, 0], CUI_AT + 8 + i * 4);
+    if (cu.effect === 8) {
+      // Déplacement : les poussées retombent (0,9 par image à 60 i/s).
+      const k = Math.pow(0.9, dt * 60);
+      for (let i = 0; i < MAX_RIPPLES; i++) {
+        const q = cuiPush[i]!;
+        q.vx *= k;
+        q.vy *= k;
+        postData.set([q.x * dpr, q.y * dpr, q.vx * dpr, q.vy * dpr], CUI_AT + 8 + i * 4);
+      }
+    } else if (cu.effect === 18) {
+      // Bulle : la tête rejoint le pointeur, chaque sphère rejoint la précédente ; au premier geste, tout se pose d'un coup.
+      const on = pointer.inside && !menuOpen;
+      if (on && cuiTrailK < 0.01) for (const q of cuiTrail) Object.assign(q, { x: pointer.x, y: pointer.y });
+      cuiTrailK += ((on ? 1 : 0) - cuiTrailK) * (reduced ? 1 : 1 - Math.exp(-dt * 7));
+      const head = reduced ? 1 : 1 - Math.pow(0.5, dt * 60);
+      const link = reduced ? 1 : 1 - Math.pow(0.62, dt * 60);
+      for (let i = 0; i < MAX_RIPPLES; i++) {
+        const q = cuiTrail[i]!;
+        const to = i ? cuiTrail[i - 1]! : pointer;
+        q.x += (to.x - q.x) * (i ? link : head);
+        q.y += (to.y - q.y) * (i ? link : head);
+        postData.set([q.x * dpr, q.y * dpr, 1 - i * 0.085, cuiTrailK], CUI_AT + 8 + i * 4);
+      }
+    } else {
+      for (let i = 0; i < MAX_RIPPLES; i++) {
+        const r = cuiRipples[i];
+        if (r && r.t < 0) r.t = time;
+        postData.set(r ? [r.x * dpr, r.y * dpr, r.t, r.s] : [0, 0, 0, 0], CUI_AT + 8 + i * 4);
+      }
     }
     device.queue.writeBuffer(postBuf, 0, postData);
 
