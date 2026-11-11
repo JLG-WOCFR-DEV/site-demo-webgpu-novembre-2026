@@ -12,7 +12,8 @@
  * « Télécharger le HTML » rend la page complète, sans les identifiants, à déposer dans le projet.
  */
 import "./style.css";
-import { docKey, readDoc, tagIds, type SavedDoc } from "../presse/diapo-doc.ts";
+import { docKey, listFiles, putFile, readDoc, tagIds, type SavedDoc } from "../presse/diapo-doc.ts";
+import { zipBytes } from "../createur/zip.ts";
 import { STYLES, STYLE_CLASSES, bakeSavedEdits, saveRunning, savedSettings, styleSheet } from "../presse/diapo-editeur.ts";
 import { SLIDE_TRANSITIONS } from "../gpu/slide-transition.ts";
 import { TRANSITIONS } from "../state.ts";
@@ -25,6 +26,36 @@ const esc = (s: unknown) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+
+/* Icônes (24 px, trait) : celles des traitements de texte, on ne les présente plus. */
+const ICONS: Record<string, string> = {
+  undo: "M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3",
+  redo: "M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3",
+  cursor: "M5 3l14 7-6 2-2 6z",
+  play: "M7 4l13 8-13 8z",
+  replay: "M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
+  restore: "M4 12a8 8 0 1 0 2.3-5.6M4 4v4.5h4.5M12 8v4l3 2",
+  up: "M12 19V5M5 12l7-7 7 7",
+  down: "M12 5v14M5 12l7 7 7-7",
+  copy: "M9 9h11v11H9zM5 15H4V4h11v1",
+  trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
+  plus: "M12 5v14M5 12h14",
+  download: "M12 4v11M7 11l5 5 5-5M5 20h14",
+  screen: "M3 5h18v11H3zM8 21h8M12 16v5",
+  clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2",
+  note: "M5 4h14v12l-4 4H5zM15 20v-4h4M8 9h8M8 13h5",
+  title: "M5 6h14M12 6v13",
+  transition: "M3 6h11v11H3zM10 9h11v11H10z",
+  appear: "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18",
+  image: "M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 5M15.5 9.5h.01",
+  wand: "M4 20 15 9M14 4v3M19 9h-3M18 5l-2 2M18.5 13v2M17.5 14h2",
+  code: "M8 7l-5 5 5 5M16 7l5 5-5 5",
+  camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
+  alt: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5",
+  running: "M4 19h16M4 15h9",
+};
+const icon = (name: string) => `<svg class="dc-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name] ?? ""}"/></svg>`;
+for (const el of document.querySelectorAll<HTMLElement>("[data-ic]")) el.insertAdjacentHTML("afterbegin", icon(el.dataset.ic!));
 
 const params = new URLSearchParams(location.search);
 const file = (params.get("doc") ?? "conference.html").replace(/[^\w.-]/g, "") || "conference.html";
@@ -68,7 +99,10 @@ function persist() {
   }
 }
 function status() {
-  $("[data-dc-saved]").textContent = saved ? `Modifié · gardé dans ce navigateur (${new Date(saved.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})` : "Source d'origine, sans modification";
+  const at = saved ? new Date(saved.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
+  const st = $("[data-dc-saved]");
+  st.textContent = saved ? `● ${at}` : "";
+  st.title = saved ? `Modifié — gardé dans ce navigateur à ${at}` : "Source d'origine, sans modification";
   $<HTMLButtonElement>("[data-dc-reset]").disabled = !saved;
   $<HTMLButtonElement>("[data-dc-undo]").disabled = !undo.length;
   $<HTMLButtonElement>("[data-dc-redo]").disabled = !redo.length;
@@ -90,6 +124,7 @@ function change(fn: () => void, how: "live" | "reload" | "none" = "reload", key 
   tagIds(main);
   persist();
   if (how === "reload") reload();
+  refreshThumbs();
 }
 function restore(from: typeof undo, to: typeof undo) {
   const st = from.pop();
@@ -102,6 +137,7 @@ function restore(from: typeof undo, to: typeof undo) {
   persist();
   render();
   reload();
+  refreshThumbs(0);
 }
 
 /* ───────────────────────── Aperçu ───────────────────────── */
@@ -219,6 +255,20 @@ frame.addEventListener("load", () => {
     replayOnLoad = false;
     setTimeout(replay, 1100);
   }
+  // Glisser une image sur l'aperçu : elle prend la place de l'image ou du cadre de capture sous le pointeur.
+  d.addEventListener("dragover", (e) => e.dataTransfer?.types.includes("Files") && e.preventDefault());
+  d.addEventListener("drop", (e) => {
+    const f = e.dataTransfer?.files[0];
+    if (!f) return;
+    e.preventDefault();
+    const at = (e.target as Element).closest<HTMLElement>("img, figure, [data-capture]");
+    const fig = at?.closest<HTMLElement>("figure") ?? at;
+    // Un cadre déjà rempli par le diaporama a perdu son identifiant d'image : on vise la figure du modèle.
+    const cid = at?.dataset.cid ?? fig?.dataset.cid ?? pick;
+    const m = byCid(cid ?? null);
+    const hit = m?.matches("img, figure[data-capture]") ? m : m?.querySelector<HTMLElement>("img, figure[data-capture]") ?? null;
+    void importImage(f, hit?.dataset.cid ?? pick);
+  });
   reveal();
   // Le moteur arrive un peu après : on redemande la diapo entière une fois ses calques posés.
   setTimeout(() => (reveal(), markPick()), 700);
@@ -283,21 +333,61 @@ function replay() {
 
 /* ───────────────────────── Interface ───────────────────────── */
 
+/* Vignettes : chaque diapo dans une petite iframe (?vignette : la page en HTML, sans moteur), chargée quand elle est
+ * visible, rechargée après un changement. Elle rend le document gardé : exactement ce que montrera le diaporama. */
+const thumbSeen = new IntersectionObserver((es) => {
+  for (const e of es) {
+    const f = e.target as HTMLIFrameElement;
+    if (e.isIntersecting && f.dataset.src && f.dataset.src !== f.dataset.loaded) {
+      f.dataset.loaded = f.dataset.src;
+      f.src = f.dataset.src;
+    }
+  }
+});
+let thumbRev = 0;
+let thumbTimer = 0;
+/** Après un changement : les vignettes se rechargent (un peu plus tard pendant la frappe). */
+function refreshThumbs(delay = 700) {
+  clearTimeout(thumbTimer);
+  thumbTimer = window.setTimeout(() => {
+    thumbRev++;
+    for (const f of document.querySelectorAll<HTMLIFrameElement>(".dc-thumb iframe")) {
+      f.dataset.src = `${deckUrl.pathname}?vignette=${thumbRev}#${Number(f.closest<HTMLElement>(".dc-slide")!.dataset.i) + 1}`;
+      thumbSeen.unobserve(f);
+      thumbSeen.observe(f);
+    }
+  }, delay);
+}
 function renderSlides() {
   const list = $("[data-dc-slides]");
   const ss = slides();
-  list.innerHTML = ss
-    .map(
-      (s, i) => `<li class="dc-slide" draggable="true" data-i="${i}" aria-current="${i === cur}" tabindex="0">
-        <b>${i + 1}</b><span>${esc(labelOf(s))}</span><small>${esc(layoutOf(s).replace(/^cf-/, "") || "—")} · ${esc(trOf(s) || "défaut")}</small>
-        <div class="dc-slide-tools"><button type="button" data-op="up" title="Monter"${i === 0 ? " disabled" : ""}>↑</button><button type="button" data-op="down" title="Descendre"${i === ss.length - 1 ? " disabled" : ""}>↓</button><button type="button" data-op="dup" title="Dupliquer">Dupliquer</button><button type="button" data-op="del" title="Supprimer"${ss.length < 2 ? " disabled" : ""}>Supprimer</button></div>
+  // La liste n'est refaite que si l'ordre ou le nombre change : les vignettes déjà chargées restent.
+  const sig = ss.map((s) => s.dataset.cid).join(",");
+  if (list.dataset.sig !== sig) {
+    list.dataset.sig = sig;
+    thumbSeen.disconnect();
+    list.innerHTML = ss
+      .map(
+        (_, i) => `<li class="dc-slide" draggable="true" data-i="${i}" tabindex="0">
+        <b>${i + 1}</b><div class="dc-thumb"><iframe tabindex="-1" aria-hidden="true" loading="lazy" data-src="${deckUrl.pathname}?vignette=${thumbRev}#${i + 1}"></iframe></div><small></small>
+        <div class="dc-slide-tools"><button type="button" class="dc-ic" data-op="up" title="Monter" aria-label="Monter">${icon("up")}</button><button type="button" class="dc-ic" data-op="down" title="Descendre" aria-label="Descendre">${icon("down")}</button><button type="button" class="dc-ic" data-op="dup" title="Dupliquer" aria-label="Dupliquer">${icon("copy")}</button><button type="button" class="dc-ic" data-op="del" title="Supprimer" aria-label="Supprimer">${icon("trash")}</button></div>
       </li>`,
-    )
-    .join("");
+      )
+      .join("");
+    for (const f of list.querySelectorAll("iframe")) thumbSeen.observe(f);
+  }
+  [...list.children].forEach((li, i) => {
+    const s = ss[i]!;
+    li.setAttribute("aria-current", String(i === cur));
+    (li as HTMLElement).title = `${i + 1}. ${labelOf(s)}`;
+    li.setAttribute("aria-label", `Diapo ${i + 1} : ${labelOf(s)}`);
+    li.querySelector("small")!.textContent = trOf(s) || "défaut";
+  });
   list.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
 }
 
-const field = (label: string, html: string, col = false) => `<label class="dc-field${col ? " is-col" : ""}"><span>${label}</span>${html}</label>`;
+/** Un champ : son icône (le nom est dans l'infobulle et pour les lecteurs d'écran), puis le contrôle. */
+const field = (ic: string, label: string, html: string) => `<label class="dc-field" title="${esc(label)}"><span class="dc-fic">${icon(ic)}<span class="dc-sr">${esc(label)}</span></span>${html}</label>`;
 const options = (choices: readonly (readonly [string, string])[], v: string) => choices.map(([k, l]) => `<option value="${esc(k)}"${k === v ? " selected" : ""}>${esc(l)}</option>`).join("");
 const notesText = (s: HTMLElement) =>
   [...(s.querySelector("[data-notes]")?.children ?? [])]
@@ -312,17 +402,18 @@ function renderSlide() {
   const tr = trOf(s);
   const group = (label: string, names: readonly string[]) => `<optgroup label="${label}">${names.map((n) => `<option value="${n}"${n === tr ? " selected" : ""}>${TR_LABEL[n] ?? n}</option>`).join("")}</optgroup>`;
   const dur = s.dataset.transitionDur ?? "";
-  box.innerHTML = `<h2>Diapo ${cur + 1} / ${slides().length}</h2>
-    ${field("Titre", `<input type="text" data-k="label" value="${esc(s.getAttribute("aria-label") ?? "")}" title="Lu par les lecteurs d'écran, affiché dans la vue présentateur" />`)}
+  box.innerHTML = `<h2>${cur + 1} / ${slides().length}</h2>
+    ${field("title", "Titre de la diapo (lecteurs d'écran, vue présentateur)", `<input type="text" data-k="label" value="${esc(s.getAttribute("aria-label") ?? "")}" />`)}
     ${field(
-      "Transition",
-      `<select data-k="transition"><option value=""${tr ? "" : " selected"}>Celle du diaporama (${esc(main.dataset.transition ?? "impression")})</option>
-        ${group("À deux images (la diapo qui part reste visible)", SLIDE_TRANSITIONS)}
-        ${group("Impression (la diapo s'imprime)", TRANSITIONS)}
+      "transition",
+      "Transition d'arrivée",
+      `<select data-k="transition"><option value=""${tr ? "" : " selected"}>défaut (${esc(main.dataset.transition ?? "impression")})</option>
+        ${group("À deux images", SLIDE_TRANSITIONS)}
+        ${group("Impression", TRANSITIONS)}
         ${group("Éléments partagés", ["deplacement"])}</select>`,
     )}
-    ${field("Durée", `<span class="dc-range"><input type="range" data-k="dur" min="0" max="3" step="0.05" value="${esc(dur || 0)}" /><output>${dur ? `${Number(dur).toFixed(2)} s` : "défaut"}</output></span>`)}
-    ${field("Notes de l'orateur (vue présentateur, touche P) — une ligne vide sépare deux paragraphes", `<textarea data-k="notes" rows="5" spellcheck="true">${esc(notesText(s))}</textarea>`, true)}`;
+    ${field("clock", "Durée de la transition", `<span class="dc-range"><input type="range" data-k="dur" min="0" max="3" step="0.05" value="${esc(dur || 0)}" /><output>${dur ? `${Number(dur).toFixed(2)} s` : "auto"}</output></span>`)}
+    ${field("note", "Notes de l'orateur (vue présentateur, touche P) — une ligne vide sépare deux paragraphes", `<textarea data-k="notes" rows="4" spellcheck="true" placeholder="Notes de l'orateur">${esc(notesText(s))}</textarea>`)}`;
 }
 
 const kindOf = (el: HTMLElement) => {
@@ -340,7 +431,7 @@ function renderEls() {
   const s = slide();
   if (!s) return void (box.innerHTML = "");
   const els = picks(s);
-  box.innerHTML = `<h2>Éléments</h2>${
+  box.innerHTML = `${
     els.length
       ? `<ul class="dc-els">${els
           .map((e) => {
@@ -348,39 +439,59 @@ function renderEls() {
             return `<li><button type="button" data-cid="${e.dataset.cid}" aria-current="${e.dataset.cid === pick}"><small>${esc(kindOf(e))}</small><span>${esc(textOf(e)) || "—"}</span>${step ? `<i title="Apparaît à un appui">${esc(step.dataset.step || "monte")}</i>` : ""}</button></li>`;
           })
           .join("")}</ul>`
-      : `<p class="dc-note">Rien à choisir dans cette diapo.</p>`
+      : ""
   }`;
 }
 
 function renderEl() {
   const box = $("[data-dc-el-panel]");
   const el = byCid(pick);
-  if (!el) return void (box.innerHTML = `<h2>Élément</h2><p class="dc-note">Cliquez un élément dans l'aperçu ou dans la liste. Double-clic dans l'aperçu : corriger le texte sur place.</p>`);
-  const isText = el.matches(TEXT);
-  const style = STYLE_CLASSES.find((c) => el.classList.contains(c)) ?? "";
+  renderTools();
+  if (!el) return void (box.innerHTML = "");
   const step = el.dataset.step;
   let h = `<h2>${esc(kindOf(el))}</h2>`;
-  if (isText) h += field("Texte (HTML : &lt;br&gt;, &lt;strong&gt;, &lt;em&gt;)", `<textarea data-k="html" rows="4" spellcheck="true">${esc(el.innerHTML.trim())}</textarea>`, true);
-  if (el.matches(PARA)) h += field("Style", `<select data-k="style">${options([["", "(aucun)"], ...STYLES.map((s): [string, string] => [s.cls, s.label])], style)}</select>`);
+  if (el.matches(TEXT)) h += field("code", "Texte (HTML : <br>, <strong>, <em>)", `<textarea data-k="html" rows="3" spellcheck="true">${esc(el.innerHTML.trim())}</textarea>`);
   if (el.matches("img")) {
-    h += field("Fichier", `<input type="text" data-k="src" value="${esc(el.getAttribute("src") ?? "")}" list="dc-files" spellcheck="false" />`);
-    h += field("Description", `<textarea data-k="alt" rows="2">${esc(el.getAttribute("alt") ?? "")}</textarea>`, true);
+    h += field("image", "Fichier de l'image (ou glissez une image sur l'aperçu)", `<input type="text" data-k="src" value="${esc(el.getAttribute("src") ?? "")}" list="dc-files" spellcheck="false" />`);
+    h += field("alt", "Description de l'image (lecteurs d'écran)", `<textarea data-k="alt" rows="2" placeholder="Description">${esc(el.getAttribute("alt") ?? "")}</textarea>`);
   }
-  if (el.matches("figure[data-capture]")) h += field("Capture", `<input type="text" data-k="capture" value="${esc(el.dataset.capture ?? "")}" spellcheck="false" title="public/conference/<nom>.webp, .jpg, .png ou .mp4" />`) + `<p class="dc-note">Le cadre se remplit seul quand le fichier <code>public/conference/${esc(el.dataset.capture)}.webp</code> (ou .jpg, .png, .mp4) existe.</p>`;
-  h += field("Apparition", `<select data-k="step">${options(STEP_CHOICES, step === undefined ? "" : step || "monte")}</select>`);
-  if (step !== undefined) h += field("Durée", `<span class="dc-range"><input type="range" data-k="stepDur" min="0.15" max="2.5" step="0.05" value="${esc(el.dataset.stepDur ?? 0.55)}" /><output>${Number(el.dataset.stepDur ?? 0.55).toFixed(2)} s</output></span>`);
-  h += field("Magic Move", `<input type="text" data-k="move" value="${esc(el.dataset.move ?? "")}" placeholder="identifiant partagé" spellcheck="false" title="Le même identifiant sur deux diapos qui se suivent : l'élément vole de l'une à l'autre (transition « déplacement »)" />`);
-  h += `<div class="dc-row"><button type="button" data-op="el-up" title="Avant son voisin">↑</button><button type="button" data-op="el-down" title="Après son voisin">↓</button><button type="button" data-op="el-dup">Dupliquer</button><button type="button" data-op="el-del">Supprimer</button></div>`;
+  if (el.matches("figure[data-capture]")) h += field("camera", "Capture attendue : public/conference/<nom>.webp, .jpg, .png ou .mp4 — ou glissez une image sur le cadre", `<input type="text" data-k="capture" value="${esc(el.dataset.capture ?? "")}" spellcheck="false" />`);
+  if (step !== undefined) h += field("clock", "Durée de l'apparition", `<span class="dc-range"><input type="range" data-k="stepDur" min="0.15" max="2.5" step="0.05" value="${esc(el.dataset.stepDur ?? 0.55)}" /><output>${Number(el.dataset.stepDur ?? 0.55).toFixed(2)} s</output></span>`);
+  h += field("wand", "Magic Move : le même identifiant sur deux diapos qui se suivent, l'élément vole de l'une à l'autre (transition « deplacement »)", `<input type="text" data-k="move" value="${esc(el.dataset.move ?? "")}" placeholder="identifiant partagé" spellcheck="false" />`);
   box.innerHTML = h;
+}
+
+/** La barre d'outils de l'élément choisi : style, gras, italique, apparition, image, ordre. */
+function renderTools() {
+  const el = byCid(pick);
+  const tools = $("[data-dc-tools]");
+  const isText = !!el?.matches(TEXT);
+  const on = (t: string, v: boolean) => ((tools.querySelector<HTMLButtonElement | HTMLSelectElement>(`[data-t="${t}"]`)!.disabled = !v), v);
+  const style = $<HTMLSelectElement>('[data-t="style"]', tools);
+  if (!style.options.length) {
+    style.innerHTML = options([["", "Style"], ...STYLES.map((s): [string, string] => [s.cls, s.label])], "");
+    $<HTMLSelectElement>('[data-t="step"]', tools).innerHTML = options(STEP_CHOICES, "");
+  }
+  if (on("style", !!el?.matches(PARA))) style.value = STYLE_CLASSES.find((c) => el!.classList.contains(c)) ?? "";
+  else style.value = "";
+  on("bold", isText);
+  on("italic", isText);
+  const step = $<HTMLSelectElement>('[data-t="step"]', tools);
+  on("step", !!el);
+  step.value = el?.dataset.step === undefined ? "" : el.dataset.step || "monte";
+  on("image", !!el?.matches("img, figure[data-capture]"));
+  on("up", !!el?.previousElementSibling);
+  on("down", !!el?.nextElementSibling);
+  on("dup", !!el);
+  on("del", !!el);
 }
 
 function renderDeck() {
   const set = savedSettings(PATH);
   const tr = main.dataset.transition ?? "impression";
   $("[data-dc-deck-panel]").innerHTML = `<h2>Diaporama</h2>
-    ${field("Transition par défaut", `<select data-k="deckTransition">${options([...SLIDE_TRANSITIONS, ...TRANSITIONS].map((n): [string, string] => [n, TR_LABEL[n] ?? n]), tr)}</select>`)}
-    ${field("Titre courant", `<input type="text" data-k="running" value="${esc(set.running ?? "")}" placeholder="celui de la page" title="En pied de chaque diapo" />`)}
-    <p class="dc-note">Styles de paragraphe (corps, graisse, chasse, couleur) : bouton « Styles… », ou E dans l'aperçu.</p>
+    ${field("transition", "Transition par défaut du diaporama", `<select data-k="deckTransition">${options([...SLIDE_TRANSITIONS, ...TRANSITIONS].map((n): [string, string] => [n, TR_LABEL[n] ?? n]), tr)}</select>`)}
+    ${field("running", "Titre courant, en pied de chaque diapo", `<input type="text" data-k="running" value="${esc(set.running ?? "")}" placeholder="Titre courant" />`)}
     <datalist id="dc-files">${[...new Set([...main.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? ""))].map((f) => `<option value="${esc(f)}"></option>`).join("")}</datalist>`;
 }
 
@@ -391,7 +502,7 @@ function render() {
   renderEl();
   status();
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-dc-mode]")) b.setAttribute("aria-pressed", String(b.dataset.dcMode === mode));
-  hint(mode === "edit" ? "Clic : choisir · double-clic : corriger le texte · ← → dans l'aperçu : changer de diapo" : "Comme en conférence : → avance d'une étape, F plein écran, P vue présentateur, ? aide");
+  hint(mode === "edit" ? "clic : choisir · double-clic : écrire · glisser une image : la poser" : "→ étape suivante · F plein écran · P présentateur · ? aide");
 }
 
 /* ── Liste des diapos : choisir, déplacer (glisser, ou boutons), dupliquer, supprimer ── */
@@ -532,26 +643,94 @@ right.addEventListener("change", (e) => {
 right.addEventListener("click", (e) => {
   const b = (e.target as Element).closest<HTMLButtonElement>("button");
   if (!b) return;
-  if (b.dataset.cid) return select(b.dataset.cid);
+  if (b.dataset.cid) select(b.dataset.cid);
+});
+
+/* ── Barre d'outils de l'élément ── */
+const tools = $("[data-dc-tools]");
+// Un clic sur la barre ne retire pas le curseur du texte en cours de correction dans l'aperçu.
+tools.addEventListener("mousedown", (e) => (e.target as Element).closest("button") && e.preventDefault());
+const editing = () => fdoc()?.querySelector<HTMLElement>('[contenteditable="true"]') ?? null;
+/** Gras, italique : sur la sélection si on corrige le texte dans l'aperçu, sinon sur tout l'élément. */
+function inline(tag: "strong" | "em") {
+  const ed = editing();
+  if (ed) return void fdoc()!.execCommand(tag === "strong" ? "bold" : "italic");
   const el = byCid(pick);
-  const op = b.dataset.op;
-  if (!el || !op) return;
-  if (op === "el-up" && el.previousElementSibling) change(() => el.previousElementSibling!.before(el));
-  else if (op === "el-down" && el.nextElementSibling) change(() => el.nextElementSibling!.after(el));
-  else if (op === "el-dup")
-    change(() => {
-      const c = stripIds(el.cloneNode(true) as HTMLElement);
-      el.after(c);
-    });
-  else if (op === "el-del") {
+  if (!el?.matches(TEXT)) return;
+  const only = el.children.length === 1 && el.firstElementChild!.tagName.toLowerCase() === tag && el.textContent === el.firstElementChild!.textContent ? el.firstElementChild! : null;
+  change(() => (el.innerHTML = only ? only.innerHTML : `<${tag}>${el.innerHTML}</${tag}>`), "live");
+  const f = inFrame(pick);
+  if (f) ((f.innerHTML = el.innerHTML), relayout());
+  renderEl();
+  renderEls();
+}
+tools.addEventListener("click", (e) => {
+  const b = (e.target as Element).closest<HTMLButtonElement>("button[data-t]");
+  const el = byCid(pick);
+  if (!b || !el) return;
+  const t = b.dataset.t;
+  if (t === "bold") return inline("strong");
+  if (t === "italic") return inline("em");
+  if (t === "image") return void $<HTMLInputElement>("[data-dc-file]").click();
+  if (t === "up" && el.previousElementSibling) change(() => el.previousElementSibling!.before(el));
+  else if (t === "down" && el.nextElementSibling) change(() => el.nextElementSibling!.after(el));
+  else if (t === "dup") change(() => void el.after(stripIds(el.cloneNode(true) as HTMLElement)));
+  else if (t === "del") {
     change(() => el.remove());
     pick = null;
   } else return;
   renderEls();
   renderEl();
 });
+tools.addEventListener("change", (e) => {
+  const sel = e.target as HTMLSelectElement;
+  const el = byCid(pick);
+  if (!el) return;
+  const v = sel.value;
+  if (sel.dataset.t === "style") {
+    const swap = (x: HTMLElement) => (x.classList.remove(...STYLE_CLASSES), v && x.classList.add(v));
+    change(() => swap(el), "live");
+    const f = inFrame(pick);
+    if (f) (swap(f), relayout());
+  } else if (sel.dataset.t === "step") change(() => (v ? (el.dataset.step = v) : (delete el.dataset.step, delete el.dataset.stepDur)));
+  renderEls();
+  renderEl();
+});
 
-/* ── Barre ── */
+/* ── Images : importer (bouton, ou glisser sur l'aperçu) ── */
+/** L'image entre dans ce navigateur sous le chemin qu'elle aura dans le projet (conference/…), et prend la place visée. */
+async function importImage(f: File, cid: string | null) {
+  const el = byCid(cid);
+  if (!f.type.startsWith("image/")) return hint("Ce fichier n'est pas une image.");
+  if (!el?.matches("img, figure[data-capture]")) return hint("Choisissez d'abord une image ou un cadre de capture, puis déposez le fichier dessus.");
+  const name = f.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.-]+/g, "-").toLowerCase();
+  const path = `conference/${name}`;
+  await putFile(PATH, path, f);
+  change(() => {
+    if (el.matches("img")) el.setAttribute("src", `./${path}`);
+    else {
+      // Le cadre de capture devient une vraie figure, comme quand son fichier existe.
+      const img = doc.createElement("img");
+      img.setAttribute("data-gl-img", "");
+      img.setAttribute("src", `./${path}`);
+      img.setAttribute("alt", el.querySelector("span")?.textContent ?? "");
+      el.replaceChildren(img);
+      el.removeAttribute("data-capture");
+      el.classList.add("is-filled");
+    }
+  });
+  pick = el.matches("img") ? cid : (el.querySelector("img")?.getAttribute("data-cid") ?? null);
+  render();
+  hint(`Image gardée dans ce navigateur : ${path} — elle sera jointe au téléchargement.`);
+}
+$<HTMLInputElement>("[data-dc-file]").addEventListener("change", (e) => {
+  const inp = e.target as HTMLInputElement;
+  const f = inp.files?.[0];
+  if (f) void importImage(f, pick);
+  inp.value = "";
+});
+
+/* ── Barre ── *//* ── Barre ── */
 document.addEventListener("click", (e) => {
   const b = (e.target as Element).closest<HTMLButtonElement>(".dc-bar button, [data-dc-add]");
   if (!b) return;
@@ -577,7 +756,7 @@ document.addEventListener("click", (e) => {
     if (!window.confirm("Revenir au diaporama d'origine ? Les modifications gardées dans ce navigateur seront perdues (pensez à « Télécharger le HTML » avant).")) return;
     localStorage.removeItem(docKey(PATH));
     location.reload();
-  } else if (b.hasAttribute("data-dc-export")) exportHtml();
+  } else if (b.hasAttribute("data-dc-export")) void exportHtml();
 });
 addEventListener("keydown", (e) => {
   if ((e.target as Element).closest("input, textarea, select")) return;
@@ -586,7 +765,7 @@ addEventListener("keydown", (e) => {
 $<HTMLSelectElement>("[data-dc-doc]").addEventListener("change", (e) => (location.search = `?doc=${(e.target as HTMLSelectElement).value}`));
 
 /** La page complète : les diapos du modèle sans identifiants, les réglages de styles figés dans une feuille. */
-function exportHtml() {
+async function exportHtml() {
   const out = new DOMParser().parseFromString(source, "text/html");
   const root = out.querySelector<HTMLElement>("[data-diapo]");
   if (!root) return;
@@ -602,9 +781,20 @@ function exportHtml() {
     st.textContent = `\n${css}`;
     out.head.append(st);
   }
+  const html = `<!doctype html>\n${out.documentElement.outerHTML}`;
+  // Les images importées encore utilisées partent avec la page, à leur place (public/conference/…).
+  const used = new Set([...root.querySelectorAll("img[src], video[src]")].map((e) => (e.getAttribute("src") ?? "").replace(/^\.\//, "")));
+  const files = (await listFiles(PATH)).filter((f) => used.has(f.path));
+  let blob = new Blob([html], { type: "text/html" });
+  let name = file;
+  if (files.length) {
+    const data = await Promise.all(files.map(async (f) => ({ name: `public/${f.path}`, data: new Uint8Array(await f.blob.arrayBuffer()) })));
+    blob = new Blob([zipBytes([{ name: file, data: new TextEncoder().encode(html) }, ...data]) as BlobPart], { type: "application/zip" });
+    name = file.replace(/\.html$/, ".zip");
+  }
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([`<!doctype html>\n${out.documentElement.outerHTML}`], { type: "text/html" }));
-  a.download = file;
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }

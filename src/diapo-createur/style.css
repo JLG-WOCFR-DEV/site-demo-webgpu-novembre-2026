@@ -9,7 +9,7 @@
   margin: 0;
   height: 100vh;
   display: grid;
-  grid-template: 52px minmax(0, 1fr) / 264px minmax(0, 1fr) 348px;
+  grid-template: 48px minmax(0, 1fr) / 196px minmax(0, 1fr) 300px;
   background: var(--bg);
   color: var(--ink);
   font: 400 13px/1.4 "IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -81,3 +81,45 @@
   .dc-saved, .dc-logo span { display: none; }
 }
 .dc-add select, .dc-field select, .dc-field input[type="text"] { width: 100%; min-width: 0; }
+
+/* ───── Icônes : la barre se lit comme celle d'un traitement de texte ───── */
+.dc-svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; display: block; }
+.dc .dc-ic { display: inline-grid; place-items: center; width: 34px; min-width: 34px; height: 32px; padding: 0; border-color: transparent; background: none; }
+.dc .dc-ic:hover:not(:disabled) { background: rgba(239, 230, 210, 0.13); }
+.dc .dc-ic[aria-pressed="true"] { background: var(--blue); color: #fff; }
+.dc .dc-ic--fill { background: var(--ink); color: #16110d; }
+.dc .dc-ic--fill:hover:not(:disabled) { background: #fff; }
+.dc .dc-glyph { font: 600 15px/1 Georgia, "Times New Roman", serif; }
+.dc .dc-glyph i { font-style: italic; }
+.dc-logo span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; background: #c8321c; color: #fff; font: 700 15px/1 Georgia, serif; }
+.dc-group { display: flex; align-items: center; gap: 2px; padding: 0 8px; border-left: 1px solid var(--line); height: 28px; }
+.dc-group select { height: 30px; min-height: 30px; padding: 2px 6px; max-width: 150px; }
+.dc-seg button { margin: 0; border-radius: 5px !important; }
+.dc-with-ic { display: inline-flex; align-items: center; gap: 4px; color: var(--dim); }
+.dc-with-ic select { color: var(--ink); max-width: 124px; }
+.dc-doc select { max-width: 190px; height: 30px; padding: 2px 6px; }
+.dc-end { gap: 2px; }
+.dc-saved { margin-right: 6px; color: #ffd27a; }
+.dc-bar { gap: 0; overflow: hidden; }
+.dc-bar > .dc-logo { margin-right: 8px; }
+.dc-doc { margin-right: 8px; }
+
+/* Liste des diapos : des vignettes. */
+.dc-slides { padding: 8px 8px 8px 4px; gap: 6px; }
+.dc-slide { grid-template-columns: 18px minmax(0, 1fr); gap: 2px 6px; padding: 5px 6px 4px 2px; }
+.dc-slide b { grid-row: 1; align-self: start; font-size: 11px; }
+.dc-slide small { grid-column: 2; }
+.dc-thumb { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 3px; background: #efebe1; container-type: inline-size; box-shadow: 0 0 0 1px var(--line); }
+.dc-thumb iframe { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; transform-origin: 0 0; scale: calc(100cqw / 1280px); pointer-events: none; }
+.dc-slide[aria-current="true"] .dc-thumb { box-shadow: 0 0 0 2px var(--blue); }
+.dc-slide-tools { grid-column: 2; justify-content: space-between; }
+.dc-slide-tools .dc-ic { flex: 1; width: auto; min-width: 0; height: 26px; }
+.dc-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 8px; gap: 4px; }
+
+/* Inspecteur : une icône par champ, le nom en infobulle. */
+.dc-field { grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: start; }
+.dc-fic { color: var(--dim); padding-top: 6px; }
+.dc-field input[type="text"], .dc-field select, .dc-field textarea { width: 100%; min-width: 0; }
+.dc-els button { grid-template-columns: 74px minmax(0, 1fr) auto; }
+.dc-hint { font-size: 11px; opacity: 0.8; }
+.dc-sec h2 { letter-spacing: 0.08em; }

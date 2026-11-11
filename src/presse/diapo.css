@@ -381,3 +381,9 @@ html.diapo-edit {
   color: #9db8ff;
   text-underline-offset: 3px;
 }
+
+/* Vignette du Créateur : la diapo seule, sans barre de progression ni pointeur. */
+html.diapo-vignette .diapo-progress,
+html.diapo-vignette .diapo-toast {
+  display: none !important;
+}

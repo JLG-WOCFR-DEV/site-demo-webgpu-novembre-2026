@@ -10,36 +10,47 @@
   </head>
   <body class="dc">
     <header class="dc-bar">
-      <a class="dc-logo" href="./presse.html" title="Presse, la documentation">Créateur <span>de diaporama</span></a>
+      <a class="dc-logo" href="./presse.html" title="Presse, la documentation" aria-label="Presse, la documentation"><span aria-hidden="true">P</span></a>
       <label class="dc-doc"><span class="dc-sr">Diaporama</span>
-        <select data-dc-doc>
+        <select data-dc-doc title="Diaporama ouvert">
           <option value="conference.html">Conférence · Kerguéhennec</option>
           <option value="diapo-demos.html">Diaporama · démos</option>
         </select>
       </label>
-      <span class="dc-saved" data-dc-saved aria-live="polite"></span>
-      <div class="dc-seg" role="group" aria-label="Mode">
-        <button type="button" data-dc-mode="edit" title="Choisir et modifier les éléments">Éditer</button>
-        <button type="button" data-dc-mode="try" title="Le diaporama comme en conférence : étapes, clavier">Essayer</button>
+      <div class="dc-group" role="group" aria-label="Historique">
+        <button type="button" class="dc-ic" data-dc-undo data-ic="undo" title="Annuler (Ctrl/⌘ Z)" aria-label="Annuler"></button>
+        <button type="button" class="dc-ic" data-dc-redo data-ic="redo" title="Rétablir (Maj Ctrl/⌘ Z)" aria-label="Rétablir"></button>
       </div>
-      <button type="button" class="dc-btn" data-dc-replay title="Rejouer l'arrivée de cette diapo (sa transition)">▶ Rejouer</button>
+      <div class="dc-group dc-seg" role="group" aria-label="Mode">
+        <button type="button" class="dc-ic" data-dc-mode="edit" data-ic="cursor" title="Éditer : choisir et modifier les éléments" aria-label="Éditer"></button>
+        <button type="button" class="dc-ic" data-dc-mode="try" data-ic="play" title="Essayer : le diaporama comme en conférence (étapes, clavier)" aria-label="Essayer"></button>
+      </div>
+      <div class="dc-group" role="group" aria-label="Élément choisi" data-dc-tools>
+        <select data-t="style" title="Style de paragraphe" aria-label="Style de paragraphe"></select>
+        <button type="button" class="dc-ic dc-glyph" data-t="bold" title="Gras (Ctrl/⌘ B)" aria-label="Gras"><b>G</b></button>
+        <button type="button" class="dc-ic dc-glyph" data-t="italic" title="Italique (Ctrl/⌘ I)" aria-label="Italique"><i>I</i></button>
+        <span class="dc-with-ic" data-ic="appear" title="Apparition : avec la diapo, ou à un appui"><select data-t="step" aria-label="Apparition"></select></span>
+        <button type="button" class="dc-ic" data-t="image" data-ic="image" title="Importer une image (ou la glisser sur l'aperçu)" aria-label="Importer une image"></button>
+        <button type="button" class="dc-ic" data-t="up" data-ic="up" title="Placer avant son voisin" aria-label="Placer avant"></button>
+        <button type="button" class="dc-ic" data-t="down" data-ic="down" title="Placer après son voisin" aria-label="Placer après"></button>
+        <button type="button" class="dc-ic" data-t="dup" data-ic="copy" title="Dupliquer l'élément" aria-label="Dupliquer l'élément"></button>
+        <button type="button" class="dc-ic" data-t="del" data-ic="trash" title="Supprimer l'élément" aria-label="Supprimer l'élément"></button>
+      </div>
       <div class="dc-end">
-        <button type="button" class="dc-icon" data-dc-undo title="Annuler (Ctrl/⌘ Z)" aria-label="Annuler">↶</button>
-        <button type="button" class="dc-icon" data-dc-redo title="Rétablir (Maj Ctrl/⌘ Z)" aria-label="Rétablir">↷</button>
-        <button type="button" class="dc-btn" data-dc-styles title="Régler les styles de paragraphe (corps, graisse, couleur) dans l'aperçu">Styles…</button>
-        <button type="button" class="dc-btn" data-dc-reset>Revenir à la source</button>
-        <button type="button" class="dc-btn" data-dc-export>Télécharger le HTML</button>
-        <button type="button" class="dc-btn dc-btn--fill" data-dc-present title="Ouvrir le diaporama à cette diapo, dans un onglet">Présenter ↗</button>
+        <span class="dc-saved" data-dc-saved aria-live="polite"></span>
+        <button type="button" class="dc-ic" data-dc-replay data-ic="replay" title="Rejouer l'arrivée de cette diapo (sa transition)" aria-label="Rejouer la transition"></button>
+        <button type="button" class="dc-ic dc-glyph" data-dc-styles title="Régler les styles de paragraphe (corps, graisse, chasse, couleur)" aria-label="Régler les styles de paragraphe">Aa</button>
+        <button type="button" class="dc-ic" data-dc-reset data-ic="restore" title="Revenir au diaporama d'origine" aria-label="Revenir à la source"></button>
+        <button type="button" class="dc-ic" data-dc-export data-ic="download" title="Télécharger le diaporama (HTML, ou zip avec les images importées)" aria-label="Télécharger"></button>
+        <button type="button" class="dc-ic dc-ic--fill" data-dc-present data-ic="screen" title="Présenter : ouvrir le diaporama à cette diapo" aria-label="Présenter"></button>
       </div>
     </header>
 
     <aside class="dc-left" aria-label="Les diapos">
       <ol class="dc-slides" data-dc-slides></ol>
       <div class="dc-add">
-        <label>Nouvelle diapo, sur le modèle de
-          <select data-dc-model></select>
-        </label>
-        <button type="button" class="dc-btn" data-dc-add>＋ Ajouter après</button>
+        <select data-dc-model title="Mise en page de la nouvelle diapo" aria-label="Mise en page de la nouvelle diapo"></select>
+        <button type="button" class="dc-ic" data-dc-add data-ic="plus" title="Ajouter une diapo après celle-ci" aria-label="Ajouter une diapo"></button>
       </div>
     </aside>
 
@@ -50,9 +61,10 @@
 
     <aside class="dc-right" aria-label="Inspecteur">
       <section class="dc-sec" data-dc-slide-panel></section>
-      <section class="dc-sec" data-dc-els-panel></section>
       <section class="dc-sec" data-dc-el-panel></section>
+      <section class="dc-sec" data-dc-els-panel></section>
       <section class="dc-sec" data-dc-deck-panel></section>
     </aside>
+    <input type="file" accept="image/*" hidden data-dc-file />
   </body>
 </html>
