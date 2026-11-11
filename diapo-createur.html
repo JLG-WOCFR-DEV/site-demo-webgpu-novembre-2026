@@ -24,6 +24,7 @@
       <div class="dc-group dc-seg" role="group" aria-label="Mode">
         <button type="button" class="dc-ic" data-dc-mode="edit" data-ic="cursor" title="Éditer : choisir et modifier les éléments" aria-label="Éditer"></button>
         <button type="button" class="dc-ic" data-dc-mode="try" data-ic="play" title="Essayer : le diaporama comme en conférence (étapes, clavier) — Échap revient à l'édition" aria-label="Essayer"></button>
+        <button type="button" class="dc-ic" data-dc-sorter data-ic="grid" title="Trieuse de diapositives : toutes les diapos en grand, glisser pour ordonner — double-clic ou Entrée : y aller, Échap : revenir" aria-label="Trieuse de diapositives" aria-pressed="false"></button>
         <button type="button" class="dc-ic" data-dc-strip data-ic="strip" title="Vignettes en bas (bande) ou à gauche (colonne)" aria-label="Placer les vignettes en bas ou à gauche"></button>
       </div>
       <div class="dc-group" role="group" aria-label="Élément choisi" data-dc-tools>
@@ -32,17 +33,42 @@
         <button type="button" class="dc-ic dc-glyph" data-t="italic" title="Italique (Ctrl/⌘ I)" aria-label="Italique"><i>I</i></button>
         <span class="dc-with-ic" data-ic="appear" title="Apparition : avec la diapo, ou à un appui"><select data-t="step" aria-label="Apparition"></select></span>
         <button type="button" class="dc-ic" data-t="image" data-ic="image" title="Importer une image (ou la glisser sur l'aperçu)" aria-label="Importer une image"></button>
+      </div>
+      <div class="dc-group" role="group" aria-label="Mise en forme de l'élément" data-dc-tools data-dc-fold="4">
+        <button type="button" class="dc-ic" data-t="align" data-v="left" data-ic="alignl" title="Aligner à gauche" aria-label="Aligner à gauche"></button>
+        <button type="button" class="dc-ic" data-t="align" data-v="center" data-ic="alignc" title="Centrer" aria-label="Centrer"></button>
+        <button type="button" class="dc-ic" data-t="align" data-v="right" data-ic="alignr" title="Aligner à droite" aria-label="Aligner à droite"></button>
+        <button type="button" class="dc-ic" data-t="size" data-v="-1" data-ic="smaller" title="Réduire la taille du texte (−8 %)" aria-label="Réduire la taille du texte"></button>
+        <button type="button" class="dc-ic" data-t="size" data-v="1" data-ic="bigger" title="Agrandir la taille du texte (+8 %)" aria-label="Agrandir la taille du texte"></button>
+        <span class="dc-with-ic" data-ic="color" title="Couleur du texte"><select data-t="color" aria-label="Couleur du texte"></select></span>
+        <button type="button" class="dc-ic" data-t="clear" data-ic="clear" title="Effacer la mise en forme (alignement, taille, couleur)" aria-label="Effacer la mise en forme"></button>
+      </div>
+      <div class="dc-group" role="group" aria-label="Ordre de l'élément" data-dc-tools data-dc-fold="1">
         <button type="button" class="dc-ic" data-t="up" data-ic="up" title="Placer avant son voisin" aria-label="Placer avant"></button>
         <button type="button" class="dc-ic" data-t="down" data-ic="down" title="Placer après son voisin" aria-label="Placer après"></button>
         <button type="button" class="dc-ic" data-t="dup" data-ic="copy" title="Dupliquer l'élément" aria-label="Dupliquer l'élément"></button>
         <button type="button" class="dc-ic" data-t="del" data-ic="trash" title="Supprimer l'élément" aria-label="Supprimer l'élément"></button>
       </div>
+      <div class="dc-group" role="group" aria-label="Insérer" data-dc-fold="3">
+        <button type="button" class="dc-ic" data-dc-insert="text" data-ic="textbox" title="Ajouter une zone de texte libre (à placer à la souris dans l'aperçu)" aria-label="Ajouter une zone de texte"></button>
+        <button type="button" class="dc-ic" data-dc-insert="image" data-ic="imageadd" title="Ajouter une image libre (choisir un fichier)" aria-label="Ajouter une image"></button>
+      </div>
       <div class="dc-end">
         <span class="dc-saved" data-dc-saved aria-live="polite"></span>
-        <button type="button" class="dc-ic" data-dc-replay data-ic="replay" title="Rejouer l'arrivée de cette diapo (sa transition)" aria-label="Rejouer la transition"></button>
-        <button type="button" class="dc-ic dc-glyph" data-dc-styles title="Régler les styles de paragraphe (corps, graisse, chasse, couleur)" aria-label="Régler les styles de paragraphe">Aa</button>
-        <button type="button" class="dc-ic" data-dc-reset data-ic="restore" title="Revenir au diaporama d'origine" aria-label="Revenir à la source"></button>
-        <button type="button" class="dc-ic" data-dc-export data-ic="download" title="Télécharger le diaporama (HTML, ou zip avec les images importées)" aria-label="Télécharger"></button>
+        <div class="dc-group dc-group--end" role="group" aria-label="Répéter, régler" data-dc-fold="2">
+          <button type="button" class="dc-ic" data-dc-replay data-ic="replay" title="Rejouer l'arrivée de cette diapo (sa transition)" aria-label="Rejouer la transition"></button>
+          <button type="button" class="dc-ic dc-glyph" data-dc-styles title="Régler les styles de paragraphe (corps, graisse, chasse, couleur)" aria-label="Régler les styles de paragraphe">Aa</button>
+          <button type="button" class="dc-ic" data-dc-rehearse data-ic="stopwatch" title="Répétition minutée : présenter depuis le début en mesurant le temps passé sur chaque diapo — Échap termine" aria-label="Répétition minutée"></button>
+        </div>
+        <div class="dc-group dc-group--end" role="group" aria-label="Fichier" data-dc-fold="0">
+          <button type="button" class="dc-ic" data-dc-reset data-ic="restore" title="Revenir au diaporama d'origine" aria-label="Revenir à la source"></button>
+          <button type="button" class="dc-ic" data-dc-pdf data-ic="printer" title="Exporter en PDF : le diaporama à imprimer, une diapo par page (Maj + clic : avec les notes de l'orateur)" aria-label="Exporter en PDF"></button>
+          <button type="button" class="dc-ic" data-dc-export data-ic="download" title="Télécharger le diaporama (HTML, ou zip avec les images importées)" aria-label="Télécharger"></button>
+        </div>
+        <div class="dc-more">
+          <button type="button" class="dc-ic" data-dc-more data-ic="more" title="Plus d'outils" aria-label="Plus d'outils" aria-expanded="false" aria-controls="dc-more-menu" hidden></button>
+          <div class="dc-more-menu" id="dc-more-menu" role="group" aria-label="Plus d'outils" hidden></div>
+        </div>
         <button type="button" class="dc-ic dc-ic--fill" data-dc-present data-ic="screen" title="Présenter en plein écran depuis cette diapo (Maj + F5) — F5 : depuis le début, Échap : revenir" aria-label="Présenter"></button>
       </div>
     </header>
@@ -51,12 +77,20 @@
       <ol class="dc-slides" data-dc-slides></ol>
       <div class="dc-add">
         <select data-dc-model title="Mise en page de la nouvelle diapo" aria-label="Mise en page de la nouvelle diapo"></select>
-        <button type="button" class="dc-ic" data-dc-add data-ic="plus" title="Ajouter une diapo après celle-ci" aria-label="Ajouter une diapo"></button>
+        <span class="dc-add-btns">
+          <button type="button" class="dc-ic" data-dc-add data-ic="plus" title="Ajouter une diapo après celle-ci" aria-label="Ajouter une diapo"></button>
+          <button type="button" class="dc-ic" data-dc-sections-auto data-ic="sections" title="Sections depuis les intercalaires : une section à chaque diapo d'intercalaire (son titre pour nom)" aria-label="Créer les sections depuis les intercalaires"></button>
+        </span>
       </div>
     </aside>
 
     <main class="dc-stage">
       <div class="dc-frame"><iframe data-dc-frame title="Aperçu du diaporama" allow="fullscreen"></iframe></div>
+      <ol class="dc-sorter" data-dc-sorter-list aria-label="Trieuse de diapositives" hidden></ol>
+      <section class="dc-notes" data-dc-notes aria-label="Notes de l'orateur">
+        <button type="button" class="dc-ic dc-notes-toggle" data-dc-notes-toggle data-ic="note" title="Notes de l'orateur : afficher ou replier (vue présentateur, touche P)" aria-label="Afficher ou replier les notes de l'orateur" aria-expanded="true" aria-controls="dc-notes-text"></button>
+        <textarea id="dc-notes-text" data-k="notes" rows="3" spellcheck="true" placeholder="Notes de l'orateur — une ligne vide sépare deux paragraphes" aria-label="Notes de l'orateur de la diapo"></textarea>
+      </section>
       <p class="dc-hint" data-dc-hint></p>
     </main>
 

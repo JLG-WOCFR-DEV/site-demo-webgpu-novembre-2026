@@ -6,7 +6,8 @@
  * (`data-cid`) : c'est par lui que le Créateur retrouve, dans l'aperçu, l'élément de son modèle. Les identifiants sont
  * posés dans l'ordre du document : les mêmes des deux côtés tant que le HTML est le même ; ils sont retirés à l'export.
  */
-export type SavedDoc = { v: 1; html: string; transition?: string; at: number };
+/** `transition`, `dureeVisee` : les attributs de `[data-diapo]` lui-même (data-transition, data-duree-visee en minutes). */
+export type SavedDoc = { v: 1; html: string; transition?: string; dureeVisee?: string; at: number };
 export const docKey = (pathname: string) => `presse-diapo-doc:${pathname}`;
 
 export function readDoc(pathname: string): SavedDoc | null {
@@ -16,6 +17,13 @@ export function readDoc(pathname: string): SavedDoc | null {
   } catch {
     return null;
   }
+}
+
+/** Les paragraphes des notes de l'orateur (`[data-notes]`) : ses <p>, ou son texte coupé aux lignes vides. */
+export function notesParas(aside: Element): string[] {
+  const kids = [...aside.children].filter((c) => c.tagName === "P");
+  const raw = kids.length ? kids.map((p) => p.textContent ?? "") : (aside.textContent ?? "").split(/\n[ \t]*\n/);
+  return raw.map((p) => p.replace(/\s+/g, " ").trim()).filter(Boolean);
 }
 
 /** Donne un identifiant à chaque élément qui n'en a pas. */
@@ -31,6 +39,7 @@ export function applySavedDoc(root: HTMLElement, pathname = location.pathname) {
   if (!d) return false;
   root.innerHTML = d.html;
   if (d.transition) root.dataset.transition = d.transition;
+  if (d.dureeVisee) root.dataset.dureeVisee = d.dureeVisee;
   return true;
 }
 

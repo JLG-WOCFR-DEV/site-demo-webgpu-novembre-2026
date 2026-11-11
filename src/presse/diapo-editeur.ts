@@ -38,7 +38,7 @@ type Saved = { v: 1; els: Record<string, { html?: string; cls?: string }>; style
 
 export const editsKey = (pathname: string) => `presse-diapo-edits:${pathname}`;
 const KEY = () => editsKey(location.pathname);
-const COLORS: [string, string][] = [
+export const COLORS: [string, string][] = [
   ["", "Du style"],
   ["var(--ink)", "Encre"],
   ["var(--accent)", "Accent"],

@@ -7,7 +7,7 @@ import { presseFromHtml } from "../presse/index.ts";
 import { mountDiapo } from "../presse/diapo.ts";
 import { applySavedEdits, mountEditor } from "../presse/diapo-editeur.ts";
 import { initAnim } from "../presse/timeline.ts";
-import { applySavedDoc, applySavedFiles, tagIds } from "../presse/diapo-doc.ts";
+import { applySavedDoc, applySavedFiles, notesParas, tagIds } from "../presse/diapo-doc.ts";
 
 const root = document.querySelector<HTMLElement>("[data-diapo]");
 const params = new URLSearchParams(location.search);
@@ -15,6 +15,9 @@ const params = new URLSearchParams(location.search);
 // Créateur (?vignette) non plus : la diapo en HTML, toutes ses étapes visibles.
 const presenter = params.has("presentateur");
 const vignette = params.has("vignette");
+// L'impression (?impression, &notes : les notes de l'orateur sous chaque diapo) : ni moteur ni clavier, les diapos
+// l'une sous l'autre, une par page — « Enregistrer en PDF » dans la fenêtre d'impression.
+const impression = params.has("impression");
 void (async () => {
   if (!root) return;
   // D'abord le document gardé par le Créateur de diaporama (diapo-createur.html), s'il y en a un, et ses images
@@ -24,6 +27,7 @@ void (async () => {
   await applySavedFiles(root).catch(() => {});
   // Les corrections gardées par l'éditeur (E) : le diaporama découpe ensuite les textes tels quels.
   applySavedEdits(root);
+  if (impression) return void (await printDeck(root, params.has("notes")));
   if (presenter || vignette) {
     if (vignette) document.documentElement.classList.add("diapo-vignette");
     mountDiapo(root, Promise.resolve(null));
@@ -47,10 +51,11 @@ void (async () => {
  * vidéo est lue sur sa diapo seulement. Sans fichier, le cadre reste, avec ce qu'il attend.
  */
 function captures() {
+const found: Promise<void>[] = [];
 const exists = (url: string) => fetch(url, { method: "HEAD" }).then((r) => r.ok && !(r.headers.get("content-type") ?? "").includes("text/html")).catch(() => false);
 for (const fig of document.querySelectorAll<HTMLElement>("figure[data-capture]")) {
   const name = fig.dataset.capture!;
-  void (async () => {
+  found.push((async () => {
     for (const ext of ["webp", "jpg", "png"]) {
       const url = `./conference/${name}.${ext}`;
       if (!(await exists(url))) continue;
@@ -71,6 +76,57 @@ for (const fig of document.querySelectorAll<HTMLElement>("figure[data-capture]")
       fig.replaceChildren(v);
       fig.classList.add("is-filled");
     }
-  })();
+  })());
 }
+return Promise.all(found);
+}
+
+/**
+ * Le diaporama à imprimer (?impression) : les diapos non masquées l'une sous l'autre, toutes leurs étapes visibles, une
+ * par page 16:9 (13,333 × 7,5 pouces) ; avec &notes, une page A4 par diapo, ses notes dessous. La fenêtre d'impression
+ * s'ouvre quand fontes, captures et images sont là (&sansdialogue : non, pour les tests).
+ */
+async function printDeck(root: HTMLElement, withNotes: boolean) {
+  const html = document.documentElement;
+  html.classList.add("diapo-impression");
+  html.classList.toggle("diapo-impression-notes", withNotes);
+  const page = document.createElement("style");
+  page.textContent = withNotes ? "@page { size: A4 portrait; margin: 12mm; }" : "@page { size: 13.333in 7.5in; margin: 0; }";
+  document.head.append(page);
+  let k = 0;
+  for (const s of [...root.querySelectorAll<HTMLElement>("[data-diapo-slide]")]) {
+    if (s.hasAttribute("data-masquee")) {
+      s.remove();
+      continue;
+    }
+    // Le numéro de l'habillage (CSS attr(data-num)), comme en conférence : les diapos masquées ne comptent pas.
+    s.dataset.num = String(++k).padStart(2, "0");
+    s.setAttribute("aria-label", s.getAttribute("aria-label") ?? `Diapo ${k}`);
+    const sheet = document.createElement("div");
+    sheet.className = "diapo-page";
+    s.before(sheet);
+    sheet.append(s);
+    if (withNotes) {
+      const box = document.createElement("div");
+      box.className = "diapo-page-notes";
+      const paras = [...s.querySelectorAll("[data-notes]")].flatMap(notesParas);
+      box.replaceChildren(...(paras.length ? paras : ["—"]).map((p) => Object.assign(document.createElement("p"), { textContent: p })));
+      sheet.append(box);
+    }
+  }
+  // Les barres à leur valeur (en conférence, elles montent à l'arrivée de la diapo).
+  for (const b of root.querySelectorAll<HTMLElement>("[data-barre]")) b.style.setProperty("--h", String(Number(b.dataset.barre) || 0));
+  await captures();
+  await document.fonts.ready;
+  await Promise.all(
+    [...document.images].map((img) => {
+      img.loading = "eager";
+      return img.complete ? img.decode().catch(() => {}) : new Promise<void>((r) => {
+            img.addEventListener("load", () => r(), { once: true });
+            img.addEventListener("error", () => r(), { once: true });
+          });
+    }),
+  );
+  html.classList.add("diapo-impression-prete");
+  if (!params.has("sansdialogue")) window.print();
 }

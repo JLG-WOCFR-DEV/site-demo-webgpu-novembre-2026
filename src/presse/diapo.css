@@ -147,6 +147,17 @@ html.diapo-presentateur body {
   font-size: 34px;
   color: #ffd27a;
 }
+/* Le temps prévu de la diapo et l'écart cumulé : sobre, la couleur ne fait que souligner. */
+.dp-plan {
+  font-size: 16px;
+  opacity: 0.85;
+}
+.dp-plan[data-ecart="avance"] {
+  color: #a9c7a4;
+}
+.dp-plan[data-ecart="retard"] {
+  color: #e3a27a;
+}
 .dp-clock {
   font-size: 22px;
   opacity: 0.7;
@@ -391,4 +402,104 @@ html.diapo-vignette .diapo-toast {
 /* Diapo masquée : jamais affichée hors du Créateur (elle n'est pas dans la liste du diaporama). */
 [data-diapo-slide][data-masquee]:not(.is-active) {
   display: none !important;
+}
+
+/* Élément libre (Créateur : zone de texte, image) : placé en pourcentage de la diapo, hors de sa grille. */
+[data-diapo-slide] [data-libre] {
+  position: absolute;
+  margin: 0;
+  max-width: none;
+  box-sizing: border-box;
+  z-index: 1;
+}
+[data-diapo-slide] figure[data-libre] img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ───── Impression (?impression, &notes) : une diapo par page, fonds et couleurs imprimés ───── */
+html.diapo-impression {
+  --page-w: 13.333in;
+  --u: calc(var(--page-w) / 100);
+  height: auto;
+  overflow: visible;
+}
+html.diapo-impression-notes {
+  --page-w: 186mm;
+}
+html.diapo-impression,
+html.diapo-impression * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+html.diapo-impression body {
+  height: auto;
+  overflow: visible;
+  margin: 0;
+}
+html.diapo-impression [data-diapo] {
+  position: static !important;
+}
+html.diapo-impression [data-diapo-slide] {
+  display: grid;
+  position: relative;
+  left: auto;
+  top: auto;
+  translate: none;
+  width: var(--page-w);
+  height: calc(var(--page-w) * 0.5625);
+  overflow: hidden;
+  background: var(--paper, #fff);
+}
+.diapo-page {
+  break-after: page;
+  break-inside: avoid;
+}
+.diapo-page:last-child {
+  break-after: auto;
+}
+html.diapo-impression-notes [data-diapo-slide] {
+  outline: 0.3mm solid rgba(0, 0, 0, 0.25);
+}
+.diapo-page-notes {
+  padding-top: 7mm;
+  font: 400 11pt/1.5 "Archivo Variable", "Archivo", system-ui, sans-serif;
+  color: #15110d;
+}
+.diapo-page-notes p {
+  margin: 0 0 0.7em;
+}
+@media screen {
+  html.diapo-impression body {
+    padding: 24px 0;
+    background: #6f685e;
+  }
+  .diapo-page {
+    width: var(--page-w);
+    margin: 0 auto 24px;
+    background: var(--paper, #fff);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  }
+  html.diapo-impression-notes .diapo-page {
+    padding: 12mm;
+    box-sizing: content-box;
+  }
+}
+@media print {
+  /* Pages de notes : le papier de la diapo reste dans son cadre, la page est blanche. */
+  html.diapo-impression-notes,
+  html.diapo-impression-notes body {
+    background: #fff;
+  }
+}
+
+/* Couleur directe (Créateur : style en ligne --couleur) : elle passe devant les styles de paragraphe ; sous le GPU
+   (html.gl-on), le texte DOM reste transparent — le moteur lit la couleur sans cette classe. */
+[data-diapo] [data-diapo-slide] [style*="--couleur"] {
+  color: var(--couleur) !important;
+}
+html.gl-on [data-diapo] [data-diapo-slide] [data-gl-text][style*="--couleur"],
+html.gl-on [data-diapo] [data-diapo-slide] [data-gl-text] [style*="--couleur"] {
+  color: transparent !important;
 }

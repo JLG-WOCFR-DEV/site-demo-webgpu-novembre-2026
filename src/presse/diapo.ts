@@ -21,7 +21,10 @@
  * (src/gpu/slide-transition.ts). `data-transition="deplacement"` : Magic Move — chaque `[data-move="id"]` vole de sa
  * place dans la diapo précédente à sa place dans celle-ci ; le reste entre en fondu.
  *
- * Apparitions : `data-step="mots"` ou `"lettres"` (mot à mot, lettre à lettre) ; `data-compte="87"` (le nombre
+ * Apparitions : `data-step="mots"` ou `"lettres"` (mot à mot, lettre à lettre) ; leur ordre : `data-step-ordre="n"`
+ * (sinon celui du document), `data-step-depart="avec"` (avec la précédente, sans nouvel appui) ou `"apres"` (d'elle-même
+ * après la précédente) — voir diapo-etapes.ts. `data-duree="secondes"` : le temps prévu sur la diapo (vue présentateur :
+ * avance ou retard). `data-compte="87"` (le nombre
  * compte jusqu'à sa valeur) et `data-barre="0.72"` (la barre monte, CSS : scale: 1 var(--h)) partent avec leur
  * étape, ou à l'arrivée de la diapo s'ils n'en ont pas.
  *
@@ -33,6 +36,7 @@ import "./diapo.css";
 import { settings, TRANSITIONS } from "../state.ts";
 import { SLIDE_TRANSITIONS, type SlideTransition } from "../gpu/slide-transition.ts";
 import { animOf, parseAnim, Timeline } from "./timeline.ts";
+import { planSteps, type StepPlan } from "./diapo-etapes.ts";
 
 type Api = {
   replay: () => void;
@@ -40,7 +44,24 @@ type Api = {
   engine?: { slideTransition?: (style: string, dur: number) => Promise<void>; relayout?: () => void } | null;
 } | null;
 type Step = { el: HTMLElement; tl: Timeline };
-type Slide = { el: HTMLElement; steps: Step[]; enter: Timeline; title: string; notes: string; transition: number; overlay: SlideTransition | null; move: boolean; dur: number };
+type Slide = { el: HTMLElement; steps: Step[]; enter: Timeline; title: string; notes: string; transition: number; overlay: SlideTransition | null; move: boolean; dur: number; duree: number };
+
+/** Une timeline jouée dans une autre, à partir de `at` : la tête de lecture de la seconde mène la première (à chaque
+ *  image où elle bouge, en avant comme en arrière). */
+const nested = new WeakMap<Timeline, { child: Timeline; at: number }[]>();
+function nest(into: Timeline, child: Timeline, at: number) {
+  let list = nested.get(into);
+  if (!list) {
+    const l: { child: Timeline; at: number }[] = (list = []);
+    nested.set(into, l);
+    into.onUpdate = (tl) => {
+      for (const n of l) n.child.seek(Math.min(n.child.duration, Math.max(0, tl.time - n.at)));
+    };
+  }
+  list.push({ child, at });
+  // La durée de la timeline englobe celle de l'enfant.
+  into.call(() => {}, at + child.duration);
+}
 
 /** Mot à mot, lettre à lettre : le texte est coupé en <span> (le GPU suit l'opacité et la position de chacun). */
 function splitText(el: HTMLElement, by: "mots" | "lettres") {
@@ -140,7 +161,12 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", `${k + 1}. ${titleOf(el)}`);
     const stepEls = [...el.querySelectorAll<HTMLElement>("[data-step]")];
     const ownedBy = (x: HTMLElement) => x.closest("[data-step]") as HTMLElement | null;
-    const steps = stepEls.map((s) => {
+    const name = el.dataset.transition ?? root.dataset.transition ?? "impression";
+    const overlay = (SLIDE_TRANSITIONS as readonly string[]).includes(name) ? (name as SlideTransition) : null;
+    const move = name === "deplacement";
+    const t = overlay || move ? TRANSITIONS.indexOf("aucune") : TRANSITIONS.indexOf(name as (typeof TRANSITIONS)[number]);
+    const dur = Number(el.dataset.transitionDur ?? (overlay === "enchaine" ? 0.7 : 1.15));
+    const built = stepEls.map((s) => {
       const kind = s.dataset.step || "monte";
       const tl = new Timeline();
       if (kind === "mots" || kind === "lettres") {
@@ -153,18 +179,37 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
       // Les nombres et barres de l'étape partent avec elle.
       fills(tl, s, (x) => ownedBy(x) === s, 0.15);
       tl.seek(0);
-      return { el: s, tl };
+      return tl;
     });
-    // Ceux qui n'appartiennent à aucune étape partent à l'arrivée de la diapo.
+    // L'ordre des apparitions : un appui lance une étape et celles qui partent avec elle ou après elle.
+    const plan = planSteps(stepEls.map((s) => ({ ordre: s.dataset.stepOrdre, depart: s.dataset.stepDepart })));
+    const byClick = new Map<number, StepPlan[]>();
+    for (const p of plan) byClick.set(p.click, [...(byClick.get(p.click) ?? []), p]);
+    /** Les étapes d'un même appui dans une timeline : « avec » au départ de la précédente, « après » à sa fin. */
+    const compose = (ps: StepPlan[], into: Timeline, first: number) => {
+      let start = 0;
+      let len = 0;
+      ps.forEach((p, k) => {
+        const child = built[p.index]!;
+        start = k === 0 ? first : p.depart === "apres" ? start + len : start;
+        len = child.duration;
+        nest(into, child, start);
+      });
+      into.seek(0);
+      return into;
+    };
+    const steps: Step[] = [...byClick.entries()]
+      .filter(([c]) => c > 0)
+      .map(([, ps]) => ({ el: stepEls[ps[0]!.index]!, tl: ps.length === 1 ? built[ps[0]!.index]! : compose(ps, new Timeline(), 0) }));
+    // Ceux qui n'appartiennent à aucune étape partent à l'arrivée de la diapo, avec les étapes « avec » ou « après » de tête.
     const enter = new Timeline();
-    if (!fills(enter, el, (x) => !ownedBy(x), 0.35)) enter.duration = 0;
+    const filled = fills(enter, el, (x) => !ownedBy(x), 0.35);
+    const arrival = byClick.get(0);
+    if (arrival) compose(arrival, enter, arrival[0]!.depart === "apres" ? dur : 0);
+    else if (!filled) enter.duration = 0;
     enter.seek(0);
-    const name = el.dataset.transition ?? root.dataset.transition ?? "impression";
-    const overlay = (SLIDE_TRANSITIONS as readonly string[]).includes(name) ? (name as SlideTransition) : null;
-    const move = name === "deplacement";
-    const t = overlay || move ? TRANSITIONS.indexOf("aucune") : TRANSITIONS.indexOf(name as (typeof TRANSITIONS)[number]);
-    const dur = Number(el.dataset.transitionDur ?? (overlay === "enchaine" ? 0.7 : 1.15));
-    return { el, steps, enter, title: titleOf(el), notes: notesOf(el), transition: t >= 0 ? t : 0, overlay, move, dur };
+    const duree = Math.max(0, Number(el.dataset.duree) || 0);
+    return { el, steps, enter, title: titleOf(el), notes: notesOf(el), transition: t >= 0 ? t : 0, overlay, move, dur, duree };
   });
   const n = slides.length;
   if (!n) return;
@@ -568,7 +613,7 @@ function presenter(slides: Slide[], channel: BroadcastChannel | null) {
   const box = document.createElement("div");
   box.className = "dp";
   box.innerHTML = `
-    <header class="dp-head"><span class="dp-count"></span><span class="dp-step"></span><span class="dp-timer" role="timer"></span><span class="dp-clock"></span></header>
+    <header class="dp-head"><span class="dp-count"></span><span class="dp-step"></span><span class="dp-plan"></span><span class="dp-timer" role="timer"></span><span class="dp-clock"></span></header>
     <section class="dp-now"><p class="dp-label">Maintenant</p><h1 class="dp-title"></h1><div class="dp-notes"></div></section>
     <section class="dp-next"><p class="dp-label">Ensuite</p><h2 class="dp-next-title"></h2><p class="dp-next-steps"></p></section>
     <footer class="dp-keys">→ / Espace avancer · ← reculer · T remet le chrono à zéro · la fenêtre projetée suit</footer>`;
@@ -593,8 +638,34 @@ function presenter(slides: Slide[], channel: BroadcastChannel | null) {
     const nx = step < s.steps.length ? null : slides[i + 1];
     $(".dp-next-title").textContent = nx ? nx.title : step < s.steps.length ? `Étape suivante : ${(s.steps[step]!.el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 90)}` : "Fin";
     $(".dp-next-steps").textContent = nx && nx.steps.length ? `${nx.steps.length} étape${nx.steps.length > 1 ? "s" : ""}` : "";
+    drawPlan();
+  };
+  // Le temps prévu (data-duree, réglé dans le Créateur ou mesuré par sa répétition) : seulement s'il y en a.
+  const planned = slides.map((s) => s.duree);
+  const hasPlan = planned.some((d) => d > 0);
+  const mss = (sec: number) => {
+    const r = Math.round(sec);
+    return `${Math.floor(r / 60)}:${String(r % 60).padStart(2, "0")}`;
+  };
+  /** L'écart avec le prévu : nul tant qu'on est dans le temps de la diapo courante ; en avance si on y est arrivé plus tôt
+   *  que prévu, en retard si on y reste au-delà de sa fin prévue. */
+  const drawPlan = () => {
+    const el = $<HTMLElement>(".dp-plan");
+    if (!hasPlan) return void (el.hidden = true);
+    const d = planned[i] ?? 0;
+    let txt = `prévu ${mss(d)}`;
+    let gap = 0;
+    if (t0) {
+      const e = (Date.now() - t0) / 1000;
+      const a = planned.slice(0, i).reduce((x, y) => x + y, 0);
+      gap = e < a ? e - a : e > a + d ? e - (a + d) : 0;
+      txt += Math.round(gap) < 0 ? ` · en avance de ${mss(-gap)}` : Math.round(gap) > 0 ? ` · en retard de ${mss(gap)}` : " · dans les temps";
+    }
+    el.textContent = txt;
+    el.dataset.ecart = Math.round(gap) < 0 ? "avance" : Math.round(gap) > 0 ? "retard" : "";
   };
   const tick = () => {
+    drawPlan();
     $(".dp-timer").textContent = t0 ? fmt(Date.now() - t0) : "00:00";
     $(".dp-clock").textContent = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   };
