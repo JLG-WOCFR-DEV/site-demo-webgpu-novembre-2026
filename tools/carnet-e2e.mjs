@@ -525,6 +525,87 @@ await step("mouvement réduit : la page de garde est posée d'emblée", async ()
   await c.close();
 });
 
+/* ───── Comme artefact claude.ai : la copie dans Claude (db privé, simulé ici) et l'enregistrement de fichiers ───── */
+const cloudStore = new Map();
+async function asArtifact(c) {
+  await c.exposeFunction("__cloudOp", (op, path, body) => {
+    if (op === "get") return cloudStore.has(path) ? JSON.parse(cloudStore.get(path)) : null;
+    if (op === "set") cloudStore.set(path, JSON.stringify(body));
+    if (op === "delete") cloudStore.delete(path);
+    return null;
+  });
+  await c.addInitScript(() => {
+    const ref = (path) => ({
+      get: async () => {
+        const d = await window.__cloudOp("get", path);
+        return { exists: !!d, data: () => d ?? undefined };
+      },
+      set: (body) => window.__cloudOp("set", path, body).then(() => undefined),
+      delete: () => window.__cloudOp("delete", path).then(() => undefined),
+      collection: (col) => ({ doc: (id) => ref(`${path}/${col}/${id}`) }),
+    });
+    const caps = {
+      db: { doc: ref },
+      user: { id: async () => "u1" },
+      downloads: { save: async (r) => ((window.__saved = r.filename), { status: "saved" }) },
+    };
+    window.claude = { use: async (n) => caps[n] ?? null };
+  });
+}
+const head = () => (cloudStore.has("data/users/u1/carnet") ? JSON.parse(cloudStore.get("data/users/u1/carnet")) : null);
+const waitHead = async (pred, what) => {
+  for (let i = 0; i < 100; i++) {
+    const h = head();
+    if (h && pred(h)) return h;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`copie dans Claude : ${what}`);
+};
+const addLine = async (q, text) => {
+  await q.click('[data-view="day"]');
+  const i = q.locator(".cn-form input").first();
+  await i.fill(`. ${text}`);
+  await i.press("Enter");
+  await q.waitForFunction((t) => window.__carnet.core.all().some((e) => e.text === t), text);
+};
+await step("artefact : le carnet se copie dans Claude, un autre appareil le retrouve, les deux fusionnent", async () => {
+  const ca = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  await asArtifact(ca);
+  const a = await ca.newPage();
+  await a.goto(url + "?copie-ms=300");
+  await a.waitForFunction(() => window.__carnet?.core);
+  await a.click("#cn-reset");
+  await addLine(a, "Écrit sur l'appareil A");
+  const h1 = await waitHead(() => true, "pas de copie écrite");
+  // Le carnet d'exemple n'est jamais copié : la copie ne contient que le carnet réel.
+  ok(h1.parts >= 1 && h1.size > 100, `tête : ${JSON.stringify(h1)}`);
+  await openSettings(a);
+  ok(/Dernière copie/.test(await a.textContent("#cn-cloud-state")), "état de la copie");
+  // Enregistrer un fichier passe par la capacité « downloads », en .zip.
+  await a.click("#cn-backup");
+  await a.waitForFunction(() => window.__saved);
+  ok(/^carnet-\d{4}-\d{2}-\d{2}\.zip$/.test(await a.evaluate(() => window.__saved)), "nom du fichier");
+
+  // Un autre appareil (stockage vierge) : le carnet d'exemple s'efface devant la copie.
+  const cb = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  await asArtifact(cb);
+  const bp = await cb.newPage();
+  await bp.goto(url + "?copie-ms=300");
+  await bp.waitForFunction(() => window.__carnet?.core.all().some((e) => e.text === "Écrit sur l'appareil A"), null, { timeout: 15000 });
+  eq(await bp.locator("#cn-sample").isHidden(), true, "bandeau d'exemple encore là");
+  await addLine(bp, "Écrit sur l'appareil B");
+  await waitHead((h) => h.savedAt > h1.savedAt, "B n'a pas copié");
+  // A rouvre : les deux carnets fusionnent (CRDT), rien n'est perdu.
+  await a.reload();
+  await a.waitForFunction(() => {
+    const t = window.__carnet?.core.all().map((e) => e.text) ?? [];
+    return t.includes("Écrit sur l'appareil A") && t.includes("Écrit sur l'appareil B");
+  }, null, { timeout: 15000 });
+  await ca.close();
+  await cb.close();
+  ok(!(await p.locator("#cn-set-cloud").isVisible()), "section visible hors artefact");
+});
+
 await b.close();
 console.log(failed ? `\n${failed} échec(s)` : "\nTout passe.");
 process.exit(failed ? 1 : 0);

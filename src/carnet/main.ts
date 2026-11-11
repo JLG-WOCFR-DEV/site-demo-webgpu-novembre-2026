@@ -33,7 +33,7 @@ import { collectionPlace, createCore, dayPlace, monthPlace, weekPlace, type Core
 import { moveChoices, openMoveMenu } from "./move.ts";
 import { addDays, isSample, parseDay, parseLine, seed, setSample, today, weekStart, type Day } from "./model.ts";
 import { Store, type SaveState } from "./store.ts";
-import { backup, backupName, restore } from "./backup.ts";
+import { backup, backupName, restore, unzip, zip } from "./backup.ts";
 import { folderAvailable, folderPermission, forgetFolder, pickFolder, savedFolder, writeToFolder } from "./folder.ts";
 import { ageLabel, lastExport, listVersions, markExported, prune, readVersion, safetyName, shouldNudge, VERSION_EVERY_MS, versionName, versionsAvailable, writeVersion, type VersionInfo } from "./versions.ts";
 import { openEditor } from "./edit.ts";
@@ -48,6 +48,7 @@ import { initShell, sampleBannerHidden, showSampleBanner } from "./shell.ts";
 import { seedDecor } from "./sample-decor.ts";
 import { choice, monthTheme, signature } from "./prefs.ts";
 import { accents, borderMask, pageMonth, THEMES, themeFor, type Theme } from "./themes.ts";
+import { ago, connectCloud, deviceId, type Cloud, type CloudMeta } from "./cloud.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
 const spread = $("#spread");
@@ -235,7 +236,10 @@ function showSave(s: SaveState) {
   if (s === "saving") {
     // Rien sous 300 ms : une écriture rapide ne doit pas faire clignoter l'interface.
     saveT = window.setTimeout(() => (n.textContent = "Enregistrement…"), 300);
-  } else if (s === "saved") n.textContent = "Enregistré";
+  } else if (s === "saved") {
+    n.textContent = "Enregistré";
+    scheduleCloud();
+  }
   else if (s === "error") {
     n.replaceChildren(document.createTextNode("Échec de l’enregistrement · "));
     const retry = document.createElement("button");
@@ -1015,8 +1019,32 @@ const lsSet = (k: string, v: string) => {
 };
 
 /** Exporter : la feuille de partage sur téléphone (Drive, Fichiers, courriel…), un téléchargement ailleurs. */
+type Downloads = { save(r: { filename: string; data: Blob | Uint8Array }): Promise<{ status: string }> };
+let downloadsP: Promise<Downloads | null> | null = null;
+/** Dans un artefact claude.ai, un fichier s'offre par la capacité « downloads » (le cadre ne télécharge pas lui-même). */
+function artifactDownloads() {
+  const host = (window as unknown as { claude?: { use(n: string): Promise<unknown> } }).claude;
+  downloadsP ??= host?.use ? (host.use("downloads") as Promise<Downloads | null>).catch(() => null) : Promise.resolve(null);
+  return downloadsP;
+}
 async function exportNow(bytes?: Uint8Array, name = backupName()) {
   const data = bytes ?? (await makeBackup(true)).bytes;
+  const dl = await artifactDownloads();
+  if (dl) {
+    // Extensions permises : .zip. Une sauvegarde ordinaire EST un zip ; une sauvegarde chiffrée est
+    // mise dans un zip (l'import l'en ressort).
+    const sealed = name.endsWith(".chiffree.carnet");
+    const payload = sealed ? zip([{ name, data }]) : data;
+    try {
+      await dl.save({ filename: name.replace(/\.carnet$/, ".zip"), data: new Blob([payload as Uint8Array<ArrayBuffer>], { type: "application/zip" }) });
+      markExported();
+      toast("Sauvegarde enregistrée");
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code !== "declined") toast(`Enregistrement impossible${code ? ` (${code})` : ""}`);
+    }
+    return;
+  }
   const file = new File([data as Uint8Array<ArrayBuffer>], name, { type: "application/zip" });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (matchMedia("(pointer: coarse)").matches && nav.canShare?.({ files: [file] })) {
@@ -1074,7 +1102,7 @@ async function autoVersion() {
 }
 
 /** Revenir à une version : copie de l'état actuel d'abord, puis remplacement (pas une fusion). */
-async function replaceWith(bytes: Uint8Array, label: string) {
+async function replaceWith(bytes: Uint8Array, label: string, message?: string) {
   if (readOnly) return void toast(readOnly);
   const safety = safetyName();
   if (versionsAvailable()) await writeVersion(safety, (await makeBackup(false)).bytes);
@@ -1101,7 +1129,7 @@ async function replaceWith(bytes: Uint8Array, label: string) {
   ctx.from.clear();
   draw();
   control?.postMessage("remplacé");
-  toast(`Carnet revenu au ${label}`, versionsAvailable() ? { label: "Annuler", run: () => void readVersion(safety).then((b) => replaceWith(b, "état d'avant")) } : undefined);
+  toast(message ?? `Carnet revenu au ${label}`, versionsAvailable() ? { label: "Annuler", run: () => void readVersion(safety).then((b) => replaceWith(b, "état d'avant")) } : undefined);
 }
 // Un autre onglet a remplacé le carnet : on recharge (sinon il réécrirait l'ancien état par-dessus).
 const control = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("carnet:control") : null;
@@ -1222,6 +1250,12 @@ $<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) =>
   try {
     // Fusion : la sauvegarde s'ajoute au carnet ouvert, rien n'est effacé.
     let bytes: Uint8Array = new Uint8Array(await f.arrayBuffer());
+    // Une sauvegarde chiffrée enregistrée depuis l'artefact arrive dans un zip : on l'en sort.
+    if (!isSealed(bytes)) {
+      const files = await unzip(bytes).catch(() => null);
+      const inner = files && !files.has("manifest.json") ? [...files].find(([n]) => n.endsWith(".carnet")) : undefined;
+      if (inner) bytes = inner[1];
+    }
     if (isSealed(bytes)) {
       const phrase = await askPhrase($("#cn-restore"), { title: "Sauvegarde chiffrée", intro: "Cette sauvegarde est chiffrée. Sa phrase secrète ?", create: false, action: "Ouvrir" });
       if (phrase === null) return;
@@ -1241,6 +1275,123 @@ $<HTMLInputElement>("#cn-restore-file").addEventListener("change", async (ev) =>
     toast(e instanceof Error ? e.message : String(e));
   }
 });
+
+/* ───── Copie dans Claude (artefact claude.ai) ───── */
+let cloud: Cloud | null = null;
+/** Date de la copie que cet appareil a lue ou écrite en dernier (au-delà : une autre l'a remplacée). */
+let cloudSeen = 0;
+let cloudHash = "";
+let cloudT = 0;
+let cloudLast: CloudMeta | null = null;
+const cloudOn = () => lsGet("carnet.copie") !== "non";
+/** Délai entre un changement et la copie (`?copie-ms=` pour les tests). */
+const cloudDelay = () => Number(new URLSearchParams(location.search).get("copie-ms")) || 15_000;
+
+function renderCloud(note?: string) {
+  $("#cn-cloud").setAttribute("aria-pressed", String(cloudOn()));
+  const m = cloudLast;
+  const kb = m ? Math.max(1, Math.round(m.size / 1024)) : 0;
+  $("#cn-cloud-state").textContent =
+    note ??
+    (!cloudOn()
+      ? "Désactivée sur cet appareil : rien n'est envoyé."
+      : m
+        ? `Dernière copie ${ago(m.savedAt)}, ${m.device === deviceId() ? "par cet appareil" : "par un autre appareil"} (${kb} Ko). Toi seul la lis ; elle n'est pas chiffrée de bout en bout.`
+        : isSample()
+          ? "Le carnet d'exemple n'est pas copié. Écris dans ton carnet : la copie se fera toute seule."
+          : "Pas encore de copie : elle se fait quelques secondes après chaque changement.");
+  $<HTMLButtonElement>("#cn-cloud-take").hidden = !m;
+  $<HTMLButtonElement>("#cn-cloud-erase").hidden = !m;
+}
+
+/** Fusionne une sauvegarde dans le carnet ouvert (CRDT : rien ne se perd, d'un côté comme de l'autre). */
+async function mergeBytes(bytes: Uint8Array) {
+  const { update, pages: restored } = await restore(core, bytes);
+  store.append([update]);
+  for (const [key, u] of restored) pages.restore(key, u);
+  draw();
+}
+
+/** Relit la copie : elle remplace un carnet d'exemple ou vide ; sinon elle s'y fusionne. */
+async function pullCloud(force = false) {
+  if (!cloud) return;
+  const m = await cloud.meta();
+  cloudLast = m;
+  if (!m || (!force && m.savedAt <= cloudSeen)) return renderCloud();
+  const bytes = await cloud.read(m);
+  const when = ago(m.savedAt);
+  if (isSample() || !core.all().some((e) => !e.deletedAt)) {
+    await replaceWith(bytes, "", `Carnet retrouvé : la copie dans Claude (${when})`);
+  } else {
+    await mergeBytes(bytes);
+    toast(`Carnet fusionné avec la copie dans Claude (${m.device === deviceId() ? "cet appareil" : "un autre appareil"}, ${when})`);
+  }
+  cloudSeen = m.savedAt;
+  cloudHash = m.hash;
+  lsSet("carnet.copie.vue", String(m.savedAt));
+  renderCloud();
+}
+
+function scheduleCloud(ms = cloudDelay()) {
+  if (!cloud || !cloudOn()) return;
+  clearTimeout(cloudT);
+  cloudT = window.setTimeout(() => void pushCloud().catch((e) => renderCloud(`Copie impossible : ${e?.message ?? e?.code ?? e}`)), ms);
+}
+
+/** Écrit la copie si le carnet a changé depuis la dernière ; jamais le carnet d'exemple. */
+async function pushCloud(force = false) {
+  if (!cloud || !cloudOn() || readOnly || isSample()) return renderCloud();
+  const { bytes, manifest } = await makeBackup(false);
+  const hash = contentHash(manifest);
+  if (hash === cloudHash && !force) return;
+  // Un autre appareil a écrit depuis notre dernière lecture : on fusionne d'abord, pour ne rien écraser.
+  const m = await cloud.meta();
+  if (m && m.savedAt > cloudSeen && m.device !== deviceId()) {
+    await pullCloud(true);
+    return scheduleCloud(400);
+  }
+  renderCloud("Copie en cours…");
+  const w = await cloud.write(bytes, hash, deviceId());
+  cloudHash = hash;
+  cloudSeen = w.savedAt;
+  cloudLast = w;
+  lsSet("carnet.copie.vue", String(w.savedAt));
+  renderCloud();
+}
+
+async function startCloud() {
+  cloud = await connectCloud();
+  if (!cloud) return;
+  $("#cn-set-cloud").hidden = false;
+  cloudSeen = Number(lsGet("carnet.copie.vue") || 0);
+  $("#cn-cloud").addEventListener("click", () => {
+    lsSet("carnet.copie", cloudOn() ? "non" : "oui");
+    renderCloud();
+    if (cloudOn()) scheduleCloud(200);
+  });
+  $("#cn-cloud-now").addEventListener("click", () => void pushCloud(true).catch((e) => renderCloud(`Copie impossible : ${e?.message ?? e?.code ?? e}`)));
+  $("#cn-cloud-take").addEventListener("click", () => void pullCloud(true).catch((e) => toast(e instanceof Error ? e.message : String(e))));
+  $("#cn-cloud-erase").addEventListener("click", () =>
+    void cloud!.erase().then(
+      () => {
+        cloudLast = null;
+        cloudHash = "";
+        renderCloud();
+        toast("Copie dans Claude effacée (ton carnet reste sur cet appareil)");
+      },
+      (e) => toast(`Effacement impossible : ${e?.message ?? e?.code ?? e}`),
+    ),
+  );
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && cloudOn()) void pushCloud().catch(() => undefined);
+  });
+  try {
+    await pullCloud();
+  } catch (e) {
+    renderCloud(`Copie illisible : ${e instanceof Error ? e.message : String(e)}`);
+  }
+  scheduleCloud(1000);
+}
 
 /* ───── Démarrage ───── */
 const V0 = "carnet.v0";
@@ -1324,6 +1475,7 @@ async function boot() {
   });
   draw();
   if (seeded) decorateSample();
+  void startCloud();
   void refreshWeather();
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) void refreshWeather();

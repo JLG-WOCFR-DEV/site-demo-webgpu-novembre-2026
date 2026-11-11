@@ -79,7 +79,15 @@
         <button class="cn-set-row" id="cn-backup" type="button">Exporter</button>
         <button class="cn-set-row" id="cn-versions" type="button" aria-haspopup="dialog">Versions</button>
         <button class="cn-set-row" id="cn-restore" type="button">Importer une sauvegarde</button>
-        <input id="cn-restore-file" type="file" accept=".carnet,application/zip" hidden />
+        <input id="cn-restore-file" type="file" accept=".carnet,.zip,application/zip" hidden />
+      </section>
+      <section class="cn-set" id="cn-set-cloud" aria-labelledby="cn-set-cloud-h" hidden>
+        <h3 id="cn-set-cloud-h">Copie dans Claude</h3>
+        <button class="cn-set-row" id="cn-cloud" type="button" aria-pressed="true">Garder une copie dans Claude</button>
+        <p class="cn-set-note" id="cn-cloud-state" aria-live="polite"></p>
+        <button class="cn-set-row" id="cn-cloud-now" type="button">Copier maintenant</button>
+        <button class="cn-set-row" id="cn-cloud-take" type="button">Reprendre la copie</button>
+        <button class="cn-set-row" id="cn-cloud-erase" type="button">Effacer la copie</button>
       </section>
       <section class="cn-set" aria-labelledby="cn-set-agenda">
         <h3 id="cn-set-agenda">Agenda et météo</h3>
