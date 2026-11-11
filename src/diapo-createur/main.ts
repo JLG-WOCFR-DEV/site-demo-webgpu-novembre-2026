@@ -53,6 +53,7 @@ const ICONS: Record<string, string> = {
   camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
   alt: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5",
   running: "M4 19h16M4 15h9",
+  strip: "M3 4h18v10H3zM3 18h4v3H3zM10 18h4v3h-4zM17 18h4v3h-4z",
 };
 const icon = (name: string) => `<svg class="dc-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name] ?? ""}"/></svg>`;
 for (const el of document.querySelectorAll<HTMLElement>("[data-ic]")) el.insertAdjacentHTML("afterbegin", icon(el.dataset.ic!));
@@ -198,6 +199,16 @@ frame.addEventListener("load", () => {
     requestAnimationFrame(() => (reveal(), markPick()));
   });
   // Choisir : un clic. Corriger le texte sur place : un double-clic (Entrée ou Échap valide).
+  // Le pied de la diapo (titre courant, à gauche) n'est pas un élément : un clic dessus mène à son réglage.
+  d.addEventListener("click", (e) => {
+    if (mode !== "edit" || (e.target as Element).closest(PICK)) return;
+    const r = d.querySelector(".is-active")?.getBoundingClientRect();
+    if (!r || e.clientY < r.top + r.height * 0.88 || e.clientX > r.left + r.width * 0.7) return;
+    const inp = $<HTMLInputElement>('[data-k="running"]');
+    inp.scrollIntoView({ block: "center" });
+    inp.focus();
+    inp.select();
+  });
   const target = (e: Event) => {
     if (mode !== "edit") return null;
     const el = (e.target as Element).closest<HTMLElement>(PICK);
@@ -269,6 +280,9 @@ frame.addEventListener("load", () => {
     const hit = m?.matches("img, figure[data-capture]") ? m : m?.querySelector<HTMLElement>("img, figure[data-capture]") ?? null;
     void importImage(f, hit?.dataset.cid ?? pick);
   });
+  // Le champ du titre courant montre ce que la page affiche.
+  const run = document.querySelector<HTMLInputElement>('[data-k="running"]');
+  if (run && !run.value && document.activeElement !== run) run.value = savedSettings(PATH).running ?? runningShown();
   reveal();
   // Le moteur arrive un peu après : on redemande la diapo entière une fois ses calques posés.
   setTimeout(() => (reveal(), markPick()), 700);
@@ -383,7 +397,7 @@ function renderSlides() {
     li.setAttribute("aria-label", `Diapo ${i + 1} : ${labelOf(s)}`);
     li.querySelector("small")!.textContent = trOf(s) || "défaut";
   });
-  list.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
+  list.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
 /** Un champ : son icône (le nom est dans l'infobulle et pour les lecteurs d'écran), puis le contrôle. */
@@ -423,7 +437,7 @@ const kindOf = (el: HTMLElement) => {
   const st = STYLES.find((x) => el.classList.contains(x.cls));
   return st ? st.label : el.tagName === "LI" ? "Puce" : el.tagName === "FIGCAPTION" ? "Légende" : el.tagName.toLowerCase();
 };
-const picks = (s: HTMLElement) => [...s.querySelectorAll<HTMLElement>(PICK)].filter((e) => !e.closest("[data-notes]") && !(e.matches("[data-gl-text]") && e.querySelector(":scope > li")));
+const picks = (s: HTMLElement) => [...s.querySelectorAll<HTMLElement>(PICK)].filter((e) => !e.closest("[data-notes]") && !(e.matches("[data-gl-text]") && e.querySelector(":scope > li")) && !(e.matches("li") && e.querySelector("[data-gl-text], img, figure")));
 const textOf = (el: HTMLElement) => (el.matches("img") ? el.getAttribute("src")?.split("/").pop() ?? "" : el.matches("figure[data-capture]") ? `conference/${el.dataset.capture}.*` : el.textContent?.replace(/\s+/g, " ").trim() ?? "");
 
 function renderEls() {
@@ -486,12 +500,18 @@ function renderTools() {
   on("del", !!el);
 }
 
+/** Le titre courant tel que la page l'affiche (son pied de diapo), quand rien n'a encore été réglé. */
+function runningShown() {
+  const s = fdoc()?.querySelector("[data-diapo-slide]:not(.cf-title-slide):not(.cf-ubs)") ?? fdoc()?.querySelector("[data-diapo-slide]");
+  const c = s ? win()!.getComputedStyle(s, "::before").content : "";
+  return /^".*"$/.test(c) ? (JSON.parse(c) as string) : "";
+}
 function renderDeck() {
   const set = savedSettings(PATH);
   const tr = main.dataset.transition ?? "impression";
   $("[data-dc-deck-panel]").innerHTML = `<h2>Diaporama</h2>
     ${field("transition", "Transition par défaut du diaporama", `<select data-k="deckTransition">${options([...SLIDE_TRANSITIONS, ...TRANSITIONS].map((n): [string, string] => [n, TR_LABEL[n] ?? n]), tr)}</select>`)}
-    ${field("running", "Titre courant, en pied de chaque diapo", `<input type="text" data-k="running" value="${esc(set.running ?? "")}" placeholder="Titre courant" />`)}
+    ${field("running", "Titre courant, en pied de chaque diapo (vide : aucun) — un clic sur le pied de la diapo, dans l'aperçu, mène ici", `<input type="text" data-k="running" value="${esc(set.running ?? runningShown())}" placeholder="Titre courant (aucun)" />`)}
     <datalist id="dc-files">${[...new Set([...main.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? ""))].map((f) => `<option value="${esc(f)}"></option>`).join("")}</datalist>`;
 }
 
@@ -529,8 +549,8 @@ list.addEventListener("click", (e) => {
 });
 list.addEventListener("keydown", (e) => {
   if ((e.target as Element).closest("button")) return;
-  if (e.key === "ArrowDown") (e.preventDefault(), selectSlide(cur + 1));
-  else if (e.key === "ArrowUp") (e.preventDefault(), selectSlide(cur - 1));
+  if (e.key === "ArrowDown" || e.key === "ArrowRight") (e.preventDefault(), selectSlide(cur + 1));
+  else if (e.key === "ArrowUp" || e.key === "ArrowLeft") (e.preventDefault(), selectSlide(cur - 1));
   else return;
   list.querySelector<HTMLElement>('[aria-current="true"]')?.focus();
 });
@@ -730,7 +750,24 @@ $<HTMLInputElement>("[data-dc-file]").addEventListener("change", (e) => {
   inp.value = "";
 });
 
-/* ── Barre ── *//* ── Barre ── */
+/* ── Barre ── *//** Les vignettes : en colonne à gauche, ou en bande sous l'aperçu (comme une table lumineuse). */
+function setStrip(on: boolean) {
+  document.body.classList.toggle("dc--strip", on);
+  $("[data-dc-strip]").setAttribute("aria-pressed", String(on));
+  try {
+    localStorage.setItem("presse-diapo-createur:bande", on ? "1" : "");
+  } catch {
+    /* préférence non gardée */
+  }
+  $('[data-dc-slides] [aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
+}
+try {
+  setStrip(localStorage.getItem("presse-diapo-createur:bande") === "1");
+} catch {
+  /* colonne */
+}
+
+/* ── Barre ── */
 document.addEventListener("click", (e) => {
   const b = (e.target as Element).closest<HTMLButtonElement>(".dc-bar button, [data-dc-add]");
   if (!b) return;
@@ -741,7 +778,8 @@ document.addEventListener("click", (e) => {
     markPick();
     if (mode === "edit") reveal();
     else (reload(), frame.focus());
-  } else if (b.hasAttribute("data-dc-replay")) replay();
+  } else if (b.hasAttribute("data-dc-strip")) setStrip(!document.body.classList.contains("dc--strip"));
+  else if (b.hasAttribute("data-dc-replay")) replay();
   else if (b.hasAttribute("data-dc-undo")) restore(undo, redo);
   else if (b.hasAttribute("data-dc-redo")) restore(redo, undo);
   else if (b.hasAttribute("data-dc-present")) window.open(`${deckUrl.pathname}#${cur + 1}`, "_blank");

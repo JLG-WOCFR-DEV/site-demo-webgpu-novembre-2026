@@ -123,3 +123,16 @@
 .dc-els button { grid-template-columns: 74px minmax(0, 1fr) auto; }
 .dc-hint { font-size: 11px; opacity: 0.8; }
 .dc-sec h2 { letter-spacing: 0.08em; }
+
+/* ───── Vignettes en bande, sous l'aperçu ───── */
+.dc--strip { grid-template: 48px minmax(0, 1fr) 150px / minmax(0, 1fr) 300px; }
+.dc--strip .dc-stage { grid-area: 2 / 1; }
+.dc--strip .dc-right { grid-area: 2 / 2 / 4 / 3; }
+.dc--strip .dc-left { grid-area: 3 / 1; flex-direction: row; border-right: 0; border-top: 1px solid var(--line); min-width: 0; }
+.dc--strip .dc-slides { display: flex; overflow: auto hidden; gap: 6px; padding: 8px; align-items: start; }
+.dc--strip .dc-slide { flex: none; width: 172px; }
+.dc--strip .dc-slide-tools { display: none; position: absolute; }
+.dc--strip .dc-slide { position: relative; }
+.dc--strip .dc-slide[aria-current="true"] .dc-slide-tools { display: flex; right: 8px; top: 8px; margin: 0; gap: 2px; background: rgba(22, 17, 13, 0.85); border-radius: 5px; }
+.dc--strip .dc-slide-tools .dc-ic { width: 26px; flex: none; }
+.dc--strip .dc-add { grid-template-columns: 1fr; align-content: center; width: 132px; border-top: 0; border-left: 1px solid var(--line); }
