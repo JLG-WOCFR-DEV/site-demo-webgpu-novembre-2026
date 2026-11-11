@@ -60,6 +60,7 @@ const ICONS: Record<string, string> = {
   alt: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5",
   running: "M4 19h16M4 15h9",
   strip: "M3 4h18v10H3zM3 18h4v3H3zM10 18h4v3h-4zM17 18h4v3h-4z",
+  hash: "M9 4 7 20M17 4l-2 16M4 9h16M3 15h16",
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   eyeoff: "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.5 6.6C3.7 8.5 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2",
   grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
@@ -114,10 +115,10 @@ let cur = 0; // la diapo choisie
 let pick: string | null = null; // l'élément choisi (data-cid)
 let mode: "edit" | "try" = "edit";
 /** Un pas d'historique : les diapos, la diapo choisie, et les attributs du diaporama lui-même. */
-type Snap = { html: string; cur: number; transition?: string; dureeVisee?: string };
+type Snap = { html: string; cur: number; transition?: string; dureeVisee?: string; numeros?: string };
 const undo: Snap[] = [];
 const redo: Snap[] = [];
-const snap = (): Snap => ({ html: main.innerHTML, cur, transition: main.dataset.transition, dureeVisee: main.dataset.dureeVisee });
+const snap = (): Snap => ({ html: main.innerHTML, cur, transition: main.dataset.transition, dureeVisee: main.dataset.dureeVisee, numeros: main.dataset.numeros });
 
 const slides = () => [...main.querySelectorAll<HTMLElement>(":scope > [data-diapo-slide]")];
 const slide = () => slides()[cur] ?? null;
@@ -166,7 +167,7 @@ const saveFolded = () => {
 };
 
 function persist() {
-  saved = { v: 1, html: main.innerHTML, transition: main.dataset.transition, dureeVisee: main.dataset.dureeVisee, at: Date.now() };
+  saved = { v: 1, html: main.innerHTML, transition: main.dataset.transition, dureeVisee: main.dataset.dureeVisee, numeros: main.dataset.numeros, at: Date.now() };
   try {
     localStorage.setItem(docKey(PATH), JSON.stringify(saved));
     status();
@@ -210,7 +211,7 @@ function restore(from: typeof undo, to: typeof undo) {
   if (!st) return;
   to.push(snap());
   main.innerHTML = st.html;
-  for (const k of ["transition", "dureeVisee"] as const) {
+  for (const k of ["transition", "dureeVisee", "numeros"] as const) {
     if (st[k]) main.dataset[k] = st[k];
     else delete main.dataset[k];
   }
@@ -935,6 +936,7 @@ function renderDeck() {
   $("[data-dc-deck-panel]").innerHTML = `<h2>Diaporama</h2>
     ${field("transition", "Transition par défaut du diaporama", `<select data-k="deckTransition">${options([...SLIDE_TRANSITIONS, ...TRANSITIONS].map((n): [string, string] => [n, TR_LABEL[n] ?? n]), tr)}</select>`)}
     ${field("running", "Titre courant, en pied de chaque diapo (vide : aucun) — un clic sur le pied de la diapo, dans l'aperçu, mène ici", `<input type="text" data-k="running" value="${esc(set.running ?? runningShown())}" placeholder="Titre courant (aucun)" />`)}
+    ${field("hash", "Numéros de diapo, en pied", `<select data-k="numeros">${options([["", "5 / 26 (numéro et total)"], ["seul", "5 (numéro seul)"], ["aucun", "aucun"]], main.dataset.numeros ?? "")}</select>`)}
     ${field("stopwatch", "Durée prévue du diaporama : la somme des durées des diapos présentées (les masquées ne comptent pas)", `<output class="dc-total" data-dc-total></output>`)}
     ${field("target", "Durée visée, en minutes", `<span class="dc-pair dc-pair--unit"><input type="number" data-k="visee" min="0" max="600" step="1" value="${esc(main.dataset.dureeVisee ?? "")}" placeholder="durée visée" /><span>min</span></span>`)}
     <datalist id="dc-files">${[...new Set([...main.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? ""))].map((f) => `<option value="${esc(f)}"></option>`).join("")}</datalist>`;
@@ -1190,7 +1192,11 @@ const onField = (e: Event, done: boolean) => {
     if (done) change(() => (v ? (el.dataset.move = v.replace(/[^\w-]/g, "")) : delete el.dataset.move));
   }
   // Le diaporama.
-  else if (k === "deckTransition") change(() => (main.dataset.transition = v)), renderSlide(), renderSlides();
+  else if (k === "numeros") {
+    change(() => (v ? (main.dataset.numeros = v) : delete main.dataset.numeros), "none");
+    const fr = fdoc()?.querySelector<HTMLElement>("[data-diapo]");
+    if (fr) v ? (fr.dataset.numeros = v) : delete fr.dataset.numeros;
+  } else if (k === "deckTransition") change(() => (main.dataset.transition = v)), renderSlide(), renderSlides();
   else if (k === "visee") {
     const n = Math.max(0, Math.round(Number(v) || 0));
     change(() => (n ? (main.dataset.dureeVisee = String(n)) : delete main.dataset.dureeVisee), "none", "visee");
@@ -1417,6 +1423,56 @@ document.addEventListener("fullscreenchange", () => {
   if (!document.fullscreenElement && mode === "try") setMode("edit");
 });
 
+/* La colonne des diapos s'élargit : on tire sa bordure droite (double-clic : largeur d'origine ; flèches au clavier). */
+{
+  const grip = document.createElement("div");
+  grip.className = "dc-grip";
+  grip.tabIndex = 0;
+  grip.setAttribute("role", "separator");
+  grip.setAttribute("aria-orientation", "vertical");
+  grip.setAttribute("aria-label", "Largeur de la liste des diapos");
+  grip.title = "Tirer pour élargir la liste (double-clic : largeur d'origine)";
+  $(".dc-left").append(grip);
+  const KEYW = "presse-diapo-createur:largeur";
+  const set = (w: number | null, keep = true) => {
+    if (w === null) document.body.style.removeProperty("--dc-left");
+    else document.body.style.setProperty("--dc-left", `${Math.round(Math.max(130, Math.min(innerWidth * 0.5, w)))}px`);
+    if (!keep) return;
+    try {
+      w === null ? localStorage.removeItem(KEYW) : localStorage.setItem(KEYW, document.body.style.getPropertyValue("--dc-left"));
+    } catch {
+      /* préférence non gardée */
+    }
+  };
+  try {
+    const w = Number.parseFloat(localStorage.getItem(KEYW) ?? "");
+    if (w) set(w, false);
+  } catch {
+    /* largeur d'origine */
+  }
+  grip.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    grip.setPointerCapture(e.pointerId);
+    // Les iframes avaleraient le geste : elles se taisent pendant qu'on tire.
+    document.body.classList.add("dc--resizing");
+    const move = (ev: PointerEvent) => set(ev.clientX - $(".dc-left").getBoundingClientRect().left, false);
+    const up = (ev: PointerEvent) => {
+      set(ev.clientX - $(".dc-left").getBoundingClientRect().left);
+      document.body.classList.remove("dc--resizing");
+      grip.removeEventListener("pointermove", move);
+    };
+    grip.addEventListener("pointermove", move);
+    grip.addEventListener("pointerup", up, { once: true });
+    grip.addEventListener("pointercancel", up, { once: true });
+  });
+  grip.addEventListener("dblclick", () => set(null));
+  grip.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    set($(".dc-left").getBoundingClientRect().width + (e.key === "ArrowRight" ? 24 : -24));
+  });
+}
+
 /** Les vignettes : en colonne à gauche, ou en bande sous l'aperçu (comme une table lumineuse). */
 function setStrip(on: boolean) {
   document.body.classList.toggle("dc--strip", on);
@@ -1491,6 +1547,8 @@ async function exportHtml() {
   if (main.dataset.transition) root.dataset.transition = main.dataset.transition;
   if (main.dataset.dureeVisee) root.dataset.dureeVisee = main.dataset.dureeVisee;
   else delete root.dataset.dureeVisee;
+  if (main.dataset.numeros) root.dataset.numeros = main.dataset.numeros;
+  else delete root.dataset.numeros;
   const set = savedSettings(PATH);
   if (set.running !== undefined) root.style.setProperty("--titre-courant", JSON.stringify(set.running));
   const css = styleSheet(set.styles);
@@ -1584,6 +1642,7 @@ void (async () => {
     main.innerHTML = saved.html;
     if (saved.transition) main.dataset.transition = saved.transition;
     if (saved.dureeVisee) main.dataset.dureeVisee = saved.dureeVisee;
+    if (saved.numeros) main.dataset.numeros = saved.numeros;
   }
   try {
     for (const c of JSON.parse(localStorage.getItem(FOLD_KEY()) ?? "[]") as string[]) folded.add(c);

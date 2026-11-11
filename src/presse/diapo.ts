@@ -152,10 +152,11 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   // Une diapo masquée (`data-masquee`, réglée dans le Créateur) reste dans la page mais n'est pas présentée ; le
   // Créateur (?createur) et ses vignettes (?vignette) les gardent toutes, pour pouvoir les modifier.
   const all = params.has("createur") || params.has("vignette");
-  const slides: Slide[] = [...root.querySelectorAll<HTMLElement>(all ? "[data-diapo-slide]" : "[data-diapo-slide]:not([data-masquee])")].map((el, k) => {
+  const slides: Slide[] = [...root.querySelectorAll<HTMLElement>(all ? "[data-diapo-slide]" : "[data-diapo-slide]:not([data-masquee])")].map((el, k, list) => {
     el.dataset.glPrint = "page";
     // Le numéro, pour l'habillage (CSS attr(data-num)) : un compteur CSS ne compte pas les diapos masquées.
     el.dataset.num = String(k + 1).padStart(2, "0");
+    el.dataset.total = String(list.length).padStart(2, "0");
     el.setAttribute("role", "group");
     el.setAttribute("aria-roledescription", "diapositive");
     if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", `${k + 1}. ${titleOf(el)}`);

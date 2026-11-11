@@ -34,13 +34,20 @@ body.cf {
   gap: calc(var(--u) * 1.6);
 }
 .cf [data-diapo-slide]::after {
-  content: attr(data-num);
+  /* « 05 / 26 » par défaut ; data-numeros="seul" : « 05 » ; "aucun" : rien (réglage du Créateur). */
+  content: attr(data-num) " / " attr(data-total);
   position: absolute;
   right: calc(var(--u) * 3);
   bottom: calc(var(--u) * 2.4);
   font: 500 calc(var(--u) * 0.95) / 1 var(--mono);
   letter-spacing: 0.12em;
   color: color-mix(in srgb, var(--ink) 55%, var(--paper));
+}
+.cf [data-numeros="seul"] [data-diapo-slide]::after {
+  content: attr(data-num);
+}
+.cf [data-numeros="aucun"] [data-diapo-slide]::after {
+  content: none;
 }
 .cf [data-diapo-slide]::before {
   content: var(--titre-courant, "Kerguéhennec · la bibliothèque");
@@ -738,9 +745,11 @@ body.cf {
 }
 .cf-ubs-notch {
   position: absolute;
-  left: 0;
+  /* Un pixel de plus de chaque côté : quand la diapo tombe entre deux pixels, le bord antialiasé de l'encoche
+     laissait voir un filet de photo à gauche et à droite. */
+  left: -1px;
   top: calc(57% - var(--u) * 4 + 1px);
-  width: 100%;
+  width: calc(100% + 2px);
   height: calc(var(--u) * 4);
   fill: var(--paper);
   pointer-events: none;

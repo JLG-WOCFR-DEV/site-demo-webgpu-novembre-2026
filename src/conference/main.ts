@@ -94,6 +94,7 @@ async function printDeck(root: HTMLElement, withNotes: boolean) {
   page.textContent = withNotes ? "@page { size: A4 portrait; margin: 12mm; }" : "@page { size: 13.333in 7.5in; margin: 0; }";
   document.head.append(page);
   let k = 0;
+  const total = String(root.querySelectorAll("[data-diapo-slide]:not([data-masquee])").length).padStart(2, "0");
   for (const s of [...root.querySelectorAll<HTMLElement>("[data-diapo-slide]")]) {
     if (s.hasAttribute("data-masquee")) {
       s.remove();
@@ -101,6 +102,7 @@ async function printDeck(root: HTMLElement, withNotes: boolean) {
     }
     // Le numéro de l'habillage (CSS attr(data-num)), comme en conférence : les diapos masquées ne comptent pas.
     s.dataset.num = String(++k).padStart(2, "0");
+    s.dataset.total = total;
     s.setAttribute("aria-label", s.getAttribute("aria-label") ?? `Diapo ${k}`);
     const sheet = document.createElement("div");
     sheet.className = "diapo-page";

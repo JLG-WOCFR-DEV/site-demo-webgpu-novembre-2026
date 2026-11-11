@@ -7,7 +7,7 @@
  * posés dans l'ordre du document : les mêmes des deux côtés tant que le HTML est le même ; ils sont retirés à l'export.
  */
 /** `transition`, `dureeVisee` : les attributs de `[data-diapo]` lui-même (data-transition, data-duree-visee en minutes). */
-export type SavedDoc = { v: 1; html: string; transition?: string; dureeVisee?: string; at: number };
+export type SavedDoc = { v: 1; html: string; transition?: string; dureeVisee?: string; numeros?: string; at: number };
 export const docKey = (pathname: string) => `presse-diapo-doc:${pathname}`;
 
 export function readDoc(pathname: string): SavedDoc | null {
@@ -40,6 +40,7 @@ export function applySavedDoc(root: HTMLElement, pathname = location.pathname) {
   root.innerHTML = d.html;
   if (d.transition) root.dataset.transition = d.transition;
   if (d.dureeVisee) root.dataset.dureeVisee = d.dureeVisee;
+  if (d.numeros) root.dataset.numeros = d.numeros;
   return true;
 }
 
