@@ -20,6 +20,7 @@
 import { getDevice } from "../components/device.ts";
 import { springStep, SPRINGS, type Spring } from "./tokens.ts";
 import { lintOn, lintSample } from "./motion-lint.ts";
+import { holdEngine } from "../gpu/hold.ts";
 
 type Item = { trigger: HTMLElement; thumb: HTMLImageElement; src: string; caption: string; alt: string };
 type Rect = { x: number; y: number; w: number; h: number };
@@ -292,7 +293,8 @@ class GpuView {
     this.device.queue.submit([enc.finish()]);
   }
 
-  draw(draws: Draw[], items: Item[], W: number, H: number, dpr: number) {
+  /** Dessine ; rend vrai si un fond à pleine opacité a réellement été peint (sa texture était là) : l'écran est couvert. */
+  draw(draws: Draw[], items: Item[], W: number, H: number, dpr: number): boolean {
     const cw = Math.round(W * dpr);
     const ch = Math.round(H * dpr);
     if (this.canvas.width !== cw || this.canvas.height !== ch) {
@@ -301,9 +303,11 @@ class GpuView {
     }
     const list: { t: Tex; o: number }[] = [];
     const data = this.data;
+    let covered = false;
     draws.slice(0, 16).forEach((dr, n) => {
       const t = this.tex(items[dr.k]!);
       if (!t) return;
+      if (dr.kind === 2 && dr.alpha >= 1) covered = true;
       const o = (n * this.stride) / 4;
       const r = dr.rect;
       // Lod du fond : un très grand flou, à peu près 1/40 de l'écran.
@@ -322,6 +326,7 @@ class GpuView {
     }
     pass.end();
     this.device.queue.submit([enc.finish()]);
+    return covered;
   }
 
   /** Les proportions réelles d'une image, si sa texture est là. */
@@ -412,8 +417,8 @@ function build() {
   return { root, canvas: q<HTMLCanvasElement>(".plb-canvas"), dom: q<HTMLElement>(".plb-dom"), ui: q<HTMLElement>(".plb-ui"), count: q<HTMLElement>(".plb-count"), sr: q<HTMLElement>(".plb-sr"), close: q<HTMLButtonElement>(".plb-close"), prev: q<HTMLButtonElement>(".plb-prev"), next: q<HTMLButtonElement>(".plb-next"), cap: q<HTMLElement>(".plb-cap"), thumbs: q<HTMLElement>(".plb-thumbs") };
 }
 
-function itemsOf(group: HTMLElement): Item[] {
-  return [...group.querySelectorAll<HTMLImageElement>("img")]
+function itemsOf(group: HTMLElement, selector = "img"): Item[] {
+  return [...group.querySelectorAll<HTMLImageElement>(selector)]
     .filter((im) => !im.closest(".plb"))
     .map((thumb) => {
       const a = thumb.closest("a[href]") as HTMLAnchorElement | null;
@@ -424,11 +429,11 @@ function itemsOf(group: HTMLElement): Item[] {
     });
 }
 
-/** Ouvre la visionneuse sur l'image `index` du groupe. */
-export async function openLightbox(group: HTMLElement, index: number) {
+/** Ouvre la visionneuse sur l'image `index` du groupe (`selector` : lesquelles de ses images ; toutes par défaut). */
+export async function openLightbox(group: HTMLElement, index: number, selector = "img") {
   overlay ??= build();
   const O = overlay;
-  const items = itemsOf(group);
+  const items = itemsOf(group, selector);
   if (!items.length) return;
   active?.end();
   const ticket = ++opening;
@@ -484,6 +489,15 @@ export async function openLightbox(group: HTMLElement, index: number) {
   let ended = false;
   let dimAtClose = 1;
   let switched = 0; // l'image suivie vient de changer : le linter ne doit pas y voir un saut
+  // Le moteur Presse dessous dort tant que la visionneuse, posée, couvre tout l'écran d'un fond opaque (hold.ts).
+  // Il est relancé AVANT que le fond ne s'éclaircisse : dans le gestionnaire du geste ou de la fermeture, donc avant
+  // l'image où le fond devient translucide — il y repeint la page à jour, dans la même image.
+  let held = false;
+  const hold = (on: boolean) => {
+    if (held === on) return;
+    held = on;
+    holdEngine("visionneuse", on);
+  };
   const hidden = new Set<HTMLImageElement>();
 
   const aspectOf = (k: number) => {
@@ -605,6 +619,7 @@ export async function openLightbox(group: HTMLElement, index: number) {
 
   const close = () => {
     if (closing) return;
+    hold(false);
     closing = true;
     frozen = live();
     dimAtClose = 1 - Math.min(1, Math.abs(dy) / (H * 0.45));
@@ -623,6 +638,8 @@ export async function openLightbox(group: HTMLElement, index: number) {
   const finish = () => {
     if (ended) return;
     ended = true;
+    // Quoi qu'il arrive (retour fini, ou fin nette par une nouvelle ouverture) : la page reprend.
+    hold(false);
     if (active === me) active = null;
     cancelAnimationFrame(raf);
     raf = 0;
@@ -730,8 +747,10 @@ export async function openLightbox(group: HTMLElement, index: number) {
       lintSample("visionneuse-fond", "opacity", bdA, now, intent);
     }
     O.root.classList.toggle("plb-zoomed", zT > 1.02);
-    if (gpu) gpu.draw(draws, items, W, H, Math.min(devicePixelRatio || 1, 2));
-    else dom?.draw(draws, items);
+    const covered = gpu ? gpu.draw(draws, items, W, H, Math.min(devicePixelRatio || 1, 2)) : (dom?.draw(draws, items), false);
+    // Posée : ouverture arrivée (o = 1, ressort au repos), pas de glissé vertical, fond peint à pleine opacité.
+    // (Le fond du rendu DOM est translucide : jamais de pause sans WebGPU.) Sinon, filet de sécurité : reprise.
+    hold(!closing && oT === 1 && o === 1 && ov === 0 && dy === 0 && drag?.mode !== "y" && covered);
     O.ui.style.opacity = String(clamp(o * 1.4 - 0.4, 0, 1) * (1 - Math.min(1, Math.abs(dy) / 160)) * (closing ? clamp(o * 3 - 2, 0, 1) : 1));
 
     // Fini quand l'image est à moins d'un demi-pixel de sa vignette (et non à un seuil du ressort : le dernier saut ne se voit pas).
@@ -797,6 +816,8 @@ export async function openLightbox(group: HTMLElement, index: number) {
       sx = drag.sx0 + (edge ? dx * 0.3 : dx);
     } else if (drag.mode === "y") {
       dy = drag.dy0 + (ddy < 0 ? ddy * 0.35 : ddy);
+      // Le fond s'éclaircit avec dy : la page reprend avant l'image qui le montre.
+      if (dy !== 0) hold(false);
     } else if (drag.mode === "pan") {
       const lim = panLimit(i, zT);
       const rub = (v: number, l: number) => (v > l ? l + (v - l) * 0.3 : v < -l ? -l + (v + l) * 0.3 : v);
@@ -866,7 +887,10 @@ export async function openLightbox(group: HTMLElement, index: number) {
     }
     if (!wheelMode) wheelMode = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? "x" : "y";
     if (wheelMode === "x") sx -= e.deltaX;
-    else dy -= e.deltaY * 0.8;
+    else {
+      dy -= e.deltaY * 0.8;
+      if (dy !== 0) hold(false);
+    }
     drag = null;
     clearTimeout(wheelIdle);
     wheelIdle = window.setTimeout(() => {

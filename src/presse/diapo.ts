@@ -26,7 +26,7 @@
  * étape, ou à l'arrivée de la diapo s'ils n'en ont pas.
  *
  * Clavier : → Espace Page suiv. Entrée (avancer), ← Page préc. Retour arrière (reculer), Début / Fin, un numéro puis
- * Entrée (aller à), F plein écran, B ou . écran noir, L pointeur laser, Z loupe, P vue présentateur (seconde fenêtre,
+ * Entrée (aller à), F plein écran, B ou . écran noir, L pointeur laser, Z loupe, I images en grand, P vue présentateur (seconde fenêtre,
  * synchronisée), ? l'aide. L'adresse garde la diapo (#7) : un rechargement reprend au même endroit.
  */
 import "./diapo.css";
@@ -119,12 +119,15 @@ const notesOf = (el: HTMLElement) =>
     .map((n) => (n.innerText || n.textContent || "").replace(/[ \t]+/g, " ").trim())
     .join("\n\n");
 
+/** Les images qu'une diapo montre en grand avec I : ses plans GPU (pas les logos ni les pictos). */
+const IMAGES = "img[data-gl-img]";
 export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   const html = document.documentElement;
   const params = new URLSearchParams(location.search);
   // ?ralenti=4 : transitions quatre fois plus lentes (pour les régler, ou les montrer).
   const slow = Math.max(1, Number(params.get("ralenti")) || 1);
-  const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel(`presse-diapo:${location.pathname}`) : null;
+  // Une vignette du Créateur (?vignette) ne parle à personne : elle ne suit ni ne commande la vue présentateur.
+  const channel = typeof BroadcastChannel === "function" && !params.has("vignette") ? new BroadcastChannel(`presse-diapo:${location.pathname}`) : null;
   const slides: Slide[] = [...root.querySelectorAll<HTMLElement>("[data-diapo-slide]")].map((el, k) => {
     el.dataset.glPrint = "page";
     // Le numéro, pour l'habillage (CSS attr(data-num)) : un compteur CSS ne compte pas les diapos masquées.
@@ -205,6 +208,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     <dt>B ou .</dt><dd>écran noir</dd>
     <dt>L</dt><dd>pointeur laser</dd>
     <dt>Z</dt><dd>loupe (suit le pointeur)</dd>
+    <dt>I</dt><dd>les images de la diapo en grand</dd>
     <dt>P</dt><dd>vue présentateur (seconde fenêtre)</dd>
     <dt>E</dt><dd>édition : styles de paragraphe, textes</dd>
     <dt>?</dt><dd>cette aide · Échap la ferme</dd></dl>`;
@@ -465,6 +469,11 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     else if (k === "p" || k === "P") openPresenter();
     else if (k === "l" || k === "L") toggleLaser();
     else if (k === "z" || k === "Z") toggleZoom();
+    else if (k === "i" || k === "I") {
+      // Les images de la diapo en grand (visionneuse : ← → d'une image à l'autre, + − zoom, Échap revient à la diapo).
+      const s = slides[cur]?.el;
+      if (s?.querySelector(IMAGES)) void import("./lightbox.ts").then((m) => m.openLightbox(s, 0, IMAGES));
+    }
     else if (k === "?") help.hidden = false;
     else used = false;
     if (used && !relayed) e.preventDefault();

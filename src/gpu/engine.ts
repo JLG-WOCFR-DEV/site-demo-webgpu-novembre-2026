@@ -5,7 +5,8 @@ import { MAX_RIPPLES } from "./cui.ts";
 import { TIMED } from "./chain.ts";
 import { coverUV, ImageLayer } from "./images.ts";
 import { Recorder, Snapshot, clockNow, type RecordOptions } from "./recorder.ts";
-import { beginFrame } from "./clock.ts";
+import { beginFrame, frameInterval } from "./clock.ts";
+import { PAUSE_EVENT, type PauseDetail } from "./hold.ts";
 import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedAtlas, type MsdfMeta } from "./text.ts";
 import { chapterPaper, PAPER_FLOATS, paperPack } from "./paper.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
@@ -733,6 +734,22 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
   let dpr = 1;
   let raf = 0;
   let paused = false;
+  // Les pauses demandées par d'autres modules (événement presse:pause, voir hold.ts) : la visionneuse ouverte, opaque,
+  // cache toute la page ; le moteur n'a rien à repeindre dessous. Distinctes de pause() (le bouton « Couper WebGPU »).
+  const holds = new Set<string>();
+  const onHold = (e: Event) => {
+    const d = (e as CustomEvent<PauseDetail>).detail;
+    if (!d) return;
+    const by = d.by ?? "?";
+    if (d.on) holds.add(by);
+    else holds.delete(by);
+  };
+  addEventListener(PAUSE_EVENT, onHold);
+  // Vrai si la dernière boucle n'a rien rendu : la suivante repart d'un pas d'image normal, pas de toute la pause.
+  let idle = false;
+  // Images réellement rendues (recette : __presse.moteur()).
+  let rendered = 0;
+  let lastDt = 0;
   let needLayout = true;
   let fpsCount = 0;
   let fpsT = performance.now();
@@ -803,11 +820,19 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     if (destroyed) return;
     raf = requestAnimationFrame(frame);
     if (rafT !== undefined) beginFrame(rafT);
-    if (paused) return;
+    // En pause, rien n'est demandé au canvas (getCurrentTexture) : il garde sa dernière image, il ne se vide pas.
+    // Une capture en cours n'est pas suspendue (son horloge n'avance qu'avec les images rendues).
+    if (paused || (holds.size > 0 && !recorder)) {
+      idle = true;
+      return;
+    }
     const cpuStart = performance.now();
     const cssW = canvas.clientWidth;
     const cssH = canvas.clientHeight;
-    if (cssW < 2 || cssH < 2) return;
+    if (cssW < 2 || cssH < 2) {
+      idle = true;
+      return;
+    }
     // Échelle tenue par le gouverneur (D2) : on perd un peu de netteté plutôt que des images.
     const nextDpr = Math.min(window.devicePixelRatio || 1, 2) * renderScale();
     const w = Math.round(cssW * nextDpr);
@@ -834,10 +859,24 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     if (menuOpen) menuGL.step?.(now);
     // Vitesse de défilement : les plaques glissent quand le papier court.
     // Un saut (ancre, sommaire) n'est pas un geste : on l'ignore.
+    if (idle) {
+      // Reprise après une pause : un pas d'image ordinaire, ni défilement ni pointeur fantômes accumulés pendant
+      // le sommeil (sinon les amortis — vitesse, courbure, loupe, fluide — prendraient un coup de 100 ms d'un coup).
+      // Les révélations datées (revealStart…) restent à l'heure du mur, comme le DOM qui, lui, ne dormait pas.
+      idle = false;
+      lastNow = now - frameInterval();
+      lastScroll = scrollY;
+      lastPx = pointer.x;
+      lastPy = pointer.y;
+      fpsT = now;
+      fpsCount = 0;
+    }
+    rendered++;
     const dy = scrollY - lastScroll;
     lastScroll = scrollY;
     const dt = Math.min(0.1, Math.max(0.001, (now - lastNow) / 1000));
     lastNow = now;
+    lastDt = dt;
     const v = Math.abs(dy) > 600 ? 0 : dy / dt; // px/s
     velocity += (v - velocity) * (1 - Math.exp(-dt * 10));
     const slip = reduced ? 0 : Math.max(-1, Math.min(1, velocity / 4000));
@@ -1518,6 +1557,11 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
 
   images.collect();
   raf = requestAnimationFrame(frame);
+  // Recette : combien d'images le moteur a rendues, et s'il dort (et pour qui).
+  {
+    const w = window as unknown as { __presse?: Record<string, unknown> };
+    w.__presse = Object.assign(w.__presse ?? {}, { moteur: () => ({ images: rendered, dt: lastDt, pause: paused, pour: [...holds] }) });
+  }
 
   return {
     device,
@@ -1556,6 +1600,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     destroy: () => {
       destroyed = true;
       cancelAnimationFrame(raf);
+      removeEventListener(PAUSE_EVENT, onHold);
       slideTr.destroy();
       removeEventListener("focusin", onFocus);
       for (const el of document.querySelectorAll(".is-printed")) el.classList.remove("is-printed");
