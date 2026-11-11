@@ -22,6 +22,8 @@
  * avec le mouvement réduit, les liens restent des liens.
  */
 
+import { lintOn, lintSample } from "./motion-lint.ts";
+
 const KEY = "presse:flight";
 /** Au-delà, une note de départ est périmée (navigation abandonnée, onglet rouvert). */
 const FRESH_MS = 15000;
@@ -207,6 +209,32 @@ async function landTitle(p: Pending) {
   fadeOut(el, 320);
 }
 
+/**
+ * Le linter de mouvement (?presse-lint) regarde l'image de passage telle qu'elle est présentée (animations Web
+ * comprises), image par image, jusqu'à quelques images après sa pose : un saut à l'arrivée s'y lit.
+ */
+let probes = 0;
+function probe(el: HTMLElement, done: Promise<unknown>) {
+  if (!lintOn()) return;
+  const id = `passage-${++probes}`;
+  let tail = -1;
+  const tick = (rafT: number) => {
+    if (!el.isConnected) return;
+    // L'heure de l'animation Web elle-même (sa ligne de temps), et non celle du rAF : c'est elle qui fixe la pose.
+    const tl = document.timeline?.currentTime;
+    const t = typeof tl === "number" ? tl : rafT;
+    const r = el.getBoundingClientRect();
+    lintSample(id, "x", r.left, t);
+    lintSample(id, "y", r.top, t);
+    lintSample(id, "width", r.width, t);
+    lintSample(id, "opacity", Number(getComputedStyle(el).opacity), t);
+    if (tail > 0) tail--;
+    if (tail !== 0) requestAnimationFrame(tick);
+  };
+  void done.then(() => (tail = 6));
+  requestAnimationFrame(tick);
+}
+
 /** Vol de l'image posée jusqu'au rectangle d'arrivée (coordonnées de la fenêtre). */
 async function fly(el: HTMLImageElement, to: Rect, radius: number) {
   // L'image vient du cache ; on attend qu'elle soit décodée, sans s'y attarder.
@@ -223,6 +251,7 @@ async function fly(el: HTMLImageElement, to: Rect, radius: number) {
       ],
       { duration: ms, easing: "cubic-bezier(0.65, 0, 0.15, 1)" },
     );
+    probe(el, a.finished.catch(() => undefined));
     await a.finished.catch(() => undefined);
   }
   Object.assign(el.style, end);

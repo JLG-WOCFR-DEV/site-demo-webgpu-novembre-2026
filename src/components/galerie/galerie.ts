@@ -18,6 +18,7 @@ import { addDebugWire, setDebugCaps } from "../../debug-panel.ts";
 import { loadPhotoArray } from "../../gpu/photos.ts";
 import { sommeil, type Sommeil } from "../../gpu/sommeil.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
+import { frameInterval } from "../../gpu/clock.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { claimFlight, type Flight, onArrive, onLeave, onSource, type Source } from "../../presse/flight.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
@@ -248,6 +249,8 @@ export function mount(root: HTMLElement) {
   const sel = { idx: null as number | null, last: null as number | null, a: 0, av: 0, target: 0 };
   /** Le linter suit encore l'image quelques images après la fin du retour : le dernier saut, s'il y en a un, est là. */
   let lintTail: { idx: number; n: number } | null = null;
+  /** Le décalage vient d'être posé par un changement d'arrangement (une coupure voulue, pas un mouvement). */
+  let lintCut = false;
   let presentIdx: number[] = [];
   const bg = items[0]!.palette.map((c) => [...c]);
   let focusK = 0;
@@ -848,9 +851,10 @@ export function mount(root: HTMLElement) {
     if (lintOn()) {
       const k = (c.iw + c.gap) / unit;
       // Sous le doigt, la valeur suit la main au pixel près : ce n'est pas une animation à juger.
-      lintSample(root, "x", off.x * k, now, jumped || !!drag);
-      lintSample(root, "y", off.y * k, now, jumped || !!drag);
+      lintSample(root, "x", off.x * k, now, jumped || lintCut || !!drag);
+      lintSample(root, "y", off.y * k, now, jumped || lintCut || !!drag);
     }
+    lintCut = false;
     const v = Math.hypot(seen.vx, seen.vy) / unit;
     speed += (v - speed) * (1 - Math.exp(-dt * 8));
     if (Math.abs(seen.vx) > 1e-3) dir = Math.sign(seen.vx);
@@ -1057,6 +1061,7 @@ export function mount(root: HTMLElement) {
         // L'image de tête reste la même.
         const k = focusK;
         const a = arr();
+        lintCut = true;
         off.x = off.y = 0;
         vel.x = vel.y = 0;
         target = null;
@@ -1225,7 +1230,10 @@ export function mount(root: HTMLElement) {
     const frame = () => {
       if (stopped) return;
       const now = clockNow();
-      const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
+      // Au réveil (la boucle dormait : sommeil.ts), l'écart depuis la dernière image n'est pas une image : intégré tel
+      // quel (jusqu'à 50 ms), il faisait faire au ressort d'ouverture un tiers de sa course dès la première image —
+      // un départ sec à l'ouverture comme à la fermeture. Le premier pas est un pas d'image ordinaire.
+      const dt = sleep?.woke ? frameInterval() / 1000 : Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
       if (!full && !onScreen) return;
       step(now, dt);

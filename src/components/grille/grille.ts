@@ -15,6 +15,7 @@ import { fromImage, growPhotoArray, loadPhotoArray } from "../../gpu/photos.ts";
 import { claimFlight, onArrive, onLeave, type Flight } from "../../presse/flight.ts";
 import * as stock from "./stock.ts";
 import { clockNow, recordable } from "../../gpu/recorder.ts";
+import { frameInterval } from "../../gpu/clock.ts";
 import { motionScale } from "../../motion-scale.ts";
 import { drawCover, onSnapshot, painted } from "../../presse/sweep.ts";
 import { renderScale } from "../../gpu/governor.ts";
@@ -508,9 +509,23 @@ export function mount(root: HTMLElement) {
   /** D'où part une photo qu'on ouvre : une case de la grille, ou un tirage du canevas. */
   type Ref = { tile: Tile; item?: undefined } | { item: number; tile?: undefined };
   const refRect = (r: Ref): Rect & { rot: number } => (r.tile ? { ...tileRect(r.tile), rot: 0 } : { ...itemRect(r.item!), rot: items[r.item!]!.arot });
-  type Fly = { photo: Photo; from: Rect & { rot: number }; t0: number; dir: 1 | -1; ref: Ref };
+  /** L'échelle à laquelle le mur dessine une case au repos (resserrement de vitesse, survol) ; tenue par la boucle. */
+  let tileScale: (t: Tile) => number = () => 1;
+  /** La case ou le tirage tel que le mur le dessine (et non sa place nue) : un vol en part et y revient sans à-coup. */
+  const shownRect = (r: Ref): Rect & { rot: number } => {
+    const b = refRect(r);
+    if (!r.tile) return b;
+    const k = tileScale(r.tile);
+    return { x: b.x + (b.w * (1 - k)) / 2, y: b.y + (b.h * (1 - k)) / 2, w: b.w * k, h: b.h * k, rot: b.rot };
+  };
+  /** `lid` : le canal du linter de mouvement pour ce vol (chaque vol est un canal neuf : son départ n'est pas un saut). */
+  type Fly = { photo: Photo; from: Rect & { rot: number }; t0: number; dir: 1 | -1; ref: Ref; lid: string };
   let open: { photo: Photo; ref: Ref } | null = null;
   let fly: Fly | null = null;
+  let flyN = 0;
+  /** Le linter suit encore la photo quelques images après la fin du vol (posée sur la page, ou rendue à sa case) :
+   *  le dernier saut, s'il y en a un, est là. */
+  let lintTail: { lid: string; ref: Ref; n: number } | null = null;
   const FLY_MS = 950;
   const heroRect = (): Rect => {
     const r = heroSlot().getBoundingClientRect();
@@ -593,14 +608,14 @@ export function mount(root: HTMLElement) {
     if (push) history.pushState({ [param]: p.id }, "", urlWith(p.id));
     pushed = push;
     open = { photo: p, ref };
-    fly = { photo: p, from: refRect(ref), t0: clockNow(), dir: 1, ref };
+    fly = { photo: p, from: shownRect(ref), t0: clockNow(), dir: 1, ref, lid: `grille-vol-${++flyN}` };
     showDetail(p);
   };
   /** La référence d'une photo dans la vue courante. */
   const refOf = (p: Photo): Ref => (mode === "canevas" ? { item: p.layer } : { tile: nearestTile(p) });
   const closePhoto = () => {
     if (!open) return;
-    fly = { photo: open.photo, from: { ...heroRect(), rot: 0 }, t0: clockNow(), dir: -1, ref: open.ref };
+    fly = { photo: open.photo, from: { ...heroRect(), rot: 0 }, t0: clockNow(), dir: -1, ref: open.ref, lid: `grille-vol-${++flyN}` };
     open = null;
     hideDetail();
     say("Retour au mur.");
@@ -1161,7 +1176,9 @@ export function mount(root: HTMLElement) {
     const frame = () => {
       if (stopped) return;
       const now = clockNow();
-      const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
+      // Au réveil (sommeil.ts), l'écart avec l'image d'avant n'est pas un pas d'image (voir la galerie) : survol,
+      // inertie, zoom et tirages partiraient d'un pas de 50 ms.
+      const dt = sleep?.woke ? frameInterval() / 1000 : Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
       if (!full && !onScreen) return;
       box = root.getBoundingClientRect();
@@ -1229,12 +1246,17 @@ export function mount(root: HTMLElement) {
       const slideX = Math.max(-1, Math.min(1, seen.vx / 4000)) * 0.06 * m;
       const slideY = Math.max(-1, Math.min(1, seen.vy / 4000)) * 0.06 * m;
       const split = Math.min(1, speed / 5000) * 6 * m;
+      tileScale = (t) => squeeze * (1 + 0.03 * (hover.get(`${t.s},${t.i},${t.j}`) ?? 0) * m);
 
       // Vol entre le mur et la page.
       let flyT = 1;
       if (fly) {
         flyT = reduced.matches ? 1 : Math.min(1, (now - fly.t0) / FLY_MS);
-        if (flyT >= 1 && fly.dir === -1) fly = null;
+        if (flyT >= 1 && fly.dir === -1) {
+          // Retour fini : la photo est rendue à sa case (ou à son tirage), dessinée dès cette image par le mur.
+          lintTail = { lid: fly.lid, ref: fly.ref, n: 6 };
+          fly = null;
+        }
       }
       const detailK = open ? ease(flyT) : fly && fly.dir === -1 ? 1 - ease(flyT) : 0;
 
@@ -1275,7 +1297,6 @@ export function mount(root: HTMLElement) {
       }
       if (mt < 0.999) {
         for (const t of visible()) {
-          if (flyTile && sameTile(flyTile, t)) continue;
           const key = `${t.s},${t.i},${t.j}`;
           // Les cases qui deviennent des tirages sont dessinées avec le canevas.
           if (morphTiles?.has(key)) continue;
@@ -1285,10 +1306,19 @@ export function mount(root: HTMLElement) {
           const hv = (hover.get(key) ?? 0) + ((over ? 1 : 0) - (hover.get(key) ?? 0)) * (1 - Math.exp(-dt * 10));
           if (hv > 0.001) hover.set(key, hv);
           else hover.delete(key);
+          // La case de la photo qui vole n'est pas dessinée ici, mais son survol avance : au retour, la photo se pose
+          // sur la case telle qu'elle sera dessinée (grossie sous le pointeur), et non sur sa place nue — sinon elle
+          // s'y arrêtait, puis regonflait de 3 % (un second mouvement, après la pose).
+          if (flyTile && sameTile(flyTile, t)) continue;
           // Les autres cases s'effacent derrière la page ouverte.
           const s = squeeze * (1 + 0.03 * hv * m) * (1 - 0.06 * detailK);
           const w = r.w * s;
           const h = r.h * s;
+          if (lintTail && !fly && lintOn() && sameTile(lintTail.ref.tile, t)) {
+            lintSample(lintTail.lid, "x", r.x + (r.w - w) / 2, now);
+            lintSample(lintTail.lid, "y", r.y + (r.h - h) / 2, now);
+            lintSample(lintTail.lid, "width", w, now);
+          }
           put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, p, (1 - 0.88 * detailK) * (1 - mt) * ease(gk), Math.min(10, 4 + 6 * zoom));
         }
       }
@@ -1309,13 +1339,18 @@ export function mount(root: HTMLElement) {
           const lifted = i === held ? 1.03 : 1;
           const w = r.w * lifted;
           const h = r.h * lifted;
+          if (lintTail && !fly && lintOn() && lintTail.ref.item === i) {
+            lintSample(lintTail.lid, "x", r.x + (r.w - w) / 2, now);
+            lintSample(lintTail.lid, "y", r.y + (r.h - h) / 2, now);
+            lintSample(lintTail.lid, "width", w, now);
+          }
           put(r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h, photos[i]!, 1 - 0.88 * detailK, lerp(Math.min(10, 4 + 6 * zoom), 2, mt), 0, rot, Math.min(9, 0.04 * Math.min(w, h)) * mt, mt);
         }
       }
       // La photo qui vole vers sa page, par-dessus.
       // (Pas pendant qu'elle arrive d'une autre page : l'image de passage la tient.)
       if (flying && !(landing && !landing.landed && landing.id === flying.photo.id)) {
-        const cr = refRect(flying.ref);
+        const cr = shownRect(flying.ref);
         const heroR = heroRect();
         let r: Rect = open ? heroR : cr;
         let rot = open ? 0 : cr.rot;
@@ -1329,11 +1364,16 @@ export function mount(root: HTMLElement) {
           rot = lerp(from.rot, to.rot, t);
         }
         const fromItem = flying.ref.item !== undefined;
-        // Le vol d'une photo : chaque vol est un canal neuf pour le linter (son départ n'est pas un saut).
-        if (lintOn() && fly) (lintSample(fly, "x", r.x, now), lintSample(fly, "y", r.y, now), lintSample(fly, "width", r.w, now));
+        // La pose réellement dessinée de la photo qui vole, puis, posée sur sa page, encore quelques images (lintTail).
+        const lid = fly?.lid ?? (open && lintTail ? lintTail.lid : null);
+        if (lintOn() && lid) (lintSample(lid, "x", r.x, now), lintSample(lid, "y", r.y, now), lintSample(lid, "width", r.w, now));
         put(r.x, r.y, r.w, r.h, flying.photo, 1, lerp(fromItem ? 2 : 10, 18, detailK), fly ? Math.sin(Math.PI * flyT) * 5 * m * dpr : 0, rot, fromItem ? Math.min(9, 0.04 * Math.min(r.w, r.h)) * (1 - detailK) : 0, fromItem ? 1 : 0);
-        if (fly && fly.dir === 1 && flyT >= 1) fly = null;
+        if (fly && fly.dir === 1 && flyT >= 1) {
+          lintTail = { lid: fly.lid, ref: fly.ref, n: 6 };
+          fly = null;
+        }
       }
+      if (lintTail && !fly && --lintTail.n <= 0) lintTail = null;
 
       // Le linter de mouvement (?presse-lint) : la caméra du mur (px) ; un motif refait garde la place à l'écran.
       if (lintOn()) (lintSample(root, "x", cam.x, now, !!drag), lintSample(root, "y", cam.y, now, !!drag));

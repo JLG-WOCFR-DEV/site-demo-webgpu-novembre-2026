@@ -1,4 +1,4 @@
-import { l as e, n as t, o as n, r, t as i } from "./device-DBhC9Jhc.js";
+import { c as e, i as t, l as n, s as r, t as i } from "./device-GWVPUmlx.js";
 //#region src/gpu/hold.ts
 var a = "presse:pause";
 function o(e, t) {
@@ -9,10 +9,10 @@ function o(e, t) {
 }
 //#endregion
 //#region src/presse/lightbox.ts
-var s = n.ouverture, c = {
+var s = t.ouverture, c = {
 	k: 320,
 	zeta: 1
-}, l = n.vif, u = {
+}, l = t.vif, u = {
 	k: 220,
 	zeta: 1
 }, d = 40, f = () => matchMedia("(prefers-reduced-motion: reduce)").matches, p = (e, t, n) => e + (t - e) * n, m = (e, t, n) => Math.min(n, Math.max(t, e)), ee = (e, t, n) => ({
@@ -368,8 +368,8 @@ function ae() {
 		thumbs: n(".plb-thumbs")
 	};
 }
-function S(e) {
-	return [...e.querySelectorAll("img")].filter((e) => !e.closest(".plb")).map((t) => {
+function S(e, t = "img") {
+	return [...e.querySelectorAll(t)].filter((e) => !e.closest(".plb")).map((t) => {
 		let n = t.closest("a[href]"), r = t.closest("figure"), i = t.dataset.caption ?? r?.querySelector("figcaption")?.textContent?.trim() ?? "", a = t.dataset.full ?? (n && e.contains(n) && /\.(jpe?g|png|webp|avif|gif)(\?|$)/i.test(n.href) ? n.href : "");
 		return {
 			trigger: n && e.contains(n) ? n : t,
@@ -380,178 +380,178 @@ function S(e) {
 		};
 	});
 }
-async function C(n, a) {
+async function C(t, a, h = "img") {
 	ie ??= ae();
-	let h = ie, g = S(n);
-	if (!g.length) return;
+	let g = ie, _ = S(t, h);
+	if (!_.length) return;
 	b?.end();
-	let _ = ++x, C = f(), w = m(a, 0, g.length - 1), T = innerWidth, E = innerHeight, oe = document.activeElement, D = null, se = null;
+	let C = ++x, w = f(), T = m(a, 0, _.length - 1), E = innerWidth, D = innerHeight, O = document.activeElement, k = null, oe = null;
 	try {
 		let e = await i();
-		(!y || y.device !== e) && (y = new re(e, h.canvas)), D = y, D.onReady = () => Q(), h.canvas.hidden = !1, h.dom.hidden = !0;
+		(!y || y.device !== e) && (y = new re(e, g.canvas)), k = y, k.onReady = () => Q(), g.canvas.hidden = !1, g.dom.hidden = !0;
 	} catch {
-		se = new v(h.dom), h.canvas.hidden = !0, h.dom.hidden = !1;
+		oe = new v(g.dom), g.canvas.hidden = !0, g.dom.hidden = !1;
 	}
-	if (_ !== x) return;
+	if (C !== x) return;
 	b?.end();
-	let O = +!!C, ce = 0, le = 1, k = !1, ue = null, A = 0, j = 0, M = 0, de = 0, N = 1, fe = 0, P = 1, F = {
-		x: 0,
-		y: 0
-	}, I = {
+	let A = +!!w, se = 0, ce = 1, j = !1, le = null, M = 0, ue = 0, N = 0, de = 0, P = 1, fe = 0, F = 1, I = {
 		x: 0,
 		y: 0
 	}, L = {
 		x: 0,
 		y: 0
-	}, R = /* @__PURE__ */ new Map(), z = null, B = {
+	}, R = {
+		x: 0,
+		y: 0
+	}, z = /* @__PURE__ */ new Map(), B = null, V = {
 		t: 0,
 		x: 0,
 		y: 0
-	}, V = 0, pe = performance.now(), H = -1, U = 1, me = !1, he = 1, W = 0, ge = !1, G = (e) => {
-		ge !== e && (ge = e, o("visionneuse", e));
-	}, K = /* @__PURE__ */ new Set(), _e = (e) => {
-		let t = g[e];
-		return D?.aspect(t) || (t.thumb.naturalWidth && t.thumb.naturalHeight ? t.thumb.naturalWidth / t.thumb.naturalHeight : t.thumb.width / Math.max(1, t.thumb.height)) || 1.5;
+	}, H = 0, pe = performance.now(), U = -1, W = 1, me = !1, he = 1, ge = 0, _e = !1, G = (e) => {
+		_e !== e && (_e = e, o("visionneuse", e));
+	}, K = /* @__PURE__ */ new Set(), ve = (e) => {
+		let t = _[e];
+		return k?.aspect(t) || (t.thumb.naturalWidth && t.thumb.naturalHeight ? t.thumb.naturalWidth / t.thumb.naturalHeight : t.thumb.width / Math.max(1, t.thumb.height)) || 1.5;
 	}, q = (e) => {
-		let t = T < 640 ? 12 : 72, n = T < 640 ? 64 : 72, r = g.length > 1 ? 150 : 96, i = T - t * 2, a = E - n - r, o = _e(e), s = i, c = s / o;
+		let t = E < 640 ? 12 : 72, n = E < 640 ? 64 : 72, r = _.length > 1 ? 150 : 96, i = E - t * 2, a = D - n - r, o = ve(e), s = i, c = s / o;
 		return c > a && (c = a, s = c * o), {
-			x: (T - s) / 2,
+			x: (E - s) / 2,
 			y: n + (a - c) / 2,
 			w: s,
 			h: c
 		};
-	}, ve = /* @__PURE__ */ new Map(), ye = (e) => {
-		let t = ve.get(e);
+	}, ye = /* @__PURE__ */ new Map(), be = (e) => {
+		let t = ye.get(e);
 		if (!t) {
-			let n = getComputedStyle(g[e].thumb);
+			let n = getComputedStyle(_[e].thumb);
 			t = {
 				radius: Number.parseFloat(n.borderTopLeftRadius) || 0,
 				cover: n.objectFit === "cover"
-			}, ve.set(e, t);
+			}, ye.set(e, t);
 		}
 		return t;
-	}, be = (e) => ye(e).radius, xe = (e) => e.w > 2 && e.x < T && e.y < E && e.x + e.w > 0 && e.y + e.h > 0, J = (e, t) => {
+	}, xe = (e) => be(e).radius, Se = (e) => e.w > 2 && e.x < E && e.y < D && e.x + e.w > 0 && e.y + e.h > 0, J = (e, t) => {
 		let n = q(e);
 		return {
-			x: Math.max(0, (n.w * t - T) / 2 + 24),
-			y: Math.max(0, (n.h * t - E) / 2 + 24)
+			x: Math.max(0, (n.w * t - E) / 2 + 24),
+			y: Math.max(0, (n.h * t - D) / 2 + 24)
 		};
-	}, Se = () => {
-		let e = q(w), t = 1 - Math.min(.3, Math.abs(M) / E) * .9, n = e.w * N * t, r = e.h * N * t, i = e.x + e.w / 2 + F.x + A, a = e.y + e.h / 2 + F.y + M;
+	}, Ce = () => {
+		let e = q(T), t = 1 - Math.min(.3, Math.abs(N) / D) * .9, n = e.w * P * t, r = e.h * P * t, i = e.x + e.w / 2 + I.x + M, a = e.y + e.h / 2 + I.y + N;
 		return {
 			x: i - n / 2,
 			y: a - r / 2,
 			w: n,
 			h: r
 		};
-	}, Ce = () => {
-		let e = g[w];
-		h.count.textContent = g.length > 1 ? `${w + 1} / ${g.length}` : "", h.cap.textContent = e.caption, h.sr.textContent = `${e.alt || e.caption}${g.length > 1 ? `, image ${w + 1} sur ${g.length}` : ""}`, h.prev.disabled = w === 0, h.next.disabled = w === g.length - 1, h.prev.hidden = h.next.hidden = g.length < 2, h.thumbs.querySelectorAll("button").forEach((e, t) => e.setAttribute("aria-current", String(t === w)));
-		let t = h.thumbs.querySelector(`button:nth-child(${w + 1})`);
-		t && h.thumbs.scrollTo({
-			left: t.offsetLeft - (h.thumbs.clientWidth - t.offsetWidth) / 2,
-			behavior: C ? "auto" : "smooth"
+	}, we = () => {
+		let e = _[T];
+		g.count.textContent = _.length > 1 ? `${T + 1} / ${_.length}` : "", g.cap.textContent = e.caption, g.sr.textContent = `${e.alt || e.caption}${_.length > 1 ? `, image ${T + 1} sur ${_.length}` : ""}`, g.prev.disabled = T === 0, g.next.disabled = T === _.length - 1, g.prev.hidden = g.next.hidden = _.length < 2, g.thumbs.querySelectorAll("button").forEach((e, t) => e.setAttribute("aria-current", String(t === T)));
+		let t = g.thumbs.querySelector(`button:nth-child(${T + 1})`);
+		t && g.thumbs.scrollTo({
+			left: t.offsetLeft - (g.thumbs.clientWidth - t.offsetWidth) / 2,
+			behavior: w ? "auto" : "smooth"
 		});
 		for (let t of K) t !== e.thumb && (t.style.opacity = "", K.delete(t));
 		e.thumb.style.opacity = "0", K.add(e.thumb);
-		for (let e of [w + 1, w - 1]) g[e] && D?.tex(g[e]);
+		for (let e of [T + 1, T - 1]) _[e] && k?.tex(_[e]);
 	};
-	h.thumbs.replaceChildren(...g.length > 1 ? g.map((e, t) => {
+	g.thumbs.replaceChildren(..._.length > 1 ? _.map((e, t) => {
 		let n = document.createElement("button");
 		n.type = "button", n.setAttribute("aria-label", `Image ${t + 1} : ${e.alt || e.caption}`);
 		let r = document.createElement("img");
 		return r.src = e.thumb.currentSrc || e.thumb.src, r.alt = "", n.append(r), n.addEventListener("click", () => Y(t)), n;
 	}) : []);
 	let Y = (e) => {
-		if (e < 0 || e >= g.length || e === w) {
-			C || (j += e < 0 ? 900 : -900), Q();
+		if (e < 0 || e >= _.length || e === T) {
+			w || (ue += e < 0 ? 900 : -900), Q();
 			return;
 		}
-		let t = e > w ? 1 : -1;
-		H = w, U = +!!C, W = 3, A += t * (q(w).w / 2 + q(e).w / 2 + d) * (Math.abs(e - w), 1), w = e, N = P = 1, F = {
+		let t = e > T ? 1 : -1;
+		U = T, W = +!!w, ge = 3, M += t * (q(T).w / 2 + q(e).w / 2 + d) * (Math.abs(e - T), 1), T = e, P = F = 1, I = {
 			x: 0,
 			y: 0
-		}, I = {
+		}, L = {
 			x: 0,
 			y: 0
-		}, C && (A = 0), Ce(), Q();
+		}, w && (M = 0), we(), Q();
 	}, X = (e, t, n) => {
-		let r = m(e, 1, 6), i = q(w), a = {
-			x: i.x + i.w / 2 + I.x,
-			y: i.y + i.h / 2 + I.y
-		}, o = r / P, s = t - (t - a.x) * o - (i.x + i.w / 2), c = n - (n - a.y) * o - (i.y + i.h / 2), l = J(w, r);
-		s = m(s, -l.x, l.x), c = m(c, -l.y, l.y), P = r, I = r <= 1.001 ? {
+		let r = m(e, 1, 6), i = q(T), a = {
+			x: i.x + i.w / 2 + L.x,
+			y: i.y + i.h / 2 + L.y
+		}, o = r / F, s = t - (t - a.x) * o - (i.x + i.w / 2), c = n - (n - a.y) * o - (i.y + i.h / 2), l = J(T, r);
+		s = m(s, -l.x, l.x), c = m(c, -l.y, l.y), F = r, L = r <= 1.001 ? {
 			x: 0,
 			y: 0
 		} : {
 			x: s,
 			y: c
-		}, C && (N = P, F = { ...I }), Q();
+		}, w && (P = F, I = { ...L }), Q();
 	}, Z = () => {
-		k || (G(!1), k = !0, ue = Se(), he = 1 - Math.min(1, Math.abs(M) / (E * .45)), h.root.style.pointerEvents = "none", A = M = 0, N = P = 1, F = I = {
+		j || (G(!1), j = !0, le = Ce(), he = 1 - Math.min(1, Math.abs(N) / (D * .45)), g.root.style.pointerEvents = "none", M = N = 0, P = F = 1, I = L = {
 			x: 0,
 			y: 0
-		}, le = 0, ce = m(-Math.abs(de) / Math.max(200, E), -3, 0), C && (O = 0), Q());
-	}, we = () => {
+		}, ce = 0, se = m(-Math.abs(de) / Math.max(200, D), -3, 0), w && (A = 0), Q());
+	}, Te = () => {
 		if (!me) {
-			me = !0, G(!1), b === Te && (b = null), cancelAnimationFrame(V), V = 0, h.root.hidden = !0, h.root.style.pointerEvents = "";
+			me = !0, G(!1), b === Ee && (b = null), cancelAnimationFrame(H), H = 0, g.root.hidden = !0, g.root.style.pointerEvents = "";
 			for (let e of K) e.style.opacity = "";
-			K.clear(), se?.clear(), D && (D.busy = !1, D.onReady = () => {}, D.clear(), D.trim()), removeEventListener("keydown", je, !0), removeEventListener("resize", Me), h.root.onpointerdown = h.root.onpointermove = h.root.onpointerup = h.root.onpointercancel = null, h.root.onwheel = h.root.ondblclick = null, h.close.onclick = h.prev.onclick = h.next.onclick = null, oe?.focus?.({ preventScroll: !0 });
+			K.clear(), oe?.clear(), k && (k.busy = !1, k.onReady = () => {}, k.clear(), k.trim()), removeEventListener("keydown", Me, !0), removeEventListener("resize", Ne), g.root.onpointerdown = g.root.onpointermove = g.root.onpointerup = g.root.onpointercancel = null, g.root.onwheel = g.root.ondblclick = null, g.close.onclick = g.prev.onclick = g.next.onclick = null, O?.focus?.({ preventScroll: !0 });
 		}
-	}, Te = { end: we };
-	b = Te, D && !C && (D.busy = !0);
-	let Ee = (n) => {
-		V = 0;
-		let i = Math.min(.05, (n - pe) / 1e3);
-		pe = n;
-		let a = !1, o = (t, n, r, o) => {
-			if (C) return [r, 0];
-			let s = e(t, n, r, i, o);
-			if (Math.abs(s[0] - r) > 5e-4 || Math.abs(s[1]) > .005) a = !0;
-			else return [r, 0];
+	}, Ee = { end: Te };
+	b = Ee, k && !w && (k.busy = !0);
+	let De = (t) => {
+		H = 0;
+		let i = Math.min(.05, (t - pe) / 1e3);
+		pe = t;
+		let a = !1, o = (e, t, n, o) => {
+			if (w) return [n, 0];
+			let s = r(e, t, n, i, o);
+			if (Math.abs(s[0] - n) > 5e-4 || Math.abs(s[1]) > .005) a = !0;
+			else return [n, 0];
 			return s;
 		};
-		if ([O, ce] = o(O, ce, le, k ? c : s), D && (D.busy = k || Math.abs(O - le) > .02), (!z || z.mode !== "x") && ([A, j] = o(A, j, 0, l)), (!z || z.mode !== "y") && ([M, de] = o(M, de, 0, l)), !z || z.mode !== "pinch" && z.mode !== "pan") {
-			if (Math.hypot(L.x, L.y) > 5 && !C) {
-				I = {
-					x: I.x + L.x * i,
-					y: I.y + L.y * i
-				}, L = {
-					x: L.x * Math.exp(-i * 6),
-					y: L.y * Math.exp(-i * 6)
+		if ([A, se] = o(A, se, ce, j ? c : s), k && (k.busy = j || Math.abs(A - ce) > .02), (!B || B.mode !== "x") && ([M, ue] = o(M, ue, 0, l)), (!B || B.mode !== "y") && ([N, de] = o(N, de, 0, l)), !B || B.mode !== "pinch" && B.mode !== "pan") {
+			if (Math.hypot(R.x, R.y) > 5 && !w) {
+				L = {
+					x: L.x + R.x * i,
+					y: L.y + R.y * i
+				}, R = {
+					x: R.x * Math.exp(-i * 6),
+					y: R.y * Math.exp(-i * 6)
 				};
-				let e = J(w, P);
-				I = {
-					x: m(I.x, -e.x, e.x),
-					y: m(I.y, -e.y, e.y)
+				let e = J(T, F);
+				L = {
+					x: m(L.x, -e.x, e.x),
+					y: m(L.y, -e.y, e.y)
 				}, a = !0;
 			}
-			[N, fe] = o(N, fe, P, u), F.x = p(F.x, I.x, C ? 1 : 1 - Math.exp(-i * 18)), F.y = p(F.y, I.y, C ? 1 : 1 - Math.exp(-i * 18)), Math.abs(F.x - I.x) + Math.abs(F.y - I.y) > .3 && (a = !0);
+			[P, fe] = o(P, fe, F, u), I.x = p(I.x, L.x, w ? 1 : 1 - Math.exp(-i * 18)), I.y = p(I.y, L.y, w ? 1 : 1 - Math.exp(-i * 18)), Math.abs(I.x - L.x) + Math.abs(I.y - L.y) > .3 && (a = !0);
 		}
-		let f = [], _ = te(g[w].thumb), re = be(w), v = !k || xe(_), ie = k && ue ? ue : Se(), y = v ? ee(_, ie, O) : ie, b = k ? he : 1 - Math.min(1, Math.abs(M) / (E * .45)), x = m(O, 0, 1) * b;
-		U < 1 && (U = Math.min(1, U + i / .45), a = !0);
-		let ae = U * U * (3 - 2 * U);
-		if (H >= 0 && ae < 1 && f.push({
+		let f = [], h = te(_[T].thumb), re = xe(T), v = !j || Se(h), ie = j && le ? le : Ce(), y = v ? ee(h, ie, A) : ie, b = j ? he : 1 - Math.min(1, Math.abs(N) / (D * .45)), x = m(A, 0, 1) * b;
+		W < 1 && (W = Math.min(1, W + i / .45), a = !0);
+		let ae = W * W * (3 - 2 * W);
+		if (U >= 0 && ae < 1 && f.push({
 			kind: 2,
-			k: H,
-			rect: q(H),
+			k: U,
+			rect: q(U),
 			alpha: x,
 			radius: 0
 		}), f.push({
 			kind: 2,
-			k: w,
-			rect: q(w),
-			alpha: x * (H >= 0 ? ae : 1),
+			k: T,
+			rect: q(T),
+			alpha: x * (U >= 0 ? ae : 1),
 			radius: 0
-		}), !k && O > .98 && N < 1.02) for (let e of [w - 1, w + 1]) {
-			if (e < 0 || e >= g.length) continue;
-			let t = q(e), n = Se(), r = {
-				x: e < w ? n.x - d - t.w : n.x + n.w + d,
+		}), !j && A > .98 && P < 1.02) for (let e of [T - 1, T + 1]) {
+			if (e < 0 || e >= _.length) continue;
+			let t = q(e), n = Ce(), r = {
+				x: e < T ? n.x - d - t.w : n.x + n.w + d,
 				y: t.y,
 				w: t.w,
 				h: t.h
 			};
-			r.x < T && r.x + r.w > 0 && (f.push({
+			r.x < E && r.x + r.w > 0 && (f.push({
 				kind: 1,
 				k: e,
 				rect: r,
@@ -565,82 +565,82 @@ async function C(n, a) {
 				radius: 10
 			}));
 		}
-		let S = p(re, 10, m(O, 0, 1)), oe = v ? 1 : m(O, 0, 1), R = v ? ne(_, _e(w), ye(w).cover) : [
+		let S = p(re, 10, m(A, 0, 1)), C = v ? 1 : m(A, 0, 1), O = v ? ne(h, ve(T), be(T).cover) : [
 			0,
 			0,
 			1,
 			1
-		], B = m(O, 0, 1), me = [
-			p(R[0], 0, B),
-			p(R[1], 0, B),
-			p(R[2], 1, B),
-			p(R[3], 1, B)
+		], z = m(A, 0, 1), V = [
+			p(O[0], 0, z),
+			p(O[1], 0, z),
+			p(O[2], 1, z),
+			p(O[3], 1, z)
 		];
 		if (f.push({
 			kind: 1,
-			k: w,
+			k: T,
 			rect: y,
-			alpha: B * oe,
+			alpha: z * C,
 			radius: S
 		}), f.push({
 			kind: 0,
-			k: w,
+			k: T,
 			rect: y,
-			alpha: oe,
+			alpha: C,
 			radius: S,
-			uv: me
-		}), t()) {
-			let e = !!z || W > 0;
-			W && W--, r("visionneuse", "x", y.x, n, e), r("visionneuse", "y", y.y, n, e), r("visionneuse", "width", y.w, n, e), r("visionneuse-fond", "opacity", x, n, e);
+			uv: V
+		}), e()) {
+			let e = !!B || ge > 0;
+			ge && ge--, n("visionneuse", "x", y.x, t, e), n("visionneuse", "y", y.y, t, e), n("visionneuse", "width", y.w, t, e), n("visionneuse-fond", "opacity", x, t, e);
 		}
-		h.root.classList.toggle("plb-zoomed", P > 1.02);
-		let ge = D ? D.draw(f, g, T, E, Math.min(devicePixelRatio || 1, 2)) : (se?.draw(f, g), !1);
-		if (G(!k && le === 1 && O === 1 && ce === 0 && M === 0 && z?.mode !== "y" && ge), h.ui.style.opacity = String(m(O * 1.4 - .4, 0, 1) * (1 - Math.min(1, Math.abs(M) / 160)) * (k ? m(O * 3 - 2, 0, 1) : 1)), k && ((v ? Math.max(Math.abs(y.x - _.x), Math.abs(y.y - _.y), Math.abs(y.x + y.w - _.x - _.w), Math.abs(y.y + y.h - _.y - _.h)) : O * 100) < .5 || O <= 0)) return we();
-		(a || z) && Q();
+		g.root.classList.toggle("plb-zoomed", F > 1.02);
+		let me = k ? k.draw(f, _, E, D, Math.min(devicePixelRatio || 1, 2)) : (oe?.draw(f, _), !1);
+		if (G(!j && ce === 1 && A === 1 && se === 0 && N === 0 && B?.mode !== "y" && me), g.ui.style.opacity = String(m(A * 1.4 - .4, 0, 1) * (1 - Math.min(1, Math.abs(N) / 160)) * (j ? m(A * 3 - 2, 0, 1) : 1)), j && ((v ? Math.max(Math.abs(y.x - h.x), Math.abs(y.y - h.y), Math.abs(y.x + y.w - h.x - h.w), Math.abs(y.y + y.h - h.y - h.h)) : A * 100) < .5 || A <= 0)) return Te();
+		(a || B) && Q();
 	};
 	function Q() {
-		V ||= (pe = performance.now(), requestAnimationFrame(Ee));
+		H ||= (pe = performance.now(), requestAnimationFrame(De));
 	}
-	let $ = h.root;
+	let $ = g.root;
 	$.onpointerdown = (e) => {
-		if (!(e.target.closest(".plb-btn, .plb-thumbs") || k)) {
-			if ($.setPointerCapture(e.pointerId), R.set(e.pointerId, {
+		if (!(e.target.closest(".plb-btn, .plb-thumbs") || j)) {
+			if ($.setPointerCapture(e.pointerId), z.set(e.pointerId, {
 				x: e.clientX,
 				y: e.clientY,
 				x0: e.clientX,
 				y0: e.clientY,
 				t0: performance.now()
-			}), L = {
+			}), R = {
 				x: 0,
 				y: 0
-			}, R.size === 2) {
-				let [e, t] = [...R.values()];
-				z = {
+			}, z.size === 2) {
+				let [e, t] = [...z.values()];
+				B = {
 					mode: "pinch",
 					x0: (e.x + t.x) / 2,
 					y0: (e.y + t.y) / 2,
 					sx0: 0,
 					dy0: 0,
-					px0: I.x,
-					py0: I.y,
+					px0: L.x,
+					py0: L.y,
 					d0: Math.hypot(e.x - t.x, e.y - t.y),
-					z0: P,
+					z0: F,
 					vx: 0,
 					vy: 0,
 					lx: 0,
 					ly: 0,
 					lt: 0
 				};
-			} else z = {
-				mode: P > 1.02 ? "pan" : "?",
+			} else B = {
+				mode: F > 1.02 ? "pan" : "?",
 				x0: e.clientX,
 				y0: e.clientY,
-				sx0: A,
-				dy0: M,
-				px0: I.x,
-				py0: I.y,
+				sx0: M,
+				dy0: N,
+				px0: L.x,
+				py0: L.y,
 				d0: 0,
-				z0: P,
+				z0: F,
 				vx: 0,
 				vy: 0,
 				lx: e.clientX,
@@ -650,130 +650,130 @@ async function C(n, a) {
 			Q();
 		}
 	}, $.onpointermove = (e) => {
-		let t = R.get(e.pointerId);
-		if (!t || !z) return;
+		let t = z.get(e.pointerId);
+		if (!t || !B) return;
 		t.x = e.clientX, t.y = e.clientY;
-		let n = performance.now(), r = Math.max(1, n - z.lt) / 1e3;
-		z.vx = p(z.vx, (e.clientX - z.lx) / r, .4), z.vy = p(z.vy, (e.clientY - z.ly) / r, .4), z.lx = e.clientX, z.ly = e.clientY, z.lt = n;
-		let i = e.clientX - z.x0, a = e.clientY - z.y0;
-		if (z.mode === "pinch" && R.size >= 2) {
-			let [e, t] = [...R.values()], n = Math.hypot(e.x - t.x, e.y - t.y), r = (e.x + t.x) / 2, i = (e.y + t.y) / 2;
-			P = z.z0, I = {
-				x: z.px0 + (r - z.x0),
-				y: z.py0 + (i - z.y0)
-			}, X(z.z0 * (n / Math.max(1, z.d0)), r, i), N = P, F = { ...I };
+		let n = performance.now(), r = Math.max(1, n - B.lt) / 1e3;
+		B.vx = p(B.vx, (e.clientX - B.lx) / r, .4), B.vy = p(B.vy, (e.clientY - B.ly) / r, .4), B.lx = e.clientX, B.ly = e.clientY, B.lt = n;
+		let i = e.clientX - B.x0, a = e.clientY - B.y0;
+		if (B.mode === "pinch" && z.size >= 2) {
+			let [e, t] = [...z.values()], n = Math.hypot(e.x - t.x, e.y - t.y), r = (e.x + t.x) / 2, i = (e.y + t.y) / 2;
+			F = B.z0, L = {
+				x: B.px0 + (r - B.x0),
+				y: B.py0 + (i - B.y0)
+			}, X(B.z0 * (n / Math.max(1, B.d0)), r, i), P = F, I = { ...L };
 		} else {
-			if (z.mode === "?") {
+			if (B.mode === "?") {
 				if (Math.hypot(i, a) < 6) return;
-				z.mode = Math.abs(i) > Math.abs(a) ? "x" : "y";
+				B.mode = Math.abs(i) > Math.abs(a) ? "x" : "y";
 			}
-			if (z.mode === "x") {
-				let e = w === 0 && i > 0 || w === g.length - 1 && i < 0;
-				A = z.sx0 + (e ? i * .3 : i);
-			} else if (z.mode === "y") M = z.dy0 + (a < 0 ? a * .35 : a), M !== 0 && G(!1);
-			else if (z.mode === "pan") {
-				let e = J(w, P), t = (e, t) => e > t ? t + (e - t) * .3 : e < -t ? -t + (e + t) * .3 : e;
-				I = {
-					x: t(z.px0 + i, e.x),
-					y: t(z.py0 + a, e.y)
-				}, F = { ...I };
+			if (B.mode === "x") {
+				let e = T === 0 && i > 0 || T === _.length - 1 && i < 0;
+				M = B.sx0 + (e ? i * .3 : i);
+			} else if (B.mode === "y") N = B.dy0 + (a < 0 ? a * .35 : a), N !== 0 && G(!1);
+			else if (B.mode === "pan") {
+				let e = J(T, F), t = (e, t) => e > t ? t + (e - t) * .3 : e < -t ? -t + (e + t) * .3 : e;
+				L = {
+					x: t(B.px0 + i, e.x),
+					y: t(B.py0 + a, e.y)
+				}, I = { ...L };
 			}
 			Q();
 		}
 	};
-	let De = (e) => {
-		let t = R.get(e.pointerId);
-		if (R.delete(e.pointerId), !z || !t) return;
-		let n = z;
+	let Oe = (e) => {
+		let t = z.get(e.pointerId);
+		if (z.delete(e.pointerId), !B || !t) return;
+		let n = B;
 		if (n.mode === "pinch") {
-			R.size === 0 && (z = null, P < 1.05 && X(1, T / 2, E / 2));
+			z.size === 0 && (B = null, F < 1.05 && X(1, E / 2, D / 2));
 			return;
 		}
-		z = null;
+		B = null;
 		let r = performance.now(), i = Math.hypot(t.x - t.x0, t.y - t.y0) < 8 && r - t.t0 < 300;
 		if (n.mode === "x") {
-			let e = q(w).w;
-			(A < -e * .2 || n.vx < -500) && w < g.length - 1 ? Y(w + 1) : (A > e * .2 || n.vx > 500) && w > 0 && Y(w - 1), j = n.vx;
-		} else if (n.mode === "y") de = n.vy, (M > 120 || n.vy > 800) && Z();
+			let e = q(T).w;
+			(M < -e * .2 || n.vx < -500) && T < _.length - 1 ? Y(T + 1) : (M > e * .2 || n.vx > 500) && T > 0 && Y(T - 1), ue = n.vx;
+		} else if (n.mode === "y") de = n.vy, (N > 120 || n.vy > 800) && Z();
 		else if (n.mode === "pan") {
-			L = {
+			R = {
 				x: n.vx,
 				y: n.vy
 			};
-			let e = J(w, P);
-			I = {
-				x: m(I.x, -e.x, e.x),
-				y: m(I.y, -e.y, e.y)
-			}, i && Oe(t.x, t.y, r);
-		} else i && Oe(t.x, t.y, r);
+			let e = J(T, F);
+			L = {
+				x: m(L.x, -e.x, e.x),
+				y: m(L.y, -e.y, e.y)
+			}, i && ke(t.x, t.y, r);
+		} else i && ke(t.x, t.y, r);
 		Q();
-	}, Oe = (e, t, n) => {
-		if (n - B.t < 320 && Math.hypot(e - B.x, t - B.y) < 30) {
-			B.t = 0, X(P > 1.05 ? 1 : 2.5, e, t);
+	}, ke = (e, t, n) => {
+		if (n - V.t < 320 && Math.hypot(e - V.x, t - V.y) < 30) {
+			V.t = 0, X(F > 1.05 ? 1 : 2.5, e, t);
 			return;
 		}
-		B = {
+		V = {
 			t: n,
 			x: e,
 			y: t
 		};
-		let r = Se();
-		(e < r.x || e > r.x + r.w || t < r.y || t > r.y + r.h) && P <= 1.02 && Z();
+		let r = Ce();
+		(e < r.x || e > r.x + r.w || t < r.y || t > r.y + r.h) && F <= 1.02 && Z();
 	};
-	$.onpointerup = De, $.onpointercancel = De;
-	let ke = 0, Ae = "";
+	$.onpointerup = Oe, $.onpointercancel = Oe;
+	let Ae = 0, je = "";
 	$.onwheel = (e) => {
-		if (e.preventDefault(), e.stopPropagation(), !k) {
-			if (e.ctrlKey) return X(P * Math.exp(-e.deltaY * .01), e.clientX, e.clientY);
-			if (P > 1.02) {
-				let t = J(w, P);
-				return I = {
-					x: m(I.x - e.deltaX, -t.x, t.x),
-					y: m(I.y - e.deltaY, -t.y, t.y)
+		if (e.preventDefault(), e.stopPropagation(), !j) {
+			if (e.ctrlKey) return X(F * Math.exp(-e.deltaY * .01), e.clientX, e.clientY);
+			if (F > 1.02) {
+				let t = J(T, F);
+				return L = {
+					x: m(L.x - e.deltaX, -t.x, t.x),
+					y: m(L.y - e.deltaY, -t.y, t.y)
 				}, Q();
 			}
-			Ae ||= Math.abs(e.deltaX) > Math.abs(e.deltaY) ? "x" : "y", Ae === "x" ? A -= e.deltaX : (M -= e.deltaY * .8, M !== 0 && G(!1)), z = null, clearTimeout(ke), ke = window.setTimeout(() => {
-				if (Ae === "x") {
-					let e = q(w).w;
-					A < -e * .15 && w < g.length - 1 ? Y(w + 1) : A > e * .15 && w > 0 && Y(w - 1);
-				} else Math.abs(M) > 110 && Z();
-				Ae = "", Q();
+			je ||= Math.abs(e.deltaX) > Math.abs(e.deltaY) ? "x" : "y", je === "x" ? M -= e.deltaX : (N -= e.deltaY * .8, N !== 0 && G(!1)), B = null, clearTimeout(Ae), Ae = window.setTimeout(() => {
+				if (je === "x") {
+					let e = q(T).w;
+					M < -e * .15 && T < _.length - 1 ? Y(T + 1) : M > e * .15 && T > 0 && Y(T - 1);
+				} else Math.abs(N) > 110 && Z();
+				je = "", Q();
 			}, 120), Q();
 		}
 	}, $.ondblclick = (e) => {
 		e.target.closest(".plb-btn, .plb-thumbs") || e.preventDefault();
-	}, h.close.onclick = () => Z(), h.prev.onclick = () => Y(w - 1), h.next.onclick = () => Y(w + 1);
-	function je(e) {
+	}, g.close.onclick = () => Z(), g.prev.onclick = () => Y(T - 1), g.next.onclick = () => Y(T + 1);
+	function Me(e) {
 		let t = e.key, n = t === " " || t === "PageDown" || t === "PageUp" || t.startsWith("Arrow") || t === "Home" || t === "End";
-		if (k) {
+		if (j) {
 			(n || t === "Escape") && (e.preventDefault(), e.stopPropagation());
 			return;
 		}
 		let r = !0;
 		if (t === "Escape") Z();
-		else if (t === "ArrowRight" && P <= 1.02) Y(w + 1);
-		else if (t === "ArrowLeft" && P <= 1.02) Y(w - 1);
-		else if (t.startsWith("Arrow") && P > 1.02) {
-			let e = J(w, P);
-			I = {
-				x: m(I.x + (t === "ArrowLeft" ? 80 : t === "ArrowRight" ? -80 : 0), -e.x, e.x),
-				y: m(I.y + (t === "ArrowUp" ? 80 : t === "ArrowDown" ? -80 : 0), -e.y, e.y)
+		else if (t === "ArrowRight" && F <= 1.02) Y(T + 1);
+		else if (t === "ArrowLeft" && F <= 1.02) Y(T - 1);
+		else if (t.startsWith("Arrow") && F > 1.02) {
+			let e = J(T, F);
+			L = {
+				x: m(L.x + (t === "ArrowLeft" ? 80 : t === "ArrowRight" ? -80 : 0), -e.x, e.x),
+				y: m(L.y + (t === "ArrowUp" ? 80 : t === "ArrowDown" ? -80 : 0), -e.y, e.y)
 			}, Q();
-		} else if (t === "+" || t === "=") X(P * 1.5, T / 2, E / 2);
-		else if (t === "-" || t === "_") X(P / 1.5, T / 2, E / 2);
-		else if (t === "0") X(1, T / 2, E / 2);
+		} else if (t === "+" || t === "=") X(F * 1.5, E / 2, D / 2);
+		else if (t === "-" || t === "_") X(F / 1.5, E / 2, D / 2);
+		else if (t === "0") X(1, E / 2, D / 2);
 		else if (t === "Home") Y(0);
-		else if (t === "End") Y(g.length - 1);
+		else if (t === "End") Y(_.length - 1);
 		else if (t === "Tab") {
-			let t = [...h.root.querySelectorAll("button:not([disabled]):not([hidden])")].filter((e) => e.offsetParent);
+			let t = [...g.root.querySelectorAll("button:not([disabled]):not([hidden])")].filter((e) => e.offsetParent);
 			t[(t.indexOf(document.activeElement) + (e.shiftKey ? -1 : 1) + t.length) % t.length]?.focus();
 		} else r = n;
 		r && (e.preventDefault(), e.stopPropagation());
 	}
-	let Me = () => {
-		T = innerWidth, E = innerHeight, Q();
+	let Ne = () => {
+		E = innerWidth, D = innerHeight, Q();
 	};
-	addEventListener("keydown", je, !0), addEventListener("resize", Me), h.root.hidden = !1, h.ui.style.opacity = "0", Ce(), h.close.focus({ preventScroll: !0 }), Q();
+	addEventListener("keydown", Me, !0), addEventListener("resize", Ne), g.root.hidden = !1, g.ui.style.opacity = "0", we(), g.close.focus({ preventScroll: !0 }), Q();
 }
 function w(e = document) {
 	if (typeof document > "u") return;

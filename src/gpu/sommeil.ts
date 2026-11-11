@@ -18,7 +18,16 @@ const EVENTS = ["pointerdown", "pointermove", "pointerup", "pointercancel", "cli
 const REST_FRAMES = 30;
 const SAFETY_MS = 3000;
 
-export type Sommeil = { idem(data: ArrayLike<number>, extra?: number[]): boolean; invalidate(): void; wake(): void; stop(): void; readonly asleep: boolean };
+export type Sommeil = {
+  idem(data: ArrayLike<number>, extra?: number[]): boolean;
+  invalidate(): void;
+  wake(): void;
+  stop(): void;
+  readonly asleep: boolean;
+  /** Vrai pendant la première image après un sommeil : l'écart avec l'image d'avant n'est pas un pas d'image, une
+   *  boucle qui intègre ses ressorts avec lui doit prendre un pas ordinaire (sinon tout part d'un coup). */
+  readonly woke: boolean;
+};
 
 /**
  * Empreinte des données, quantifiées au 1/256 : une inertie qui s'éteint en exponentielle déplace encore les choses
@@ -36,18 +45,27 @@ export function sommeil(frame: (t: number) => void, root?: Element | null): Somm
   let fresh = true;
   let reported = false;
   let stopped = false;
+  let sleeping = false;
+  let woke = false;
   const tick = (t: number) => {
     raf = 0;
     if (stopped) return;
     reported = false;
     frame(t);
+    woke = false;
     // Une image qui n'a rien dessiné (hors écran, pas prête) compte comme identique.
     if (!reported) same++;
     if (same < REST_FRAMES) raf = requestAnimationFrame(tick);
+    else sleeping = !raf;
+  };
+  const rouse = () => {
+    if (sleeping) woke = true;
+    sleeping = false;
+    raf = requestAnimationFrame(tick);
   };
   const wake = () => {
     same = 0;
-    if (!raf && !stopped) raf = requestAnimationFrame(tick);
+    if (!raf && !stopped) rouse();
   };
   for (const e of EVENTS) addEventListener(e, wake, { capture: true, passive: true });
   document.addEventListener("visibilitychange", wake);
@@ -57,7 +75,7 @@ export function sommeil(frame: (t: number) => void, root?: Element | null): Somm
   const safety = setInterval(() => {
     if (document.hidden || raf || stopped) return;
     same = REST_FRAMES - 1;
-    raf = requestAnimationFrame(tick);
+    rouse();
   }, SAFETY_MS);
   raf = requestAnimationFrame(tick);
   return {
@@ -88,6 +106,9 @@ export function sommeil(frame: (t: number) => void, root?: Element | null): Somm
     },
     get asleep() {
       return !raf;
+    },
+    get woke() {
+      return woke;
     },
   };
 }

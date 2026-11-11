@@ -1,4 +1,5 @@
 import { REGLAGES, Ressort, type Reglage } from "./gesture.ts";
+import { lintOn, lintSample } from "./motion-lint.ts";
 
 /**
  * Un élément partagé entre deux mises en page (d'après `El::matched` de Rune, le `matchedGeometryEffect` de SwiftUI,
@@ -74,6 +75,12 @@ export function match(mutate: () => void, o: { reglage?: Reglage; root?: ParentN
         else {
           clear(f.el);
           flights.delete(id);
+        }
+        // Le linter (?presse-lint) : le cadre présenté ; à la pose, la place d'arrivée — un écart restant y sauterait.
+        if (lintOn()) {
+          lintSample(`match-${id}`, "x", m ? f.x.x : f.to.left, t);
+          lintSample(`match-${id}`, "y", m ? f.y.x : f.to.top, t);
+          lintSample(`match-${id}`, "width", m ? Math.max(1, f.w.x) : f.to.width, t);
         }
       }
       raf = flights.size ? requestAnimationFrame(tick) : 0;

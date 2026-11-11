@@ -19,6 +19,7 @@ import { getDevice } from "../device.ts";
 import { LIQUID, MAX_CARDS } from "./shaders.ts";
 import { hot } from "../../presse/components.ts";
 import { mountFrame } from "./frame.ts";
+import { lintOn, lintSample } from "../../presse/motion-lint.ts";
 
 // Rechargement à chaud : le module (ou un shader dont il dépend) changé, les liquides de la page sont remontés.
 if (import.meta.hot) import.meta.hot.accept((m) => hot(m, "liquide"));
@@ -499,6 +500,14 @@ export function mount(root: HTMLElement) {
           continue;
         }
         if (n >= MAX_CARDS) continue;
+        // Le linter de mouvement (?presse-lint) : la carte réellement dessinée (centre, avec sa traîne, et largeur),
+        // pendant une remise en place (FLIP : réordonner, mélanger, filtrer) ; sous le doigt, elle suit la main.
+        if (lintOn()) {
+          const id = `liquide-${c.layer}`;
+          lintSample(id, "x", s.cx, now, !!c.drag);
+          lintSample(id, "y", s.cy + scrollY, now, !!c.drag);
+          lintSample(id, "width", s.hw * 2, now, !!c.drag);
+        }
         // Coordonnées du canvas (intégré, il ne commence pas en haut à gauche de la fenêtre).
         const o = 12 + n * 16;
         data.set([(s.cx - box.left) * dpr, (s.cy - box.top) * dpr, s.hw * dpr, s.hh * dpr], o);
