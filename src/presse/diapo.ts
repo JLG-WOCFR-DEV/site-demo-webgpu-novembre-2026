@@ -128,7 +128,10 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   const slow = Math.max(1, Number(params.get("ralenti")) || 1);
   // Une vignette du Créateur (?vignette) ne parle à personne : elle ne suit ni ne commande la vue présentateur.
   const channel = typeof BroadcastChannel === "function" && !params.has("vignette") ? new BroadcastChannel(`presse-diapo:${location.pathname}`) : null;
-  const slides: Slide[] = [...root.querySelectorAll<HTMLElement>("[data-diapo-slide]")].map((el, k) => {
+  // Une diapo masquée (`data-masquee`, réglée dans le Créateur) reste dans la page mais n'est pas présentée ; le
+  // Créateur (?createur) et ses vignettes (?vignette) les gardent toutes, pour pouvoir les modifier.
+  const all = params.has("createur") || params.has("vignette");
+  const slides: Slide[] = [...root.querySelectorAll<HTMLElement>(all ? "[data-diapo-slide]" : "[data-diapo-slide]:not([data-masquee])")].map((el, k) => {
     el.dataset.glPrint = "page";
     // Le numéro, pour l'habillage (CSS attr(data-num)) : un compteur CSS ne compte pas les diapos masquées.
     el.dataset.num = String(k + 1).padStart(2, "0");

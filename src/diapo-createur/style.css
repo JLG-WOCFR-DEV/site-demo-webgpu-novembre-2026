@@ -136,3 +136,7 @@
 .dc--strip .dc-slide[aria-current="true"] .dc-slide-tools { display: flex; right: 8px; top: 8px; margin: 0; gap: 2px; background: rgba(22, 17, 13, 0.85); border-radius: 5px; }
 .dc--strip .dc-slide-tools .dc-ic { width: 26px; flex: none; }
 .dc--strip .dc-add { grid-template-columns: 1fr; align-content: center; width: 132px; border-top: 0; border-left: 1px solid var(--line); }
+
+.dc-slide.is-off .dc-thumb { opacity: 0.35; }
+.dc-slide.is-off small { color: #ffd27a; }
+.dc-frame iframe:fullscreen { width: 100vw; height: 100vh; border-radius: 0; }

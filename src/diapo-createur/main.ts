@@ -54,6 +54,8 @@ const ICONS: Record<string, string> = {
   alt: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5",
   running: "M4 19h16M4 15h9",
   strip: "M3 4h18v10H3zM3 18h4v3H3zM10 18h4v3h-4zM17 18h4v3h-4z",
+  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+  eyeoff: "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.5 6.6C3.7 8.5 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2",
 };
 const icon = (name: string) => `<svg class="dc-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name] ?? ""}"/></svg>`;
 for (const el of document.querySelectorAll<HTMLElement>("[data-ic]")) el.insertAdjacentHTML("afterbegin", icon(el.dataset.ic!));
@@ -149,11 +151,27 @@ const fdoc = () => frame.contentDocument;
 const inFrame = (cid: string | null) => (cid ? fdoc()?.querySelector<HTMLElement>(`[data-cid="${cid}"]`) ?? null : null);
 const hint = (t: string) => ($("[data-dc-hint]").textContent = t);
 
+const hiddenAt = (i: number) => slides()[i]?.hasAttribute("data-masquee") ?? false;
+/** Le rang d'une diapo dans l'aperçu : le même en édition ; en essai, les diapos masquées ne comptent pas. */
+function toFrame(i: number) {
+  if (mode === "edit") return i;
+  const ss = slides();
+  let k = i;
+  while (k < ss.length - 1 && hiddenAt(k)) k++;
+  return ss.slice(0, k + 1).filter((s) => !s.hasAttribute("data-masquee")).length - 1;
+}
+function fromFrame(n: number) {
+  if (mode === "edit") return n;
+  let seen = -1;
+  const ss = slides();
+  for (let i = 0; i < ss.length; i++) if (!hiddenAt(i) && ++seen === n) return i;
+  return cur;
+}
 let replayOnLoad = false;
 let replayUntil = 0;
 function reload() {
   const w = win();
-  const url = `${deckUrl.pathname}?createur=1#${cur + 1}`;
+  const url = `${deckUrl.pathname}?${mode === "edit" ? "createur" : "essai"}=1#${Math.max(0, toFrame(cur)) + 1}`;
   if (w && fdoc()?.querySelector("[data-diapo]")) {
     // Même page : on y revient sur la diapo choisie.
     w.history.replaceState(null, "", url);
@@ -165,7 +183,8 @@ const relayout = () => win()?.dispatchEvent(new Event("pli:relayout"));
 function goFrame(i: number) {
   const w = win();
   if (!w) return;
-  if (w.location.hash !== `#${i + 1}`) w.location.hash = `#${i + 1}`;
+  const n = Math.max(0, toFrame(i)) + 1;
+  if (w.location.hash !== `#${n}`) w.location.hash = `#${n}`;
 }
 function markPick() {
   const d = fdoc();
@@ -189,7 +208,7 @@ frame.addEventListener("load", () => {
 
   // La diapo affichée dans l'aperçu est la diapo choisie (clavier dans l'aperçu compris).
   w.addEventListener("diapo:change", (e) => {
-    const i = (e as CustomEvent<{ i: number }>).detail.i;
+    const i = fromFrame((e as CustomEvent<{ i: number }>).detail.i);
     // Pendant un « Rejouer », l'aperçu recule d'une diapo puis revient : la diapo choisie ne change pas.
     if (performance.now() > replayUntil && i !== cur && i < slides().length) {
       cur = i;
@@ -258,6 +277,13 @@ frame.addEventListener("load", () => {
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") (e.preventDefault(), e.shiftKey ? restore(redo, undo) : restore(undo, redo));
+      // Échap, en essai : retour à l'édition (comme la fin d'un diaporama) — sauf si le diaporama a quelque chose à
+      // fermer d'abord (son aide, son écran noir, sa visionneuse).
+      if (e.key === "Escape" && mode === "try" && !d.querySelector(".diapo-aide:not([hidden]), .diapo-noir:not([hidden]), .plb:not([hidden])")) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMode("edit");
+      } else if (e.key === "F5") (e.preventDefault(), present(!e.shiftKey));
     },
     true,
   );
@@ -384,7 +410,7 @@ function renderSlides() {
       .map(
         (_, i) => `<li class="dc-slide" draggable="true" data-i="${i}" tabindex="0">
         <b>${i + 1}</b><div class="dc-thumb"><iframe tabindex="-1" aria-hidden="true" loading="lazy" data-src="${deckUrl.pathname}?vignette=${thumbRev}#${i + 1}"></iframe></div><small></small>
-        <div class="dc-slide-tools"><button type="button" class="dc-ic" data-op="up" title="Monter" aria-label="Monter">${icon("up")}</button><button type="button" class="dc-ic" data-op="down" title="Descendre" aria-label="Descendre">${icon("down")}</button><button type="button" class="dc-ic" data-op="dup" title="Dupliquer" aria-label="Dupliquer">${icon("copy")}</button><button type="button" class="dc-ic" data-op="del" title="Supprimer" aria-label="Supprimer">${icon("trash")}</button></div>
+        <div class="dc-slide-tools"><button type="button" class="dc-ic" data-op="up" title="Monter" aria-label="Monter">${icon("up")}</button><button type="button" class="dc-ic" data-op="down" title="Descendre" aria-label="Descendre">${icon("down")}</button><button type="button" class="dc-ic" data-op="hide" title="Masquer / afficher dans le diaporama" aria-label="Masquer ou afficher dans le diaporama">${icon("eyeoff")}</button><button type="button" class="dc-ic" data-op="dup" title="Dupliquer (Ctrl/⌘ D)" aria-label="Dupliquer">${icon("copy")}</button><button type="button" class="dc-ic" data-op="del" title="Supprimer" aria-label="Supprimer">${icon("trash")}</button></div>
       </li>`,
       )
       .join("");
@@ -395,7 +421,10 @@ function renderSlides() {
     li.setAttribute("aria-current", String(i === cur));
     (li as HTMLElement).title = `${i + 1}. ${labelOf(s)}`;
     li.setAttribute("aria-label", `Diapo ${i + 1} : ${labelOf(s)}`);
-    li.querySelector("small")!.textContent = trOf(s) || "défaut";
+    const off = s.hasAttribute("data-masquee");
+    li.classList.toggle("is-off", off);
+    li.querySelector("small")!.textContent = (off ? "masquée · " : "") + (trOf(s) || "défaut");
+    li.querySelector('[data-op="hide"]')!.setAttribute("aria-pressed", String(off));
   });
   list.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
@@ -522,7 +551,7 @@ function render() {
   renderEl();
   status();
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-dc-mode]")) b.setAttribute("aria-pressed", String(b.dataset.dcMode === mode));
-  hint(mode === "edit" ? "clic : choisir · double-clic : écrire · glisser une image : la poser" : "→ étape suivante · F plein écran · P présentateur · ? aide");
+  hint(mode === "edit" ? "clic : choisir · double-clic : écrire · glisser une image : la poser · F5 : présenter" : "→ étape suivante · Échap : revenir à l'édition · P présentateur · ? aide");
 }
 
 /* ── Liste des diapos : choisir, déplacer (glisser, ou boutons), dupliquer, supprimer ── */
@@ -532,7 +561,10 @@ list.addEventListener("click", (e) => {
   if (!li) return;
   const i = Number(li.dataset.i);
   const op = (e.target as Element).closest<HTMLElement>("[data-op]")?.dataset.op;
-  if (op === "up") moveSlide(i, i - 1);
+  if (op === "hide") {
+    change(() => slides()[i]!.toggleAttribute("data-masquee"), "none");
+    renderSlides();
+  } else if (op === "up") moveSlide(i, i - 1);
   else if (op === "down") moveSlide(i, i + 1);
   else if (op === "dup") {
     cur = i;
@@ -549,6 +581,9 @@ list.addEventListener("click", (e) => {
 });
 list.addEventListener("keydown", (e) => {
   if ((e.target as Element).closest("button")) return;
+  const act = (op: string) => list.querySelector<HTMLElement>(`[aria-current="true"] [data-op="${op}"]`)?.click();
+  if (e.key === "Delete") return act("del");
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") return void (e.preventDefault(), act("dup"));
   if (e.key === "ArrowDown" || e.key === "ArrowRight") (e.preventDefault(), selectSlide(cur + 1));
   else if (e.key === "ArrowUp" || e.key === "ArrowLeft") (e.preventDefault(), selectSlide(cur - 1));
   else return;
@@ -750,7 +785,31 @@ $<HTMLInputElement>("[data-dc-file]").addEventListener("change", (e) => {
   inp.value = "";
 });
 
-/* ── Barre ── *//** Les vignettes : en colonne à gauche, ou en bande sous l'aperçu (comme une table lumineuse). */
+/* ── Barre ── *//** Éditer ou essayer. L'aperçu se recharge : en essai il est le diaporama tel quel (étapes, diapos masquées sautées). */
+function setMode(m: typeof mode) {
+  if (m === mode) return;
+  mode = m;
+  if (m === "edit" && document.fullscreenElement) void document.exitFullscreen();
+  if (m === "try" && hiddenAt(cur)) cur = fromFrame(toFrame(cur));
+  pick = null;
+  render();
+  reload();
+  if (m === "try") frame.focus();
+}
+/** Présenter (F5 depuis le début, Maj + F5 ou le bouton depuis cette diapo) : l'essai, en plein écran. Échap revient à l'édition. */
+function present(fromStart = false) {
+  if (fromStart) cur = 0;
+  if (mode === "try") reload();
+  else setMode("try");
+  void frame.requestFullscreen?.().catch(() => {});
+  frame.focus();
+}
+// Sortir du plein écran (Échap, géré par le navigateur) : c'est revenir à l'édition.
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && mode === "try") setMode("edit");
+});
+
+/** Les vignettes : en colonne à gauche, ou en bande sous l'aperçu (comme une table lumineuse). */
 function setStrip(on: boolean) {
   document.body.classList.toggle("dc--strip", on);
   $("[data-dc-strip]").setAttribute("aria-pressed", String(on));
@@ -771,18 +830,12 @@ try {
 document.addEventListener("click", (e) => {
   const b = (e.target as Element).closest<HTMLButtonElement>(".dc-bar button, [data-dc-add]");
   if (!b) return;
-  if (b.dataset.dcMode) {
-    mode = b.dataset.dcMode as typeof mode;
-    fdoc()?.documentElement.classList.toggle("dc-edit", mode === "edit");
-    render();
-    markPick();
-    if (mode === "edit") reveal();
-    else (reload(), frame.focus());
-  } else if (b.hasAttribute("data-dc-strip")) setStrip(!document.body.classList.contains("dc--strip"));
+  if (b.dataset.dcMode) setMode(b.dataset.dcMode as typeof mode);
+  else if (b.hasAttribute("data-dc-strip")) setStrip(!document.body.classList.contains("dc--strip"));
   else if (b.hasAttribute("data-dc-replay")) replay();
   else if (b.hasAttribute("data-dc-undo")) restore(undo, redo);
   else if (b.hasAttribute("data-dc-redo")) restore(redo, undo);
-  else if (b.hasAttribute("data-dc-present")) window.open(`${deckUrl.pathname}#${cur + 1}`, "_blank");
+  else if (b.hasAttribute("data-dc-present")) present(e.shiftKey);
   else if (b.hasAttribute("data-dc-styles")) {
     frame.focus();
     win()?.dispatchEvent(new KeyboardEvent("keydown", { key: "e", bubbles: true }));
@@ -797,6 +850,8 @@ document.addEventListener("click", (e) => {
   } else if (b.hasAttribute("data-dc-export")) void exportHtml();
 });
 addEventListener("keydown", (e) => {
+  if (e.key === "F5") return void (e.preventDefault(), present(!e.shiftKey));
+  if (e.key === "Escape" && mode === "try") return void setMode("edit");
   if ((e.target as Element).closest("input, textarea, select")) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") (e.preventDefault(), e.shiftKey ? restore(redo, undo) : restore(undo, redo));
 });
