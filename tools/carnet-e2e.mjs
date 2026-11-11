@@ -365,13 +365,13 @@ await step("téléphone sans stylet actif : le doigt dessine, deux doigts défil
     await t.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   };
   const count = () => q.evaluate(() => {
-    const k = document.querySelector("#spread [data-block]").dataset.block;
+    const k = `day:${window.__carnet.ctx.now}`;
     return window.__carnet.decor.items(k).filter((i) => i.type === "stroke").length;
   });
   await q.tap("#cn-more-open");
   await q.tap('#cn-more [data-proxy="cn-draw"]');
   const at = await q.evaluate(() => {
-    const b = document.querySelector("#spread [data-block]");
+    const b = document.querySelector(`#spread [data-block="day:${window.__carnet.ctx.now}"]`);
     b.scrollIntoView({ block: "start" });
     const r = b.getBoundingClientRect();
     return [r.left + r.width / 2, r.top + 60];
@@ -522,6 +522,39 @@ await step("mouvement réduit : la page de garde est posée d'emblée", async ()
   await q.waitForSelector(".cn-cover");
   const running = await q.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && a.effect?.target?.closest?.(".cn-cover")).length);
   eq(running, 0, "animations en cours");
+  await c.close();
+});
+
+await step("autocollants : glisser de la planche jusqu'à la page, zones de pose visibles", async () => {
+  const c = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const q = await c.newPage();
+  await q.goto(url + "?vue=jour");
+  await q.waitForFunction(() => window.__carnet?.core);
+  const key = await q.evaluate(() => document.querySelector("#spread [data-block]").dataset.block);
+  const count = () => q.evaluate((k) => window.__carnet.decor.items(k).filter((i) => i.type === "sticker").length, key);
+  const n0 = await count();
+  await q.click("#cn-stickers");
+  const s = await q.locator(".cn-tray-sticker").first().boundingBox();
+  const t = await q.locator("#spread [data-block]").first().boundingBox();
+  await q.mouse.move(s.x + s.width / 2, s.y + s.height / 2);
+  await q.mouse.down();
+  for (let i = 1; i <= 10; i++) await q.mouse.move(s.x + (t.x + 200 - s.x) * (i / 10), s.y + (t.y + 120 - s.y) * (i / 10));
+  ok(await q.evaluate(() => document.body.classList.contains("is-dragging-sticker") && !!document.querySelector(".cn-drag-ghost") && !!document.querySelector("#spread .is-drop-target")), "pas de zone de pose ni d'autocollant tenu");
+  await q.mouse.up();
+  await q.waitForFunction(([k, n]) => window.__carnet.decor.items(k).filter((i) => i.type === "sticker").length === n + 1, [key, n0]);
+  eq(await q.evaluate(() => [document.body.classList.contains("is-placing"), !!document.querySelector(".cn-drag-ghost"), document.querySelectorAll(".is-drop-target").length]), [false, false, 0], "nettoyé après la pose");
+  // Lâché hors d'une page : rien n'est posé.
+  const s2 = await q.locator(".cn-tray-sticker").nth(1).boundingBox();
+  await q.mouse.move(s2.x + 10, s2.y + 10);
+  await q.mouse.down();
+  for (let i = 1; i <= 6; i++) await q.mouse.move(s2.x + 10 - i * 4, 30 - i);
+  await q.mouse.up();
+  eq(await count(), n0 + 1, "posé hors page");
+  // Toucher puis toucher la page marche toujours, et montre les zones.
+  await q.locator(".cn-tray-sticker").nth(2).click();
+  ok(await q.evaluate(() => document.body.classList.contains("is-placing")), "armé");
+  await q.mouse.click(t.x + 300, t.y + 80);
+  await q.waitForFunction(([k, n]) => window.__carnet.decor.items(k).filter((i) => i.type === "sticker").length === n + 2, [key, n0]);
   await c.close();
 });
 

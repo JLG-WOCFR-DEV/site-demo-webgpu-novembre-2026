@@ -379,23 +379,141 @@ export class Decor {
       b.dataset.sticker = st.id;
       b.style.cssText = paletteStyle(this.season);
       b.innerHTML = stickerSvg(st.id);
-      b.setAttribute("aria-label", `${st.name} : toucher la page pour le poser, ou Entrée pour le poser sur le jour en cours`);
+      b.setAttribute("aria-label", `${st.name} : glisser jusqu'à la page, ou toucher puis toucher la page ; Entrée le pose sur le jour en cours`);
       b.setAttribute("aria-pressed", String(this.armed?.sticker === st.id));
       b.addEventListener("click", (ev) => {
+        // Glissé jusqu'à la page : déjà posé, ce clic-là ne compte pas.
+        if (b.dataset.dragged) return void delete b.dataset.dragged;
         // Clavier (Entrée, Espace) : pose directe ; pointeur : on arme, puis on touche la page.
         if ((ev as PointerEvent).pointerType === "" || ev.detail === 0) this.placeDefault(st.id);
         else this.arm(st.id);
       });
+      b.addEventListener("pointerdown", (ev) => this.trayDrag(ev, st.id, b));
       grid.append(b);
     }
     this.hint();
+  }
+
+  /* ───── Glisser-déposer depuis la planche ───── */
+
+  /** L'autocollant qui suit le pointeur (glisser, ou autocollant armé à la souris). */
+  private ghost: HTMLElement | null = null;
+  private showGhost(sticker: string, x: number, y: number) {
+    if (!this.ghost) {
+      const g = document.createElement("div");
+      g.className = "cn-drag-ghost";
+      g.dataset.glIgnore = "";
+      g.setAttribute("aria-hidden", "true");
+      document.body.append(g);
+      this.ghost = g;
+    }
+    const g = this.ghost;
+    if (g.dataset.sticker !== sticker || g.dataset.season !== this.season) {
+      g.dataset.sticker = sticker;
+      g.dataset.season = this.season;
+      g.style.cssText = paletteStyle(this.season);
+      g.innerHTML = stickerSvg(sticker);
+    }
+    g.style.left = `${x}px`;
+    g.style.top = `${y}px`;
+  }
+  private hideGhost() {
+    this.ghost?.remove();
+    this.ghost = null;
+  }
+
+  /** Le bloc où l'on poserait au point (x, y), souligné comme cible. */
+  private dropTarget(x: number, y: number): HTMLElement | null {
+    const under = document.elementFromPoint(x, y) as HTMLElement | null;
+    const block = under && !under.closest(".cn-tray") ? under.closest<HTMLElement>("[data-block]") : null;
+    for (const b of this.root.querySelectorAll<HTMLElement>(".is-drop-target")) if (b !== block) b.classList.remove("is-drop-target");
+    block?.classList.add("is-drop-target");
+    return block && this.root.contains(block) ? block : null;
+  }
+  private clearTargets() {
+    for (const b of this.root.querySelectorAll<HTMLElement>(".is-drop-target")) b.classList.remove("is-drop-target");
+  }
+
+  /**
+   * Glisser un autocollant de la planche jusqu'à la page. Souris et stylet : dès 6 px de mouvement ;
+   * doigt : après un appui tenu (sinon le doigt fait défiler la planche). Lâché sur un bloc, il y est
+   * posé ; ailleurs, rien. Un simple appui garde son sens (armer, puis toucher la page).
+   */
+  private trayDrag(ev: PointerEvent, sticker: string, btn: HTMLElement) {
+    if (ev.button !== 0 || this.h.readOnly()) return;
+    const touch = ev.pointerType === "touch";
+    const x0 = ev.clientX;
+    const y0 = ev.clientY;
+    let last = { x: x0, y: y0 };
+    let dragging = false;
+    let hold = 0;
+    const start = () => {
+      dragging = true;
+      if (this.armed) this.disarm();
+      document.body.classList.add("is-placing", "is-dragging-sticker");
+      this.tray.classList.add("is-faded");
+      navigator.vibrate?.(8);
+      this.showGhost(sticker, last.x, last.y);
+      this.dropTarget(last.x, last.y);
+    };
+    const noScroll = (e: TouchEvent) => dragging && e.cancelable && e.preventDefault();
+    const move = (e: PointerEvent) => {
+      if (e.pointerId !== ev.pointerId) return;
+      last = { x: e.clientX, y: e.clientY };
+      const d = Math.hypot(e.clientX - x0, e.clientY - y0);
+      if (!dragging) {
+        if (touch) {
+          if (d > 10) stop(); // le doigt glisse tout de suite : il fait défiler la planche
+        } else if (d > 6) start();
+        return;
+      }
+      this.showGhost(sticker, e.clientX, e.clientY);
+      this.dropTarget(e.clientX, e.clientY);
+    };
+    const end = (e: PointerEvent) => {
+      if (e.pointerId !== ev.pointerId) return;
+      const was = dragging;
+      stop();
+      if (!was) return;
+      btn.dataset.dragged = "1";
+      setTimeout(() => delete btn.dataset.dragged, 400);
+      if (e.type === "pointercancel") return;
+      const block = this.dropTarget(e.clientX, e.clientY);
+      this.clearTargets();
+      if (!block) return this.h.toast("Lâche-le sur un jour, les notes, la page du mois ou une collection.");
+      const r = block.getBoundingClientRect();
+      const id = this.place(block, sticker, this.season, e.clientX - r.left, e.clientY - r.top);
+      if (id) this.focusSticker(block.dataset.block!, id);
+    };
+    const stop = () => {
+      clearTimeout(hold);
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", end);
+      removeEventListener("pointercancel", end);
+      removeEventListener("touchmove", noScroll);
+      document.body.classList.remove("is-placing", "is-dragging-sticker");
+      this.tray.classList.remove("is-faded");
+      this.hideGhost();
+      if (dragging) this.clearTargets();
+      dragging = false;
+    };
+    if (touch) hold = window.setTimeout(start, 260);
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", end);
+    addEventListener("pointercancel", end);
+    addEventListener("touchmove", noScroll, { passive: false });
+    try {
+      btn.releasePointerCapture?.(ev.pointerId);
+    } catch {
+      /* rien */
+    }
   }
 
   private hint() {
     const h = this.tray.querySelector<HTMLElement>(".cn-tray-hint");
     if (!h) return;
     const name = this.armed ? stickerById.get(this.armed.sticker)?.name : null;
-    h.textContent = name ? `Touche une page pour poser « ${name} » · Échap pour annuler` : "Choisis un autocollant.";
+    h.textContent = name ? `Touche une page pour poser « ${name} » · Échap pour annuler` : "Glisse un autocollant sur la page, ou touche-le puis touche la page.";
   }
 
   toggleTray(open = this.tray.hidden) {
@@ -419,13 +537,25 @@ export class Decor {
     this.reopenTray = !matchMedia("(max-width: 860px)").matches;
     this.tray.hidden = true;
     this.h.toast(`Touche la page pour poser « ${stickerById.get(sticker)?.name ?? ""} »`, { label: "Annuler", run: () => this.disarm() });
+    // À la souris (ou au stylet qui survole), l'autocollant suit le pointeur et la page visée s'éclaire.
+    removeEventListener("pointermove", this.armedMove);
+    addEventListener("pointermove", this.armedMove, { passive: true });
   }
+  private armedMove = (e: PointerEvent) => {
+    if (!this.armed) return removeEventListener("pointermove", this.armedMove);
+    if (e.pointerType === "touch") return;
+    this.showGhost(this.armed.sticker, e.clientX, e.clientY);
+    this.dropTarget(e.clientX, e.clientY);
+  };
   private reopenTray = false;
 
   private disarm() {
     if (this.armed && this.reopenTray) this.tray.hidden = false;
     this.reopenTray = false;
     this.armed = null;
+    removeEventListener("pointermove", this.armedMove);
+    this.hideGhost();
+    this.clearTargets();
     document.body.classList.remove("is-placing");
     for (const b of this.tray.querySelectorAll<HTMLElement>("[data-sticker]")) b.setAttribute("aria-pressed", "false");
     this.hint();
