@@ -40,6 +40,7 @@ export const PAGES = [
   { href: "voix.html", name: "La voix", text: "Une lueur qui monte avec la voix sous un champ de saisie, puis balaie pendant la réponse" },
   { href: "ruban.html", name: "Ruban", text: "Une bande d'images qui se vrille, se comprime, se bombe ; une lentille qui passe ; une roue de vignettes" },
   { href: "typo.html", name: "Typographie", text: "Six entrées de texte : étirement, sphère, encre, tracé, éclats, fragments" },
+  { href: "rouleau.html", name: "Rouleau", text: "Menu roulant : les titres défilent, l'image ondule derrière comme une étoffe" },
   { href: "diapo-createur.html", name: "Créateur de diaporama", text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU" },
   { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
 ];
@@ -135,6 +136,7 @@ export function mountPagesNav(base = "./") {
   // Ruban (bande d'images en 3D) et typographie cinétique, d'après Aristide Benoist.
   if (document.querySelector("[data-ruban]")) void import("./presse/ruban.ts").then((m) => m.initRuban());
   if (document.querySelector("[data-typo]")) void import("./presse/typo.ts").then((m) => m.initTypo());
+  if (document.querySelector("[data-rouleau]")) void import("./presse/rouleau.ts").then((m) => m.initRouleau());
   const style = document.createElement("style");
   style.textContent = CSS + SETTINGS_CSS;
   document.head.append(style);

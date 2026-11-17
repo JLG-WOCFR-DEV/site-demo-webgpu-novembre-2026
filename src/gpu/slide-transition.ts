@@ -15,10 +15,55 @@
  * `vague` prend des options (`VagueOptions`) : la source, le type (verticale, horizontale, centre), la palette, un
  * rectangle arrondi qui borne la transition (une carte plutôt que tout l'écran) et le sens (retour : la vague se
  * referme sur sa source).
+ *
+ * Styles d'après le vocabulaire des transitions de film (idées reprises de taleframe-motion-kit, réécrites ici) :
+ * zoom (on fonce dans l'image, coupe dans le flou sous un éclair), tranches (des bandes sortent de côté en cascade),
+ * parasite (un coup numérique : rouge/cyan, déchirures, rangées étalées, saccade, coupe franche), pile (la page recule
+ * comme une carte qui passe dessous), foyer (mise au point : elle se défocalise et se fond dans le flou), bascule (elle
+ * tombe en arrière autour de son bord bas), prisme (des facettes de verre la décalent et la dispersent), sable (elle
+ * se défait en grains soufflés), rayons (un balayage de lumière depuis un point haut l'emporte), marbrure (elle
+ * s'écoule en veines marbrées puis se dissout).
+ *
+ * Toutes partent de l'image intacte (p = 0) et finissent transparentes (p = 1). Durées conseillées :
+ * `SLIDE_TRANSITION_DUREES`.
  */
 
-export const SLIDE_TRANSITIONS = ["enchaine", "feuille", "bavure", "mosaique", "fonte", "onde", "portes", "points", "vague"] as const;
+export const SLIDE_TRANSITIONS = [
+  "enchaine",
+  "feuille",
+  "bavure",
+  "mosaique",
+  "fonte",
+  "onde",
+  "portes",
+  "points",
+  "vague",
+  "zoom",
+  "tranches",
+  "parasite",
+  "pile",
+  "foyer",
+  "bascule",
+  "prisme",
+  "sable",
+  "rayons",
+  "marbrure",
+] as const;
 export type SlideTransition = (typeof SLIDE_TRANSITIONS)[number];
+
+/** Durées conseillées (s) des styles « de film » : lisibles entre 0,4 et 0,9 s ; au-delà, ils traînent. */
+export const SLIDE_TRANSITION_DUREES: Partial<Record<SlideTransition, number>> = {
+  zoom: 0.5,
+  tranches: 0.6,
+  parasite: 0.42,
+  pile: 0.75,
+  foyer: 0.7,
+  bascule: 0.8,
+  prisme: 0.8,
+  sable: 0.9,
+  rayons: 0.8,
+  marbrure: 0.9,
+};
 
 export const VAGUE_TYPES = ["verticale", "horizontale", "centre"] as const;
 export const VAGUE_PALETTES = ["coloree", "verte", "ocean", "couchant", "mono"] as const;
@@ -77,6 +122,50 @@ fn inside(uv: vec2f) -> bool { return all(uv >= vec2f(0.0)) && all(uv <= vec2f(1
 fn old(px: vec2f) -> vec3f { return textureSampleLevel(prev, samp, px / tu.res.xy, 0.0).rgb; }
 fn ease_in(t: f32) -> f32 { return t * t * t; }
 fn ease_io(t: f32) -> f32 { return select(1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0, 4.0 * t * t * t, t < 0.5); }
+fn lisse(t: f32) -> f32 { let u = clamp(t, 0.0, 1.0); return u * u * (3.0 - 2.0 * u); }
+// Un voile de couleur v (force f) posé sur une couche (col, a) : le résultat, mélangé par-dessus la diapo suivante,
+// vaut la couche puis le voile.
+fn voile(col: vec3f, a: f32, v: vec3f, f: f32) -> vec4f {
+  let ta = a + f - a * f;
+  if (ta <= 1e-5) { return vec4f(0.0); }
+  return vec4f((col * a * (1.0 - f) + v * f) / ta, ta);
+}
+// Distance signée à une boîte arrondie (centre c, demi-taille b, rayon de coin r), en px.
+fn sd_boite(q: vec2f, c: vec2f, b: vec2f, r: f32) -> f32 {
+  let d = abs(q - c) - b + vec2f(r);
+  return length(max(d, vec2f(0.0))) + min(max(d.x, d.y), 0.0) - r;
+}
+// Flou en disque (spirale de Vogel, n lectures, rayon r en px, tourné de phi). bokeh > 0 : les hautes lumières pèsent
+// plus et s'ouvrent en disques.
+fn disque(q: vec2f, r: f32, n: i32, phi: f32, bokeh: f32) -> vec3f {
+  if (r < 0.5) { return old(q); }
+  var acc = vec3f(0.0);
+  var ws = 0.0;
+  for (var k = 0; k < n; k++) {
+    let fk = f32(k) + 0.5;
+    let a = fk * 2.39996323 + phi;
+    let c = old(q + vec2f(cos(a), sin(a)) * r * sqrt(fk / f32(n)));
+    let l = dot(c, vec3f(0.299, 0.587, 0.114));
+    let w = 1.0 + bokeh * 8.0 * l * l * l * l;
+    acc += c * w;
+    ws += w;
+  }
+  return acc / ws;
+}
+// Sable : quand le grain qui est en s se détache (0…0,73) ; le front part du bord droit, bruité.
+fn sable_r(s: vec2f) -> f32 {
+  let dpr = tu.res.z;
+  let n = vn(s / (70.0 * dpr)) * 0.65 + vn(s / (16.0 * dpr)) * 0.35;
+  return clamp(0.04 + 0.52 * (1.0 - s.x / tu.res.x) + 0.2 * (n - 0.5), 0.02, 0.7);
+}
+// Sable : le chemin d'un grain de la classe k, à l'âge a (0…1) : soufflé vers la droite, il tombe en flottant.
+fn sable_d(k: f32, a: f32) -> vec2f {
+  let res = tu.res.xy;
+  let dpr = tu.res.z;
+  let vx = (0.22 + 0.1 * k) * res.x * pow(a, 1.6);
+  let vy = (0.06 + 0.05 * k) * res.y * a * a - 0.05 * res.y * sin(a * 3.1416) * (k - 2.0) * 0.5;
+  return vec2f(vx, vy + sin(a * 7.0 + k * 1.3) * 6.0 * dpr * a);
+}
 
 @fragment fn fs(in: VO) -> @location(0) vec4f {
   let res = tu.res.xy;
@@ -293,9 +382,261 @@ fn ease_io(t: f32) -> f32 { return select(1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0, 
     return vec4f(col, clamp(0.5 - sdf / dpr, 0.0, 1.0));
   }
 
+  if (style == 9) {
+    // Zoom : on fonce vers le centre de l'ancienne image (×2,4 à la coupe), flou radial de vitesse, franges au pic ;
+    // la coupe tombe dans le flou, sous un bref éclair blanc, et l'image file encore un instant en s'effaçant.
+    let cut = 0.5;
+    let c = res * 0.5;
+    let u = min(p / cut, 1.0);
+    let post = max(p - cut, 0.0) / (1.0 - cut);
+    let s = 1.0 + 1.4 * pow(u, 2.4) + 1.6 * ease_out(post);
+    let v = pow(u, 1.6) * (1.0 - 0.6 * post);
+    var col = old(px);
+    if (v > 1e-4) {
+      let d = (px - c) / s;
+      let streak = 0.24 * v;
+      let fr = 0.03 * v;
+      var acc = vec3f(0.0);
+      for (var k = 0; k < 12; k++) {
+        let m = 1.0 - streak * f32(k) / 11.0;
+        acc += vec3f(old(c + d * m * (1.0 + fr)).r, old(c + d * m).g, old(c + d * m * (1.0 - fr)).b);
+      }
+      col = acc / 12.0;
+      // Le tunnel : les bords foncent avec la vitesse.
+      col *= 1.0 - 0.3 * v * smoothstep(0.2, 1.0, length(px - c) / length(c));
+    }
+    let a = 1.0 - lisse((p - cut) / 0.16);
+    let fl = 0.8 * exp(-pow((p - cut) / 0.055, 2.0));
+    return voile(col, a, vec3f(1.0), fl);
+  }
+
+  if (style == 10) {
+    // Tranches : sept bandes horizontales sortent de côté, en cascade de haut en bas, sens alternés ; chacune floue
+    // dans le sens de sa course, une ombre légère sur la diapo qu'elle découvre.
+    let nb = 7.0;
+    let i = min(floor(in.uv.y * nb), nb - 1.0);
+    let dir = select(1.0, -1.0, (i % 2.0) > 0.5);
+    let delay = i / (nb - 1.0) * 0.32;
+    let lp = clamp((p - delay) / 0.68, 0.0, 1.0);
+    let e = lp * lp * (2.2 - 1.2 * lp);
+    let off = dir * e * (res.x + 70.0 * dpr);
+    let qx = px.x - off;
+    if (qx < 0.0 || qx > res.x) {
+      let dd = select(qx - res.x, -qx, dir > 0.0);
+      let sh = 0.32 * (1.0 - lisse(dd / (38.0 * dpr))) * step(1e-4, lp);
+      return vec4f(0.0, 0.0, 0.0, sh);
+    }
+    // Le flou de bougé : la vitesse de la bande (pour ~0,6 s) sur un demi-temps d'image.
+    let speed = (4.4 * lp - 3.6 * lp * lp) / 0.68;
+    let bl = min(speed * res.x * 0.014, 48.0 * dpr) * step(1e-4, lp);
+    var col = old(vec2f(qx, px.y));
+    if (bl > 0.5) {
+      var acc = vec3f(0.0);
+      for (var k = 0; k < 7; k++) { acc += old(vec2f(qx + (f32(k) / 6.0 - 0.5) * bl * dir, px.y)); }
+      col = acc / 7.0;
+    }
+    // Le bord qui ouvre la marche se fonce un peu : la bande a une épaisseur.
+    let lead = select(qx, res.x - qx, dir > 0.0);
+    col *= 1.0 - 0.18 * e * (1.0 - lisse(lead / (10.0 * dpr)));
+    return vec4f(col, 1.0);
+  }
+
+  if (style == 11) {
+    // Parasite : un coup numérique autour d'une coupe franche (au milieu). L'image saccade par pas (18 par transition),
+    // se décale en rouge/cyan, se déchire par bandes, étale des rangées ; après la coupe, il n'en reste que des lambeaux.
+    let cut = 0.5;
+    let st = floor(p * 18.0);
+    let ps = st / 18.0;
+    let before = ps < cut;
+    let k = select(1.0 - clamp((ps - cut) / 0.38, 0.0, 1.0), pow(ps / cut, 1.3), before);
+    let band = floor(px.y / (res.y / 22.0));
+    let row = floor(px.y / (3.0 * dpr));
+    let r1 = h21(vec2f(band, st));
+    let r2 = h21(vec2f(row, st + 40.0));
+    var q = px;
+    q.y += (h21(vec2f(st, 7.0)) - 0.5) * 26.0 * dpr * k * step(0.55, h21(vec2f(st, 8.0)));
+    let tear = r1 > 1.0 - select(0.35, 0.45, before) * k;
+    if (tear) { q.x += (h21(vec2f(band, st + 11.0)) - 0.5) * 180.0 * dpr * k; }
+    let smear = r2 > 1.0 - 0.12 * k;
+    if (smear) { q.x = min(q.x, h21(vec2f(row, st + 21.0)) * res.x); }
+    let sh = (6.0 + 16.0 * h21(vec2f(st, 31.0))) * dpr * k;
+    var col = vec3f(old(q + vec2f(sh, 0.0)).r, old(q - vec2f(sh, 0.0)).gb);
+    // Quelques blocs postérisés, comme un flux qui décroche.
+    let blk = floor(px / (vec2f(48.0, 14.0) * dpr));
+    if (h21(blk + st * 3.1) > 1.0 - 0.06 * k) { col = floor(col * 3.0 + 0.5) / 3.0; }
+    if (before) { return vec4f(col, 1.0); }
+    if (tear) { return vec4f(col, 1.0); }
+    // Après la coupe : des filets rouges ou cyan, par-ci par-là.
+    if (r2 > 1.0 - 0.08 * k) { return vec4f(select(vec3f(0.0, 1.0, 1.0), vec3f(1.0, 0.1, 0.2), h21(vec2f(row, st + 5.0)) > 0.5), 0.75 * k); }
+    return vec4f(0.0);
+  }
+
+  if (style == 12) {
+    // Pile : la page recule en profondeur comme une carte qui passe sous la suivante : elle rétrécit, s'assombrit,
+    // se floute un peu, prend des coins ronds et une ombre, puis s'efface.
+    let e = ease_io(p);
+    let c0 = res * 0.5;
+    let s = 1.0 - 0.2 * e;
+    let c = c0 - vec2f(0.0, 0.025 * res.y * e);
+    let rad = 28.0 * dpr * lisse(p * 3.0);
+    let hb = c0 * s;
+    let sdf = sd_boite(px, c, hb, rad);
+    let fa = 1.0 - lisse((p - 0.3) / 0.7);
+    let sdSh = sd_boite(px, c + vec2f(0.0, 16.0 * dpr * e), hb, rad);
+    let sh = 0.34 * e * fa * (1.0 - lisse((sdSh + 8.0 * dpr) / (46.0 * dpr)));
+    let aa = clamp(0.5 - sdf, 0.0, 1.0);
+    var col = vec3f(0.0);
+    if (aa > 0.0) {
+      let q = c0 + (px - c) / s;
+      col = disque(q, 5.0 * dpr * e, 12, h21(floor(px)) * 6.2832, 0.0) * (1.0 - 0.45 * e);
+    }
+    return voile(vec3f(0.0), sh, col, aa * fa);
+  }
+
+  if (style == 13) {
+    // Foyer : une mise au point qui s'en va : la page se défocalise (flou en disque, les lumières s'ouvrent en bokeh)
+    // et se fond pendant qu'elle est floue.
+    let blur = lisse(p / 0.6);
+    let r = 26.0 * dpr * blur;
+    var col = disque(px, r, 24, h21(floor(px)) * 6.2832, 1.0);
+    col = mix(col, col * 1.06 + vec3f(0.015), blur);
+    return vec4f(col, 1.0 - lisse((p - 0.28) / 0.72));
+  }
+
+  if (style == 14) {
+    // Bascule : la page devient un plan qui bascule en arrière autour de son bord bas et tombe (perspective, elle
+    // recule aussi), plus sombre à mesure qu'elle se couche.
+    let th = 1.45 * pow(p, 1.8);
+    let sn = sin(th);
+    let cs = cos(th);
+    let fz = res.y * 1.4;
+    let z0 = fz + 0.35 * res.y * p * p;
+    let dx = px.x - res.x * 0.5;
+    let dy = px.y - res.y * 0.5;
+    let den = cs + sn * dy / fz;
+    if (den <= 1e-4) { return vec4f(0.0); }
+    // Le rayon de la caméra rencontre le plan : v est la hauteur depuis le bord bas, t l'échelle de profondeur.
+    let v = (res.y * 0.5 - z0 * dy / fz) / den;
+    let t = (z0 + v * sn) / fz;
+    let img = vec2f(t * dx + res.x * 0.5, res.y - v);
+    let sdi = sd_boite(img, res * 0.5, res * 0.5, 0.0);
+    let aa = clamp(0.5 - sdi / (t / max(den, 0.15)), 0.0, 1.0);
+    if (aa <= 0.0) { return vec4f(0.0); }
+    let shade = (1.0 - 0.55 * sn) * (1.0 - 0.25 * sn * clamp(v / res.y, 0.0, 1.0));
+    return vec4f(old(img) * shade, aa * (1.0 - lisse((p - 0.6) / 0.4)));
+  }
+
+  if (style == 15) {
+    // Prisme : un verre à facettes diagonales passe sur la page : chaque facette décale et disperse l'image (rouge,
+    // vert, bleu ne se plient pas pareil), ses arêtes brillent ; puis les facettes lâchent une à une, en diagonale.
+    let dn = normalize(vec2f(1.0, 0.55));
+    let pp = vec2f(-dn.y, dn.x);
+    let fw = max(res.x, res.y) / 8.0;
+    let al = dot(px, dn);
+    let id = floor(al / fw);
+    let f = fract(al / fw);
+    let nrm = clamp((id + 0.5) * fw / dot(res, dn), 0.0, 1.0);
+    let hs = h21(vec2f(id, 3.0));
+    let A = lisse(p / 0.4);
+    let rel = 0.3 + 0.5 * nrm + 0.08 * hs;
+    let lp = clamp((p - rel) / 0.12, 0.0, 1.0);
+    var o = dn * (f - 0.5) * fw * 0.4 * A + pp * (hs - 0.5) * 50.0 * dpr * A;
+    o += pp * select(-1.0, 1.0, hs > 0.5) * lp * lp * 90.0 * dpr;
+    let disp = pp * (f - 0.5) * 10.0 * dpr * A;
+    var col = vec3f(old(px + o - disp).r, old(px + o * 1.12).g, old(px + o * 1.25 + disp).b);
+    col *= 1.0 + 0.12 * A * (0.5 - f);
+    let edge = 1.0 - lisse(min(f, 1.0 - f) * fw / (2.5 * dpr));
+    let a = 1.0 - lisse(lp);
+    return voile(col, a, vec3f(1.0), edge * 0.55 * A * a);
+  }
+
+  if (style == 16) {
+    // Sable : la page se défait en grains depuis la droite, sur un front bruité ; les grains sont soufflés vers la
+    // droite, tombent en flottant, rapetissent et s'éteignent.
+    let g = 3.0 * dpr;
+    let lt = 0.26;
+    let cell0 = floor(px / g);
+    if (p < sable_r((cell0 + 0.5) * g) + 0.03 * h21(cell0)) { return vec4f(old(px), 1.0); }
+    // Pour chaque classe de grains (cinq vitesses), on remonte au grain qui serait arrivé ici.
+    for (var ki = 0; ki < 5; ki++) {
+      let k = f32(ki);
+      var s = px;
+      for (var it = 0; it < 3; it++) {
+        let a = clamp((p - sable_r(s)) / lt, 0.0, 1.0);
+        s = px - sable_d(k, a);
+      }
+      let cell = floor(s / g);
+      if (floor(h21(cell + 17.0) * 5.0) != k) { continue; }
+      let ctr = (cell + 0.5) * g;
+      let rc = sable_r(ctr) + 0.03 * h21(cell);
+      if (p < rc) { continue; }
+      let a = clamp((p - rc) / lt, 0.0, 1.0);
+      let loc = abs(fract(s / g) - 0.5);
+      if (max(loc.x, loc.y) > 0.5 * (1.0 - 0.6 * a)) { continue; }
+      var col = old(ctr);
+      col = mix(col, col * vec3f(1.05, 0.93, 0.78), 0.4 * a);
+      return vec4f(col, 1.0 - lisse(a));
+    }
+    return vec4f(0.0);
+  }
+
+  if (style == 17) {
+    // Rayons : depuis un point au-dessus du haut, un balayage de rayons de lumière descend et emporte la page : devant
+    // le front, elle s'éclaire et s'étire le long des rayons ; derrière, la lumière s'attarde puis s'éteint.
+    let o = vec2f(res.x * 0.5, -0.25 * res.y);
+    let v = px - o;
+    let d = length(v);
+    let dir = v / max(d, 1.0);
+    let ang = atan2(v.x, v.y);
+    let dmin = 0.25 * res.y;
+    let dmax = length(vec2f(0.5 * res.x, 1.25 * res.y));
+    let lens = 0.35 * res.y;
+    let rr = 0.55 * vn(vec2f(ang * 22.0, 1.0 + p * 1.5)) + 0.45 * vn(vec2f(ang * 57.0, 3.0 - p * 2.0));
+    let ray = smoothstep(0.3, 0.85, rr);
+    let front = mix(dmin - lens * 1.6, dmax + lens * 1.2, ease_io(p)) + (ray - 0.5) * lens * 0.6;
+    let s = d - front;
+    let alive = 1.0 - lisse((p - 0.8) / 0.2);
+    let warm = vec3f(1.0, 0.94, 0.8);
+    if (s < 0.0) {
+      return vec4f(warm, ray * exp(s / (0.3 * lens)) * 0.85 * alive);
+    }
+    let w = max(1.0 - s / lens, 0.0);
+    var col = old(px);
+    let L = w * w * 46.0 * dpr;
+    if (L > 0.5) {
+      var acc = vec3f(0.0);
+      for (var k = 0; k < 8; k++) { acc += old(px - dir * L * f32(k) / 7.0); }
+      col = acc / 8.0;
+    }
+    col += warm * ray * w * w * 0.35;
+    let a = lisse(s / (0.05 * lens));
+    return voile(col, a, warm, (ray * 0.7 + 0.15) * w * w * w * 0.8 * alive);
+  }
+
+  if (style == 18) {
+    // Marbrure : la page s'écoule, tirée par un courant (bruit déformé deux fois), et se dissout le long de veines
+    // marbrées ; le bord des veines se teinte comme une encre qui tourne.
+    let e = ease_io(p);
+    let a2 = in.uv * vec2f(res.x / res.y, 1.0);
+    let w1 = vec2f(fbm(a2 * 2.0 + vec2f(0.0, p * 0.6)), fbm(a2 * 2.0 + vec2f(5.2, 1.3 - p * 0.6)));
+    let w2 = vec2f(fbm(a2 * 2.0 + 3.0 * w1 + vec2f(1.7, 9.2)), fbm(a2 * 2.0 + 3.0 * w1 + vec2f(8.3, 2.8)));
+    let q = px + (w2 - 0.5) * 2.0 * 110.0 * dpr * e + vec2f(0.0, 50.0 * dpr * e * e);
+    let m = 0.5 + 0.5 * sin(6.0 * (a2.x * 0.8 + a2.y * 0.5) + 9.0 * w2.x + p * 2.0);
+    let vv = mix(m, fbm(a2 * 3.0 + 2.0 * w2), 0.5);
+    let thr = mix(-0.14, 1.14, e);
+    var col = old(q);
+    let rim = 1.0 - lisse((vv - thr) / 0.12);
+    col = mix(col, col * vec3f(0.62, 0.66, 0.8), rim * 0.6);
+    col += (m - 0.5) * 0.08 * e;
+    return vec4f(col, lisse((vv - thr) / 0.05));
+  }
+
   return vec4f(old(px), 1.0 - ease_io(p));
 }
 `;
+
+/** La source WGSL (pour vérifier sa compilation hors du moteur). */
+export const SLIDE_TRANSITION_WGSL = WGSL;
 
 export class SlideTransitionPass {
   private pipe: GPURenderPipeline;
