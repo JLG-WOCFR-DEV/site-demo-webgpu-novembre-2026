@@ -122,6 +122,7 @@ fn inside(uv: vec2f) -> bool { return all(uv >= vec2f(0.0)) && all(uv <= vec2f(1
 fn old(px: vec2f) -> vec3f { return textureSampleLevel(prev, samp, px / tu.res.xy, 0.0).rgb; }
 fn ease_in(t: f32) -> f32 { return t * t * t; }
 fn ease_io(t: f32) -> f32 { return select(1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0, 4.0 * t * t * t, t < 0.5); }
+fn ease_out(t: f32) -> f32 { return 1.0 - pow(1.0 - t, 3.0); }
 fn lisse(t: f32) -> f32 { let u = clamp(t, 0.0, 1.0); return u * u * (3.0 - 2.0 * u); }
 // Un voile de couleur v (force f) posé sur une couche (col, a) : le résultat, mélangé par-dessus la diapo suivante,
 // vaut la couche puis le voile.
