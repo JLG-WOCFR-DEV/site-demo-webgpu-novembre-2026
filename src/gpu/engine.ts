@@ -11,7 +11,7 @@ import { ATLAS_SIZE, ELEM_STRIDE, GLYPH_STRIDE, MORPH_MS, TextLayer, type BakedA
 import { chapterPaper, PAPER_FLOATS, paperPack } from "./paper.ts";
 import { BLOOM, BOXES, COMPOSITE, FLUID, GLYPH, INK, LAYERS, MAX_CHAPTERS, MAX_STAGES, PEEL, PEEL_X, PEEL_Y, FIRE, PLANE, PROC, SHEET, SIM, TRACE, TRACE_LAYERS, TRACE_SIZE, SCREEN_LAYER, MAX_TEARS } from "./wgsl.ts";
 import { renderScale } from "./governor.ts";
-import { SlideTransitionPass } from "./slide-transition.ts";
+import { SlideTransitionPass, type VagueOptions } from "./slide-transition.ts";
 
 export type Timings = { ms: number[]; total: number; gpu: boolean; cpu: number; fps: number };
 
@@ -1632,7 +1632,7 @@ export async function createEngine(canvas: HTMLCanvasElement, hooks: EngineHooks
     },
     /** Diaporama : garde l'image en cours, puis la fait partir par-dessus la suivante (style, durée en s). Changez le
      *  DOM quand la promesse est tenue. */
-    slideTransition: (style: string, dur: number) => slideTr.request(style, dur),
+    slideTransition: (style: string, dur: number, opts?: VagueOptions) => slideTr.request(style, dur, opts),
     pause: (v: boolean) => {
       paused = v;
     },

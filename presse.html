@@ -364,6 +364,50 @@ roll(compteur, "129");                         // seuls les chiffres changés ro
 &lt;/ul&gt;</code></pre>
       </section>
 
+      <section class="pd-sec" data-gl-print aria-labelledby="pd-vague">
+        <h2 id="pd-vague" class="pd-h2" data-gl-text>La vague</h2>
+        <p class="pd-p" data-gl-text>
+          D'après Distortion Waves : une vague colorée emporte une vue et laisse l'autre. L'écran se tend vers le bouton
+          pressé, puis la vague en part : elle courbe l'ancienne vue, la frange de couleur, laisse un liseré. Revenir la
+          referme sur sa source. Trois types : verticale, horizontale, centre.
+        </p>
+        <div class="pd-vagues">
+          <div class="pd-vague" data-vague data-vague-type="verticale">
+            <section data-vague-vue>
+              <p class="pd-vague-k" data-gl-text>Virement</p>
+              <p class="pd-vague-n" data-gl-text>240,00 €</p>
+              <p class="pd-vague-t" data-gl-text>À Axelle Charlet · aujourd'hui</p>
+              <button type="button" class="pd-vague-b" data-vague-vers="suivante">Confirmer</button>
+            </section>
+            <section data-vague-vue hidden>
+              <p class="pd-vague-k" data-gl-text>Reçu</p>
+              <p class="pd-vague-n" data-gl-text>Envoyé ✓</p>
+              <p class="pd-vague-t" data-gl-text>Référence KRG-2026-1113</p>
+              <button type="button" class="pd-vague-b pd-vague-b--ghost" data-vague-vers="retour">Revenir</button>
+            </section>
+          </div>
+          <div class="pd-vague pd-vague--sombre" data-vague data-vague-type="centre" data-vague-palette="ocean">
+            <section data-vague-vue>
+              <p class="pd-vague-k" data-gl-text>Bibliothèque</p>
+              <p class="pd-vague-n" data-gl-text>16 h</p>
+              <p class="pd-vague-t" data-gl-text>Le soleil entre par les fenêtres du sud.</p>
+              <button type="button" class="pd-vague-b" data-vague-vers="suivante">Passer à la nuit</button>
+            </section>
+            <section data-vague-vue hidden>
+              <p class="pd-vague-k" data-gl-text>Bibliothèque</p>
+              <p class="pd-vague-n" data-gl-text>23 h</p>
+              <p class="pd-vague-t" data-gl-text>Les bougies et la suspension à opaline.</p>
+              <button type="button" class="pd-vague-b pd-vague-b--ghost" data-vague-vers="retour">Revenir au jour</button>
+            </section>
+          </div>
+        </div>
+        <pre class="pd-code"><code>&lt;div data-vague data-vague-type="verticale" data-vague-palette="coloree"&gt;
+  &lt;section data-vague-vue&gt; … &lt;button data-vague-vers="suivante"&gt;Confirmer&lt;/button&gt; &lt;/section&gt;
+  &lt;section data-vague-vue hidden&gt; … &lt;button data-vague-vers="retour"&gt;Revenir&lt;/button&gt; &lt;/section&gt;
+&lt;/div&gt;
+&lt;!-- dans un diaporama : &lt;section data-diapo-slide data-transition="vague" data-vague-type="centre"&gt; --&gt;</code></pre>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-how">
         <h2 id="pd-how" class="pd-h2" data-gl-text>Comment ça marche</h2>
         <ol class="pd-list" data-gl-text>

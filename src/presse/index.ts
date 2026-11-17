@@ -92,6 +92,12 @@ export async function presse(o: PresseOptions = {}): Promise<Presse> {
     new ResizeObserver(api.relayout).observe(document.body);
     document.fonts.addEventListener("loadingdone", api.relayout);
     addEventListener("pli:relayout", api.relayout);
+    // Une transition à deux images demandée par un module de la page (la vague entre deux vues, src/presse/vague.ts) :
+    // le moteur garde l'image en cours ; le module change le DOM quand la promesse rendue dans le détail est tenue.
+    addEventListener("presse:transition", (e) => {
+      const d = (e as CustomEvent<{ style: string; dur: number; opts?: unknown; promise?: Promise<void> }>).detail;
+      d.promise = engine.slideTransition(d.style, d.dur, d.opts as Parameters<typeof engine.slideTransition>[2]);
+    });
     // Le contenu change (CMS, script) : on relit le DOM.
     new MutationObserver(api.relayout).observe(document.body, { subtree: true, childList: true, characterData: true });
     setDebugCaps({

@@ -34,14 +34,14 @@
  */
 import "./diapo.css";
 import { settings, TRANSITIONS } from "../state.ts";
-import { SLIDE_TRANSITIONS, type SlideTransition } from "../gpu/slide-transition.ts";
+import { SLIDE_TRANSITIONS, type SlideTransition, type VagueOptions } from "../gpu/slide-transition.ts";
 import { animOf, parseAnim, Timeline } from "./timeline.ts";
 import { planSteps, type StepPlan } from "./diapo-etapes.ts";
 
 type Api = {
   replay: () => void;
   relayout: () => void;
-  engine?: { slideTransition?: (style: string, dur: number) => Promise<void>; relayout?: () => void } | null;
+  engine?: { slideTransition?: (style: string, dur: number, opts?: VagueOptions) => Promise<void>; relayout?: () => void } | null;
 } | null;
 type Step = { el: HTMLElement; tl: Timeline };
 type Slide = { el: HTMLElement; steps: Step[]; enter: Timeline; title: string; notes: string; transition: number; overlay: SlideTransition | null; move: boolean; dur: number; duree: number };
@@ -391,7 +391,19 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     // Transition à deux images : le moteur garde celle qui part, puis on change de diapo (une image plus tard).
     if (cur >= 0 && k !== cur && target.overlay && eng?.slideTransition && !busy) {
       busy = true;
-      await Promise.race([eng.slideTransition(target.overlay, target.dur * slow), new Promise((r) => setTimeout(r, 160))]);
+      // La vague part d'une source : le bas de la diapo (verticale), son bord gauche (horizontale) ou son centre ;
+      // elle reste dans le cadre de la diapo (data-vague-type="horizontale|centre", data-vague-palette="ocean…").
+      let opts: VagueOptions | undefined;
+      if (target.overlay === "vague") {
+        const b = target.el.getBoundingClientRect().width ? target.el.getBoundingClientRect() : slides[cur]!.el.getBoundingClientRect();
+        const dpr = devicePixelRatio || 1;
+        opts = {
+          type: (target.el.dataset.vagueType || "verticale") as VagueOptions["type"],
+          palette: (target.el.dataset.vaguePalette || "coloree") as VagueOptions["palette"],
+          rect: { x: b.left * dpr, y: b.top * dpr, w: b.width * dpr, h: b.height * dpr },
+        };
+      }
+      await Promise.race([eng.slideTransition(target.overlay, target.dur * slow, opts), new Promise((r) => setTimeout(r, 160))]);
       busy = false;
     }
     render(k, atEnd);

@@ -121,6 +121,8 @@ export function mountPagesNav(base = "./") {
   initCursor();
   // La visionneuse : chargée seulement si la page a un [data-lightbox].
   if (document.querySelector("[data-lightbox]")) void import("./presse/lightbox.ts").then((m) => m.initLightbox());
+  // La vague entre deux vues : de même.
+  if (document.querySelector("[data-vague]")) void import("./presse/vague.ts").then((m) => m.initVague());
   const style = document.createElement("style");
   style.textContent = CSS + SETTINGS_CSS;
   document.head.append(style);
