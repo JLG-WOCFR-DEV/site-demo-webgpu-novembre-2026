@@ -100,6 +100,7 @@ const FEUILLE = `
 `;
 let cssPose = false;
 const reduit = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const aSurvol = typeof matchMedia === "function" && matchMedia("(hover: hover)").matches;
 
 export interface ControleRail {
   aller(index: number, immediat?: boolean): void;
@@ -207,7 +208,9 @@ export function rail(root: HTMLElement): ControleRail | null {
     }
   };
 
-  const auto = () => !sansfin || reduit() || survole || focusDedans || !visible || document.hidden || drag.actif ? 0 : vitesse;
+  // Survol : l'événement d'entrée, ou :hover (la page a pu défiler sous un pointeur immobile).
+  const survol = () => survole || (aSurvol && root.matches(":hover"));
+  const auto = () => !sansfin || reduit() || survol() || focusDedans || !visible || document.hidden || drag.actif ? 0 : vitesse;
 
   const pas = (t: number) => {
     const dt = Math.min(0.05, dernier ? (t - dernier) / 1000 : 0.016);
@@ -225,6 +228,8 @@ export function rail(root: HTMLElement): ControleRail | null {
         cible = borner(x, min, max);
         bouge = true;
       }
+      // Survolé, tenu au clavier : tout s'arrête, même l'élan donné par le défilement de la page.
+      if (survol() || focusDedans) renfort = 0;
       const va = auto() + renfort;
       if (va !== 0 && cible === null) {
         x -= va * dt;

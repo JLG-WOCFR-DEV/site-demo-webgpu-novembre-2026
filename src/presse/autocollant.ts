@@ -9,7 +9,7 @@
  * data-autocollant-forme     eclair (défaut) | goutte | cercle | etoile.
  * data-autocollant-couleur   couleur de fond (défaut #e3122b) ;
  * data-autocollant-encre     couleur du texte (défaut blanc).
- * data-autocollant-taille    côté en px (défaut 96).
+ * data-autocollant-taille    côté en px (défaut 112).
  *
  * Sur une cible, l'autocollant apparaît en ressort (léger dépassement), suit
  * le pointeur avec un peu de retard et penche selon la vitesse ; hors cible, il
@@ -17,7 +17,7 @@
  * réduit, il suit sans retard ni bascule et apparaît en fondu. Purement
  * décoratif : aria-hidden, sans effet sur les clics.
  */
-import { FORMES, cheminSvg, estNomForme } from "./forme.ts";
+import { FORMES, cheminSvg, estNomForme, pole } from "./forme.ts";
 
 /* ---------------------------------------------------------------- pur */
 
@@ -40,7 +40,7 @@ const CSS = `
 .autocollant { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; display: grid; place-items: center;
   transform: translate3d(-200px,-200px,0) scale(0); will-change: transform, opacity; contain: layout style; }
 .autocollant svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.22)); }
-.autocollant span { position: relative; font: 600 13px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.06em; text-transform: uppercase; transform: rotate(-8deg); white-space: nowrap; }
+.autocollant span { position: relative; font: 600 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.06em; text-transform: uppercase; transform: rotate(-8deg); white-space: nowrap; }
 `;
 let cssPose = false;
 
@@ -56,7 +56,7 @@ export function autocollant(zone: HTMLElement): ControleAutocollant {
   const texte = zone.dataset.autocollant || "clic";
   const nom = zone.dataset.autocollantForme;
   const f = estNomForme(nom) ? FORMES[nom] : FORMES.eclair;
-  const taille = Math.max(32, Number(zone.dataset.autocollantTaille) || 96);
+  const taille = Math.max(32, Number(zone.dataset.autocollantTaille) || 112);
   const fond = zone.dataset.autocollantCouleur || "#e3122b";
   const encre = zone.dataset.autocollantEncre || "#fff";
 
@@ -70,6 +70,16 @@ export function autocollant(zone: HTMLElement): ControleAutocollant {
   el.innerHTML = `<svg viewBox="0 0 ${taille} ${taille}"><path d="${d}" fill="#fff" stroke="#fff" stroke-width="9" stroke-linejoin="round"/><path d="${d}" fill="${fond}"/></svg><span></span>`;
   const span = el.querySelector("span")!;
   span.textContent = texte;
+  // Le texte au point le plus intérieur de la forme (pas au centre de la boîte : un éclair est creux au centre).
+  {
+    const k = Math.min(taille / f.largeur, taille);
+    const dx = (taille - f.largeur * k) / 2, dy = (taille - k) / 2;
+    const { centre } = pole(f);
+    span.style.position = "absolute";
+    span.style.left = `${(dx + centre[0] * k).toFixed(1)}px`;
+    span.style.top = `${(dy + centre[1] * k).toFixed(1)}px`;
+    span.style.translate = "-50% -50%";
+  }
   span.style.color = encre;
   document.body.append(el);
 

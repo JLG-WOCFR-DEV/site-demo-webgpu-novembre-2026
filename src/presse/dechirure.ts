@@ -80,7 +80,7 @@ export function profil(n: number, graine: number, echelle = 3, octaves = 5): num
       out[i]! += ((treillis[k % m]! * (1 - s)) + treillis[(k + 1) % m]! * s) * amp;
     }
     somme += amp;
-    amp *= 0.52;
+    amp *= 0.6;
     freq *= 2.3;
   }
   // Accrocs : quelques dents brusques, comme une fibre qui a résisté.
@@ -195,6 +195,14 @@ function bord(el: HTMLElement): () => void {
   pOmbre.setAttribute("fill", "rgba(0,0,0,0.32)");
   pFibre.setAttribute("filter", "url(#dch-filtre-fibre)");
   pFibre.setAttribute("fill", "#fbf9f4");
+  // L'ombre floutée ne doit pas déborder sur l'élément lui-même : rognée à sa limite.
+  const idClip = `dch-clip-${compteur++}`;
+  const clip = document.createElementNS(NS, "clipPath");
+  clip.id = idClip;
+  const rect = document.createElementNS(NS, "rect");
+  clip.append(rect);
+  pOmbre.setAttribute("clip-path", `url(#${idClip})`);
+  g.append(clip);
   if (ombre) g.append(pOmbre);
   if (fibre > 0) g.append(pFibre);
   g.append(pPapier);
@@ -212,7 +220,7 @@ function bord(el: HTMLElement): () => void {
     if (cle === derniere) return;
     derniere = cle;
     const n = echantillons(L);
-    const pr = profil(n, graine, Math.max(2, L / 260));
+    const pr = profil(n, graine, Math.max(2, L / 170));
     const fib = profil(n, graine ^ 0x5bd1e995, Math.max(4, L / 60), 3);
     // Dans le repère de la bande : y = 0 au bout du papier qui dépasse le plus, y = H contre l'élément.
     const dPapier = profondeurs(pr, amp).map((d) => marge + d);
@@ -220,9 +228,15 @@ function bord(el: HTMLElement): () => void {
     const dOmbre = dPapier.map((d) => d - 2);
     const couleur = el.dataset.dechirureCouleur || getComputedStyle(el).backgroundColor || "#fff";
     pPapier.setAttribute("fill", couleur);
-    pPapier.setAttribute("d", cheminBande(dPapier, L, H + 1));
-    pFibre.setAttribute("d", cheminBande(dFibre, L, H + 1));
-    pOmbre.setAttribute("d", cheminBande(dOmbre, L, H + 1));
+    pPapier.setAttribute("d", cheminBande(dPapier, L, H + 2));
+    // Le liseré s'arrête juste sous le papier (qui, lui, mord de 3 px dans l'élément) : déplacée par le filtre,
+    // sa base reste cachée, et il n'y a jamais de jour entre les deux.
+    pFibre.setAttribute("d", cheminBande(dFibre, L, H - 1));
+    pOmbre.setAttribute("d", cheminBande(dOmbre, L, H - 1));
+    rect.setAttribute("x", "-20");
+    rect.setAttribute("y", "-60");
+    rect.setAttribute("width", String(L + 40));
+    rect.setAttribute("height", String(H - 1 + 60));
     // Repère de la bande → repère du côté.
     const T: Record<Cote, string> = {
       haut: "",

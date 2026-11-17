@@ -41,6 +41,7 @@ export const PAGES = [
   { href: "ruban.html", name: "Ruban", text: "Une bande d'images qui se vrille, se comprime, se bombe ; une lentille qui passe ; une roue de vignettes" },
   { href: "typo.html", name: "Typographie", text: "Six entrées de texte : étirement, sphère, encre, tracé, éclats, fragments" },
   { href: "rouleau.html", name: "Rouleau", text: "Menu roulant : les titres défilent, l'image ondule derrière comme une étoffe" },
+  { href: "boutique.html", name: "Boutique", text: "Éclaircie, boutique de vêtements d'essai : déchirure, forme-masque, autocollant, rails, panier" },
   { href: "diapo-createur.html", name: "Créateur de diaporama", text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU" },
   { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
 ];
@@ -137,6 +138,13 @@ export function mountPagesNav(base = "./") {
   if (document.querySelector("[data-ruban]")) void import("./presse/ruban.ts").then((m) => m.initRuban());
   if (document.querySelector("[data-typo]")) void import("./presse/typo.ts").then((m) => m.initTypo());
   if (document.querySelector("[data-rouleau]")) void import("./presse/rouleau.ts").then((m) => m.initRouleau());
+  // Modules nés de la boutique ; une page qui les arme elle-même porte data-presse-manuel sur <html>.
+  if (!document.documentElement.hasAttribute("data-presse-manuel")) {
+    if (document.querySelector("[data-dechirure], [data-dechirure-coupe]")) void import("./presse/dechirure.ts").then((m) => m.initDechirure());
+    if (document.querySelector("[data-forme]")) void import("./presse/forme.ts").then((m) => m.initForme());
+    if (document.querySelector("[data-autocollant]")) void import("./presse/autocollant.ts").then((m) => m.initAutocollant());
+    if (document.querySelector("[data-rail]")) void import("./presse/rail.ts").then((m) => m.initRail());
+  }
   const style = document.createElement("style");
   style.textContent = CSS + SETTINGS_CSS;
   document.head.append(style);

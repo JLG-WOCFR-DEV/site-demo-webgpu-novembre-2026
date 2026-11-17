@@ -79,8 +79,8 @@ function etoile(branches = 5, creux = 0.46): Forme {
 /** Éclair dessiné à la main : un trait cassé, épais au centre. */
 function eclair(): Forme {
   return normaliser([
-    [0.6, 0], [0.97, 0], [0.71, 0.36], [0.96, 0.36], [0.33, 1.02],
-    [0.47, 0.56], [0.2, 0.56], [0.46, 0.0],
+    [0.3, 0], [0.88, 0], [0.68, 0.33], [1.0, 0.33], [0.26, 1.04],
+    [0.43, 0.57], [0.06, 0.57],
   ]);
 }
 

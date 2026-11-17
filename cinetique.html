@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Cinétique · typographie en mouvement · Presse</title>
+    <meta name="description" content="Essai du module cinétique de Presse : dix-huit préréglages de texte animé (par ligne, mot ou lettre) et huit composants — mot qui roule, emphase dessinée, défilement, reflet, cercle, coupe, brouillage, frappe. DOM pur, Web Animations API." />
+    <meta name="theme-color" content="#f2f2f4" />
+    <script type="module" src="/src/presse/essais/cinetique.ts"></script>
+    <style>
+      :root {
+        --f-texte: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+        --f-titre: "Bodoni Moda Variable", "Bodoni Moda", Didot, Georgia, serif;
+        --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+        --encre: #15151a;
+        --papier: #f2f2f4;
+        --nuit: #0d0d12;
+        --accent: #d6ff3b;
+      }
+      * { box-sizing: border-box; }
+      html { background: var(--papier); overflow-x: clip; }
+      body { margin: 0; color: var(--encre); font: 400 16px/1.5 var(--f-texte); }
+      code { font: 500 0.92em/1 var(--f-mono); }
+      .s { position: relative; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 72px 16px 96px; overflow: clip; }
+      .legende { position: absolute; left: 16px; bottom: 18px; right: 140px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font: 500 12px/1.35 var(--f-texte); letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.72; }
+      .legende h2 { margin: 0; font: inherit; letter-spacing: inherit; }
+      .legende p { margin: 0; text-transform: none; letter-spacing: 0; max-width: 62ch; }
+      .rejouer { position: absolute; right: 16px; bottom: 14px; font: 600 12px/1 var(--f-texte); letter-spacing: 0.06em; text-transform: uppercase; color: inherit; background: none; border: 1px solid currentColor; border-radius: 999px; padding: 9px 14px; min-height: 32px; cursor: pointer; opacity: 0.8; }
+      .rejouer:hover { opacity: 1; }
+      .rejouer:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+      @media (min-width: 720px) { .legende { left: 28px; bottom: 24px; } .rejouer { right: 28px; bottom: 20px; } }
+
+      /* En-tête. */
+      .tete { min-height: 70vh; display: grid; align-content: end; padding: 96px 16px 48px; max-width: 1100px; margin: 0 auto; }
+      .tete h1 { font: 500 clamp(56px, 13vw, 176px)/0.9 var(--f-titre); letter-spacing: -0.035em; margin: 0 0 22px; }
+      .tete p { max-width: 64ch; margin: 0; color: #55555f; }
+
+      /* (1) Les dix-huit préréglages : un mur de cartes, chaque mot porte le nom de son mouvement. */
+      .s-mur { background: var(--nuit); color: #f4f4f6; display: block; min-height: 0; padding: 88px 16px 120px; }
+      .s-mur > header { max-width: 1240px; margin: 0 auto 36px; display: flex; justify-content: space-between; gap: 24px; align-items: end; flex-wrap: wrap; }
+      .s-mur > header h2 { font: 500 clamp(30px, 4.4vw, 54px)/1 var(--f-titre); letter-spacing: -0.02em; margin: 0; }
+      .s-mur > header p { margin: 0; max-width: 52ch; color: #a9a9b6; font-size: 15px; }
+      .mur { list-style: none; margin: 0 auto; padding: 0; max-width: 1240px; display: grid; grid-template-columns: 1fr; gap: 1px; background: #26262e; border: 1px solid #26262e; }
+      @media (min-width: 640px) { .mur { grid-template-columns: repeat(2, 1fr); } }
+      @media (min-width: 1000px) { .mur { grid-template-columns: repeat(3, 1fr); } }
+      .carte { position: relative; background: var(--nuit); padding: 26px 22px 64px; min-height: 230px; display: grid; align-content: center; overflow: clip; }
+      .carte .nom { margin: 0; font: 600 clamp(46px, 5.4vw, 74px)/1 var(--f-texte); letter-spacing: -0.035em; }
+      .carte .num { position: absolute; left: 22px; top: 18px; font: 500 11px/1 var(--f-mono); color: #7c7c8a; letter-spacing: 0.04em; }
+      .carte p { position: absolute; left: 22px; bottom: 22px; right: 96px; margin: 0; font-size: 13px; line-height: 1.35; color: #9d9dab; }
+      .carte .rejouer { right: 16px; bottom: 16px; padding: 7px 11px; font-size: 11px; }
+      .carte.joueur .nom { color: var(--accent); }
+
+      /* (2) Par ligne : un paragraphe éditorial. */
+      .s-ligne { background: #f3ebdf; color: #241913; }
+      .s-ligne .texte { max-width: 980px; margin: 0; font: 400 clamp(28px, 3.9vw, 54px)/1.12 var(--f-titre); letter-spacing: -0.012em; hyphens: manual; }
+      .s-ligne em { font-style: italic; }
+      .s-ligne strong { font-weight: 700; }
+      .s-ligne a { color: #a3311f; text-decoration-thickness: 0.06em; text-underline-offset: 0.12em; }
+
+      /* (3) Par mot, avec sortie et rejeu. */
+      .s-mot { background: #1717f0; color: #fff; justify-items: start; }
+      .s-mot .grand { margin: 0 0 0 clamp(0px, 5vw, 80px); font: 700 clamp(56px, 10.5vw, 168px)/0.9 var(--f-texte); letter-spacing: -0.045em; }
+
+      /* (4) Ordres de la cascade. */
+      .s-ordres { background: var(--papier); display: grid; gap: 4vh; align-content: center; justify-items: center; }
+      .s-ordres .ordre { margin: 0; font: 800 clamp(40px, 7vw, 104px)/1 var(--f-texte); letter-spacing: -0.03em; text-transform: uppercase; }
+      .s-ordres small { display: block; font: 500 11px/1 var(--f-mono); letter-spacing: 0.06em; text-align: center; color: #77778a; margin-top: 10px; text-transform: none; }
+
+      /* (5) Survol : une navigation. */
+      .s-survol { background: #111; color: #eee; }
+      .s-survol nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .s-survol nav a { color: inherit; text-decoration: none; font: 500 clamp(40px, 7vw, 96px)/1.02 var(--f-texte); letter-spacing: -0.03em; display: inline-block; padding: 0 0.05em; }
+      .s-survol nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+      /* (6) Composants. */
+      .s-roule { background: #f7f1e8; color: #16140f; justify-items: start; }
+      .s-roule .phrase { margin: 0 0 0 clamp(0px, 4vw, 64px); font: 700 clamp(44px, 7.6vw, 120px)/0.98 var(--f-texte); letter-spacing: -0.04em; }
+      .s-roule [data-roule] { color: #e2411f; }
+
+      .s-marque { background: #fffdf7; color: #1b1b1f; }
+      .s-marque .phrase { max-width: 920px; margin: 0; font: 400 clamp(26px, 3.4vw, 46px)/1.3 var(--f-titre); letter-spacing: -0.01em; }
+      .s-marque [data-marque="surligneur"] { --marque-couleur: #ffe25a; }
+      .s-marque [data-marque="barre"] { --marque-texte: #8d8d96; }
+
+      .s-defile { background: #0b0b0b; color: #f2f2f2; padding: 0; display: grid; align-content: center; }
+      .s-defile [data-defile] { width: 100%; font: 900 clamp(56px, 10vw, 150px)/0.98 var(--f-texte); font-stretch: 112%; letter-spacing: -0.035em; text-transform: uppercase; }
+      .s-defile [data-defile] > span:nth-child(2) { color: var(--accent); }
+
+      .s-reflet { background: #050507; color: #9b968c; }
+      .s-reflet .grand { margin: 0; font: 500 clamp(64px, 13vw, 200px)/0.95 var(--f-titre); letter-spacing: -0.03em; }
+
+      .s-cercle { background: #e8e2f8; color: #241a44; grid-template-columns: auto; gap: 24px; }
+      .s-cercle .badge { position: relative; display: grid; place-items: center; }
+      .s-cercle [data-cercle] { font: 600 22px/1 var(--f-texte); letter-spacing: 0.1em; text-transform: uppercase; }
+      .s-cercle .coeur { position: absolute; font: 500 64px/1 var(--f-titre); pointer-events: none; }
+
+      .s-coupe { background: #ff5a1f; color: #160700; }
+      .s-coupe .grand { margin: 0; font: 900 clamp(64px, 13vw, 210px)/0.9 var(--f-texte); font-stretch: 125%; letter-spacing: -0.04em; text-transform: uppercase; }
+
+      .s-brouille { background: #0c1110; color: #c8f7d8; }
+      .s-brouille .bloc { display: grid; gap: 18px; justify-items: start; }
+      .s-brouille .etiquette { margin: 0; font: 500 clamp(16px, 1.8vw, 22px)/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #6fd99a; }
+      .s-brouille .chiffre { margin: 0; font: 500 clamp(64px, 12vw, 180px)/0.95 var(--f-mono); letter-spacing: -0.04em; }
+
+      .s-frappe { background: #f2f2f4; }
+      .s-frappe .fenetre { width: min(760px, 100%); border-radius: 14px; background: #16161c; color: #e9e9ef; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.5); overflow: hidden; }
+      .s-frappe .barre { display: flex; gap: 7px; padding: 13px 16px; background: #212129; }
+      .s-frappe .barre i { width: 11px; height: 11px; border-radius: 50%; background: #3a3a45; }
+      .s-frappe .corps { padding: 26px 24px 34px; font: 400 clamp(16px, 2vw, 21px)/1.6 var(--f-mono); }
+      .s-frappe .corps p { margin: 0; }
+      .s-frappe .invite { color: #7c7cff; }
+    </style>
+  </head>
+  <body>
+    <header class="tete">
+      <h1 data-cinetique="monte" data-cinetique-par="lettre" data-cinetique-quand="chargement" data-cinetique-cascade="0,035">Cinétique</h1>
+      <p data-cinetique="doux" data-cinetique-par="ligne" data-cinetique-quand="chargement" data-cinetique-delai="0,35">Dix-huit mouvements de texte et huit composants, en DOM pur (Web Animations API). Le texte reste du texte : lu une fois, sélectionnable, à sa place exacte à la fin. Attributs : <code>data-cinetique</code>, <code>-par</code>, <code>-quand</code>, <code>-duree</code>, <code>-delai</code>, <code>-cascade</code>, <code>-ordre</code>, <code>-sortie</code>, <code>-rejoue</code>.</p>
+    </header>
+
+    <main>
+      <section class="s-mur" aria-labelledby="t-mur">
+        <header>
+          <h2 id="t-mur">Dix-huit préréglages</h2>
+          <p>Chaque mot porte le nom de son mouvement. En vert, les six joueurs (rebond, ressort, dépassement) ; les autres arrivent vite et se posent longuement.</p>
+        </header>
+        <ul class="mur" id="mur"></ul>
+      </section>
+
+      <section class="s s-ligne" aria-labelledby="t-ligne">
+        <p class="texte" id="ligne" data-cinetique="monte" data-cinetique-par="ligne">Une <em>ligne</em> à la fois : le paragraphe se recompose quand la fenêtre change, les balises <strong>en ligne</strong> restent, les accents — É, À, ç, œ — ne sont jamais coupés par le masque, ni les jambages (g, j, p, q, y). Un porte-monnaie, une anti&shy;constitutionnelle césure, et pourquoi pas&#8239;? <a href="#ligne">Un lien</a> qui reste un lien.</p>
+        <div class="legende"><h2 id="t-ligne">Par ligne · monte</h2><p><code>data-cinetique-par="ligne"</code> : les mots d'une ligne montent ensemble, la ligne recalculée au redimensionnement et à l'arrivée des polices.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#ligne">Rejouer</button>
+      </section>
+
+      <section class="s s-mot" aria-labelledby="t-mot">
+        <h2 class="grand" id="mot" data-cinetique="monte" data-cinetique-sortie="2,4" data-cinetique-rejoue>Livrer vendredi.<br />Dormir vendredi.</h2>
+        <div class="legende"><h2 id="t-mot">Par mot · sortie</h2><p><code>data-cinetique-sortie="2,4"</code> : le titre repart vers le haut 2,4 s après son arrivée ; <code>data-cinetique-rejoue</code> : il revient à chaque entrée.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#mot">Rejouer</button>
+      </section>
+
+      <section class="s s-ordres" aria-labelledby="t-ordres">
+        <p class="ordre" id="o1" data-cinetique="eclot" data-cinetique-par="lettre" data-cinetique-ordre="centre">Éclosion<small>ordre centre</small></p>
+        <p class="ordre" id="o2" data-cinetique="houle" data-cinetique-par="lettre" data-cinetique-ordre="bords" data-cinetique-delai="0,2">Fermeture<small>ordre bords</small></p>
+        <p class="ordre" id="o3" data-cinetique="net" data-cinetique-par="lettre" data-cinetique-ordre="hasard" data-cinetique-delai="0,4">Scintille<small>ordre hasard</small></p>
+        <div class="legende"><h2 id="t-ordres">Ordres</h2><p><code>data-cinetique-ordre</code> : debut, fin, centre, bords, hasard (graine fixe).</p></div>
+        <button class="rejouer" type="button" data-rejouer="#o1,#o2,#o3">Rejouer</button>
+      </section>
+
+      <section class="s s-survol" aria-labelledby="t-survol">
+        <nav aria-label="Exemple de navigation">
+          <ul>
+            <li><a href="#t-survol" data-cinetique="monte" data-cinetique-par="lettre" data-cinetique-quand="survol" data-cinetique-cascade="0,018" data-cinetique-duree="0,55">Travaux</a></li>
+            <li><a href="#t-survol" data-cinetique="monte" data-cinetique-par="lettre" data-cinetique-quand="survol" data-cinetique-cascade="0,018" data-cinetique-duree="0,55">Atelier</a></li>
+            <li><a href="#t-survol" data-cinetique="volet" data-cinetique-par="lettre" data-cinetique-quand="survol" data-cinetique-cascade="0,02" data-cinetique-duree="0,5">Journal</a></li>
+            <li><a href="#t-survol" data-cinetique="parasite" data-cinetique-par="mot" data-cinetique-quand="survol" data-cinetique-duree="0,5">Contact</a></li>
+          </ul>
+        </nav>
+        <div class="legende"><h2 id="t-survol">Survol</h2><p><code>data-cinetique-quand="survol"</code> : au survol ou au focus, le mot sort et rentre (interrompu proprement si l'on repasse).</p></div>
+      </section>
+
+      <section class="s s-roule" aria-labelledby="t-roule">
+        <p class="phrase">Pensé pour<br /><span id="roule" data-roule="les graphistes.|les développeurs.|tout le monde.|vous." data-roule-tempo="1,8">les graphistes.</span></p>
+        <div class="legende"><h2 id="t-roule">data-roule</h2><p>Une fente où un mot roule vers le suivant ; la largeur suit. <code>data-roule-tempo</code> en secondes.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#roule">Rouler</button>
+      </section>
+
+      <section class="s s-marque" aria-labelledby="t-marque">
+        <p class="phrase" id="marques">On peut <mark data-marque="surligneur">surligner</mark> une idée, <mark data-marque="souligne" data-cinetique-delai="0,5">souligner</mark> un mot, en <mark data-marque="barre" data-cinetique-delai="1">barrer</mark> un autre, <mark data-marque="cadre" data-cinetique-delai="1,4">encadrer</mark> un chiffre, ou <mark data-marque="cercle" data-cinetique-delai="2">entourer</mark> l'essentiel — même sur <mark data-marque="souligne" data-cinetique-delai="2,8">un passage qui passe à la ligne</mark>.</p>
+        <div class="legende"><h2 id="t-marque">data-marque</h2><p>surligneur, souligne, barre, cadre, cercle : tracé à la main (graine fixe), dessiné à l'entrée. <code>--marque-couleur</code>, <code>--marque-texte</code>.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#marques [data-marque]">Redessiner</button>
+      </section>
+
+      <section class="s s-defile" aria-labelledby="t-defile">
+        <div id="defile" data-defile data-defile-vitesse="90" data-defile-incline="-6" data-defile-separateur="  ✦  "><span>Lancer vendredi</span><span>Dormir le week-end</span><span>Recommencer lundi</span></div>
+        <div class="legende"><h2 id="t-defile">data-defile</h2><p>Rangées sans fin, sens alternés. <code>data-defile-vitesse</code> (px/s), <code>data-defile-incline</code> (degrés).</p></div>
+      </section>
+
+      <section class="s s-reflet" aria-labelledby="t-reflet">
+        <h2 class="grand" id="reflet" data-reflet data-cinetique-delai="0,2">Lumière</h2>
+        <div class="legende"><h2 id="t-reflet">data-reflet</h2><p>Un reflet traverse les lettres une fois (background-clip: text) ; <code>--reflet-couleur</code>.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#reflet">Rejouer</button>
+      </section>
+
+      <section class="s s-cercle" aria-labelledby="t-cercle">
+        <div class="badge">
+          <div id="cercle" data-cercle data-cercle-vitesse="16">Fait à la main · Presse · Novembre 2026 · </div>
+          <span class="coeur" aria-hidden="true">✳</span>
+        </div>
+        <div class="legende"><h2 id="t-cercle">data-cercle</h2><p>Le texte posé sur un cercle qui tourne (SVG textPath). <code>data-cercle-rayon</code>, <code>data-cercle-vitesse</code>.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#cercle">Rejouer</button>
+      </section>
+
+      <section class="s s-coupe" aria-labelledby="t-coupe">
+        <h2 class="grand" id="coupe" data-coupe>Tranché</h2>
+        <div class="legende"><h2 id="t-coupe">data-coupe</h2><p>Le mot coupé en son milieu ; les moitiés glissent en sens contraires et se verrouillent.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#coupe">Rejouer</button>
+      </section>
+
+      <section class="s s-brouille" aria-labelledby="t-brouille">
+        <div class="bloc">
+          <p class="etiquette" id="brouille1" data-brouille>Latence moyenne · région eu-west-3</p>
+          <p class="chiffre" id="brouille2" data-brouille data-cinetique-delai="0,3" data-cinetique-duree="1,4">12,48 ms</p>
+        </div>
+        <div class="legende"><h2 id="t-brouille">data-brouille</h2><p>Les caractères défilent puis se résolvent de gauche à droite ; chaque case garde sa largeur.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#brouille1,#brouille2">Rejouer</button>
+      </section>
+
+      <section class="s s-frappe" aria-labelledby="t-frappe">
+        <div class="fenetre">
+          <div class="barre" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="corps">
+            <p id="frappe" data-frappe data-frappe-vitesse="18"><span class="invite">~/presse $</span> npx presse publier --site novembre</p>
+          </div>
+        </div>
+        <div class="legende"><h2 id="t-frappe">data-frappe</h2><p>Frappe au rythme naturel (reproductible), avec curseur. <code>data-frappe-vitesse</code> en caractères par seconde.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#frappe">Rejouer</button>
+      </section>
+    </main>
+  </body>
+</html>
