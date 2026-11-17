@@ -160,12 +160,14 @@ fn sable_r(s: vec2f) -> f32 {
   return clamp(0.04 + 0.52 * (1.0 - s.x / tu.res.x) + 0.2 * (n - 0.5), 0.02, 0.7);
 }
 // Sable : le chemin d'un grain de la classe k, à l'âge a (0…1) : soufflé vers la droite, il tombe en flottant.
-fn sable_d(k: f32, a: f32) -> vec2f {
+fn sable_d(k: f32, a: f32, s: vec2f) -> vec2f {
   let res = tu.res.xy;
   let dpr = tu.res.z;
-  let vx = (0.22 + 0.1 * k) * res.x * pow(a, 1.6);
-  let vy = (0.06 + 0.05 * k) * res.y * a * a - 0.05 * res.y * sin(a * 3.1416) * (k - 2.0) * 0.5;
-  return vec2f(vx, vy + sin(a * 7.0 + k * 1.3) * 6.0 * dpr * a);
+  let vx = (0.12 + 0.07 * k) * res.x * pow(a, 1.5);
+  let vy = (0.05 + 0.04 * k) * res.y * a * a - 0.04 * res.y * sin(a * 3.1416) * (k - 2.0) * 0.5;
+  // Une turbulence lisse (elle dépend du lieu et de l'âge, pas du grain) : les grains ne suivent pas tous la même ligne.
+  let tb = vec2f(vn(s / (45.0 * dpr) + vec2f(k * 3.7, a * 2.0)), vn(s / (45.0 * dpr) + vec2f(9.1, k * 1.9 - a * 2.0))) - 0.5;
+  return vec2f(vx, vy) + tb * a * 90.0 * dpr;
 }
 
 @fragment fn fs(in: VO) -> @location(0) vec4f {
@@ -407,7 +409,7 @@ fn sable_d(k: f32, a: f32) -> vec2f {
       col *= 1.0 - 0.3 * v * smoothstep(0.2, 1.0, length(px - c) / length(c));
     }
     let a = 1.0 - lisse((p - cut) / 0.16);
-    let fl = 0.8 * exp(-pow((p - cut) / 0.055, 2.0));
+    let fl = 0.65 * exp(-pow((p - cut) / 0.055, 2.0));
     return voile(col, a, vec3f(1.0), fl);
   }
 
@@ -555,7 +557,7 @@ fn sable_d(k: f32, a: f32) -> vec2f {
     // Sable : la page se défait en grains depuis la droite, sur un front bruité ; les grains sont soufflés vers la
     // droite, tombent en flottant, rapetissent et s'éteignent.
     let g = 3.0 * dpr;
-    let lt = 0.26;
+    let lt = 0.3;
     let cell0 = floor(px / g);
     if (p < sable_r((cell0 + 0.5) * g) + 0.03 * h21(cell0)) { return vec4f(old(px), 1.0); }
     // Pour chaque classe de grains (cinq vitesses), on remonte au grain qui serait arrivé ici.
@@ -564,7 +566,7 @@ fn sable_d(k: f32, a: f32) -> vec2f {
       var s = px;
       for (var it = 0; it < 3; it++) {
         let a = clamp((p - sable_r(s)) / lt, 0.0, 1.0);
-        s = px - sable_d(k, a);
+        s = px - sable_d(k, a, s);
       }
       let cell = floor(s / g);
       if (floor(h21(cell + 17.0) * 5.0) != k) { continue; }
@@ -594,12 +596,12 @@ fn sable_d(k: f32, a: f32) -> vec2f {
     let lens = 0.35 * res.y;
     let rr = 0.55 * vn(vec2f(ang * 22.0, 1.0 + p * 1.5)) + 0.45 * vn(vec2f(ang * 57.0, 3.0 - p * 2.0));
     let ray = smoothstep(0.3, 0.85, rr);
-    let front = mix(dmin - lens * 1.6, dmax + lens * 1.2, ease_io(p)) + (ray - 0.5) * lens * 0.6;
+    let front = mix(dmin - lens * 1.15, dmax + lens * 1.2, lisse(p)) + (ray - 0.5) * lens * 0.3;
     let s = d - front;
     let alive = 1.0 - lisse((p - 0.8) / 0.2);
     let warm = vec3f(1.0, 0.94, 0.8);
     if (s < 0.0) {
-      return vec4f(warm, ray * exp(s / (0.3 * lens)) * 0.85 * alive);
+      return vec4f(warm, (0.25 + 0.75 * ray) * exp(s / (0.3 * lens)) * 0.85 * alive);
     }
     let w = max(1.0 - s / lens, 0.0);
     var col = old(px);
@@ -609,9 +611,9 @@ fn sable_d(k: f32, a: f32) -> vec2f {
       for (var k = 0; k < 8; k++) { acc += old(px - dir * L * f32(k) / 7.0); }
       col = acc / 8.0;
     }
-    col += warm * ray * w * w * 0.35;
-    let a = lisse(s / (0.05 * lens));
-    return voile(col, a, warm, (ray * 0.7 + 0.15) * w * w * w * 0.8 * alive);
+    col += warm * ray * w * w * 0.3;
+    let a = lisse(s / (0.2 * lens));
+    return voile(col, a, warm, (0.3 + 0.7 * ray) * w * w * 0.9 * alive);
   }
 
   if (style == 18) {
@@ -622,9 +624,9 @@ fn sable_d(k: f32, a: f32) -> vec2f {
     let w1 = vec2f(fbm(a2 * 2.0 + vec2f(0.0, p * 0.6)), fbm(a2 * 2.0 + vec2f(5.2, 1.3 - p * 0.6)));
     let w2 = vec2f(fbm(a2 * 2.0 + 3.0 * w1 + vec2f(1.7, 9.2)), fbm(a2 * 2.0 + 3.0 * w1 + vec2f(8.3, 2.8)));
     let q = px + (w2 - 0.5) * 2.0 * 110.0 * dpr * e + vec2f(0.0, 50.0 * dpr * e * e);
-    let m = 0.5 + 0.5 * sin(6.0 * (a2.x * 0.8 + a2.y * 0.5) + 9.0 * w2.x + p * 2.0);
-    let vv = mix(m, fbm(a2 * 3.0 + 2.0 * w2), 0.5);
-    let thr = mix(-0.14, 1.14, e);
+    let m = 0.5 + 0.5 * sin(10.0 * (a2.x * 0.8 + a2.y * 0.5) + 7.0 * w2.x + p * 2.0);
+    let vv = mix(m, fbm(a2 * 3.0 + 2.0 * w2), 0.35);
+    let thr = mix(-0.14, 1.14, mix(p, e, 0.4));
     var col = old(q);
     let rim = 1.0 - lisse((vv - thr) / 0.12);
     col = mix(col, col * vec3f(0.62, 0.66, 0.8), rim * 0.6);
