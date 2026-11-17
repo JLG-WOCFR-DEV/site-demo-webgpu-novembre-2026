@@ -898,6 +898,11 @@ const span = (classe: string, texte?: string | Node) => {
   if (texte !== undefined) s.append(texte);
   return s;
 };
+/** Après restauration : pas d'attribut class="" ou style="" laissé vide par le module. */
+function attributsVides(el: Element) {
+  if (el.getAttribute("class") === "") el.removeAttribute("class");
+  if (el.getAttribute("style") === "") el.removeAttribute("style");
+}
 const estCalque = (n: Node) => n instanceof Element && (n.hasAttribute("data-cin-calque") || n.classList.contains("cin-lu"));
 const REMPLACES = new Set(["IMG", "PICTURE", "VIDEO", "AUDIO", "CANVAS", "IFRAME", "OBJECT", "EMBED", "INPUT", "SELECT", "TEXTAREA", "BUTTON", "METER", "PROGRESS"]);
 /** Une copie montrée : sans id, hors de l'ordre de tabulation, marquée comme copie (le module ne l'arme pas). */
@@ -1099,6 +1104,7 @@ class Decoupe {
     this.restaure = true;
     this.el.replaceChildren(...Array.from(this.lu.childNodes));
     if (this.classes.length) this.el.classList.remove(...this.classes);
+    attributsVides(this.el);
   }
 }
 /** Largeur et position des morceaux dans le texte d'origine (Range), dans l'ordre de la découpe. */
@@ -1619,6 +1625,7 @@ class Texte extends Piece {
     this.fondu?.cancel();
     if (this.opaciteAvant !== null) this.el.style.opacity = this.opaciteAvant;
     this.d?.restaurer();
+    attributsVides(this.el);
     this.d = null;
     super.detruire();
   }
@@ -1916,6 +1923,7 @@ class Marquage extends Piece {
     this.svg.remove();
     this.el.classList.remove("cin-marque", `cin-marque-${this.type}`);
     this.el.style.color = this.couleurAvant;
+    attributsVides(this.el);
     super.detruire();
   }
 }
@@ -2040,6 +2048,7 @@ class Defile extends Piece {
   detruire() {
     for (const a of this.anims) a.cancel();
     this.el.classList.remove("cin-defile");
+    attributsVides(this.el);
     this.el.replaceChildren(...this.origine);
     super.detruire();
   }
@@ -2108,6 +2117,7 @@ class Reflet extends Piece {
       this.el.style.position = "";
       this.posPerso = false;
     }
+    attributsVides(this.el);
   }
   jouer() {
     this.annulerSortie();
@@ -2621,6 +2631,7 @@ class Frappe extends Piece {
       this.el.style.position = "";
       this.posPerso = false;
     }
+    attributsVides(this.el);
   }
   jouer() {
     this.annulerSortie();
