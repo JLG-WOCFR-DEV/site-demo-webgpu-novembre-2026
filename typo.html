@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Typo · six entrées de texte · Presse</title>
+    <meta name="description" content="Essai du module typo de Presse : lignes qui s'étirent au défilement, texte sur une sphère, encre qui prend forme, tracé au pinceau, éclats qui s'emboîtent, fragments qui se remplissent." />
+    <meta name="theme-color" content="#f2f2f4" />
+    <script type="module" src="/src/presse/essais/typo.ts"></script>
+    <style>
+      :root {
+        --f-texte: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+        --f-titre: "Bodoni Moda Variable", "Bodoni Moda", Didot, Georgia, serif;
+      }
+      * { box-sizing: border-box; }
+      html { background: #f2f2f4; }
+      body { margin: 0; color: #15151a; font: 400 16px/1.5 var(--f-texte); }
+      code { font: 500 0.92em/1 ui-monospace, "IBM Plex Mono", monospace; }
+      .s { position: relative; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 72px 16px 96px; overflow: clip; }
+      .legende { position: absolute; left: 16px; bottom: 18px; right: 140px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font: 500 12px/1.35 var(--f-texte); letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.72; }
+      .legende h2 { margin: 0; font: inherit; letter-spacing: inherit; }
+      .legende p { margin: 0; text-transform: none; letter-spacing: 0; max-width: 62ch; }
+      .rejouer { position: absolute; right: 16px; bottom: 14px; font: 600 12px/1 var(--f-texte); letter-spacing: 0.06em; text-transform: uppercase; color: inherit; background: none; border: 1px solid currentColor; border-radius: 999px; padding: 9px 14px; cursor: pointer; opacity: 0.8; }
+      .rejouer:hover { opacity: 1; }
+      .rejouer:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+      @media (min-width: 720px) { .legende { left: 28px; bottom: 24px; } .rejouer { right: 28px; bottom: 20px; } }
+
+      /* En-tête. */
+      .tete { min-height: 70vh; display: grid; align-content: end; padding: 96px 16px 48px; max-width: 1100px; margin: 0 auto; }
+      .tete h1 { font: 500 clamp(56px, 11vw, 150px)/0.9 var(--f-titre); letter-spacing: -0.03em; margin: 0 0 18px; }
+      .tete p { max-width: 62ch; margin: 0; color: #55555f; }
+
+      /* (1) étire : liste de titres, bleu sur clair. */
+      .s-etire { background: #f2f2f4; color: #1717f0; display: block; padding-top: 30vh; padding-bottom: 40vh; }
+      .s-etire ul { list-style: none; margin: 0 auto; padding: 0; max-width: 1200px; font: 500 clamp(30px, 4.4vw, 58px)/0.98 var(--f-titre); text-align: center; text-transform: uppercase; }
+      .s-etire li { position: relative; margin: 0 0 0.62em; }
+      .s-etire [data-typo-ligne] { display: block; }
+      .s-etire em { font-style: italic; }
+      .s-etire .num { position: absolute; left: 0; top: 0.9em; font: 400 11px/1 var(--f-titre); letter-spacing: 0.04em; }
+      .s-etire .num.d { left: auto; right: 0; }
+      .s-etire .legende { position: sticky; top: calc(100vh - 60px); bottom: auto; margin-top: -40px; }
+      .s-etire .rejouer { position: sticky; float: right; top: calc(100vh - 60px); bottom: auto; }
+
+      /* (2) sphère : capitales romaines. */
+      .s-sphere { background: #f3e6d8; color: #2b0e0b; }
+      .s-sphere .mot { margin: 0; font: 500 clamp(38px, 6.6vw, 96px)/1.04 var(--f-titre); letter-spacing: 0.03em; text-align: center; }
+
+      /* (3) encre : un très grand chiffre. */
+      .s-encre { background: #b6c5c4; color: #5a0405; }
+      .s-encre .mot { margin: 0; font: 800 min(38vw, 64vh)/0.86 var(--f-texte); font-stretch: 125%; letter-spacing: -0.02em; }
+
+      /* (4) tracé : un nombre en didone. */
+      .s-trace { background: #f7ebe7; color: #0b0a26; }
+      .s-trace .mot { margin: 0; font: 500 min(27vw, 46vh)/1 var(--f-titre); letter-spacing: -0.01em; }
+
+      /* (5) éclats : blanc sur noir, puis noir sur gris (piloté par le défilement). */
+      .s-eclats { background: #000; color: #fff; }
+      .s-eclats h2.mot { margin: 0; font: 900 clamp(48px, 12.5vw, 190px)/0.9 var(--f-texte); font-stretch: 125%; letter-spacing: -0.035em; }
+      .s-eclats2 { background: #babbb3; color: #000; min-height: 80vh; }
+      .s-eclats2 p.mot { margin: 0; font: 900 clamp(56px, 15vw, 220px)/0.9 var(--f-texte); font-stretch: 112%; letter-spacing: -0.03em; }
+
+      /* (6) fragments : une adresse, blanc sur bleu nuit. */
+      .s-fragments { background: #03031f; color: #f3efff; justify-items: start; }
+      .s-fragments address { font: 500 clamp(34px, 6vw, 86px)/1.1 var(--f-texte); font-style: normal; letter-spacing: -0.015em; margin-left: clamp(0px, 6vw, 120px); }
+    </style>
+  </head>
+  <body>
+    <header class="tete">
+      <h1>Typo</h1>
+      <p>Six entrées de texte cinétiques, d'après deux vidéos d'Aristide Benoist. Le texte reste du vrai texte (sélectionnable, lu une fois) ; l'effet est peint par-dessus, puis retiré. Attributs : <code>data-typo</code>, <code>data-typo-quand</code>, <code>data-typo-duree</code>, <code>data-typo-delai</code>, <code>data-typo-rejoue</code>.</p>
+    </header>
+
+    <main>
+      <section class="s s-etire" aria-labelledby="t-etire">
+        <ul id="etire" data-typo="etire" aria-label="Projets">
+          <li><span class="num" aria-hidden="true">I</span><span data-typo-ligne>2021</span><span data-typo-ligne><em>OURA ISLE</em></span><span data-typo-ligne>SFO</span><span class="num d" aria-hidden="true">I</span></li>
+          <li><span class="num" aria-hidden="true">II</span><span data-typo-ligne>2023</span><span data-typo-ligne>PACARI</span><span data-typo-ligne>LA</span><span class="num d" aria-hidden="true">II</span></li>
+          <li><span class="num" aria-hidden="true">III</span><span data-typo-ligne>2022</span><span data-typo-ligne>VIDA MAGIC</span><span data-typo-ligne>CLT</span><span class="num d" aria-hidden="true">III</span></li>
+          <li><span class="num" aria-hidden="true">IV</span><span data-typo-ligne>2021</span><span data-typo-ligne><em>NORD X ALBA</em></span><span data-typo-ligne>PDX</span><span class="num d" aria-hidden="true">IV</span></li>
+          <li><span class="num" aria-hidden="true">V</span><span data-typo-ligne>2022</span><span data-typo-ligne>SEL &amp; CÈDRE</span><span data-typo-ligne>SFO</span><span class="num d" aria-hidden="true">V</span></li>
+          <li><span class="num" aria-hidden="true">VI</span><span data-typo-ligne>2020</span><span data-typo-ligne><em>MAISON VERRE</em></span><span data-typo-ligne>NYC</span><span class="num d" aria-hidden="true">VI</span></li>
+          <li><span class="num" aria-hidden="true">VII</span><span data-typo-ligne>2024</span><span data-typo-ligne>ATLAS NOCTURNE</span><span data-typo-ligne>LYS</span><span class="num d" aria-hidden="true">VII</span></li>
+          <li><span class="num" aria-hidden="true">VIII</span><span data-typo-ligne>2019</span><span data-typo-ligne><em>CORAL BLEU</em></span><span data-typo-ligne>MRS</span><span class="num d" aria-hidden="true">VIII</span></li>
+          <li><span class="num" aria-hidden="true">IX</span><span data-typo-ligne>2023</span><span data-typo-ligne>HALO STUDIO</span><span data-typo-ligne>BER</span><span class="num d" aria-hidden="true">IX</span></li>
+          <li><span class="num" aria-hidden="true">X</span><span data-typo-ligne>2022</span><span data-typo-ligne><em>PAPIER CIEL</em></span><span data-typo-ligne>NTE</span><span class="num d" aria-hidden="true">X</span></li>
+          <li><span class="num" aria-hidden="true">XI</span><span data-typo-ligne>2021</span><span data-typo-ligne>OMBRE PORTÉE</span><span data-typo-ligne>BOD</span><span class="num d" aria-hidden="true">XI</span></li>
+          <li><span class="num" aria-hidden="true">XII</span><span data-typo-ligne>2024</span><span data-typo-ligne><em>LUMEN X ARC</em></span><span data-typo-ligne>OSL</span><span class="num d" aria-hidden="true">XII</span></li>
+          <li><span class="num" aria-hidden="true">XIII</span><span data-typo-ligne>2020</span><span data-typo-ligne>FIGUE NOIRE</span><span data-typo-ligne>LIS</span><span class="num d" aria-hidden="true">XIII</span></li>
+          <li><span class="num" aria-hidden="true">XIV</span><span data-typo-ligne>2023</span><span data-typo-ligne><em>TERRE CUITE</em></span><span data-typo-ligne>MAD</span><span class="num d" aria-hidden="true">XIV</span></li>
+          <li><span class="num" aria-hidden="true">XV</span><span data-typo-ligne>2022</span><span data-typo-ligne>VOLT ROSE</span><span data-typo-ligne>TYO</span><span class="num d" aria-hidden="true">XV</span></li>
+          <li><span class="num" aria-hidden="true">XVI</span><span data-typo-ligne>2021</span><span data-typo-ligne><em>BRUME D'OR</em></span><span data-typo-ligne>SLC</span><span class="num d" aria-hidden="true">XVI</span></li>
+          <li><span class="num" aria-hidden="true">XVII</span><span data-typo-ligne>2024</span><span data-typo-ligne>PALAIS FROID</span><span data-typo-ligne>CPH</span><span class="num d" aria-hidden="true">XVII</span></li>
+          <li><span class="num" aria-hidden="true">XVIII</span><span data-typo-ligne>2023</span><span data-typo-ligne><em>ÉCUME</em></span><span data-typo-ligne>VNC</span><span class="num d" aria-hidden="true">XVIII</span></li>
+        </ul>
+        <div class="legende"><h2 id="t-etire">1 · étire</h2><p>Faites défiler : les lignes s'élargissent selon la vitesse et leur distance au centre.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#etire">Lancer</button>
+      </section>
+
+      <section class="s s-sphere" aria-labelledby="t-sphere">
+        <p class="mot" id="sphere" data-typo="sphere">M AGRIPPA<br />LUCII FILIUS<br />COS TERTIVM<br />FECIT</p>
+        <div class="legende"><h2 id="t-sphere">2 · sphère</h2><p>Les lettres posées sur une boule qui tourne, puis remises à plat (3D CSS).</p></div>
+        <button class="rejouer" type="button" data-rejouer="#sphere">Rejouer</button>
+      </section>
+
+      <section class="s s-encre" aria-labelledby="t-encre">
+        <p class="mot" id="encre" data-typo="encre">20</p>
+        <div class="legende"><h2 id="t-encre">3 · encre</h2><p>Une tache molle qui se resserre jusqu'à la lettre nette, frange colorée au bord (WebGPU, champ de distance).</p></div>
+        <button class="rejouer" type="button" data-rejouer="#encre">Rejouer</button>
+      </section>
+
+      <section class="s s-trace" aria-labelledby="t-trace">
+        <p class="mot" id="trace" data-typo="trace">1932</p>
+        <div class="legende"><h2 id="t-trace">4 · tracé</h2><p>Chaque chiffre s'écrit en trois coups de pinceau obliques.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#trace">Rejouer</button>
+      </section>
+
+      <section class="s s-eclats" aria-labelledby="t-eclats">
+        <h2 class="mot" id="eclats" data-typo="eclats">ALANDRIA</h2>
+        <div class="legende"><h2 id="t-eclats">5 · éclats</h2><p>Chaque lettre en trois à cinq éclats qui arrivent en vol et s'emboîtent.</p></div>
+        <button class="rejouer" type="button" data-rejouer="#eclats">Rejouer</button>
+      </section>
+      <section class="s s-eclats2" aria-label="Éclats pilotés par le défilement">
+        <p class="mot" id="eclats-defil" data-typo="eclats" data-typo-quand="defilement">WOOAA</p>
+        <div class="legende"><p>Le même effet, <code>data-typo-quand="defilement"</code> : l'assemblage suit le défilement.</p></div>
+      </section>
+
+      <section class="s s-fragments" aria-labelledby="t-fragments">
+        <address id="fragments" data-typo="fragments">19 Rue des Rosiers<br />75003 Paris<br />France</address>
+        <div class="legende"><h2 id="t-fragments">6 · fragments</h2><p>Des bouts de lettres se remplissent, ligne après ligne (WebGPU, bruit cellulaire seuillé).</p></div>
+        <button class="rejouer" type="button" data-rejouer="#fragments">Rejouer</button>
+      </section>
+    </main>
+  </body>
+</html>

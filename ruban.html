@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ruban · bandes d'images en mouvement · Presse</title>
+    <meta name="description" content="Essai du composant ruban de Presse : une bande de photos dessinée par WebGPU, qui se vrille, se comprime, se bombe, passe sous une lentille ou tourne sur une roue selon la vitesse du défilement." />
+    <meta name="theme-color" content="#111111" />
+    <script type="module" src="/src/presse/essais/ruban.ts"></script>
+    <style>
+      :root {
+        --papier: #efebe1;
+        --encre: #1d1b17;
+        --gris: #6d675c;
+        --filet: #d8d2c3;
+        --vermillon: #d9472b;
+        --nuit: #111111;
+        --f-texte: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+        --f-titre: "Bodoni Moda Variable", "Bodoni Moda", Didot, Georgia, serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--papier); color: var(--encre); font: 400 16px/1.5 var(--f-texte); }
+      code { font: 500 0.88em/1 ui-monospace, "IBM Plex Mono", monospace; }
+      .entete { max-width: 1080px; margin: 0 auto; padding: 48px 20px 36px; }
+      .entete h1 { font: 500 clamp(40px, 7vw, 72px)/1 var(--f-titre); letter-spacing: -0.02em; margin: 0 0 12px; }
+      .entete p { max-width: 62ch; margin: 0; color: var(--gris); }
+      section { padding: 44px 0 52px; }
+      section > .texte { max-width: 1080px; margin: 0 auto; padding: 0 20px 22px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 24px; align-items: end; }
+      section h2 { font: 500 clamp(28px, 4vw, 40px)/1.05 var(--f-titre); margin: 0 0 6px; grid-column: 1 / -1; }
+      section p { margin: 0; color: var(--gris); max-width: 64ch; }
+      .choix { font-size: 13px; color: var(--gris); min-height: 1.5em; text-align: right; }
+      .sombre { background: var(--nuit); color: #ece6d8; --ruban-accent: #f0b429; }
+      .sombre p, .sombre .choix { color: #9b9383; }
+      .clair + .clair { border-top: 1px solid var(--filet); }
+      .cadre { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+      [data-ruban] { --ruban-accent: var(--vermillon); }
+      .sombre [data-ruban] { --ruban-accent: #f0b429; }
+      @media (max-width: 600px) { section > .texte { grid-template-columns: 1fr; } .choix { text-align: left; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="entete">
+        <h1>Ruban</h1>
+        <p>Une bande de photos dessinée d'un seul tenant par la carte graphique ; la vitesse du défilement en fait une figure. Glissez, utilisez la molette horizontale (ou Maj + molette) ou les flèches. Attributs : <code>data-ruban</code>, <code>data-ruban-hauteur</code>, <code>data-ruban-joint</code>, <code>data-ruban-repos</code>, <code>data-ruban-auto</code>.</p>
+      </header>
+
+      <section class="sombre" aria-labelledby="t-torsade">
+        <div class="texte">
+          <h2 id="t-torsade">La torsade</h2>
+          <p>La bande se vrille autour de son axe : elle se pince là où elle est de chant et montre son verso sur les demi-tours. Plus elle va vite, plus la torsion se resserre et court le long des images.</p>
+          <p class="choix" data-choix aria-live="polite"></p>
+        </div>
+        <div data-ruban="torsade" data-ruban-hauteur="300" data-ruban-joint="6" data-ruban-repos="0.55" aria-label="Douze photos en ruban torsadé">
+          <img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate au-dessus d'une plage, falaises vertes à droite." />
+          <img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais : azalées rouges, pelouse et maison de bois sous les pins." />
+          <img src="./plates/fig.jpg" width="1408" height="1408" alt="Une demi-figue posée sur une pierre près d'une fenêtre." />
+          <img src="./plates/yosemite.jpg" width="1728" height="1150" alt="La vallée de Yosemite : parois de granit, forêt au premier plan." />
+          <img src="./plates/flower.jpg" width="1408" height="1408" alt="Une renoncule blanche sur fond gris." />
+          <img src="./plates/alcatraz.jpg" width="1728" height="1150" alt="L'île d'Alcatraz et son phare au milieu de la baie bleue." />
+          <img src="./plates/cerf.jpg" width="1728" height="1150" alt="Un cerf sur un sentier bordé de troncs, dans l'herbe verte." />
+          <img src="./plates/steel.jpg" width="1408" height="1408" alt="Un cylindre d'acier sur une ardoise noire." />
+          <img src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées." />
+          <img src="./plates/dunes.jpg" width="1728" height="1150" alt="Des dunes de sable clair, une branche morte, des montagnes au loin." />
+          <img src="./plates/bowl.jpg" width="1728" height="1152" alt="Un bol de céramique blanche sur un plan clair." />
+          <img src="./plates/vanilla.jpg" width="1728" height="1152" alt="Deux gousses de vanille sur un papier crème." />
+        </div>
+      </section>
+
+      <section class="clair" aria-labelledby="t-accordeon">
+        <div class="texte">
+          <h2 id="t-accordeon">L'accordéon</h2>
+          <p>Avec la vitesse, les images se compriment et la rangée entière se resserre en une frise de vignettes, puis se redéploie quand elle ralentit. Ici, elle défile seule tant qu'on ne la survole pas.</p>
+          <p class="choix" data-choix aria-live="polite"></p>
+        </div>
+        <div data-ruban="accordeon" data-ruban-hauteur="260" data-ruban-joint="8" data-ruban-auto="0.12" aria-label="Treize photos en frise">
+          <img src="./img/dunes-960.webp" width="960" height="639" alt="Des dunes de sable clair, une branche morte, des montagnes au loin." />
+          <img src="./img/lac-960.webp" width="960" height="639" alt="Un lac de barrage entre des collines dorées." />
+          <img src="./img/cerf-960.webp" width="960" height="639" alt="Un cerf sur un sentier bordé de troncs, dans l'herbe verte." />
+          <img src="./img/pont-960.webp" width="960" height="639" alt="Le Golden Gate au-dessus d'une plage, falaises vertes à droite." />
+          <img src="./img/fig-960.webp" width="960" height="960" alt="Une demi-figue posée sur une pierre près d'une fenêtre." />
+          <img src="./img/jardin-960.webp" width="960" height="639" alt="Un jardin japonais : azalées rouges, pelouse et maison de bois sous les pins." />
+          <img src="./img/alcatraz-960.webp" width="960" height="639" alt="L'île d'Alcatraz et son phare au milieu de la baie bleue." />
+          <img src="./img/flower-960.webp" width="960" height="960" alt="Une renoncule blanche sur fond gris." />
+          <img src="./img/yosemite-960.webp" width="960" height="639" alt="La vallée de Yosemite : parois de granit, forêt au premier plan." />
+          <img src="./img/glass-960.webp" width="960" height="640" alt="Un verre épais couché sur une table blanche." />
+          <img src="./img/steel-960.webp" width="960" height="960" alt="Un cylindre d'acier sur une ardoise noire." />
+          <img src="./img/bowl-960.webp" width="960" height="640" alt="Un bol de céramique blanche sur un plan clair." />
+          <img src="./img/vanilla-960.webp" width="960" height="640" alt="Deux gousses de vanille sur un papier crème." />
+        </div>
+      </section>
+
+      <section class="clair" aria-labelledby="t-barillet">
+        <div class="texte">
+          <h2 id="t-barillet">Le barillet</h2>
+          <p>Les images s'empilent en pleine largeur ; la molette les fait défiler et les bords se courbent en tonneau, d'autant plus que le défilement est rapide.</p>
+          <p class="choix" data-choix aria-live="polite"></p>
+        </div>
+        <div class="cadre">
+          <div data-ruban="barillet" data-ruban-hauteur="560" data-ruban-joint="8" aria-label="Sept paysages empilés">
+            <img src="./plates/yosemite.jpg" width="1728" height="1150" alt="La vallée de Yosemite : parois de granit, forêt au premier plan." />
+            <img src="./plates/jardin.jpg" width="1728" height="1150" alt="Un jardin japonais : azalées rouges, pelouse et maison de bois sous les pins." />
+            <img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate au-dessus d'une plage, falaises vertes à droite." />
+            <img src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées." />
+            <img src="./plates/alcatraz.jpg" width="1728" height="1150" alt="L'île d'Alcatraz et son phare au milieu de la baie bleue." />
+            <img src="./plates/cerf.jpg" width="1728" height="1150" alt="Un cerf sur un sentier bordé de troncs, dans l'herbe verte." />
+            <img src="./plates/dunes.jpg" width="1728" height="1150" alt="Des dunes de sable clair, une branche morte, des montagnes au loin." />
+          </div>
+        </div>
+      </section>
+
+      <section class="clair" aria-labelledby="t-lentille">
+        <div class="texte">
+          <h2 id="t-lentille">La lentille</h2>
+          <p>Une bosse de verre traverse la rangée de cartes à mesure qu'elle défile, et grossit la carte sur laquelle elle passe. Au survol, elle suit le pointeur.</p>
+          <p class="choix" data-choix aria-live="polite"></p>
+        </div>
+        <div data-ruban="lentille" data-ruban-hauteur="250" data-ruban-joint="14" data-ruban-rayon="18" aria-label="Huit cartes sous une lentille">
+          <img src="./img/steel-960.webp" width="960" height="960" alt="Un cylindre d'acier sur une ardoise noire." />
+          <img src="./img/fig-960.webp" width="960" height="960" alt="Une demi-figue posée sur une pierre près d'une fenêtre." />
+          <img src="./img/flower-960.webp" width="960" height="960" alt="Une renoncule blanche sur fond gris." />
+          <img src="./img/bowl-960.webp" width="960" height="640" alt="Un bol de céramique blanche sur un plan clair." />
+          <img src="./img/glass-960.webp" width="960" height="640" alt="Un verre épais couché sur une table blanche." />
+          <img src="./img/vanilla-960.webp" width="960" height="640" alt="Deux gousses de vanille sur un papier crème." />
+          <img src="./img/dunes-960.webp" width="960" height="639" alt="Des dunes de sable clair, une branche morte, des montagnes au loin." />
+          <img src="./img/jardin-960.webp" width="960" height="639" alt="Un jardin japonais : azalées rouges, pelouse et maison de bois sous les pins." />
+        </div>
+      </section>
+
+      <section class="clair" aria-labelledby="t-roue">
+        <div class="texte">
+          <h2 id="t-roue">La roue</h2>
+          <p>À gauche, les vignettes tournent sur un arc ; à droite, la grande image de la vignette courante, en fondu enchaîné. Molette, glisser vertical, flèches ↑ ↓.</p>
+          <p class="choix" data-choix aria-live="polite"></p>
+        </div>
+        <div class="cadre">
+          <div data-ruban="roue" data-ruban-hauteur="520" aria-label="Dix-sept images sur une roue">
+            <img src="./img/pont-960.webp" width="960" height="639" alt="Le Golden Gate au-dessus d'une plage, falaises vertes à droite." />
+            <img src="./img/alcatraz-960.webp" width="960" height="639" alt="L'île d'Alcatraz et son phare au milieu de la baie bleue." />
+            <img src="./img/jardin-960.webp" width="960" height="639" alt="Un jardin japonais : azalées rouges, pelouse et maison de bois sous les pins." />
+            <img src="./img/yosemite-960.webp" width="960" height="639" alt="La vallée de Yosemite : parois de granit, forêt au premier plan." />
+            <img src="./img/lac-960.webp" width="960" height="639" alt="Un lac de barrage entre des collines dorées." />
+            <img src="./img/cerf-960.webp" width="960" height="639" alt="Un cerf sur un sentier bordé de troncs, dans l'herbe verte." />
+            <img src="./img/dunes-960.webp" width="960" height="639" alt="Des dunes de sable clair, une branche morte, des montagnes au loin." />
+            <img src="./img/fig-960.webp" width="960" height="960" alt="Une demi-figue posée sur une pierre près d'une fenêtre." />
+            <img src="./img/flower-960.webp" width="960" height="960" alt="Une renoncule blanche sur fond gris." />
+            <img src="./img/glass-960.webp" width="960" height="640" alt="Un verre épais couché sur une table blanche." />
+            <img src="./img/steel-960.webp" width="960" height="960" alt="Un cylindre d'acier sur une ardoise noire." />
+            <img src="./img/bowl-960.webp" width="960" height="640" alt="Un bol de céramique blanche sur un plan clair." />
+            <img src="./img/vanilla-960.webp" width="960" height="640" alt="Deux gousses de vanille sur un papier crème." />
+            <img src="./img/app-galerie-960.webp" width="960" height="640" alt="La page Galerie : des photos en tonneau 3D." />
+            <img src="./img/app-grille-960.webp" width="960" height="640" alt="La page Grille : un mur de photos en mosaïque." />
+            <img src="./img/app-liquide-960.webp" width="960" height="640" alt="La page Liquide : sept photos en cartes de verre." />
+            <img src="./img/app-atelier-960.webp" width="960" height="640" alt="La page Atelier : un objet 3D rendu en caractères." />
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

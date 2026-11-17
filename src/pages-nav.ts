@@ -38,6 +38,8 @@ export const PAGES = [
   { href: "goo.html", name: "Goo", text: "Des pièces d'interface qui fusionnent comme une pâte : menu en gouttes, onglets, goutte suiveuse" },
   { href: "metal.html", name: "Métal", text: "Boutons, lettres et badges en chrome liquide, cinq métaux, reflet sur le voisin" },
   { href: "voix.html", name: "La voix", text: "Une lueur qui monte avec la voix sous un champ de saisie, puis balaie pendant la réponse" },
+  { href: "ruban.html", name: "Ruban", text: "Une bande d'images qui se vrille, se comprime, se bombe ; une lentille qui passe ; une roue de vignettes" },
+  { href: "typo.html", name: "Typographie", text: "Six entrées de texte : étirement, sphère, encre, tracé, éclats, fragments" },
   { href: "diapo-createur.html", name: "Créateur de diaporama", text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU" },
   { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
 ];
@@ -130,6 +132,9 @@ export function mountPagesNav(base = "./") {
   if (document.querySelector("[data-goo]")) void import("./presse/goo.ts").then((m) => m.initGoo());
   if (document.querySelector("[data-metal], [data-metal-texte], [data-metal-badge]")) void import("./presse/metal.ts").then((m) => m.initMetal());
   if (document.querySelector("[data-voix]")) void import("./presse/voix.ts").then((m) => m.initVoix());
+  // Ruban (bande d'images en 3D) et typographie cinétique, d'après Aristide Benoist.
+  if (document.querySelector("[data-ruban]")) void import("./presse/ruban.ts").then((m) => m.initRuban());
+  if (document.querySelector("[data-typo]")) void import("./presse/typo.ts").then((m) => m.initTypo());
   const style = document.createElement("style");
   style.textContent = CSS + SETTINGS_CSS;
   document.head.append(style);
