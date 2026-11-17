@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Métal · chrome liquide · Presse</title>
+    <meta name="description" content="Essai du composant metal de Presse : boutons, textes et badges en chrome liquide, rendus en WebGPU." />
+    <meta name="theme-color" content="#efebe1" />
+    <script type="module" src="/src/presse/essais/metal.ts"></script>
+    <style>
+      :root {
+        --papier: #efebe1;
+        --encre: #1d1b17;
+        --gris: #6d675c;
+        --filet: #d8d2c3;
+        --nuit: #121214;
+        --f-texte: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+        --f-titre: "Bodoni Moda Variable", "Bodoni Moda", Didot, Georgia, serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--papier); color: var(--encre); font: 400 16px/1.5 var(--f-texte); }
+      main { max-width: 1080px; margin: 0 auto; padding: 48px 20px 80px; }
+      header h1 { font: 500 clamp(40px, 7vw, 72px)/1 var(--f-titre); letter-spacing: -0.02em; margin: 0 0 12px; }
+      header p { max-width: 62ch; margin: 0; color: var(--gris); }
+      code { font: 500 0.88em/1 ui-monospace, "IBM Plex Mono", monospace; }
+      h2 { font: 600 13px/1.2 var(--f-texte); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 18px; }
+      .bloc { margin-top: 36px; padding: 28px 24px 32px; border: 1px solid var(--filet); border-radius: 22px; }
+      .bloc.nuit { background: var(--nuit); color: #ebe7de; border-color: #222226; }
+      .rang { display: flex; flex-wrap: wrap; align-items: center; gap: 22px 28px; }
+      .rang + .rang { margin-top: 30px; }
+      button { font: inherit; cursor: pointer; }
+      button:focus-visible { outline: 2px solid #4a7cff; outline-offset: 4px; }
+
+      .pro { height: 48px; padding: 0 26px; border: 0; border-radius: 999px; background: #17171a; color: #f4f2ec; font-weight: 600; font-size: 15px; letter-spacing: 0.01em; }
+      .nuit .pro { background: #1e1e22; }
+      .grand { font: 800 96px/1 var(--f-texte); letter-spacing: -0.03em; }
+      .envoi { display: inline-flex; align-items: center; gap: 12px; padding: 6px 6px 6px 18px; border-radius: 999px; background: #e3ddcf; }
+      .nuit .envoi { background: #1d1d21; }
+      .envoi input { border: 0; background: none; font: inherit; color: inherit; width: 150px; outline: none; }
+      .auto { padding: 6px 12px; border-radius: 999px; background: #d4cdbd; font-size: 13px; font-weight: 600; }
+      .nuit .auto { background: #2a2a30; }
+      .rond { width: 44px; height: 44px; border: 0; border-radius: 50%; background: #17171a; color: #f4f2ec; font-size: 18px; display: grid; place-items: center; }
+
+      .palette { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+      .echantillon { display: grid; justify-items: center; gap: 10px; font-size: 13px; color: var(--gris); }
+      .nuit .echantillon { color: #a29d92; }
+      .disque { width: 64px; height: 64px; border-radius: 50%; }
+      .bouton { height: 40px; width: 100%; max-width: 116px; padding: 0 6px; border: 0; border-radius: 12px; background: #1a1a1d; color: #f2efe8; font-weight: 600; font-size: 13px; }
+      .mot { font: 800 34px/1 var(--f-texte); letter-spacing: -0.02em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Métal</h1>
+        <p>Du chrome liquide sur des éléments d'interface : bandes de reflets qui coulent, franges de couleur sur leurs bords, halo qui fait le tour, curseur qui courbe les anneaux. Attributs : <code>data-metal</code>, <code>data-metal-texte</code>, <code>data-metal-badge</code>, <code>data-metal-nom</code> / <code>data-metal-reflet</code>.</p>
+      </header>
+
+      <section class="bloc" aria-labelledby="t-clair">
+        <h2 id="t-clair">Sur papier</h2>
+        <div class="rang">
+          <button class="pro" id="pro" data-metal="chromatique" data-metal-force="1" data-metal-epaisseur="4" data-metal-ombre>Passer à Pro</button>
+          <span class="grand" id="texte" data-metal-texte>Pro</span>
+          <span data-metal-badge id="badge">Nouveau</span>
+          <div class="envoi">
+            <input aria-label="Message" value="Bonjour !" />
+            <span class="auto" id="auto" data-metal-reflet="envoyer">Auto</span>
+            <button class="rond" id="envoyer" data-metal data-metal-forme="cercle" data-metal-epaisseur="3" data-metal-nom="envoyer" aria-label="Envoyer">→</button>
+          </div>
+        </div>
+        <div class="rang palette" id="palette-clair">
+          <div class="echantillon"><span class="disque" data-metal="chromatique" data-metal-forme="disque"></span>chromatique</div>
+          <div class="echantillon"><span class="disque" data-metal="argent" data-metal-forme="disque"></span>argent</div>
+          <div class="echantillon"><span class="disque" data-metal="or" data-metal-forme="disque"></span>or</div>
+          <div class="echantillon"><span class="disque" data-metal="cuivre" data-metal-forme="disque"></span>cuivre</div>
+          <div class="echantillon"><span class="disque" data-metal="noir" data-metal-forme="disque"></span>noir</div>
+        </div>
+        <div class="rang palette">
+          <div class="echantillon"><button class="bouton" data-metal="chromatique">Chromatique</button></div>
+          <div class="echantillon"><button class="bouton" data-metal="argent">Argent</button></div>
+          <div class="echantillon"><button class="bouton" data-metal="or">Or</button></div>
+          <div class="echantillon"><button class="bouton" data-metal="cuivre">Cuivre</button></div>
+          <div class="echantillon"><button class="bouton" data-metal="noir">Noir</button></div>
+        </div>
+      </section>
+
+      <section class="bloc nuit" aria-labelledby="t-nuit">
+        <h2 id="t-nuit">Dans le noir</h2>
+        <div class="rang">
+          <button class="pro" id="pro-nuit" data-metal="chromatique">Passer à Pro</button>
+          <span class="grand" id="texte-nuit" data-metal-texte="chromatique">Pro</span>
+          <span data-metal-badge="or" id="badge-nuit">Nouveau</span>
+          <div class="envoi">
+            <input aria-label="Message (nuit)" value="À demain" />
+            <span class="auto" data-metal-reflet="envoyer-nuit">Auto</span>
+            <button class="rond" data-metal="argent" data-metal-forme="cercle" data-metal-nom="envoyer-nuit" aria-label="Envoyer">→</button>
+          </div>
+        </div>
+        <div class="rang palette" id="palette-nuit">
+          <div class="echantillon"><span class="mot" data-metal-texte="chromatique">Aa</span>chromatique</div>
+          <div class="echantillon"><span class="mot" data-metal-texte="argent">Aa</span>argent</div>
+          <div class="echantillon"><span class="mot" data-metal-texte="or">Aa</span>or</div>
+          <div class="echantillon"><span class="mot" data-metal-texte="cuivre">Aa</span>cuivre</div>
+          <div class="echantillon"><span class="mot" data-metal-texte="noir">Aa</span>noir</div>
+        </div>
+        <div class="rang palette">
+          <div class="echantillon"><span class="disque" data-metal="chromatique" data-metal-forme="disque"></span></div>
+          <div class="echantillon"><span class="disque" data-metal="argent" data-metal-forme="disque"></span></div>
+          <div class="echantillon"><span class="disque" data-metal="or" data-metal-forme="disque"></span></div>
+          <div class="echantillon"><span class="disque" data-metal="cuivre" data-metal-forme="disque"></span></div>
+          <div class="echantillon"><span class="disque" data-metal="noir" data-metal-forme="disque"></span></div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

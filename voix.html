@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>La voix · lueur qui monte · Presse</title>
+    <meta name="description" content="Presse, composant « voix » : une lueur qui monte avec la voix, puis balaie pendant que la réponse se prépare." />
+    <meta name="theme-color" content="#efebe1" />
+    <script type="module" src="/src/presse/essais/voix.ts"></script>
+    <style>
+      :root {
+        --papier: #efebe1;
+        --encre: #1d1b18;
+        --gris: #6c675d;
+        --filet: #d6d0c2;
+        --nuit: #121216;
+        --f-titre: "Bodoni Moda Variable", "Bodoni Moda", Didot, serif;
+        --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+        --f-texte: system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html { background: var(--papier); color: var(--encre); }
+      body { margin: 0; font: 400 16px/1.5 var(--f-texte); background: var(--papier); }
+      /* Le halo déborde du champ : sur un téléphone, il ne doit pas faire défiler la page de côté. */
+      html, body { overflow-x: clip; }
+      .page { max-width: 1080px; margin: 0 auto; padding: 56px 16px 96px; }
+      header.tete { margin-bottom: 48px; }
+      .sur { font: 500 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gris); margin: 0 0 14px; }
+      h1 { font: 500 clamp(40px, 7vw, 76px)/0.95 var(--f-titre); letter-spacing: -0.02em; margin: 0 0 18px; }
+      h1 em { font-style: italic; }
+      .chapeau { max-width: 60ch; color: #3c3832; margin: 0; }
+      section.ex { border-top: 1px solid var(--filet); padding: 40px 0 56px; }
+      .ex-tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; margin-bottom: 26px; }
+      .ex-tete h2 { font: 500 30px/1.1 var(--f-titre); margin: 0; }
+      .ex-tete .num { font: 500 12px/1 var(--f-mono); color: var(--gris); }
+      .ex-tete p { margin: 0; color: var(--gris); font-size: 14px; flex-basis: 100%; max-width: 64ch; }
+
+      /* Commandes communes */
+      .cmd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 44px; font: 500 12px/1 var(--f-mono); }
+      .cmd button, .cmd label.pastille { appearance: none; border: 1px solid #c9c2b2; background: #f7f4ec; color: var(--encre); border-radius: 99px; padding: 9px 14px; font: inherit; letter-spacing: 0.04em; cursor: pointer; }
+      .cmd button:hover { background: #fff; }
+      .cmd button[aria-pressed="true"] { background: var(--encre); color: var(--papier); border-color: var(--encre); }
+      .cmd .demo { background: var(--encre); color: var(--papier); border-color: var(--encre); }
+      .cmd .sep { width: 1px; height: 22px; background: var(--filet); margin: 0 4px; }
+      .lecture { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--gris); }
+      .jauge { width: 90px; height: 4px; border-radius: 4px; background: #ddd6c6; overflow: hidden; }
+      .jauge i { display: block; height: 100%; width: calc(var(--n, 0) * 100%); background: var(--encre); }
+      .cmd input[type="range"] { width: 110px; accent-color: var(--encre); }
+      .sombre .cmd button, .sombre .cmd label.pastille { background: #1d1d23; color: #ece8df; border-color: #34343d; }
+      .sombre .cmd button[aria-pressed="true"], .sombre .cmd .demo { background: #ece8df; color: #121216; border-color: #ece8df; }
+      .sombre .jauge { background: #2a2a31; }
+      .sombre .jauge i { background: #ece8df; }
+      .sombre .lecture { color: #9b978e; }
+      button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid #3d6dff; outline-offset: 2px; }
+
+      /* 1 — le champ de discussion */
+      .fil { max-width: 680px; margin: 0 auto; display: grid; gap: 14px; }
+      .bulle { max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 15px; }
+      .bulle.moi { justify-self: end; background: #1d1b18; color: #f3efe6; border-bottom-right-radius: 4px; }
+      .bulle.lui { background: #fbf9f4; border: 1px solid #e2dccd; border-bottom-left-radius: 4px; }
+      .champ { margin-top: 18px; display: flex; align-items: flex-end; gap: 10px; padding: 12px 12px 12px 18px; border-radius: 22px; background: #fbf9f4; border: 1px solid #ddd6c6; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03), 0 10px 30px -18px rgba(40, 30, 10, 0.35); }
+      .champ textarea { flex: 1; min-height: 52px; max-height: 160px; resize: none; border: 0; outline: 0; background: transparent; font: 400 16px/1.5 var(--f-texte); color: var(--encre); padding: 6px 0; }
+      .champ textarea::placeholder { color: #9a9488; }
+      .rond { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 99px; border: 1px solid #d8d1c1; background: #fff; color: var(--encre); cursor: pointer; transition: background 0.2s, color 0.2s; }
+      .rond svg { width: 18px; height: 18px; }
+      .rond[aria-pressed="true"] { background: #1d1b18; color: #fff; border-color: #1d1b18; }
+      .rond.envoi { background: #1d1b18; color: #fff; border-color: #1d1b18; }
+
+      /* 2 — le téléphone */
+      section.ex.sombre { background: var(--nuit); color: #ece8df; border-radius: 28px; padding: 40px clamp(16px, 4vw, 40px) 32px; border-top: 0; }
+      .sombre .ex-tete p, .sombre .ex-tete .num { color: #9b978e; }
+      .duo { display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: center; justify-items: center; }
+      @media (max-width: 720px) { .duo { grid-template-columns: 1fr; } }
+      .telephone { width: 300px; height: 600px; border-radius: 46px; padding: 12px; background: #2a2a30; box-shadow: inset 0 0 0 1px #3a3a42, 0 40px 80px -30px #000; }
+      .ecran { position: relative; height: 100%; border-radius: 36px; background: #050507; overflow: hidden; display: flex; flex-direction: column; padding: 18px 22px 26px; color: #f2efe8; }
+      .ecran .barre { display: flex; justify-content: space-between; font: 600 13px/1 var(--f-texte); opacity: 0.9; }
+      .ecran .ile { position: absolute; top: 12px; left: 50%; translate: -50% 0; width: 96px; height: 28px; border-radius: 20px; background: #000; }
+      .ecran .dit { margin-top: auto; font: 500 25px/1.2 var(--f-titre); letter-spacing: -0.01em; }
+      .ecran .sous { margin: 10px 0 26px; font: 400 13px/1.4 var(--f-texte); color: rgba(242, 239, 232, 0.62); }
+      .ecran .actions { display: flex; justify-content: space-between; align-items: center; }
+      .ecran .rond { width: 56px; height: 56px; background: rgba(255, 255, 255, 0.12); color: #fff; border: 0; backdrop-filter: blur(10px); }
+      .ecran .rond[aria-pressed="true"] { background: #fff; color: #050507; }
+      .ecran .rond svg { width: 22px; height: 22px; }
+      .palettes { display: grid; gap: 10px; align-content: start; justify-self: start; }
+      .palettes h3 { font: 500 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #9b978e; margin: 0 0 6px; }
+      .palettes label { display: flex; align-items: center; gap: 12px; font: 500 14px/1 var(--f-mono); cursor: pointer; }
+      .palettes input { accent-color: #ece8df; }
+      .nuancier { display: inline-flex; width: 64px; height: 10px; border-radius: 10px; overflow: hidden; }
+      .nuancier i { flex: 1; }
+      .palettes input[type="color"] { width: 32px; height: 22px; padding: 0; border: 0; background: none; }
+
+      /* 3 — le bandeau de dictée */
+      .bandeau { position: relative; left: 50%; width: 100vw; margin-left: -50vw; }
+      .dictee { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; padding: 22px max(16px, calc(50vw - 524px)); background: #e6e1d4; border-block: 1px solid #d3ccbc; }
+      .dictee.nuit { background: #17171c; border-color: #26262d; color: #ece8df; }
+      .dictee .etiquette { font: 600 11px/1 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gris); }
+      .dictee.nuit .etiquette { color: #8f8b83; }
+      .dictee .texte { font: 400 clamp(18px, 2.4vw, 24px)/1.35 var(--f-titre); min-height: 1.35em; }
+      .dictee .texte span { color: #9a9488; }
+      .dictee.nuit .texte span { color: #6f6b64; }
+      .dictee .rond { width: 46px; height: 46px; }
+      .dictee.nuit .rond { background: #24242b; color: #ece8df; border-color: #34343d; }
+      .dictee.nuit .rond[aria-pressed="true"] { background: #ece8df; color: #121216; }
+      @media (max-width: 560px) { .dictee { grid-template-columns: 1fr auto; } .dictee .etiquette { grid-column: 1 / -1; } }
+      .note { font: 400 13px/1.5 var(--f-mono); color: var(--gris); max-width: 72ch; margin-top: 40px; }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="tete">
+        <p class="sur">Presse · composant · data-voix</p>
+        <h1>La <em>voix</em></h1>
+        <p class="chapeau">Une lueur monte du bas du champ quand on parle, à la hauteur de la voix et à sa couleur : les graves à gauche, les aigus à droite. Pendant que la réponse se prépare, elle balaie le champ. Le micro n'est demandé qu'au clic ; le son est analysé sur place et oublié, jamais enregistré ni envoyé.</p>
+      </header>
+
+      <!-- 1 — Le champ de discussion -->
+      <section class="ex" id="ex-champ" aria-labelledby="t1">
+        <div class="ex-tete">
+          <span class="num">01</span>
+          <h2 id="t1">Le champ de discussion</h2>
+          <p>Fond papier, palette aurore. Après 1,2 s de silence, la lueur passe seule en réflexion 2,5 s (data-voix-auto), puis s'éteint.</p>
+        </div>
+        <div class="fil">
+          <p class="bulle moi">Tu peux me résumer la séance d'hier ?</p>
+          <p class="bulle lui">Bien sûr. Dites-moi ce qui vous intéresse : les décisions, ou les points encore ouverts ?</p>
+          <div class="champ" data-voix data-voix-palette="aurore" data-voix-auto="reflexion 2.5" data-voix-demo id="v1">
+            <textarea aria-label="Message" placeholder="Parlez, ou écrivez…" rows="1"></textarea>
+            <button type="button" class="rond" data-voix-micro aria-label="Parler">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+            </button>
+            <button type="button" class="rond envoi" aria-label="Envoyer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg>
+            </button>
+          </div>
+        </div>
+        <div class="cmd" data-pour="v1">
+          <button type="button" class="demo" data-faire="demo">Démonstration</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" data-faire="repos">Repos</button>
+          <button type="button" data-faire="ecoute">Écoute</button>
+          <button type="button" data-faire="reflexion">Réflexion</button>
+          <span class="sep" aria-hidden="true"></span>
+          <label>Niveau forcé <input type="range" min="0" max="1" step="0.01" value="0" data-faire="niveau" aria-label="Niveau forcé" /></label>
+          <span class="lecture" aria-hidden="true"><span data-lire="etat">repos</span><span class="jauge"><i></i></span></span>
+        </div>
+      </section>
+
+      <!-- 2 — Le téléphone -->
+      <section class="ex sombre" id="ex-tel" aria-labelledby="t2">
+        <div class="ex-tete">
+          <span class="num">02</span>
+          <h2 id="t2">L'assistant plein écran</h2>
+          <p>data-voix="ecran" : la lueur monte du bas de tout l'écran. Fond sombre, quatre palettes.</p>
+        </div>
+        <div class="duo">
+          <div class="telephone">
+            <div class="ecran" data-voix="ecran" data-voix-palette="aurore" data-voix-couleur="#4fd1c5" id="v2">
+              <span class="ile" aria-hidden="true"></span>
+              <div class="barre" aria-hidden="true"><span>9:41</span><span>●●● ▮</span></div>
+              <p class="dit" data-lire="phrase">Je vous écoute.</p>
+              <p class="sous">Demandez un itinéraire, une recette, la météo de demain…</p>
+              <div class="actions">
+                <button type="button" class="rond" aria-label="Clavier">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 10h1M11 10h1M15 10h2M7 14h10" stroke-linecap="round" /></svg>
+                </button>
+                <button type="button" class="rond" data-voix-micro aria-label="Parler">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+                </button>
+                <button type="button" class="rond" aria-label="Fermer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <fieldset class="palettes" style="border: 0; padding: 0; margin: 0">
+            <h3>Palette</h3>
+            <label><input type="radio" name="pal" value="aurore" checked /> aurore <span class="nuancier"><i style="background: #3d6dff"></i><i style="background: #8f5bff"></i><i style="background: #ff4f9a"></i><i style="background: #ff8a3d"></i></span></label>
+            <label><input type="radio" name="pal" value="ocean" /> ocean <span class="nuancier"><i style="background: #1f5cff"></i><i style="background: #00a6e0"></i><i style="background: #14c9a5"></i><i style="background: #6fe3ff"></i></span></label>
+            <label><input type="radio" name="pal" value="braise" /> braise <span class="nuancier"><i style="background: #d92b1f"></i><i style="background: #ff5a1a"></i><i style="background: #ff9a1f"></i><i style="background: #ffc94a"></i></span></label>
+            <label><input type="radio" name="pal" value="mono" /> mono <input type="color" value="#4fd1c5" aria-label="Teinte de la palette mono" data-faire="couleur" /></label>
+          </fieldset>
+        </div>
+        <div class="cmd" data-pour="v2">
+          <button type="button" class="demo" data-faire="demo">Démonstration</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" data-faire="repos">Repos</button>
+          <button type="button" data-faire="ecoute">Écoute</button>
+          <button type="button" data-faire="reflexion">Réflexion</button>
+          <button type="button" data-faire="parole">Parole</button>
+          <span class="lecture" aria-hidden="true"><span data-lire="etat">repos</span><span class="jauge"><i></i></span></span>
+        </div>
+      </section>
+
+      <!-- 3 — Le bandeau de dictée -->
+      <section class="ex" id="ex-dictee" aria-labelledby="t3">
+        <div class="ex-tete">
+          <span class="num">03</span>
+          <h2 id="t3">Le bandeau de dictée</h2>
+          <p>Pleine largeur, palette ocean, une braise au repos. Le fond se bascule pour comparer la composition « multiplier » (clair) et « lumière » (sombre).</p>
+        </div>
+        <div class="bandeau">
+          <div class="dictee" data-voix data-voix-palette="ocean" data-voix-braise data-voix-debord="0" data-voix-hauteur="1.1" id="v3">
+            <span class="etiquette">Dictée</span>
+            <p class="texte" data-lire="dictee"><span>Appuyez sur le micro et dictez votre note.</span></p>
+            <button type="button" class="rond" data-voix-micro aria-label="Dicter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+            </button>
+          </div>
+        </div>
+        <div class="cmd" data-pour="v3">
+          <button type="button" class="demo" data-faire="demo">Démonstration</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" data-faire="repos">Repos</button>
+          <button type="button" data-faire="ecoute">Écoute</button>
+          <button type="button" data-faire="reflexion">Réflexion</button>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" data-faire="fond" aria-pressed="false">Fond sombre</button>
+          <span class="lecture" aria-hidden="true"><span data-lire="etat">repos</span><span class="jauge"><i></i></span></span>
+        </div>
+        <p class="note">Sans WebGPU, la même lueur est un dégradé CSS (--voix-niveau, --voix-x). Avec « réduire les animations », plus d'ondulation ni de balayage : la réflexion devient une lente pulsation.</p>
+      </section>
+    </main>
+  </body>
+</html>

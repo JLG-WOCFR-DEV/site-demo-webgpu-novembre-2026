@@ -1,4 +1,6 @@
-import { c as e, i as t, l as n, s as r, t as i } from "./device-GWVPUmlx.js";
+import { n as e, t } from "./motion-lint-B_Jhc2Ml.js";
+import { o as n, r } from "./tokens-CU1XRp3I.js";
+import { t as i } from "./device-CdovFy3S.js";
 //#region src/gpu/hold.ts
 var a = "presse:pause";
 function o(e, t) {
@@ -9,10 +11,10 @@ function o(e, t) {
 }
 //#endregion
 //#region src/presse/lightbox.ts
-var s = t.ouverture, c = {
+var s = r.ouverture, c = {
 	k: 320,
 	zeta: 1
-}, l = t.vif, u = {
+}, l = r.vif, u = {
 	k: 220,
 	zeta: 1
 }, d = 40, f = () => matchMedia("(prefers-reduced-motion: reduce)").matches, p = (e, t, n) => e + (t - e) * n, m = (e, t, n) => Math.min(n, Math.max(t, e)), ee = (e, t, n) => ({
@@ -380,9 +382,9 @@ function S(e, t = "img") {
 		};
 	});
 }
-async function C(t, a, h = "img") {
+async function C(r, a, h = "img") {
 	ie ??= ae();
-	let g = ie, _ = S(t, h);
+	let g = ie, _ = S(r, h);
 	if (!_.length) return;
 	b?.end();
 	let C = ++x, w = f(), T = m(a, 0, _.length - 1), E = innerWidth, D = innerHeight, O = document.activeElement, k = null, oe = null;
@@ -500,15 +502,15 @@ async function C(t, a, h = "img") {
 		}
 	}, Ee = { end: Te };
 	b = Ee, k && !w && (k.busy = !0);
-	let De = (t) => {
+	let De = (r) => {
 		H = 0;
-		let i = Math.min(.05, (t - pe) / 1e3);
-		pe = t;
-		let a = !1, o = (e, t, n, o) => {
-			if (w) return [n, 0];
-			let s = r(e, t, n, i, o);
-			if (Math.abs(s[0] - n) > 5e-4 || Math.abs(s[1]) > .005) a = !0;
-			else return [n, 0];
+		let i = Math.min(.05, (r - pe) / 1e3);
+		pe = r;
+		let a = !1, o = (e, t, r, o) => {
+			if (w) return [r, 0];
+			let s = n(e, t, r, i, o);
+			if (Math.abs(s[0] - r) > 5e-4 || Math.abs(s[1]) > .005) a = !0;
+			else return [r, 0];
 			return s;
 		};
 		if ([A, se] = o(A, se, ce, j ? c : s), k && (k.busy = j || Math.abs(A - ce) > .02), (!B || B.mode !== "x") && ([M, ue] = o(M, ue, 0, l)), (!B || B.mode !== "y") && ([N, de] = o(N, de, 0, l)), !B || B.mode !== "pinch" && B.mode !== "pan") {
@@ -589,9 +591,9 @@ async function C(t, a, h = "img") {
 			alpha: C,
 			radius: S,
 			uv: V
-		}), e()) {
-			let e = !!B || ge > 0;
-			ge && ge--, n("visionneuse", "x", y.x, t, e), n("visionneuse", "y", y.y, t, e), n("visionneuse", "width", y.w, t, e), n("visionneuse-fond", "opacity", x, t, e);
+		}), t()) {
+			let t = !!B || ge > 0;
+			ge && ge--, e("visionneuse", "x", y.x, r, t), e("visionneuse", "y", y.y, r, t), e("visionneuse", "width", y.w, r, t), e("visionneuse-fond", "opacity", x, r, t);
 		}
 		g.root.classList.toggle("plb-zoomed", F > 1.02);
 		let me = k ? k.draw(f, _, E, D, Math.min(devicePixelRatio || 1, 2)) : (oe?.draw(f, _), !1);

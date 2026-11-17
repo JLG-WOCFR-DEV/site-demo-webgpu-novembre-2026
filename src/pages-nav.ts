@@ -35,6 +35,9 @@ export const PAGES = [
   { href: "kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },
   { href: "conference.html", name: "Conférence", text: "Un diaporama Presse : la 3D et l'IA, au clavier (F plein écran, P présentateur)" },
   { href: "diapo-demos.html", name: "Diaporama · démos", text: "Transitions à deux images, Magic Move, mot à mot, chiffres, laser et loupe" },
+  { href: "goo.html", name: "Goo", text: "Des pièces d'interface qui fusionnent comme une pâte : menu en gouttes, onglets, goutte suiveuse" },
+  { href: "metal.html", name: "Métal", text: "Boutons, lettres et badges en chrome liquide, cinq métaux, reflet sur le voisin" },
+  { href: "voix.html", name: "La voix", text: "Une lueur qui monte avec la voix sous un champ de saisie, puis balaie pendant la réponse" },
   { href: "diapo-createur.html", name: "Créateur de diaporama", text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU" },
   { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
 ];
@@ -123,6 +126,10 @@ export function mountPagesNav(base = "./") {
   if (document.querySelector("[data-lightbox]")) void import("./presse/lightbox.ts").then((m) => m.initLightbox());
   // La vague entre deux vues : de même.
   if (document.querySelector("[data-vague]")) void import("./presse/vague.ts").then((m) => m.initVague());
+  // Goo (pièces qui fusionnent), métal (chrome liquide), voix (lueur du micro) : chacun chargé si la page s'en sert.
+  if (document.querySelector("[data-goo]")) void import("./presse/goo.ts").then((m) => m.initGoo());
+  if (document.querySelector("[data-metal], [data-metal-texte], [data-metal-badge]")) void import("./presse/metal.ts").then((m) => m.initMetal());
+  if (document.querySelector("[data-voix]")) void import("./presse/voix.ts").then((m) => m.initVoix());
   const style = document.createElement("style");
   style.textContent = CSS + SETTINGS_CSS;
   document.head.append(style);

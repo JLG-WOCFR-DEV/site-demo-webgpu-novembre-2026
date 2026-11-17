@@ -408,6 +408,36 @@ roll(compteur, "129");                         // seuls les chiffres changés ro
 &lt;!-- dans un diaporama : &lt;section data-diapo-slide data-transition="vague" data-vague-type="centre"&gt; --&gt;</code></pre>
       </section>
 
+      <section class="pd-sec" aria-labelledby="pd-iu">
+        <h2 id="pd-iu" class="pd-h2" data-gl-text>Goo, métal, voix</h2>
+        <p class="pd-p" data-gl-text>
+          Trois composants d'interface, chacun avec son petit canvas WebGPU et son repli CSS : des pièces qui fusionnent
+          comme une pâte, du chrome liquide sur un bouton ou des lettres, une lueur qui monte avec la voix.
+        </p>
+        <div class="pd-iu">
+          <div class="pd-iu-case">
+            <button type="button" class="pd-iu-btn" data-metal>Passer à Pro</button>
+            <span class="pd-iu-pro" data-metal-texte="or">Pro</span>
+            <span class="pd-iu-badge" data-metal-badge>Nouveau</span>
+            <a class="pd-iu-lien" href="./metal.html">Métal ↗</a>
+          </div>
+          <div class="pd-iu-case pd-iu-case--voix">
+            <div class="pd-iu-champ" data-voix data-voix-palette="aurore" data-voix-auto="reflexion 2.5" data-voix-demo>
+              <textarea rows="1" placeholder="Parlez, ou écrivez…" aria-label="Message"></textarea>
+              <button type="button" data-voix-micro aria-label="Parler">●</button>
+            </div>
+            <a class="pd-iu-lien" href="./voix.html">La voix ↗</a>
+          </div>
+          <div class="pd-iu-case">
+            <p class="pd-p" data-gl-text>Menu en gouttes, onglets, bouton qui se scinde, goutte suiveuse.</p>
+            <a class="pd-iu-lien" href="./goo.html">Goo ↗</a>
+          </div>
+        </div>
+        <pre class="pd-code"><code>&lt;button data-metal&gt;Passer à Pro&lt;/button&gt;  &lt;span data-metal-texte="or"&gt;Pro&lt;/span&gt;  &lt;span data-metal-badge&gt;Nouveau&lt;/span&gt;
+&lt;div data-voix data-voix-auto="reflexion 2.5"&gt; &lt;textarea&gt;&lt;/textarea&gt; &lt;button data-voix-micro&gt;●&lt;/button&gt; &lt;/div&gt;
+&lt;div data-goo&gt; &lt;button data-goo-item&gt;☰&lt;/button&gt; &lt;button data-goo-item data-goo-x="-54" data-goo-y="-34"&gt;…&lt;/button&gt; &lt;/div&gt;</code></pre>
+      </section>
+
       <section class="pd-sec" data-gl-print aria-labelledby="pd-how">
         <h2 id="pd-how" class="pd-h2" data-gl-text>Comment ça marche</h2>
         <ol class="pd-list" data-gl-text>

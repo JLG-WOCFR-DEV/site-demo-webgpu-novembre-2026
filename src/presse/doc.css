@@ -573,3 +573,85 @@ body.pd {
   color: inherit !important;
   box-shadow: inset 0 0 0 1.5px currentColor;
 }
+
+/* Goo, métal, voix : trois cases d'exemple. */
+.pd-iu {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 16px;
+  margin: 0 0 18px;
+}
+.pd-iu-case {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 18px;
+  background: #16130f;
+  color: #efe6d2;
+}
+.pd-iu-case .pd-p {
+  margin: 0;
+  color: inherit;
+  opacity: 0.8;
+}
+.pd-iu-case--voix {
+  background: #fbf8f1;
+  color: #16110d;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+.pd-iu-btn {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 99px;
+  background: #24201b;
+  color: #f4efe4;
+  font: 600 15px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.pd-iu-pro {
+  font: 700 44px/1 var(--f-display, system-ui, sans-serif);
+}
+.pd-iu-badge {
+  padding: 5px 11px;
+  border-radius: 99px;
+  font: 600 12px/1 system-ui, sans-serif;
+}
+.pd-iu-lien {
+  flex-basis: 100%;
+  color: inherit;
+  font: 500 13px/1.2 var(--f-mono, ui-monospace, monospace);
+  text-underline-offset: 3px;
+}
+.pd-iu-champ {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+.pd-iu-champ textarea {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  font: 400 15px/1.4 system-ui, sans-serif;
+  color: inherit;
+}
+.pd-iu-champ button {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #16110d;
+  color: #fff;
+  cursor: pointer;
+}

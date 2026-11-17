@@ -1,4 +1,6 @@
-import { a as e, c as t, l as n, n as r, o as i, r as a, t as o } from "./device-GWVPUmlx.js";
+import { n as e, t } from "./motion-lint-B_Jhc2Ml.js";
+import { a as n, i as r, n as i, t as a } from "./tokens-CU1XRp3I.js";
+import { t as o } from "./device-CdovFy3S.js";
 //#region src/motion-scale.ts
 var s = "ubs-motion", c = "normal";
 try {
@@ -348,12 +350,12 @@ async function Te(e) {
 	}).finished.catch(() => void 0), r.style.transition = "opacity 0.32s", r.style.opacity = o || "1", window.setTimeout(() => r.style.transition = "", 400), N(t, 320);
 }
 var Ee = 0;
-function De(e, r) {
+function De(n, r) {
 	if (!t()) return;
 	let i = `passage-${++Ee}`, a = -1, o = (t) => {
-		if (!e.isConnected) return;
-		let r = document.timeline?.currentTime, s = typeof r == "number" ? r : t, c = e.getBoundingClientRect();
-		n(i, "x", c.left, s), n(i, "y", c.top, s), n(i, "width", c.width, s), n(i, "opacity", Number(getComputedStyle(e).opacity), s), a > 0 && a--, a !== 0 && requestAnimationFrame(o);
+		if (!n.isConnected) return;
+		let r = document.timeline?.currentTime, s = typeof r == "number" ? r : t, c = n.getBoundingClientRect();
+		e(i, "x", c.left, s), e(i, "y", c.top, s), e(i, "width", c.width, s), e(i, "opacity", Number(getComputedStyle(n).opacity), s), a > 0 && a--, a !== 0 && requestAnimationFrame(o);
 	};
 	r.then(() => a = 6), requestAnimationFrame(o);
 }
@@ -475,8 +477,8 @@ html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [conten
 .presse-cursor.is-on { opacity: 1; }
 .presse-cursor.is-text { opacity: 0; }
 .pc-dot, .pc-ring { position: fixed; left: 0; top: 0; border-radius: 999px; will-change: transform; }
-.pc-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; transition: scale 0.25s ${a.out}; }
-.pc-ring { box-sizing: border-box; border: 1.5px solid #fff; display: grid; place-items: center; transition: width 0.35s ${a.out}, height 0.35s ${a.out}, border-radius 0.35s ${a.out}, background 0.25s, border-width 0.25s; }
+.pc-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; transition: scale 0.25s ${i.out}; }
+.pc-ring { box-sizing: border-box; border: 1.5px solid #fff; display: grid; place-items: center; transition: width 0.35s ${i.out}, height 0.35s ${i.out}, border-radius 0.35s ${i.out}, background 0.25s, border-width 0.25s; }
 .pc-label { font: 500 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: #000; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
 .presse-cursor.is-link .pc-dot { scale: 0; }
 .presse-cursor.is-label .pc-ring { background: #fff; }
@@ -484,7 +486,7 @@ html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [conten
 .presse-cursor.is-down .pc-ring { border-width: 3px; }
 .presse-cursor.is-stuck .pc-dot { scale: 0; }
 .presse-cursor.is-stuck .pc-ring { background: transparent; }
-[data-magnet] { transition: translate 0.5s ${a.out}; }
+[data-magnet] { transition: translate 0.5s ${i.out}; }
 `, Pe = "a[href], button, [role=button], label[for], summary, input[type=checkbox], input[type=radio], input[type=range]", Fe = ".gr-gl, .gx-gl, .or-gl, .ob-gl, .lq-card, [data-cursor=glisser]", Ie = "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]", Le = !1;
 function Re() {
 	if (Le || typeof window > "u") return;
@@ -538,7 +540,7 @@ function Re() {
 //#region src/presse/intro.ts
 var ze = `
 html.presse-intro-pending [data-intro] { opacity: 0; translate: 0 26px; filter: blur(6px); }
-html.presse-intro-done [data-intro] { transition: opacity ${r[3]}ms ${a.out}, translate ${r[3]}ms ${a.out}, filter ${r[3]}ms ${a.out}; transition-delay: calc(var(--intro-i, 0) * 70ms + 120ms); }
+html.presse-intro-done [data-intro] { transition: opacity ${a[3]}ms ${i.out}, translate ${a[3]}ms ${i.out}, filter ${a[3]}ms ${i.out}; transition-delay: calc(var(--intro-i, 0) * 70ms + 120ms); }
 .presse-intro .pi-num { font-variant-numeric: tabular-nums; }
 `, Be = [
 	"liquide",
@@ -548,7 +550,7 @@ html.presse-intro-done [data-intro] { transition: opacity ${r[3]}ms ${a.out}, tr
 	"orbite"
 ];
 function Ve() {
-	let e = window, t = e.__presseIntro, n = document.documentElement, i = () => document.querySelectorAll("[data-intro]").forEach((e, t) => e.style.setProperty("--intro-i", e.dataset.intro || String(t)));
+	let e = window, t = e.__presseIntro, n = document.documentElement, r = () => document.querySelectorAll("[data-intro]").forEach((e, t) => e.style.setProperty("--intro-i", e.dataset.intro || String(t)));
 	if (!t) return;
 	delete e.__presseIntro;
 	let o = document.createElement("style");
@@ -558,7 +560,7 @@ function Ve() {
 			l++, s = l / u;
 		});
 	}, f = (e) => new Promise((t) => setTimeout(t, e)), p = () => {
-		i(), d(document.fonts?.ready ?? Promise.resolve());
+		r(), d(document.fonts?.ready ?? Promise.resolve());
 		for (let e of document.images) {
 			let t = e.getBoundingClientRect();
 			t.width > 0 && t.top < innerHeight && t.bottom > 0 && d(Promise.race([e.decode(), f(3500)]));
@@ -581,20 +583,20 @@ function Ve() {
 	let m = performance.now(), h = (e) => {
 		let n = (e - m) / 1e3;
 		m = e;
-		let i = (e - t.t0) / r[3], a = Math.min(s, i, 1);
-		if (c += (a - c) * (1 - Math.exp(-n * 7)), a >= 1 && c > .995 && (c = 1), e - t.t0 > 4e3 && (c = 1), t.num.textContent = String(Math.round(c * 100)).padStart(3, "0"), t.bar.style.scale = `${c} 1`, c < 1) return void requestAnimationFrame(h);
+		let r = (e - t.t0) / a[3], i = Math.min(s, r, 1);
+		if (c += (i - c) * (1 - Math.exp(-n * 7)), i >= 1 && c > .995 && (c = 1), e - t.t0 > 4e3 && (c = 1), t.num.textContent = String(Math.round(c * 100)).padStart(3, "0"), t.bar.style.scale = `${c} 1`, c < 1) return void requestAnimationFrame(h);
 		g();
 	};
 	requestAnimationFrame(h);
 	let g = () => {
 		let e = t.el.animate([{ clipPath: "inset(0 0 0 0)" }, { clipPath: "inset(0 0 100% 0)" }], {
-			duration: r[3],
-			easing: a.inOut,
+			duration: a[3],
+			easing: i.inOut,
 			fill: "forwards"
 		});
 		window.setTimeout(() => {
 			n.classList.add("presse-intro-done"), n.classList.remove("presse-intro-pending");
-		}, r[3] * .35), e.finished.then(() => t.el.remove());
+		}, a[3] * .35), e.finished.then(() => t.el.remove());
 	};
 }
 //#endregion
@@ -861,7 +863,7 @@ var st = {
 	"in-out": U(.65, 0, .35, 1),
 	in: U(.55, 0, 1, .45),
 	expo: (e) => e >= 1 ? 1 : 1 - 2 ** (-10 * e),
-	ressort: (e) => i(e)
+	ressort: (e) => n(e)
 }, ct = (e) => typeof e == "function" ? e : st[e ?? "out"] ?? st.out, W = /* @__PURE__ */ new Set(), G = 0, lt = 0;
 function ut(e) {
 	G = 0, e !== void 0 && rt(e);
@@ -928,8 +930,8 @@ function xt(e, t, n) {
 var Y = (e, t) => e ? `${+e.n.toFixed(4)}${e.unit}` : t;
 function St() {
 	if (t()) {
-		let e = H();
-		for (let t of J) for (let [r, i] of q.get(t)) n(t, r, i.n, e);
+		let t = H();
+		for (let n of J) for (let [r, i] of q.get(n)) e(n, r, i.n, t);
 	}
 	for (let e of J) {
 		let t = q.get(e), n = e.style;
@@ -972,22 +974,22 @@ var Ct = class {
 	label(e, t) {
 		return this.labels.set(e, this.at(t)), this;
 	}
-	add(e, t, n, i, a) {
-		let o = Array.isArray(e) ? e : [e], s = this.at(i.at), c = Math.max(0, i.dur ?? r[3] / 1e3), l = ct(i.ease), u = i.stagger ?? 0;
+	add(e, t, n, r, i) {
+		let o = Array.isArray(e) ? e : [e], s = this.at(r.at), c = Math.max(0, r.dur ?? a[3] / 1e3), l = ct(r.ease), u = r.stagger ?? 0;
 		return o.forEach((e, r) => {
-			for (let [i, o] of Object.entries(n)) {
+			for (let [a, o] of Object.entries(n)) {
 				if (o === void 0) continue;
-				let n = yt(o, i), d = t && t[i] !== void 0 ? yt(t[i], i) : null;
-				if (d && d.unit !== n.unit && d.n !== 0 && n.n !== 0) throw Error(`[presse:anim] ${i} : unités différentes (${d.unit} → ${n.unit})`);
+				let n = yt(o, a), d = t && t[a] !== void 0 ? yt(t[a], a) : null;
+				if (d && d.unit !== n.unit && d.n !== 0 && n.n !== 0) throw Error(`[presse:anim] ${a} : unités différentes (${d.unit} → ${n.unit})`);
 				d && d.unit !== n.unit && (d.n === 0 ? d.unit = n.unit : n.unit = d.unit), this.tracks.push({
 					t: e,
-					prop: i,
+					prop: a,
 					from: d,
 					to: n,
 					start: s + r * u,
 					dur: c,
 					ease: l,
-					lazy: a && !d
+					lazy: i && !d
 				});
 			}
 		}), this.prevStart = s, this.prevEnd = s + c + Math.max(0, o.length - 1) * u, this.duration = Math.max(this.duration, this.prevEnd), this.tracks.sort((e, t) => e.start - t.start), this;
@@ -1104,49 +1106,49 @@ var Dt = /* @__PURE__ */ new WeakMap(), Ot = /* @__PURE__ */ new Set(), kt = nul
 } }, Mt = !1;
 function Nt(e) {
 	if (Dt.has(e)) return;
-	let t = e.dataset, n, i;
+	let t = e.dataset, n, r;
 	try {
-		[n, i] = Et(t.anim ?? "");
+		[n, r] = Et(t.anim ?? "");
 	} catch (t) {
 		console.warn(t, e), e.dataset.animReady = "";
 		return;
 	}
-	let a = Tt.includes(t.animTrigger ?? "") ? t.animTrigger : "entree", o = Number(t.animStagger ?? 0), s = o > 0 ? [...e.children] : [e], c = new Ct().fromTo(s, n, i, {
-		dur: t.animDur ? Number(t.animDur) : a === "survol" || a === "appui" ? r[2] / 1e3 : r[3] / 1e3,
-		ease: t.animEase ?? (a === "defilement" ? "lineaire" : "out"),
+	let i = Tt.includes(t.animTrigger ?? "") ? t.animTrigger : "entree", o = Number(t.animStagger ?? 0), s = o > 0 ? [...e.children] : [e], c = new Ct().fromTo(s, n, r, {
+		dur: t.animDur ? Number(t.animDur) : i === "survol" || i === "appui" ? a[2] / 1e3 : a[3] / 1e3,
+		ease: t.animEase ?? (i === "defilement" ? "lineaire" : "out"),
 		stagger: o,
 		at: Number(t.animDelay ?? 0)
 	}), l = {
 		el: e,
 		tl: c,
-		trigger: a,
+		trigger: i,
 		repeat: t.animRepeat !== void 0,
 		smooth: Number(t.animSmooth ?? .08),
 		p: 0,
 		visible: !1
 	};
-	if (Dt.set(e, l), c.seek(0), e.dataset.animReady = "", a === "entree") kt ??= new IntersectionObserver((e) => {
+	if (Dt.set(e, l), c.seek(0), e.dataset.animReady = "", i === "entree") kt ??= new IntersectionObserver((e) => {
 		for (let t of e) {
 			let e = Dt.get(t.target);
 			e && (t.isIntersecting ? (e.tl.play(), e.repeat || kt.unobserve(e.el)) : e.repeat && t.boundingClientRect.top > 0 && e.tl.reverse());
 		}
 	}, { rootMargin: "0px 0px -15% 0px" }), kt.observe(e);
-	else if (a === "defilement") Ot.add(l), At ??= new IntersectionObserver((e) => {
+	else if (i === "defilement") Ot.add(l), At ??= new IntersectionObserver((e) => {
 		for (let t of e) {
 			let e = [...Ot].find((e) => e.el === t.target);
 			e && (e.visible = t.isIntersecting);
 		}
 		K(jt);
 	}, { rootMargin: "20% 0px" }), At.observe(e), Mt || (Mt = !0, addEventListener("scroll", () => K(jt), { passive: !0 }), addEventListener("resize", () => K(jt)));
-	else if (a === "survol") e.addEventListener("pointerenter", (e) => e.pointerType !== "touch" && c.play()), e.addEventListener("pointerleave", () => c.reverse()), e.addEventListener("focusin", () => c.play()), e.addEventListener("focusout", () => c.reverse());
-	else if (a === "appui") {
+	else if (i === "survol") e.addEventListener("pointerenter", (e) => e.pointerType !== "touch" && c.play()), e.addEventListener("pointerleave", () => c.reverse()), e.addEventListener("focusin", () => c.play()), e.addEventListener("focusout", () => c.reverse());
+	else if (i === "appui") {
 		e.addEventListener("pointerdown", () => c.play());
 		for (let t of [
 			"pointerup",
 			"pointercancel",
 			"pointerleave"
 		]) e.addEventListener(t, () => c.reverse());
-	} else if (a === "chargement") {
+	} else if (i === "chargement") {
 		let e = document.documentElement, t = () => c.play();
 		if (!e.classList.contains("presse-intro-pending")) requestAnimationFrame(t);
 		else {
@@ -1702,6 +1704,21 @@ var vn = [
 		text: "Transitions à deux images, Magic Move, mot à mot, chiffres, laser et loupe"
 	},
 	{
+		href: "goo.html",
+		name: "Goo",
+		text: "Des pièces d'interface qui fusionnent comme une pâte : menu en gouttes, onglets, goutte suiveuse"
+	},
+	{
+		href: "metal.html",
+		name: "Métal",
+		text: "Boutons, lettres et badges en chrome liquide, cinq métaux, reflet sur le voisin"
+	},
+	{
+		href: "voix.html",
+		name: "La voix",
+		text: "Une lueur qui monte avec la voix sous un champ de saisie, puis balaie pendant la réponse"
+	},
+	{
 		href: "diapo-createur.html",
 		name: "Créateur de diaporama",
 		text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU"
@@ -1712,26 +1729,26 @@ var vn = [
 		text: "La toute première version, générée par Grok"
 	}
 ], yn = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
-function bn(t = "./") {
-	_n(), e(), Ke(), Ve(), Me(), on(), $e(), Pt(), Re(), document.querySelector("[data-lightbox]") && import("./lightbox-D5b3VzZR.js").then((e) => e.initLightbox()), document.querySelector("[data-vague]") && import("./vague-CvcrLG7s.js").then((e) => e.initVague());
-	let n = document.createElement("style");
-	n.textContent = yn + ne, document.head.append(n);
-	let r = document.querySelector("[data-pages-trigger]");
-	r || (r = document.createElement("button"), r.type = "button", r.className = "pages-pill", r.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(r));
+function bn(e = "./") {
+	_n(), r(), Ke(), Ve(), Me(), on(), $e(), Pt(), Re(), document.querySelector("[data-lightbox]") && import("./lightbox-GE6niAsS.js").then((e) => e.initLightbox()), document.querySelector("[data-vague]") && import("./vague-CvcrLG7s.js").then((e) => e.initVague()), document.querySelector("[data-goo]") && import("./goo-BOCP7K1b.js").then((e) => e.initGoo()), document.querySelector("[data-metal], [data-metal-texte], [data-metal-badge]") && import("./metal-eQNEy4jm.js").then((e) => e.initMetal()), document.querySelector("[data-voix]") && import("./voix-BjvYVk6m.js").then((e) => e.initVoix());
+	let t = document.createElement("style");
+	t.textContent = yn + ne, document.head.append(t);
+	let n = document.querySelector("[data-pages-trigger]");
+	n || (n = document.createElement("button"), n.type = "button", n.className = "pages-pill", n.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(n));
 	let i = document.createElement("nav");
 	i.id = "pages-pop", i.className = "pages-pop", i.setAttribute("popover", ""), i.setAttribute("aria-label", "Pages");
 	let a = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0].split("?")[0], o = document.createElement("ul");
-	for (let e of vn) {
+	for (let t of vn) {
 		let n = document.createElement("li"), r = document.createElement("a");
-		r.href = t + e.href, r.href === a && r.setAttribute("aria-current", "page"), r.innerHTML = "<span class=\"pages-name\"></span><span class=\"pages-text\"></span>", r.querySelector(".pages-name").textContent = e.name, r.querySelector(".pages-text").textContent = e.text, n.append(r), o.append(n);
+		r.href = e + t.href, r.href === a && r.setAttribute("aria-current", "page"), r.innerHTML = "<span class=\"pages-name\"></span><span class=\"pages-text\"></span>", r.querySelector(".pages-name").textContent = t.name, r.querySelector(".pages-text").textContent = t.text, n.append(r), o.append(n);
 	}
 	i.append(o);
 	let s = document.createElement("button");
 	s.type = "button", s.className = "pages-debug", s.innerHTML = "<span class=\"pages-name\">Débogage</span><span class=\"pages-text\">Fil de fer, grille, capture vidéo</span>", s.addEventListener("click", () => {
-		i.hidePopover(), w(r);
-	}), i.append(s), oe(i, vn, t), document.body.append(i), r.setAttribute("popovertarget", "pages-pop"), r.setAttribute("aria-haspopup", "true"), r.setAttribute("aria-controls", "pages-pop"), i.addEventListener("toggle", (e) => {
+		i.hidePopover(), w(n);
+	}), i.append(s), oe(i, vn, e), document.body.append(i), n.setAttribute("popovertarget", "pages-pop"), n.setAttribute("aria-haspopup", "true"), n.setAttribute("aria-controls", "pages-pop"), i.addEventListener("toggle", (e) => {
 		if (e.newState !== "open") return;
-		let t = r.getBoundingClientRect();
+		let t = n.getBoundingClientRect();
 		i.style.left = `${Math.max(8, Math.min(t.left, innerWidth - i.offsetWidth - 8))}px`, i.style.top = `${t.bottom + 8}px`, i.style.maxHeight = `${Math.max(200, innerHeight - t.bottom - 24)}px`;
 	});
 }
