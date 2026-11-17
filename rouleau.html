@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Rouleau · un menu en étoffe · Presse</title>
+    <meta name="description" content="Essai du composant rouleau de Presse : un menu plein écran de très grands titres ; derrière le titre courant, une photo en bandeau dont les bords ondulent comme une étoffe tirée par le défilement (WebGPU)." />
+    <meta name="theme-color" content="#d9d9d9" />
+    <script type="module" src="/src/presse/essais/rouleau.ts"></script>
+    <style>
+      :root { --fond: #d9d9d9; --f-texte: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--fond); }
+      body { font: 400 16px/1.4 var(--f-texte); color: #1d1b17; overflow: hidden; }
+      main { height: 100%; }
+      h1.sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+      [data-rouleau] { height: 100vh; height: 100dvh; font-family: var(--f-texte); font-variation-settings: "wdth" 100; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 class="sr">Rouleau</h1>
+      <nav data-rouleau data-rouleau-depart="2" aria-label="Lieux">
+        <a href="#pont" data-rouleau-img="./plates/pont.jpg">Pont.</a>
+        <a href="#lac" data-rouleau-img="./plates/lac.jpg">Lac.</a>
+        <a href="#dunes" data-rouleau-img="./plates/dunes.jpg">Dunes.</a>
+        <a href="#yosemite" data-rouleau-img="./plates/yosemite.jpg">Yosemite.</a>
+        <a href="#jardin"><img src="./plates/jardin.jpg" width="1728" height="1150" alt="" />Jardin.</a>
+        <a href="#alcatraz" data-rouleau-img="./plates/alcatraz.jpg">Alcatraz.</a>
+        <a href="#cerf"><img src="./plates/cerf.jpg" width="1728" height="1150" alt="" />Cerf.</a>
+        <a href="#verre" data-rouleau-img="./plates/glass.jpg">Verre.</a>
+      </nav>
+    </main>
+  </body>
+</html>

@@ -21,7 +21,8 @@
  *   data-rouleau-respire    « 0 » : pas de respiration au repos (la boucle s'arrête alors tout à fait) ;
  *   data-rouleau-invite     le texte en bas à droite (défaut « Glisser pour explorer. » ; vide : aucun).
  * Variables CSS : --rouleau-corps (corps des titres), --rouleau-encre (blanc), --rouleau-accent (compteur, focus),
- * --rouleau-trait (chevrons, invite), --rouleau-marge (retrait des titres).
+ * --rouleau-trait (chevrons), --rouleau-marge (retrait des titres), --rouleau-voile (0–1, défaut 0,2 : assombrissement de
+ * la photo du côté des titres, pour la lisibilité des lettres blanches ; WebGPU seulement).
  *
  * Mouvement : glisser vertical (souris, doigt), molette, ↑ ↓ / Page préc. / Page suiv., Début / Fin ; inertie au
  * lâcher puis aimantation (ressort) sur le titre visé ; la liste boucle. Les chevrons sont de vrais boutons.
@@ -97,7 +98,7 @@ export const V0 = 2.2;
 /** Ce que visent les ressorts du pli pour une vitesse lissée vs : P suit |v|, S suit le sens (v > 0 : on descend). */
 export function pliCible(vs: number, reduit = false) {
   if (reduit || !Number.isFinite(vs)) return { P: 0, S: 0 };
-  return { P: P_MAX * Math.tanh(Math.abs(vs) / V0), S: -S_MAX * Math.tanh(vs / V0) };
+  return { P: P_MAX * Math.tanh(Math.abs(vs) / V0), S: -S_MAX * Math.tanh(vs / V0) + 0 };
 }
 /** La respiration au repos (temps t en s) : une ondulation très faible, nulle en mouvement réduit. */
 export function respiration(t: number, reduit = false) {
@@ -143,7 +144,7 @@ const CSS = `
 [data-rouleau].rouleau-tenu { cursor: grabbing; }
 [data-rouleau] > a.rouleau-titre { position: absolute; left: var(--rouleau-marge); top: 0; z-index: 2; display: block; margin: 0; padding: 0.02em 0.04em 0.06em;
   font-size: var(--rouleau-corps); font-weight: 700; line-height: 1; letter-spacing: -0.045em; white-space: nowrap; color: inherit; text-decoration: none;
-  text-shadow: 0 0 1px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.10), 0 4px 30px rgba(0,0,0,.16); will-change: transform; outline: none; -webkit-user-drag: none; }
+  text-shadow: 0 0 1px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.08), 0 2px 18px rgba(0,0,0,.09); will-change: transform; outline: none; -webkit-user-drag: none; }
 [data-rouleau] > a.rouleau-titre:focus-visible { outline: 3px solid var(--rouleau-accent, #e0352b); outline-offset: 0.08em; border-radius: 4px; }
 [data-rouleau] > a.rouleau-titre img, [data-rouleau] > a.rouleau-titre picture { display: none !important; }
 .rouleau-num { position: absolute; right: 100%; top: 0.1em; margin-right: 0.07em; font-size: max(10px, 0.095em); font-weight: 400; letter-spacing: 0.02em; line-height: 1; opacity: .92; }
@@ -164,7 +165,8 @@ const CSS = `
   [data-rouleau] { --rouleau-corps: clamp(40px, 12.5vw, 90px); --rouleau-marge: 30px; }
   .rouleau-compteur { right: 20px; top: 20px; }
   .rouleau-invite { right: 20px; bottom: 20px; font-size: 13px; }
-  .rouleau-fleches { top: auto; bottom: 56px; gap: 6px; right: 6px; }
+  .rouleau-fleches { top: auto; bottom: 64px; gap: 8px; right: 12px; }
+  .rouleau-fleches button { background: rgba(255,255,255,.62); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .rouleau-filet { width: 16px; }
 }
 `;
@@ -187,7 +189,7 @@ const MAX_VUES = 5;
 const WGSL = /* wgsl */ `
 const PI = 3.14159265;
 struct U {
-  res: vec4f,    // largeur, hauteur (px appareil), dpr, ombrage (force)
+  res: vec4f,    // largeur, hauteur (px appareil), dpr, voile sous les titres (0–1)
   bande: vec4f,  // largeur du bandeau, hauteur, centre x, pas des titres (px appareil)
   pli: vec4f,    // P, S (fractions du pas), parallaxe (0–1), zoom de marge
   grille: vec4f, // NX, NY, marge du maillage en x, en y (unités du bandeau)
@@ -268,8 +270,9 @@ fn versClip(p: vec2f) -> vec4f {
   if (cov <= 0.0) { discard; }
 
   // Les plis : la pente éclaire un flanc et assombrit l'autre ; la compression assombrit, l'étirement éclaircit.
-  let k = u.res.w;
-  let lum = clamp(1.0 + k * (1.6 * i.ombre.x + 0.9 * i.ombre.y), 0.68, 1.16);
+  var lum = clamp(1.0 + 1.6 * i.ombre.x + 0.9 * i.ombre.y, 0.68, 1.16);
+  // Le voile : la photo s'assombrit doucement du côté des titres (lettres blanches lisibles sur une photo claire).
+  lum = lum * (1.0 - u.res.w * (1.0 - smoothstep(-0.5, 0.2, x)));
   col = col * lum;
   // Les voisins : un peu assombris et désaturés.
   let gris = dot(col, vec3f(0.2126, 0.7152, 0.0722));
@@ -442,6 +445,7 @@ class Rouleau {
   decalage = 0.03;
   ecart = 1.85;
   respire = true;
+  voile = 0.2;
   /* Mesures (px CSS) */
   W = 0;
   H = 0;
@@ -571,6 +575,7 @@ class Rouleau {
     this.ecart = Math.max(1, Math.min(4, num(d.rouleauEcart, 1.85)));
     this.respire = d.rouleauRespire !== "0" && d.rouleauRespire !== "false";
     if (d.rouleauHauteur) this.el.style.setProperty("--rouleau-hauteur", /^\d+(\.\d+)?$/.test(d.rouleauHauteur) ? `${d.rouleauHauteur}px` : d.rouleauHauteur);
+    this.voile = Math.max(0, Math.min(1, num(getComputedStyle(this.el).getPropertyValue("--rouleau-voile"), 0.2)));
     this.invite.textContent = d.rouleauInvite ?? "Glisser pour explorer.";
     this.invite.hidden = !this.invite.textContent;
   }
@@ -1090,11 +1095,12 @@ class Rouleau {
     d[0] = Math.max(1, Math.round(this.W * k));
     d[1] = Math.max(1, Math.round(this.H * k));
     d[2] = k;
-    d[3] = 1;
+    d[3] = this.voile;
     d[4] = bw * k;
     d[5] = bh * k;
     d[6] = cx * k;
-    d[7] = this.pas * k;
+    // Le pli se mesure en pas ; un bandeau étroit (téléphone) en prendrait trop : on le ramène à sa largeur.
+    d[7] = this.pas * k * Math.max(0.35, Math.min(1, bw / (3.2 * this.pas)));
     d[8] = this.P + r.P;
     d[9] = this.S + r.S;
     d[10] = this.reduit ? 0 : 0.85;
@@ -1210,7 +1216,7 @@ export function lacherRouleau(el: HTMLElement, v: number) {
 export function etatRouleau(el: HTMLElement) {
   const r = instances.get(el);
   if (!r) return null;
-  return { s: r.s, vs: r.vs, P: r.P, S: r.S, mode: r.mode, index: r.indexVise(), affiche: r.indexAffiche(), gpu: !!r.gpu, vues: r.nVues, pas: r.pas };
+  return { s: r.s, vs: r.vs, P: r.P, S: r.S, mode: r.mode, boucle: !!r.raf, index: r.indexVise(), affiche: r.indexAffiche(), gpu: !!r.gpu, vues: r.nVues, pas: r.pas };
 }
 /** Promesse tenue quand les textures d'un rouleau sont chargées. */
 export async function rouleauPret(el: HTMLElement) {

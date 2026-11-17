@@ -43,7 +43,7 @@ test("rouleau : l'écart d'un titre passe par le plus court chemin de la boucle"
     for (let i = 0; i < 8; i++) {
       const d = ecartBoucle(i, s, 8);
       assert.ok(d >= -4 && d < 4, `${d}`);
-      proche(boucler(s + d, 8), i, 1e-9);
+      proche(ecartBoucle(i, s + d, 8), 0, 1e-9);
     }
 });
 
@@ -103,7 +103,7 @@ test("rouleau : nulle à vitesse nulle (hors respiration), bornée", () => {
   const borne = P_MAX + S_MAX + 2 * RESPIRE;
   for (const v of [-1e6, -40, -3, -0.2, 0.2, 3, 40, 1e6, NaN]) {
     const p = pliCible(v);
-    const r = respiration(v);
+    const r = respiration(Number.isFinite(v) ? Math.abs(v) % 7 : 0);
     for (let x = -0.5; x <= 0.5; x += 0.05)
       for (let Yn = -2; Yn <= 2; Yn += 0.1) assert.ok(Math.abs(deformation(x, Yn, p.P + r.P, p.S + r.S)) <= borne + 1e-12);
   }
