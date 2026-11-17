@@ -6,7 +6,7 @@
     <title>Éclaircie · le chic après la pluie · boutique d'essai Presse</title>
     <meta name="description" content="Boutique de vêtements d'essai, construite avec les modules Presse : déchirure de papier, forme-masque au défilement, autocollant qui suit le pointeur, rail glissant, panier en localStorage." />
     <meta name="theme-color" content="#b9b3b3" />
-    <link rel="preload" as="image" href="boutique/echarpe-couleur-750.jpg" imagesrcset="boutique/echarpe-couleur-750.jpg 750w, boutique/echarpe-couleur.jpg 1500w" imagesizes="(max-width: 700px) 100vw, 75vh" />
+    <link rel="preload" as="image" type="image/webp" href="boutique/echarpe-couleur-d-750.webp" imagesrcset="boutique/echarpe-couleur-d-750.webp 750w, boutique/echarpe-couleur-d.webp 1500w" imagesizes="(max-width: 900px) 100vw, 72vh" />
     <script type="module" src="/src/boutique/main.ts"></script>
   </head>
   <body>
@@ -36,18 +36,26 @@
     </header>
 
     <main id="contenu" tabindex="-1">
-      <!-- 01 · Accueil -->
-      <section class="accueil" id="haut" aria-labelledby="titre-accueil">
-        <h1 id="titre-accueil" class="accueil-marque titre" data-etire>Éclaircie</h1>
-        <p class="accueil-devise titre" data-etire="droite">Le chic<br />après la pluie</p>
-        <div class="accueil-photo" data-dechirure-coupe="0.5" data-dechirure-graine="accueil" data-dechirure-amplitude="18">
-          <img data-photo="echarpeCouleur" src="boutique/echarpe-couleur-750.jpg" srcset="boutique/echarpe-couleur-750.jpg 750w, boutique/echarpe-couleur.jpg 1500w" sizes="(max-width: 700px) 100vw, 75vh" width="1500" height="2000" alt="Marinière écrue, grande écharpe à carreaux magenta et pantalon ciel, à moitié en couleur, à moitié en noir et blanc" fetchpriority="high" decoding="async" />
-          <img data-photo="echarpeNb" src="boutique/echarpe-nb-750.jpg" srcset="boutique/echarpe-nb-750.jpg 750w, boutique/echarpe-nb.jpg 1500w" sizes="(max-width: 700px) 100vw, 75vh" width="1500" height="2000" alt="" decoding="async" />
+      <!-- 01 · Accueil : le nom passe derrière la silhouette ; la déchirure coupe couleur / noir et blanc -->
+      <section class="accueil" id="haut" aria-labelledby="titre-accueil" data-derriere="libre" data-derriere-amplitude="14">
+        <div class="accueil-fond" data-derriere-fond>
+          <h1 id="titre-accueil" class="accueil-marque titre" data-etire="centre">Éclaircie</h1>
         </div>
+        <div class="accueil-sujet" data-derriere-sujet>
+          <div class="accueil-photo" data-dechirure-coupe="0.5" data-dechirure-detoure data-dechirure-graine="accueil" data-dechirure-amplitude="18">
+            <img data-photo="echarpeCouleur" src="boutique/echarpe-couleur-d-750.webp" srcset="boutique/echarpe-couleur-d-750.webp 750w, boutique/echarpe-couleur-d.webp 1500w" sizes="(max-width: 900px) 100vw, 72vh" width="1500" height="2000" alt="Marinière écrue, grande écharpe à carreaux magenta et pantalon ciel, à moitié en couleur, à moitié en noir et blanc" fetchpriority="high" decoding="async" draggable="false" />
+            <img data-photo="echarpeNb" src="boutique/echarpe-nb-d-750.webp" srcset="boutique/echarpe-nb-d-750.webp 750w, boutique/echarpe-nb-d.webp 1500w" sizes="(max-width: 900px) 100vw, 72vh" width="1500" height="2000" alt="" decoding="async" draggable="false" />
+          </div>
+        </div>
+        <div class="accueil-devant" data-derriere-devant>
+          <a class="etiquette-crochet" href="#manifeste">Qui sommes-nous</a>
+          <span class="pastille-icone" aria-hidden="true"><svg viewBox="0 0 48 48" width="48" height="48"><path d="M6 24a18 18 0 0 1 36 0c-2.6-2.2-5.4-2.2-8 0-2.6-2.2-5.4-2.2-8 0-2.6-2.2-5.4-2.2-8 0-2.6-2.2-5.4-2.2-8 0-2.6-2.2-4-2.2-4 0Z" /><path d="M24 6v-2M24 24v14a4 4 0 0 1-8 0" fill="none" /></svg></span>
+        </div>
+        <p class="accueil-devise titre" data-etire="droite">Le chic<br />après la pluie</p>
         <p class="accueil-saison titre" data-etire><span class="rouge">Nouvelles</span> couleurs</p>
         <a class="crochet accueil-cta" href="#boutique">voir la collection</a>
         <p class="coin coin-bg mono">(01) Automne-hiver 2026<br />Coupes amples · lin, coton, laine</p>
-        <p class="coin coin-bd mono" aria-hidden="true">Défiler ↓</p>
+        <p class="coin coin-bd mono indice" aria-hidden="true"><span class="indice-souris">Glissez sur la photo : couleur / noir et blanc</span><span class="indice-doigt">Touchez la photo : couleur / noir et blanc</span></p>
       </section>
 
       <!-- 02 · Nouveautés -->
@@ -144,13 +152,19 @@
         </div>
       </section>
 
-      <!-- 07 · Manifeste -->
+      <!-- 07 · Manifeste : un graffiti pulvérisé derrière la silhouette détourée -->
       <section class="manifeste" id="manifeste" aria-labelledby="t-man">
         <p class="num">07. Manifeste</p>
-        <p class="manifeste-mot" aria-hidden="true">Doucement</p>
-        <div class="manifeste-photo" data-dechirure-coupe="0.42" data-dechirure-graine="manifeste" data-dechirure-amplitude="14">
-          <img data-photo="accueilCouleur" src="boutique/accueil-couleur.jpg" width="800" height="1067" alt="Une femme en haut drapé prune, la main dans les cheveux, dans un intérieur chaud plein de plantes" loading="lazy" decoding="async" />
-          <img data-photo="accueilNb" src="boutique/accueil-nb.jpg" width="800" height="1067" alt="" loading="lazy" decoding="async" />
+        <div class="manifeste-scene" data-derriere data-derriere-amplitude="20">
+          <p class="manifeste-mot" data-derriere-fond data-graffiti="Douceur" data-graffiti-graine="manifeste" data-graffiti-indice="#manifeste-indice">Douceur</p>
+          <div class="manifeste-photo" data-derriere-sujet data-dechirure-coupe="0.5" data-dechirure-detoure data-dechirure-graine="manifeste" data-dechirure-amplitude="14">
+            <img data-photo="accueilCouleur" src="boutique/accueil-couleur-d.webp" width="800" height="1067" alt="Une femme en haut drapé prune, la main dans les cheveux, à moitié en couleur, à moitié en noir et blanc" loading="lazy" decoding="async" draggable="false" />
+            <img data-photo="accueilNb" src="boutique/accueil-nb-d.webp" width="800" height="1067" alt="" loading="lazy" decoding="async" draggable="false" />
+          </div>
+          <div class="manifeste-devant" data-derriere-devant>
+            <p class="etiquette-crochet manifeste-etiquette">Le temps d’après</p>
+            <p class="manifeste-indice" id="manifeste-indice"></p>
+          </div>
         </div>
         <p class="manifeste-texte mono"><strong class="rouge">Éclaircie</strong> s'habille pour le temps d'après : des coupes <span class="rouge">amples</span>, du <span class="rouge">lin lavé</span>, des couleurs qui reviennent quand le ciel se dégage. Rien de serré, rien de pressé : <span class="rouge">on respire</span>.</p>
         <h2 id="t-man" class="manifeste-titre titre" data-etire="droite"><span class="accroche">(sans)</span>Parapluie.</h2>

@@ -2,7 +2,9 @@
  * Éclaircie — boutique d'essai (boutique.html).
  *
  * Construite avec les modules Presse : dechirure (bords de papier, coupe
- * couleur / noir et blanc), forme (la campagne vue à travers une goutte qui
+ * couleur / noir et blanc, ici sur des photos détourées), derriere (le nom
+ * qui passe derrière la silhouette), graffiti (le mot pulvérisé à la bombe
+ * du manifeste), forme (la campagne vue à travers une goutte qui
  * grandit), autocollant (l'éclair « clic » qui suit le pointeur), rail
  * (nouveautés au glisser, ruban sans fin des catégories) et panier (état,
  * localStorage, événements).
@@ -14,9 +16,12 @@ import "@fontsource-variable/archivo/wdth.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@fontsource/ibm-plex-mono/600.css";
+import "@fontsource/rubik-wet-paint/latin-400.css";
 import "./style.css";
 import { mountPagesNav } from "../pages-nav.ts";
 import { initDechirure } from "../presse/dechirure.ts";
+import { initDerriere } from "../presse/derriere.ts";
+import { initGraffiti } from "../presse/graffiti.ts";
 import { initForme } from "../presse/forme.ts";
 import { initAutocollant } from "../presse/autocollant.ts";
 import { initRail } from "../presse/rail.ts";
@@ -34,6 +39,26 @@ const SEUIL_LIVRAISON = 120;
 /* ---------------------------------------------------------------- photos */
 
 const cheminPhoto = (p: Photo, l: number) => `boutique/${p.fichier}${l === p.grand ? "" : `-${l}`}.jpg`;
+/** Les photos détourées (WebP à fond transparent) : `nom-d-<petit>.webp` et `nom-d.webp`. */
+const cheminDetoure = (p: Photo, l: number) => `boutique/${p.fichier}-d${l === p.grand ? "" : `-${l}`}.webp`;
+
+/** Une silhouette détourée, chargée seulement là où elle sert (paresseuse, dimensions données). */
+function imageDetouree(p: Photo, alt: string, sizes: string): HTMLImageElement {
+  const img = new Image();
+  img.alt = alt;
+  img.width = p.grand;
+  img.height = Math.round((p.grand * p.ratio[1]) / p.ratio[0]);
+  img.loading = "lazy";
+  img.decoding = "async";
+  img.draggable = false;
+  if (!SANS_PHOTOS) {
+    img.srcset = `${cheminDetoure(p, p.petit)} ${p.petit}w, ${cheminDetoure(p, p.grand)} ${p.grand}w`;
+    img.sizes = sizes;
+    img.src = cheminDetoure(p, p.petit);
+  }
+  surveillerPhoto(img, p, { forcer: SANS_PHOTOS });
+  return img;
+}
 
 function imagePhoto(p: Photo, alt: string, sizes: string, cadrage?: string): HTMLImageElement {
   const img = new Image();
@@ -126,7 +151,8 @@ CATALOGUE.forEach((p, i) => {
   grille.append(c);
 });
 
-// Ruban des catégories.
+// Ruban des catégories : des silhouettes détourées sur le papier, le nom vertical passe derrière (décor),
+// et un vrai libellé horizontal, lisible, qui nomme le bouton.
 const pisteCat = $("#piste-cat");
 for (const c of CATEGORIES) {
   const li = document.createElement("li");
@@ -140,17 +166,31 @@ for (const c of CATEGORIES) {
   nom.setAttribute("aria-hidden", "true");
   const ph = document.createElement("span");
   ph.className = "tuile-photo";
-  ph.append(imagePhoto(c.photo, "", "(max-width: 700px) 60vw, 20vw", "50% 30%"));
-  const n = document.createElement("span");
-  n.className = "tuile-compte mono";
-  n.setAttribute("aria-hidden", "true");
-  n.textContent = `[${nombreDans(c.id)}]`;
-  const lu = document.createElement("span");
-  lu.className = "visuellement-cache";
-  lu.textContent = `${c.nom}, ${nombreDans(c.id)} pièces`;
-  b.append(nom, ph, n, lu);
+  ph.append(imageDetouree(c.photo, "", "(max-width: 700px) 74vw, 26vw"));
+  const libelle = document.createElement("span");
+  libelle.className = "tuile-libelle";
+  libelle.innerHTML = `<span class="tuile-libelle-nom"></span> <span class="tuile-libelle-n"></span><span class="tuile-fleche" aria-hidden="true">→</span>`;
+  $(".tuile-libelle-nom", libelle).textContent = c.nom;
+  $(".tuile-libelle-n", libelle).textContent = `· ${nombreDans(c.id)} pièces`;
+  b.append(nom, ph, libelle);
   li.append(b);
   pisteCat.append(li);
+}
+// Les copies du ruban sans fin sont inertes (rail.ts) : sans ce relais, un clic sur une tuile copiée,
+// pourtant visible, ne ferait rien. Un clic (pas un glisser) sur une copie vaut un clic sur l'originale.
+{
+  const ruban = pisteCat.closest<HTMLElement>(".ruban")!;
+  let appui = { x: 0, y: 0 };
+  ruban.addEventListener("pointerdown", (e) => (appui = { x: e.clientX, y: e.clientY }), { passive: true });
+  ruban.addEventListener("click", (e) => {
+    if ((e.target as Element).closest(".tuile") || Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > 6) return;
+    const copie = $$<HTMLElement>("[data-rail-copie] .tuile", pisteCat).find((t) => {
+      const r = t.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+    const originale = copie && $$<HTMLElement>(".tuile", pisteCat).find((t) => !t.closest("[data-rail-copie]") && t.dataset.filtre === copie.dataset.filtre);
+    originale?.click();
+  });
 }
 $("#cat-compte").textContent = `${CATEGORIES.length} familles · ${CATALOGUE.length} pièces`;
 for (const el of $$("[data-compte]")) el.textContent = `[${nombreDans(el.dataset.compte as IdCategorie)}]`;
@@ -176,21 +216,11 @@ const magasin = initPanier(document, undefined, { cle: "eclaircie:panier", idsCo
 
 mountPagesNav();
 initDechirure();
+initDerriere();
+const graffitis = initGraffiti();
 const rails = initRail();
 const formes = initForme();
 initAutocollant();
-
-// Le tissu de « Doucement » : de l'encre de tampon, pas un graffiti.
-document.body.insertAdjacentHTML(
-  "beforeend",
-  `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="tampon" x="-2%" y="-5%" width="104%" height="110%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="g"/>
-    <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -5 0 0 0 3.6" result="trous"/>
-    <feComposite in="SourceGraphic" in2="trous" operator="in" result="encre"/>
-    <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" seed="11" result="onde"/>
-    <feDisplacementMap in="encre" in2="onde" scale="7" xChannelSelector="R" yChannelSelector="G"/>
-  </filter></svg>`,
-);
 
 // L'index du rail des nouveautés.
 const railNouv = $("#rail-nouv");
@@ -742,5 +772,5 @@ void document.fonts.ready.then(ajusterMarque);
 /* ---------------------------------------------------------------- banc d'essai */
 
 Object.assign(window as object, {
-  __boutique: { magasin, ouvrirFiche, ouvrirPanier, rails, formes, annoncer },
+  __boutique: { magasin, ouvrirFiche, ouvrirPanier, rails, formes, graffitis, annoncer },
 });

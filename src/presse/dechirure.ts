@@ -31,6 +31,15 @@
  *    -ombre valent ici aussi. Les deux enfants sont posés l'un sur l'autre
  *    (le conteneur fixe la taille : donnez-lui un aspect-ratio ou une hauteur).
  *    Mouvement réduit : la déchirure saute à sa place, sans inertie.
+ *    data-dechirure-detoure    pour deux images détourées (PNG / WebP à fond
+ *                              transparent, même masque) : le liseré et l'ombre
+ *                              de la déchirure sont masqués par l'alpha de
+ *                              l'image du haut (l'image de droite) ; ils ne se
+ *                              dessinent que sur la silhouette, jamais sur le
+ *                              fond transparent ; l'image de gauche est rognée
+ *                              juste après le bord (ses franges ne
+ *                              transparaissent pas sous le noir et blanc).
+ *                              "0" le désactive.
  *
  * Tout est recalculé au redimensionnement (ResizeObserver) ; le suivi du
  * pointeur ne touche qu'à des transform (pas de mise en page par image).
@@ -126,6 +135,7 @@ const CSS = `
 .dch-volet > .dch-dedans > * { position: absolute; inset: 0; width: 100%; height: 100%; }
 .dch-volet > .dch-dedans > img { object-fit: cover; }
 .dch-fibre { position: absolute; top: 0; left: 0; height: 100%; pointer-events: none; z-index: 2; will-change: transform; overflow: visible; }
+.dch-fibre[data-detoure] { -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-mode: alpha; mask-mode: alpha; }
 `;
 let cssPose = false;
 let compteur = 0;
@@ -268,6 +278,27 @@ function bord(el: HTMLElement): () => void {
 
 /* ---------------------------------------------------------------- 2. coupe */
 
+/**
+ * Position d'une image « object-fit » dans sa boîte, depuis `object-position`
+ * (mots-clés, % ou px) : décalage en px, `libreX` / `libreY` = place libre
+ * (boîte − image, négative quand l'image déborde).
+ */
+export function positionObjet(v: string | undefined | null, libreX: number, libreY: number): [number, number] {
+  const mots = (v || "50% 50%").trim().split(/\s+/);
+  const lire = (m: string | undefined, libre: number, axe: "x" | "y"): number => {
+    if (!m || m === "center") return libre / 2;
+    if (m === "left" || m === "top") return 0;
+    if (m === "right" || m === "bottom") return libre;
+    if (m.endsWith("%")) return (libre * parseFloat(m)) / 100;
+    const n = parseFloat(m);
+    return Number.isFinite(n) ? n : axe === "x" ? libre / 2 : libre / 2;
+  };
+  // « top left » : les mots-clés verticaux d'abord sont permis.
+  let [a, b] = mots;
+  if (a === "top" || a === "bottom" || ((b === "left" || b === "right") && a === "center")) [a, b] = [b, a];
+  return [lire(a, libreX, "x"), lire(b ?? "center", libreY, "y")];
+}
+
 export interface ControleCoupe {
   /** Place la déchirure (0…1 de la largeur), sans inertie si `immediat`. */
   placer(f: number, immediat?: boolean): void;
@@ -284,6 +315,7 @@ function coupe(el: HTMLElement): ControleCoupe | null {
   const amp = Math.max(2, nombre(el.dataset.dechirureAmplitude, 16));
   const fibre = Math.max(0, nombre(el.dataset.dechirureFibre, 4));
   const ombre = el.dataset.dechirureOmbre !== "0";
+  const detoure = el.hasAttribute("data-dechirure-detoure") && el.dataset.dechirureDetoure !== "0";
   filtreFibre();
 
   // Le volet : l'image de droite, dans un cadre rogné par le bord déchiré, qu'on translate (et l'image à rebours).
@@ -308,6 +340,42 @@ function coupe(el: HTMLElement): ControleCoupe | null {
   if (ombre) svg.append(pOmbre);
   if (fibre > 0) svg.append(pFibre);
   el.append(svg);
+
+  // Détouré : le liseré et l'ombre sont masqués par l'alpha de l'image du haut (même masque des deux côtés).
+  const imgHaut = (droite instanceof HTMLImageElement ? droite : droite.querySelector("img")) as HTMLImageElement | null;
+  let mx = 0, my = 0, masquePret = false;
+  const geometrieMasque = () => {
+    if (!detoure || !imgHaut || !l || !h) return;
+    const src = imgHaut.currentSrc || imgHaut.src;
+    const nw = imgHaut.naturalWidth, nh = imgHaut.naturalHeight;
+    if (!src || !nw || !nh) return;
+    const cs = getComputedStyle(imgHaut);
+    let mw = l, mh = h;
+    if (cs.objectFit !== "fill") {
+      const s = cs.objectFit === "contain" ? Math.min(l / nw, h / nh) : Math.max(l / nw, h / nh);
+      mw = nw * s;
+      mh = nh * s;
+    }
+    [mx, my] = positionObjet(cs.objectPosition, l - mw, h - mh);
+    const url = `url("${src.replace(/["\\]/g, "\\$&")}")`;
+    svg.dataset.detoure = "";
+    for (const pre of ["-webkit-", ""]) {
+      svg.style.setProperty(`${pre}mask-image`, url);
+      svg.style.setProperty(`${pre}mask-size`, `${mw.toFixed(1)}px ${mh.toFixed(1)}px`);
+    }
+    masquePret = true;
+  };
+  if (detoure && imgHaut) {
+    // Tant que l'image n'est pas là, ni liseré ni ombre (sinon un trait blanc flotterait sur le fond).
+    svg.style.visibility = "hidden";
+    const pret = () => {
+      geometrieMasque();
+      if (masquePret) svg.style.visibility = "";
+      placerA(x);
+    };
+    imgHaut.addEventListener("load", pret);
+    if (imgHaut.complete) queueMicrotask(pret);
+  }
 
   let l = 0, h = 0, x = 0, cible = 0, raf = 0, dernier = 0, derniere = "";
   const marge = fibre + 10;
@@ -347,6 +415,7 @@ function coupe(el: HTMLElement): ControleCoupe | null {
     };
     pFibre.setAttribute("d", versBas + remonter((v, i) => v - largeurFibre(i)) + "Z");
     pOmbre.setAttribute("d", colonne((v) => v) + remonter((v, i) => v - largeurFibre(i) - 5) + "Z");
+    geometrieMasque();
     placerA(x);
   };
 
@@ -356,6 +425,16 @@ function coupe(el: HTMLElement): ControleCoupe | null {
     volet.style.transform = `translate3d(${t.toFixed(2)}px,0,0)`;
     dedans.style.transform = `translate3d(${(-t).toFixed(2)}px,0,0)`;
     svg.style.transform = `translate3d(${(t - marge).toFixed(2)}px,0,0)`;
+    if (detoure) {
+      // L'image de gauche s'arrête au plus loin du bord : sous la droite, ses franges semi-transparentes
+      // (cheveux, franges d'écharpe) transparaîtraient en couleur à travers le noir et blanc.
+      gauche.style.clipPath = `inset(0 ${Math.max(0, l - (t + amp)).toFixed(1)}px 0 0)`;
+    }
+    if (masquePret) {
+      const pos = `${(mx - (t - marge)).toFixed(1)}px ${my.toFixed(1)}px`;
+      svg.style.setProperty("-webkit-mask-position", pos);
+      svg.style.setProperty("mask-position", pos);
+    }
   };
 
   const pas = (tps: number) => {
@@ -412,6 +491,7 @@ function coupe(el: HTMLElement): ControleCoupe | null {
       el.removeEventListener("pointerdown", surMouvement);
       el.removeEventListener("pointerleave", surSortie);
       el.removeEventListener("pointercancel", surSortie);
+      if (detoure) gauche.style.clipPath = "";
     },
   };
 }

@@ -351,3 +351,7 @@ ancres, `sticky`), des effets qui ne survivent pas au mouvement réduit.
 8. ~~**D3 + D7**~~ : chorégraphie d'entrée, direction artistique, premières versions.
 9. ~~**D6, D8**~~ : typographie cinétique, passage des titres, premières versions. **D9, D10** ensuite : 3D PBR, son.
 10. ~~**B**~~ : le Créateur, première version. **A4, D12** : rendu serveur, paquet : quand un vrai projet les demande.
+
+| `data-graffiti` | bloc (p, div) avec le mot | Mot peint à la bombe dans un canvas 2D : bord flou, brume, grain, éclaboussures à graine fixe, coulures. Pulvérisé par une buse automatique à l'entrée dans l'écran, puis le pointeur repasse de la peinture (rayon qui grossit avec la lenteur, coulures qui s'allongent si on insiste) ; `-couleur` (#e3122b), `-police` (Rubik Wet Paint), `-taille`, `-graine`, `-auto="0"`, `-effacable`, `-indice`. Vrai texte gardé dans le DOM ; mouvement réduit : mot entier fixe. |
+| `data-derriere` | conteneur de couches | Empile `[data-derriere-fond]`, `[data-derriere-sujet]` (photo détourée) et `[data-derriere-devant]` : le mot passe derrière la silhouette. `"pile"` ou `"libre"` ; parallaxe pointeur + défilement par `translate` ; `-amplitude` (18), `-pointeur="0"`, `-defilement="0"`. |
+| `data-dechirure-detoure` | avec `data-dechirure-coupe`, images détourées | Liseré et ombre masqués par l'alpha de l'image du haut, image de gauche rognée après le bord. |
