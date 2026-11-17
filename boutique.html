@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Éclaircie · le chic après la pluie · boutique d'essai Presse</title>
+    <meta name="description" content="Boutique de vêtements d'essai, construite avec les modules Presse : déchirure de papier, forme-masque au défilement, autocollant qui suit le pointeur, rail glissant, panier en localStorage." />
+    <meta name="theme-color" content="#b9b3b3" />
+    <link rel="preload" as="image" href="boutique/echarpe-couleur-750.jpg" imagesrcset="boutique/echarpe-couleur-750.jpg 750w, boutique/echarpe-couleur.jpg 1500w" imagesizes="(max-width: 700px) 100vw, 75vh" />
+    <script type="module" src="/src/boutique/main.ts"></script>
+  </head>
+  <body>
+    <a class="evitement" href="#contenu">Aller au contenu</a>
+
+    <div class="intro" hidden>
+      <div class="intro-volet" aria-hidden="true">
+        <span class="intro-mot">Éclaircie</span>
+        <span class="intro-mono">le chic après la pluie · A/H 26</span>
+      </div>
+      <button class="intro-passer lien-mono" type="button">Passer l'intro</button>
+    </div>
+
+    <header class="tete">
+      <nav class="tete-g" aria-label="Navigation">
+        <button type="button" class="lien-mono" data-pages-trigger>Pages +</button>
+        <a href="#boutique" class="lien-mono large-seul">Boutique</a>
+        <a href="#categories" class="lien-mono large-seul">Catégories +</a>
+        <span class="mono discret large-seul" aria-hidden="true">A/H—26</span>
+      </nav>
+      <a class="logo" href="#haut" aria-label="Éclaircie, retour en haut">Éclaircie</a>
+      <div class="tete-d">
+        <button type="button" class="lien-mono large-seul" data-ouvrir-recherche>Recherche</button>
+        <button type="button" class="lien-mono" data-ouvrir="favoris" aria-haspopup="dialog">Favoris<span aria-hidden="true">.</span><span class="compteur" data-favoris-nombre>0</span></button>
+        <button type="button" class="lien-mono" data-ouvrir="panier" aria-haspopup="dialog">Panier<span aria-hidden="true">.</span><span class="compteur" data-panier-nombre>0</span></button>
+      </div>
+    </header>
+
+    <main id="contenu" tabindex="-1">
+      <!-- 01 · Accueil -->
+      <section class="accueil" id="haut" aria-labelledby="titre-accueil">
+        <h1 id="titre-accueil" class="accueil-marque titre" data-etire>Éclaircie</h1>
+        <p class="accueil-devise titre" data-etire="droite">Le chic<br />après la pluie</p>
+        <div class="accueil-photo" data-dechirure-coupe="0.5" data-dechirure-graine="accueil" data-dechirure-amplitude="18">
+          <img data-photo="echarpeCouleur" src="boutique/echarpe-couleur-750.jpg" srcset="boutique/echarpe-couleur-750.jpg 750w, boutique/echarpe-couleur.jpg 1500w" sizes="(max-width: 700px) 100vw, 75vh" width="1500" height="2000" alt="Marinière écrue, grande écharpe à carreaux magenta et pantalon ciel, à moitié en couleur, à moitié en noir et blanc" fetchpriority="high" decoding="async" />
+          <img data-photo="echarpeNb" src="boutique/echarpe-nb-750.jpg" srcset="boutique/echarpe-nb-750.jpg 750w, boutique/echarpe-nb.jpg 1500w" sizes="(max-width: 700px) 100vw, 75vh" width="1500" height="2000" alt="" decoding="async" />
+        </div>
+        <p class="accueil-saison titre" data-etire><span class="rouge">Nouvelles</span> couleurs</p>
+        <a class="crochet accueil-cta" href="#boutique">voir la collection</a>
+        <p class="coin coin-bg mono">(01) Automne-hiver 2026<br />Coupes amples · lin, coton, laine</p>
+        <p class="coin coin-bd mono" aria-hidden="true">Défiler ↓</p>
+      </section>
+
+      <!-- 02 · Nouveautés -->
+      <section class="nouveautes" id="nouveautes" aria-labelledby="t-nouv" data-autocollant="clic" data-autocollant-forme="eclair" data-autocollant-couleur="#5257cc" data-dechirure="bas" data-dechirure-graine="nouveautes" data-dechirure-amplitude="26">
+        <div class="nouv-tete">
+          <h2 id="t-nouv" class="num">02. Nouveautés</h2>
+          <a class="crochet" href="#boutique">tout voir</a>
+          <p class="mono nouv-note n1" aria-hidden="true">(lin lavé)</p>
+          <p class="mono nouv-note n2" aria-hidden="true">(après l'averse)</p>
+          <div class="nouv-bas">
+            <p class="mono"><span id="nouv-index">01</span> / <span id="nouv-total">06</span></p>
+            <div id="nouv-barre" data-rail-barre></div>
+            <div class="fleches">
+              <button type="button" class="fleche" data-rail-precedent="rail-nouv" aria-label="Pièce précédente">←</button>
+              <button type="button" class="fleche" data-rail-suivant="rail-nouv" aria-label="Pièce suivante">→</button>
+            </div>
+          </div>
+        </div>
+        <div class="rail-nouv" id="rail-nouv" data-rail data-rail-barre="#nouv-barre" role="region" aria-label="Nouveautés : faites glisser ou utilisez les flèches">
+          <ul class="cartes" data-rail-piste id="piste-nouv"></ul>
+        </div>
+      </section>
+
+      <!-- 03 · Campagne -->
+      <section class="campagne" aria-labelledby="t-camp">
+        <div class="campagne-image">
+          <img data-photo="campagne" data-parallaxe src="boutique/campagne-1000.jpg" srcset="boutique/campagne-1000.jpg 1000w, boutique/campagne.jpg 2000w" sizes="100vw" width="2000" height="1213" alt="Une femme en pull pervenche ample, dans un intérieur clair plein de plantes et de tableaux colorés" loading="lazy" decoding="async" />
+        </div>
+        <div class="campagne-texte">
+          <p class="num clair">03. Campagne</p>
+          <h2 id="t-camp" class="titre" data-etire>La lumière<br />revient.</h2>
+          <p class="mono">Pull pervenche, pantalon Nuit.<br />Photographié un matin de novembre,<br />entre deux averses.</p>
+          <a class="crochet clair" href="#boutique" data-filtre="hauts">voir les hauts</a>
+        </div>
+      </section>
+
+      <!-- 04 · Catégories -->
+      <section class="categories" id="categories" aria-labelledby="t-cat" data-dechirure="haut" data-dechirure-graine="categories" data-dechirure-amplitude="26">
+        <div class="sec-tete">
+          <h2 id="t-cat" class="num">04. Catégories</h2>
+          <p class="mono" id="cat-compte">5 familles</p>
+          <a class="crochet" href="#boutique">tout voir</a>
+        </div>
+        <div class="ruban" data-rail data-rail-sansfin data-rail-vitesse="34" role="region" aria-label="Catégories">
+          <ul class="tuiles" data-rail-piste id="piste-cat"></ul>
+        </div>
+      </section>
+
+      <!-- Deux familles -->
+      <section class="vignettes" aria-label="Deux familles à la une">
+        <button type="button" class="vignette" data-filtre="hauts">
+          <img data-photo="olive" src="boutique/olive-600.jpg" srcset="boutique/olive-600.jpg 600w, boutique/olive.jpg 1200w" sizes="(max-width: 700px) 100vw, 50vw" width="1200" height="1600" alt="" loading="lazy" decoding="async" style="object-position: 50% 24%" />
+          <span class="vignette-nom titre">Hauts<span class="accroche">(amples)</span></span>
+          <span class="compte mono" data-compte="hauts">[4]</span>
+          <span class="visuellement-cache">Voir les hauts</span>
+        </button>
+        <button type="button" class="vignette" data-filtre="pantalons">
+          <img data-photo="sauge" src="boutique/sauge-600.jpg" srcset="boutique/sauge-600.jpg 600w, boutique/sauge.jpg 1200w" sizes="(max-width: 700px) 100vw, 50vw" width="1200" height="1600" alt="" loading="lazy" decoding="async" style="object-position: 50% 84%" />
+          <span class="vignette-nom titre">Pantalons<span class="accroche">(larges)</span></span>
+          <span class="compte mono" data-compte="pantalons">[4]</span>
+          <span class="visuellement-cache">Voir les pantalons</span>
+        </button>
+      </section>
+
+      <!-- 05 · Bijoux -->
+      <section class="bijoux" id="bijoux" aria-labelledby="t-bij" data-autocollant="clic" data-autocollant-forme="goutte" data-autocollant-couleur="#d8323c">
+        <div class="bijoux-texte">
+          <p class="num">05. Bijoux</p>
+          <h2 id="t-bij" class="titre" data-etire>Argent<br />recyclé</h2>
+          <p class="mono">Deux boucles d'oreilles, gravées à la main dans un atelier de Lorient. Légères : <em>on les oublie</em>, on ne les perd pas.</p>
+        </div>
+        <ul class="cartes bijoux-liste" id="liste-bijoux"></ul>
+      </section>
+
+      <!-- 06 · La boutique -->
+      <section class="boutique" id="boutique" aria-labelledby="t-boutique">
+        <div class="sec-tete">
+          <h2 id="t-boutique" class="num">06. La boutique</h2>
+          <p class="mono" id="resultat" aria-live="polite">14 pièces</p>
+        </div>
+        <p class="boutique-titre titre" aria-hidden="true" data-etire>Tout<span class="accroche" id="boutique-accroche">(14)</span></p>
+        <div class="outils">
+          <div class="filtres" role="group" aria-label="Filtrer par catégorie" id="filtres"></div>
+          <div class="recherche">
+            <label for="recherche" class="mono">Rechercher</label>
+            <input type="search" id="recherche" name="q" autocomplete="off" placeholder="lin, rayures, rouille…" />
+          </div>
+        </div>
+        <ul class="cartes grille" id="grille" data-autocollant="voir" data-autocollant-forme="goutte" data-autocollant-couleur="#c0481f" data-autocollant-taille="84"></ul>
+        <div class="vide" id="vide" hidden>
+          <p class="titre">Rien<br />ici.</p>
+          <p class="mono" id="vide-texte">Aucune pièce ne correspond.</p>
+          <button type="button" class="bouton" id="vide-raz">Tout afficher</button>
+        </div>
+      </section>
+
+      <!-- 07 · Manifeste -->
+      <section class="manifeste" id="manifeste" aria-labelledby="t-man">
+        <p class="num">07. Manifeste</p>
+        <p class="manifeste-mot" aria-hidden="true">Doucement</p>
+        <div class="manifeste-photo" data-dechirure-coupe="0.42" data-dechirure-graine="manifeste" data-dechirure-amplitude="14">
+          <img data-photo="accueilCouleur" src="boutique/accueil-couleur.jpg" width="800" height="1067" alt="Une femme en haut drapé prune, la main dans les cheveux, dans un intérieur chaud plein de plantes" loading="lazy" decoding="async" />
+          <img data-photo="accueilNb" src="boutique/accueil-nb.jpg" width="800" height="1067" alt="" loading="lazy" decoding="async" />
+        </div>
+        <p class="manifeste-texte mono"><strong class="rouge">Éclaircie</strong> s'habille pour le temps d'après : des coupes <span class="rouge">amples</span>, du <span class="rouge">lin lavé</span>, des couleurs qui reviennent quand le ciel se dégage. Rien de serré, rien de pressé : <span class="rouge">on respire</span>.</p>
+        <h2 id="t-man" class="manifeste-titre titre" data-etire="droite"><span class="accroche">(sans)</span>Parapluie.</h2>
+      </section>
+
+      <!-- 08 · En mouvement -->
+      <section class="film" id="film" aria-labelledby="t-film" data-forme="goutte" data-forme-quand="defilement" data-forme-taille="0.46" data-forme-hauteur="270vh">
+        <div data-forme-scene>
+          <img data-forme-media data-photo="campagne" src="boutique/campagne-1000.jpg" srcset="boutique/campagne-1000.jpg 1000w, boutique/campagne.jpg 2000w" sizes="100vw" width="2000" height="1213" alt="La campagne d'automne vue à travers une goutte qui grandit" loading="lazy" decoding="async" />
+          <div class="film-titre">
+            <p class="num">08. Campagne A/H 26</p>
+            <h2 id="t-film" class="titre">Une vision en mouvement.</h2>
+          </div>
+          <p class="film-legende mono" aria-hidden="true">continuez de défiler ↓</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pied" data-dechirure="haut" data-dechirure-graine="pied" data-dechirure-amplitude="30">
+      <nav class="pied-liens" aria-label="Pied de page">
+        <ul>
+          <li><a href="#boutique" class="lien-mono">Boutique</a></li>
+          <li><a href="#categories" class="lien-mono">Catégories</a></li>
+          <li><a href="#manifeste" class="lien-mono">Qui sommes-nous</a></li>
+          <li><a href="#film" class="lien-mono">Campagne</a></li>
+        </ul>
+        <ul>
+          <li><span class="mono">Retours (démo)</span></li>
+          <li><span class="mono">Livraison (démo)</span></li>
+          <li><span class="mono">Mentions (démo)</span></li>
+        </ul>
+      </nav>
+      <p class="pied-marque titre" aria-hidden="true">Éclaircie</p>
+      <form class="lettre" id="lettre" novalidate>
+        <h2 class="titre">S'inscrire<span class="accroche">(la lettre)</span></h2>
+        <div class="lettre-champ">
+          <label for="courriel" class="mono">Adresse e-mail</label>
+          <input id="courriel" type="email" name="courriel" autocomplete="email" required placeholder="vous@exemple.fr" aria-describedby="lettre-etat" />
+          <button type="submit" class="lien-mono">S'inscrire →</button>
+        </div>
+        <p class="mono lettre-etat" id="lettre-etat" role="status"></p>
+      </form>
+      <p class="mono pied-bas">© 2026 Éclaircie — boutique de démonstration : rien n'est vendu, rien n'est envoyé.</p>
+    </footer>
+
+    <!-- Fiche produit -->
+    <dialog class="fiche" id="fiche" aria-labelledby="fiche-nom">
+      <div class="fiche-photo" id="fiche-photo"></div>
+      <form class="fiche-corps" id="fiche-form" method="dialog" novalidate>
+        <button type="button" class="fermer lien-mono" data-fermer>Fermer ✕</button>
+        <p class="num" id="fiche-cat"></p>
+        <h2 class="titre" id="fiche-nom"></h2>
+        <p class="fiche-prix" id="fiche-prix"></p>
+        <p class="fiche-desc" id="fiche-desc"></p>
+        <fieldset class="choix" id="fiche-couleurs">
+          <legend class="mono">Couleur · <span id="fiche-couleur-nom"></span></legend>
+          <div class="pastilles"></div>
+        </fieldset>
+        <fieldset class="choix" id="fiche-tailles" aria-describedby="fiche-erreur">
+          <legend class="mono">Taille</legend>
+          <div class="tailles"></div>
+        </fieldset>
+        <p class="erreur mono" id="fiche-erreur" role="alert"></p>
+        <div class="fiche-actions">
+          <button type="submit" class="bouton bouton-plein" id="fiche-ajouter">Ajouter au panier</button>
+          <button type="button" class="bouton" id="fiche-favori" aria-pressed="false">♡ Favori</button>
+        </div>
+        <p class="mono fiche-ok" id="fiche-ok" role="status"></p>
+        <p class="mono fiche-matiere" id="fiche-matiere"></p>
+      </form>
+    </dialog>
+
+    <!-- Panier -->
+    <dialog class="tiroir" id="panier" aria-labelledby="panier-titre">
+      <div class="tiroir-tete">
+        <h2 class="titre" id="panier-titre">Panier<span class="accroche" id="panier-n">(0)</span></h2>
+        <button type="button" class="lien-mono" data-fermer>Fermer ✕</button>
+      </div>
+      <ul class="lignes" id="panier-lignes"></ul>
+      <div class="tiroir-vide" id="panier-vide">
+        <p class="mono">Votre panier est vide.</p>
+        <a href="#boutique" class="crochet" data-fermer-lien>voir la boutique</a>
+      </div>
+      <div class="tiroir-pied" id="panier-pied">
+        <p class="total"><span class="mono">Total</span> <strong id="panier-total">0,00 €</strong></p>
+        <p class="mono discret" id="panier-livraison"></p>
+        <button type="button" class="bouton bouton-plein" id="commander">Commander</button>
+      </div>
+    </dialog>
+
+    <!-- Favoris -->
+    <dialog class="tiroir" id="favoris" aria-labelledby="favoris-titre">
+      <div class="tiroir-tete">
+        <h2 class="titre" id="favoris-titre">Favoris<span class="accroche" id="favoris-n">(0)</span></h2>
+        <button type="button" class="lien-mono" data-fermer>Fermer ✕</button>
+      </div>
+      <ul class="lignes" id="favoris-lignes"></ul>
+      <div class="tiroir-vide" id="favoris-vide">
+        <p class="mono">Aucun favori pour l'instant : touchez ♡ sur une pièce.</p>
+      </div>
+    </dialog>
+
+    <!-- Récapitulatif -->
+    <dialog class="recap" id="recap" aria-labelledby="recap-titre" aria-describedby="recap-demo">
+      <p class="num">Récapitulatif</p>
+      <h2 class="titre" id="recap-titre">Merci, mais…</h2>
+      <p class="recap-demo" id="recap-demo"><strong>Ceci est une boutique de démonstration.</strong> Aucune commande n'est passée, aucun paiement n'est demandé, rien n'est envoyé : le panier n'existe que dans ce navigateur.</p>
+      <ul class="recap-lignes mono" id="recap-lignes"></ul>
+      <p class="total"><span class="mono">Total (fictif)</span> <strong id="recap-total"></strong></p>
+      <div class="recap-actions">
+        <button type="button" class="bouton" data-fermer>Retour au panier</button>
+        <button type="button" class="bouton bouton-plein" id="recap-fin">Terminer la démo et vider le panier</button>
+      </div>
+    </dialog>
+
+    <div class="annonce mono" id="annonce" role="status" aria-live="polite"></div>
+  </body>
+</html>
