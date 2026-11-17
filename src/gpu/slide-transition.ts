@@ -153,21 +153,21 @@ fn disque(q: vec2f, r: f32, n: i32, phi: f32, bokeh: f32) -> vec3f {
   }
   return acc / ws;
 }
-// Sable : quand le grain qui est en s se détache (0…0,73) ; le front part du bord droit, bruité.
+// Sable : quand le grain qui est en s se détache (0,02…0,64) ; le front part du bord droit, bruité.
 fn sable_r(s: vec2f) -> f32 {
-  let dpr = tu.res.z;
-  let n = vn(s / (70.0 * dpr)) * 0.65 + vn(s / (16.0 * dpr)) * 0.35;
-  return clamp(0.04 + 0.52 * (1.0 - s.x / tu.res.x) + 0.2 * (n - 0.5), 0.02, 0.7);
+  let h = tu.res.y;
+  let n = vn(s / (0.18 * h)) * 0.7 + vn(s / (0.05 * h) + 7.0) * 0.3;
+  return clamp(0.04 + 0.52 * (1.0 - s.x / tu.res.x) + 0.16 * (n - 0.5), 0.02, 0.64);
 }
-// Sable : le chemin d'un grain de la classe k, à l'âge a (0…1) : soufflé vers la droite, il tombe en flottant.
-fn sable_d(k: f32, a: f32, s: vec2f) -> vec2f {
+// Sable : le chemin d'un grain de la classe k, à l'âge a (0…1) : soufflé vers la droite, il tombe en flottant. Le vent
+// dépend du lieu où le grain arrive (px), pas du grain : on peut ainsi remonter au grain par dichotomie sur l'âge.
+fn sable_d(k: f32, a: f32, px: vec2f) -> vec2f {
   let res = tu.res.xy;
-  let dpr = tu.res.z;
-  let vx = (0.12 + 0.07 * k) * res.x * pow(a, 1.5);
+  let vx = (0.1 + 0.06 * k) * res.x * pow(a, 1.5);
   let vy = (0.05 + 0.04 * k) * res.y * a * a - 0.04 * res.y * sin(a * 3.1416) * (k - 2.0) * 0.5;
-  // Une turbulence lisse (elle dépend du lieu et de l'âge, pas du grain) : les grains ne suivent pas tous la même ligne.
-  let tb = vec2f(vn(s / (45.0 * dpr) + vec2f(k * 3.7, a * 2.0)), vn(s / (45.0 * dpr) + vec2f(9.1, k * 1.9 - a * 2.0))) - 0.5;
-  return vec2f(vx, vy) + tb * a * 90.0 * dpr;
+  let w = px / (0.12 * res.y);
+  let tb = vec2f(vn(w + vec2f(k * 3.7, a * 1.5)), vn(w + vec2f(9.1, k * 1.9 - a * 1.5))) - 0.5;
+  return vec2f(vx, vy) + tb * a * 0.08 * res.y;
 }
 
 @fragment fn fs(in: VO) -> @location(0) vec4f {
@@ -560,20 +560,25 @@ fn sable_d(k: f32, a: f32, s: vec2f) -> vec2f {
     let lt = 0.3;
     let cell0 = floor(px / g);
     if (p < sable_r((cell0 + 0.5) * g) + 0.03 * h21(cell0)) { return vec4f(old(px), 1.0); }
-    // Pour chaque classe de grains (cinq vitesses), on remonte au grain qui serait arrivé ici.
+    // Pour chaque classe de grains (cinq vitesses), on cherche l'âge a tel que le grain parti de px - D(a) ait bien
+    // l'âge a : g(a) = âge(px - D(a)) - a part de ≥ 0 et finit ≤ 0 ; une dichotomie trouve le zéro, quelle que soit la
+    // vitesse des grains devant celle du front.
     for (var ki = 0; ki < 5; ki++) {
       let k = f32(ki);
-      var s = px;
-      for (var it = 0; it < 3; it++) {
-        let a = clamp((p - sable_r(s)) / lt, 0.0, 1.0);
-        s = px - sable_d(k, a, s);
+      var lo = 0.0;
+      var hi = 1.0;
+      for (var it = 0; it < 8; it++) {
+        let mid = 0.5 * (lo + hi);
+        let gm = clamp((p - sable_r(px - sable_d(k, mid, px))) / lt, 0.0, 1.0) - mid;
+        if (gm > 0.0) { lo = mid; } else { hi = mid; }
       }
+      let a = 0.5 * (lo + hi);
+      let s = px - sable_d(k, a, px);
       let cell = floor(s / g);
       if (floor(h21(cell + 17.0) * 5.0) != k) { continue; }
       let ctr = (cell + 0.5) * g;
       let rc = sable_r(ctr) + 0.03 * h21(cell);
       if (p < rc) { continue; }
-      let a = clamp((p - rc) / lt, 0.0, 1.0);
       let loc = abs(fract(s / g) - 0.5);
       if (max(loc.x, loc.y) > 0.5 * (1.0 - 0.6 * a)) { continue; }
       var col = old(ctr);
@@ -601,7 +606,8 @@ fn sable_d(k: f32, a: f32, s: vec2f) -> vec2f {
     let alive = 1.0 - lisse((p - 0.8) / 0.2);
     let warm = vec3f(1.0, 0.94, 0.8);
     if (s < 0.0) {
-      return vec4f(warm, (0.25 + 0.75 * ray) * exp(s / (0.3 * lens)) * 0.85 * alive);
+      // Derrière : la lumière du front s'attarde, et des rayons pâles restent tendus depuis la source.
+      return vec4f(warm, ((0.25 + 0.75 * ray) * exp(s / (0.3 * lens)) * 0.85 + ray * 0.1 * exp(s / (1.2 * lens))) * alive);
     }
     let w = max(1.0 - s / lens, 0.0);
     var col = old(px);
@@ -624,9 +630,9 @@ fn sable_d(k: f32, a: f32, s: vec2f) -> vec2f {
     let w1 = vec2f(fbm(a2 * 2.0 + vec2f(0.0, p * 0.6)), fbm(a2 * 2.0 + vec2f(5.2, 1.3 - p * 0.6)));
     let w2 = vec2f(fbm(a2 * 2.0 + 3.0 * w1 + vec2f(1.7, 9.2)), fbm(a2 * 2.0 + 3.0 * w1 + vec2f(8.3, 2.8)));
     let q = px + (w2 - 0.5) * 2.0 * 110.0 * dpr * e + vec2f(0.0, 50.0 * dpr * e * e);
-    let m = 0.5 + 0.5 * sin(10.0 * (a2.x * 0.8 + a2.y * 0.5) + 7.0 * w2.x + p * 2.0);
-    let vv = mix(m, fbm(a2 * 3.0 + 2.0 * w2), 0.35);
-    let thr = mix(-0.14, 1.14, mix(p, e, 0.4));
+    let m = 0.5 + 0.5 * sin(16.0 * (a2.x * 0.8 + a2.y * 0.5) + 14.0 * w2.x + p * 2.0);
+    let vv = mix(m, fbm(a2 * 3.0 + 2.0 * w2), 0.25);
+    let thr = mix(-0.1, 1.04, mix(p, e, 0.25));
     var col = old(q);
     let rim = 1.0 - lisse((vv - thr) / 0.12);
     col = mix(col, col * vec3f(0.62, 0.66, 0.8), rim * 0.6);
@@ -651,11 +657,15 @@ export class SlideTransitionPass {
   private want: { style: number; dur: number; opts?: VagueOptions; resolve: () => void } | null = null;
   private run: { style: number; dur: number; t0: number; seed: number; opts?: VagueOptions } | null = null;
 
-  constructor(
-    private device: GPUDevice,
-    private format: GPUTextureFormat,
-    private sampler: GPUSampler,
-  ) {
+  // Champs déclarés à part (pas de propriétés de paramètre) : le module se charge aussi sous `node --experimental-strip-types`.
+  private device: GPUDevice;
+  private format: GPUTextureFormat;
+  private sampler: GPUSampler;
+
+  constructor(device: GPUDevice, format: GPUTextureFormat, sampler: GPUSampler) {
+    this.device = device;
+    this.format = format;
+    this.sampler = sampler;
     const mod = device.createShaderModule({ label: "slide-transition", code: WGSL });
     this.layout = device.createBindGroupLayout({
       entries: [

@@ -16,7 +16,7 @@
  *     </section>
  *   </main>
  *
- * Transitions entre deux diapos (`data-transition`, SLIDE_TRANSITIONS : enchaine, feuille, bavure, mosaique, fonte,
+ * Transitions entre deux diapos (`data-transition`, SLIDE_TRANSITIONS, 19 styles : enchaine, feuille, bavure, mosaique, fonte,
  * onde, portes, points) : l'image de la diapo qui part est gardée et redessinée par-dessus la suivante
  * (src/gpu/slide-transition.ts). `data-transition="deplacement"` : Magic Move — chaque `[data-move="id"]` vole de sa
  * place dans la diapo précédente à sa place dans celle-ci ; le reste entre en fondu.
@@ -34,7 +34,7 @@
  */
 import "./diapo.css";
 import { settings, TRANSITIONS } from "../state.ts";
-import { SLIDE_TRANSITIONS, type SlideTransition, type VagueOptions } from "../gpu/slide-transition.ts";
+import { SLIDE_TRANSITIONS, SLIDE_TRANSITION_DUREES, type SlideTransition, type VagueOptions } from "../gpu/slide-transition.ts";
 import { animOf, parseAnim, Timeline } from "./timeline.ts";
 import { planSteps, type StepPlan } from "./diapo-etapes.ts";
 
@@ -166,7 +166,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     const overlay = (SLIDE_TRANSITIONS as readonly string[]).includes(name) ? (name as SlideTransition) : null;
     const move = name === "deplacement";
     const t = overlay || move ? TRANSITIONS.indexOf("aucune") : TRANSITIONS.indexOf(name as (typeof TRANSITIONS)[number]);
-    const dur = Number(el.dataset.transitionDur ?? (overlay === "enchaine" ? 0.7 : 1.15));
+    const dur = Number(el.dataset.transitionDur ?? (overlay === "enchaine" ? 0.7 : ((overlay && SLIDE_TRANSITION_DUREES[overlay]) ?? 1.15)));
     const built = stepEls.map((s) => {
       const kind = s.dataset.step || "monte";
       const tl = new Timeline();
