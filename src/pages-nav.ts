@@ -42,6 +42,7 @@ export const PAGES = [
   { href: "typo.html", name: "Typographie", text: "Six entrées de texte : étirement, sphère, encre, tracé, éclats, fragments" },
   { href: "cinetique.html", name: "Cinétique", text: "Texte animé en DOM : 18 entrées par ligne, mot ou lettre, et huit composants (roule, marque, défilé, reflet, cercle, coupe, brouille, frappe)" },
   { href: "rouleau.html", name: "Rouleau", text: "Menu roulant : les titres défilent, l'image ondule derrière comme une étoffe" },
+  { href: "couloir.html", name: "Couloir", text: "Un mur d'images vu en fuite : il défile au pointeur, frange de couleur à la vitesse, réglable en direct" },
   { href: "boutique.html", name: "Boutique", text: "Éclaircie, boutique de vêtements d'essai : déchirure, forme-masque, autocollant, rails, panier" },
   { href: "diapo-createur.html", name: "Créateur de diaporama", text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU" },
   { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
@@ -139,6 +140,8 @@ export function mountPagesNav(base = "./") {
   if (document.querySelector("[data-ruban]")) void import("./presse/ruban.ts").then((m) => m.initRuban());
   if (document.querySelector("[data-typo]")) void import("./presse/typo.ts").then((m) => m.initTypo());
   if (document.querySelector("[data-rouleau]")) void import("./presse/rouleau.ts").then((m) => m.initRouleau());
+  // Couloir : une rangée d'images en perspective fuyante (DOM, matrix3d).
+  if (document.querySelector("[data-couloir]")) void import("./presse/couloir.ts").then((m) => m.initCouloir());
   if (!document.documentElement.hasAttribute("data-presse-manuel") && document.querySelector("[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]"))
     void import("./presse/cinetique.ts").then((m) => m.initCinetique());
   // Modules nés de la boutique ; une page qui les arme elle-même porte data-presse-manuel sur <html>.

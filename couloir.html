@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Couloir · un mur d'images vu en fuite · Presse</title>
+    <meta name="description" content="Démo du module couloir de Presse : une rangée d'images en perspective fuyante, qui défile sans fin au pointeur, frange de couleur avec la vitesse, et se règle en direct." />
+    <meta name="theme-color" content="#f2f3ef" />
+    <script type="module" src="/src/couloir/main.ts"></script>
+  </head>
+  <body>
+    <main class="scene">
+      <h1 class="titre">Couloir</h1>
+      <p class="legende"><span>Chaque image,</span> <span class="legende-pale">un pas de plus vers le fond.</span></p>
+
+      <ul class="mur" id="mur" data-couloir data-couloir-presets="micro" data-couloir-ouvre="visionneuse" data-couloir-commandes="#barre" aria-label="Photographies en couloir : flèches pour avancer, Entrée pour agrandir">
+        <li><img src="img/pont-960.webp" width="960" height="639" alt="Le pont rouge au-dessus d'une baie, une plage et des vagues au premier plan" /></li>
+        <li><img src="img/fig-960.webp" width="960" height="960" alt="Une figue ouverte, rouge vif, posée sur un rebord de pierre au soleil" /></li>
+        <li><img src="boutique/sauge-600.jpg" width="600" height="800" alt="Pantalon ample vert sauge, porté, vu en pied" /></li>
+        <li><img src="img/lac-960.webp" width="960" height="639" alt="Un lac de montagne entre des collines sèches, sous un ciel strié" /></li>
+        <li><img src="img/flower-960.webp" width="960" height="960" alt="Une renoncule blanche, seule, sur un fond gris" /></li>
+        <li><img src="img/jardin-960.webp" width="960" height="639" alt="Un jardin fleuri de rouge devant une maison de bois, sous les pins" /></li>
+        <li><img src="boutique/pervenche-600.jpg" width="600" height="800" alt="Pull pervenche ample, porté, sur fond clair" /></li>
+        <li><img src="img/glass-960.webp" width="960" height="640" alt="Un verre épais couché sur le flanc, reflets noirs et ambrés" /></li>
+        <li><img src="img/yosemite-960.webp" width="960" height="639" alt="Une vallée glaciaire entre des falaises de granit, des forêts au premier plan" /></li>
+        <li><img src="img/bowl-960.webp" width="960" height="640" alt="Un bol de céramique écrue, mat, dans une lumière douce" /></li>
+        <li><img src="boutique/rouille-600.jpg" width="600" height="800" alt="Haut couleur rouille, ample, porté" /></li>
+        <li><img src="img/cerf-960.webp" width="960" height="639" alt="Un jeune cerf dans un jardin en pente, herbe verte et lumière rasante" /></li>
+        <li><img src="img/dunes-960.webp" width="960" height="639" alt="Des dunes pâles parsemées d'arbustes, des montagnes bleues au loin" /></li>
+        <li><img src="img/vanilla-960.webp" width="960" height="640" alt="Deux gousses de vanille sur un papier crème" /></li>
+        <li><img src="boutique/lilas-600.jpg" width="600" height="800" alt="Ensemble lilas, porté, sur fond clair" /></li>
+        <li><img src="img/alcatraz-960.webp" width="960" height="639" alt="Une île fortifiée au milieu d'une baie bleue, un phare au sommet" /></li>
+        <li><img src="img/steel-960.webp" width="960" height="960" alt="Un cylindre d'acier brossé posé sur une ardoise sombre" /></li>
+        <li><img src="boutique/olive-600.jpg" width="600" height="800" alt="Haut vert olive, ample, porté" /></li>
+      </ul>
+
+      <div class="barre" id="barre">
+        <button type="button" class="outil" id="ouvrir-reglages" aria-label="Réglages du couloir" title="Réglages du couloir" aria-controls="reglages">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+        </button>
+      </div>
+      <p class="indice" aria-hidden="true"><span class="indice-souris">Déplacez la souris : plus elle va vers le fond, plus le mur file</span><span class="indice-doigt">Glissez le long du mur</span></p>
+    </main>
+
+    <form class="reglages" id="reglages" hidden aria-label="Réglages du couloir">
+      <div class="reglages-tete">
+        <p class="reglages-titre" aria-hidden="true">Réglages</p>
+        <div class="reglages-actions">
+          <button type="button" class="outil" id="copier" aria-label="Copier les attributs HTML" title="Copier les attributs HTML">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></svg>
+          </button>
+          <button type="button" class="outil" id="raz" aria-label="Revenir au préréglage" title="Revenir au préréglage">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7" /><path d="M4 4v4.5h4.5" /></svg>
+          </button>
+          <button type="button" class="outil" id="fermer-reglages" aria-label="Fermer les réglages" title="Fermer les réglages">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <label class="ligne" title="Préréglage">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16l-7-4-7 4z" /></svg>
+        <span class="cache">Préréglage</span>
+        <select name="presets">
+          <option value="micro">Micro</option>
+          <option value="tunnel">Tunnel</option>
+          <option value="lookbook">Lookbook</option>
+          <option value="doux">Doux</option>
+          <option value="rapide">Rapide</option>
+        </select>
+      </label>
+
+      <fieldset class="groupe">
+        <legend class="cache">Côté de fuite</legend>
+        <label class="pastille" title="Fuite à droite"><input type="radio" name="cote" value="droite" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 8v2L3 21z" /></svg><span class="cache">Fuite à droite</span></label>
+        <label class="pastille" title="Fuite à gauche"><input type="radio" name="cote" value="gauche" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3L3 11v2l18 8z" /></svg><span class="cache">Fuite à gauche</span></label>
+      </fieldset>
+
+      <fieldset class="groupe">
+        <legend class="cache">Mode</legend>
+        <label class="pastille" title="Mur vu de côté"><input type="radio" name="mode" value="mur" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2l9 6v8l-9 6z" /><path d="M12 11h9M12 13h9" /></svg><span class="cache">Mur vu de côté</span></label>
+        <label class="pastille" title="Rangée posée au sol"><input type="radio" name="mode" value="plafond" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 21l6-9h8l6 9z" /><path d="M11 12V3M13 12V3" /></svg><span class="cache">Rangée posée au sol</span></label>
+      </fieldset>
+
+      <fieldset class="groupe">
+        <legend class="cache">Nombre de murs</legend>
+        <label class="pastille" title="Un mur"><input type="radio" name="mur" value="un" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4l18 7v2L3 20z" /></svg><span class="cache">Un mur</span></label>
+        <label class="pastille" title="Deux murs : tunnel"><input type="radio" name="mur" value="deux" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2l18 9H3zM3 22l18-9H3z" /></svg><span class="cache">Deux murs : tunnel</span></label>
+        <label class="pastille" title="Trois murs"><input type="radio" name="mur" value="trois" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 1l18 9.5H3zM3 9.5h18v5H3zM3 23l18-9.5H3z" /></svg><span class="cache">Trois murs</span></label>
+      </fieldset>
+
+      <fieldset class="groupe">
+        <legend class="cache">Pilotage</legend>
+        <label class="pastille" title="Au pointeur"><input type="checkbox" name="pilotage" value="pointeur" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l13 8-6 1.5L9 19z" /></svg><span class="cache">Au pointeur</span></label>
+        <label class="pastille" title="Au glisser"><input type="checkbox" name="pilotage" value="glisser" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4" /></svg><span class="cache">Au glisser</span></label>
+        <label class="pastille" title="Défilement automatique"><input type="checkbox" name="pilotage" value="auto" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v4h-4" /></svg><span class="cache">Défilement automatique</span></label>
+        <label class="pastille" title="À la molette"><input type="checkbox" name="pilotage" value="molette" /><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="5" /><path d="M12 7v4" /></svg><span class="cache">À la molette</span></label>
+        <label class="pastille" title="Au défilement de la page"><input type="checkbox" name="pilotage" value="defilement" /><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M8 17l4 4 4-4M8 7l4-4 4 4" /></svg><span class="cache">Au défilement de la page</span></label>
+      </fieldset>
+
+      <div class="curseurs">
+        <label class="ligne" title="Profondeur"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 4l20 7v2L2 20z" /></svg><span class="cache">Profondeur</span><input type="range" name="profondeur" min="0.4" max="6" step="0.05" /><output></output></label>
+        <label class="ligne" title="Angle du mur"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M3 20L17 6" /><path d="M10 20a7 7 0 0 0-2-5" /></svg><span class="cache">Angle du mur</span><input type="range" name="angle" min="-25" max="25" step="0.5" /><output></output></label>
+        <label class="ligne" title="Horizon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h20" /><circle cx="12" cy="12" r="3" /></svg><span class="cache">Horizon</span><input type="range" name="horizon" min="10" max="90" step="1" /><output></output></label>
+        <label class="ligne" title="Hauteur des panneaux"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M8 6l4-4 4 4M8 18l4 4 4-4" /></svg><span class="cache">Hauteur des panneaux</span><input type="range" name="hauteur" min="0.3" max="2" step="0.01" /><output></output></label>
+        <label class="ligne" title="Largeur des panneaux"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h20M6 8l-4 4 4 4M18 8l4 4-4 4" /></svg><span class="cache">Largeur des panneaux</span><input type="range" name="largeur" min="0.3" max="2" step="0.01" /><output></output></label>
+        <label class="ligne" title="Écart entre panneaux"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="7" height="14" /><rect x="14" y="5" width="7" height="14" /></svg><span class="cache">Écart entre panneaux</span><input type="range" name="ecart" min="0" max="30" step="1" /><output></output></label>
+        <label class="ligne" title="Vitesse"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18a9 9 0 1 1 16 0" /><path d="M12 14l5-5" /></svg><span class="cache">Vitesse</span><input type="range" name="vitesse" min="0" max="4" step="0.05" /><output></output></label>
+        <label class="ligne" title="Aberration chromatique"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="6" /><circle cx="15" cy="12" r="6" /></svg><span class="cache">Aberration chromatique</span><input type="range" name="aberration" min="0" max="2" step="0.05" /><output></output></label>
+        <label class="ligne" title="Flou de mouvement"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8h8M4 12h10M2 16h8" /><circle cx="17" cy="12" r="4" /></svg><span class="cache">Flou de mouvement</span><input type="range" name="flou" min="0" max="2" step="0.05" /><output></output></label>
+        <label class="ligne" title="Panneaux vides"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" stroke-dasharray="3 3" /></svg><span class="cache">Panneaux vides</span><input type="range" name="vide" min="0" max="0.5" step="0.01" /><output></output></label>
+      </div>
+      <p class="copie-etat" id="copie-etat" role="status"></p>
+    </form>
+  </body>
+</html>

@@ -6,8 +6,8 @@
  * qui passe derrière la silhouette), graffiti (le mot pulvérisé à la bombe
  * du manifeste), forme (la campagne vue à travers une goutte qui
  * grandit), autocollant (l'éclair « clic » qui suit le pointeur), rail
- * (nouveautés au glisser, ruban sans fin des catégories) et panier (état,
- * localStorage, événements).
+ * (nouveautés au glisser, ruban sans fin des catégories), couloir (le
+ * lookbook en perspective fuyante) et panier (état, localStorage, événements).
  *
  * Paramètres d'essai : ?intro (rejouer l'intro), ?sans-intro, ?sans-photos
  * (tous les cadres d'attente, sans demander une seule photo).
@@ -152,6 +152,25 @@ CATALOGUE.forEach((p, i) => {
   c.style.setProperty("--i", String(i));
   grille.append(c);
 });
+
+// Lookbook : les pièces (sans les bijoux) sur un mur vu en fuite (module couloir, armé par mountPagesNav).
+// Chaque panneau est un bouton data-ouvrir-piece : le clic ouvre la fiche produit, comme les cartes.
+const murLook = $("#look-mur");
+for (const p of CATALOGUE.filter((x) => x.categorie !== "bijoux")) {
+  const li = document.createElement("li");
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "look-piece";
+  b.dataset.ouvrirPiece = p.id;
+  b.setAttribute("aria-haspopup", "dialog");
+  b.append(imagePhoto(p.photo, p.nom, "(max-width: 700px) 70vw, 36vw", p.cadrage));
+  const prix = document.createElement("span");
+  prix.className = "visuellement-cache";
+  prix.textContent = `, ${formaterPrix(p.prix)} : voir la fiche`;
+  b.append(prix);
+  li.append(b);
+  murLook.append(li);
+}
 
 // Ruban des catégories : des silhouettes détourées sur le papier, le nom vertical passe derrière (décor),
 // et un vrai libellé horizontal, lisible, qui nomme le bouton.
