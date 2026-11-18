@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr" data-presse-transition="buvard" data-presse-motion="sobre">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture · diaporama valide</title>
+    <script type="module">
+      import { mountPagesNav } from "/src/pages-nav.ts";
+      import { mountDiapo } from "/src/presse/diapo.ts";
+      mountPagesNav();
+      mountDiapo(document.querySelector("main"));
+    </script>
+  </head>
+  <body>
+    <main data-diapo>
+      <section data-diapo-slide data-transition="impression" aria-label="Titre">
+        <h1 data-move="titre">La 3D et l'IA</h1>
+        <p data-step data-anim="monte">Première idée</p>
+        <p><span data-compte="87">87</span> %</p>
+      </section>
+      <section data-diapo-slide data-transition="zoom" aria-label="Suite">
+        <h2 data-move="titre">La suite</h2>
+        <aside data-notes>Notes de l'orateur.</aside>
+      </section>
+      <section data-diapo-slide data-transition="vague" data-vague-type="centre" data-vague-palette="ocean" aria-label="Fin">
+        <p data-gl-text data-gl-reveal="lignes">Merci.</p>
+      </section>
+    </main>
+  </body>
+</html>

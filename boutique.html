@@ -228,11 +228,21 @@
           <div class="tailles"></div>
         </fieldset>
         <p class="erreur mono" id="fiche-erreur" role="alert"></p>
-        <div class="fiche-actions">
-          <button type="submit" class="bouton bouton-plein" id="fiche-ajouter">Ajouter au panier</button>
-          <button type="button" class="bouton" id="fiche-favori" aria-pressed="false">♡ Favori</button>
+        <!-- Schéma de coupe : un dessin technique coté qui se trace (Presse data-trace), et son tableau pour les lecteurs d'écran. -->
+        <figure class="coupe" id="fiche-coupe" hidden>
+          <figcaption class="coupe-legende mono"><span>Schéma de coupe</span><span id="fiche-coupe-taille"></span></figcaption>
+          <div class="coupe-dessin" id="fiche-coupe-dessin" data-trace data-trace-duree="620" data-trace-cascade="110" data-trace-delai="220"></div>
+          <p class="coupe-note mono" aria-hidden="true">Mesures à plat, en cm · échelle libre</p>
+          <div class="visuellement-cache" id="fiche-coupe-tableau"></div>
+        </figure>
+        <!-- Collée en bas de la fiche : le schéma de coupe ne repousse pas l'achat hors de l'écran. -->
+        <div class="fiche-pied">
+          <div class="fiche-actions">
+            <button type="submit" class="bouton bouton-plein" id="fiche-ajouter">Ajouter au panier</button>
+            <button type="button" class="bouton" id="fiche-favori" aria-pressed="false">♡ Favori</button>
+          </div>
+          <p class="mono fiche-ok" id="fiche-ok" role="status"></p>
         </div>
-        <p class="mono fiche-ok" id="fiche-ok" role="status"></p>
         <p class="mono fiche-matiere" id="fiche-matiere"></p>
       </form>
     </dialog>

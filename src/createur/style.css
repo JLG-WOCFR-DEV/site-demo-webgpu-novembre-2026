@@ -292,8 +292,16 @@ textarea {
 .cr-layer[data-hidden] {
   opacity: 0.45;
 }
-.cr-layer.is-drag {
-  opacity: 0.35;
+/* Réordonner (src/presse/comportements/reordonner.ts) : glissé au pointeur, pris au clavier. */
+.cr-layer[data-reordonner="glisse"] {
+  background: var(--panel-2);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    0 10px 24px -8px rgba(0, 0, 0, 0.6);
+  cursor: grabbing;
+}
+.cr-layer[data-reordonner="pris"] {
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .cr-layer.is-drop-before::before,
 .cr-layer.is-drop-after::after {
@@ -424,6 +432,17 @@ textarea {
   background:
     radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0) 0 0 / 18px 18px,
     var(--bg);
+}
+.cr-stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* Panoramique : on tire le fond de la scène. Le pincement sur écran tactile ne fait pas défiler. */
+.cr-stage {
+  touch-action: none;
+}
+.cr-stage[data-panoramique] {
+  cursor: grabbing;
 }
 .cr-frame {
   position: relative;
@@ -782,7 +801,11 @@ body[data-cr-mode="try"] .cr-frame {
 }
 
 /* Choix de photo */
+.cr-picker[hidden] {
+  display: none;
+}
 .cr-picker {
+  z-index: 60;
   position: fixed;
   inset: auto;
   width: 330px;

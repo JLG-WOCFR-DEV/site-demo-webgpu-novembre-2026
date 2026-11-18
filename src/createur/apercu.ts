@@ -29,6 +29,41 @@ import type { FromPreview, ToPreview } from "./protocol.ts";
 const root = document.documentElement;
 const main = document.querySelector<HTMLElement>("[data-cr-main]")!;
 const send = (m: FromPreview) => parent.postMessage({ cr: 1, ...m }, "*");
+// Ctrl/⌘ + molette (et le pincement du pavé, envoyé ainsi) : l'éditeur zoome l'aperçu au lieu que la page zoome.
+if (parent !== window)
+  addEventListener(
+    "wheel",
+    (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      send({ type: "zoom", deltaY: e.deltaY, deltaMode: e.deltaMode, x: e.clientX, y: e.clientY });
+    },
+    { passive: false },
+  );
+// Bouton du milieu : déplacer l'aperçu dans l'éditeur (deltas en px de l'écran, qui ne dépendent pas du zoom).
+if (parent !== window) {
+  let pan: { id: number; x: number; y: number } | null = null;
+  addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.button !== 1 || (e.target as Element).closest?.("a[href]")) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      pan = { id: e.pointerId, x: e.screenX, y: e.screenY };
+      document.documentElement.setPointerCapture(e.pointerId);
+    },
+    { capture: true },
+  );
+  addEventListener("pointermove", (e) => {
+    if (!pan || e.pointerId !== pan.id) return;
+    send({ type: "pan", dx: e.screenX - pan.x, dy: e.screenY - pan.y });
+    pan.x = e.screenX;
+    pan.y = e.screenY;
+  });
+  const fin = (e: PointerEvent) => pan && e.pointerId === pan.id && (pan = null);
+  addEventListener("pointerup", fin);
+  addEventListener("pointercancel", fin);
+}
 
 /* ───────────────────────── Déroulé des composants, dans le navigateur ───────────────────────── */
 

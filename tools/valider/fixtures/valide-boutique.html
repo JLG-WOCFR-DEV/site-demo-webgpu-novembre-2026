@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr" data-presse-manuel>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture · boutique valide (data-presse-manuel, la page arme ses modules)</title>
+    <script type="module">
+      import { mountPagesNav } from "/src/pages-nav.ts";
+      import { initRail } from "/src/presse/rail.ts";
+      import { initPanier } from "/src/presse/panier.ts";
+      import { initAutocollant } from "/src/presse/autocollant.ts";
+      mountPagesNav();
+      initRail();
+      initAutocollant();
+      initPanier(document);
+    </script>
+  </head>
+  <body>
+    <header>
+      <button type="button" aria-label="Panier"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 6h16l-2 12H6z" /></svg><span data-panier-nombre>0</span></button>
+      <span data-favoris-nombre>0</span>
+    </header>
+    <main>
+      <section data-autocollant="voir" data-autocollant-forme="goutte">
+        <div id="rail-a" data-rail data-rail-barre="#barre-a" role="region" aria-label="Nouveautés">
+          <ul data-rail-piste>
+            <li><a data-autocollant-cible href="#p1">Pull pervenche</a> <button type="button" data-favori="p1" aria-pressed="false" aria-label="Ajouter aux favoris">♡</button></li>
+            <li><a data-autocollant-cible href="#p2">Pantalon nuit</a> <button type="button" data-favori="p2" aria-pressed="false" aria-label="Ajouter aux favoris">♡</button></li>
+          </ul>
+        </div>
+        <div id="barre-a" data-rail-barre></div>
+        <button type="button" data-rail-precedent="rail-a" aria-label="Pièce précédente">←</button>
+        <button type="button" data-rail-suivant="rail-a" aria-label="Pièce suivante">→</button>
+      </section>
+      <section data-forme="goutte" data-forme-quand="defilement" data-forme-taille="0.46">
+        <img src="/plates/dunes.jpg" width="1728" height="1150" alt="Des dunes vues à travers une goutte." />
+      </section>
+    </main>
+  </body>
+</html>

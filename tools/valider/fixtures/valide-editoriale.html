@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fixture · page éditoriale valide</title>
+    <script type="module">
+      import { mountPagesNav } from "/src/pages-nav.ts";
+      import { initGraffiti } from "/src/presse/graffiti.ts";
+      mountPagesNav();
+      initGraffiti();
+    </script>
+  </head>
+  <body>
+    <main>
+      <section data-dechirure="bas" data-dechirure-graine="ouverture" data-dechirure-amplitude="20">
+        <h1 data-cinetique="monte" data-cinetique-par="mot" data-cinetique-quand="entree">Le chic après la pluie</h1>
+        <p data-typo="encre" data-typo-quand="entree">Une encre qui se resserre.</p>
+        <p data-graffiti="Douceur" data-graffiti-graine="ouverture">Douceur</p>
+        <a href="#suite" data-transition="none">Lire la suite</a>
+      </section>
+      <section id="suite">
+        <div data-ruban="torsade" data-ruban-hauteur="300" aria-label="Trois photos en ruban">
+          <img src="/plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate au-dessus d'une plage." />
+          <img src="/plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines." />
+          <img src="/plates/cerf.jpg" width="1728" height="1150" alt="" />
+        </div>
+        <p><mark data-marque="souligne" data-cinetique-delai="0,5">souligné</mark></p>
+      </section>
+    </main>
+  </body>
+</html>

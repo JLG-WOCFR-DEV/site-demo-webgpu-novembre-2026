@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture · attributs et valeurs fautifs</title>
+    <script type="module">
+      import { mountPagesNav } from "/src/pages-nav.ts";
+      mountPagesNav();
+    </script>
+  </head>
+  <body data-presse-transition="buvard">
+    <main>
+      <h1 data-cinetique="monter" data-cinetique-par="mot" data-cinetique-quan="survol">Titre</h1>
+      <p data-typo="encre" data-typo-quand="hover">Encre</p>
+      <section data-forme="gutte">
+        <img src="/plates/pont.jpg" width="1728" height="1150" alt="Le pont." />
+      </section>
+      <a href="#x" data-transition="zoom">Lien</a>
+      <div data-rubam="torsade" aria-label="Ruban">
+        <img src="/plates/lac.jpg" width="1728" height="1150" alt="Le lac." />
+      </div>
+      <x-galerie arange="ring"><img src="/plates/cerf.jpg" width="1728" height="1150" alt="Le cerf." /></x-galerie>
+    </main>
+  </body>
+</html>

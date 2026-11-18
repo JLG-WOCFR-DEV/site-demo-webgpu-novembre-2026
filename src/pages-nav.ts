@@ -147,6 +147,8 @@ export function mountPagesNav(base = "./") {
     if (document.querySelector("[data-forme]")) void import("./presse/forme.ts").then((m) => m.initForme());
     if (document.querySelector("[data-autocollant]")) void import("./presse/autocollant.ts").then((m) => m.initAutocollant());
     if (document.querySelector("[data-rail]")) void import("./presse/rail.ts").then((m) => m.initRail());
+    // Dessin technique qui se trace (cotes, hachures, lignes de construction).
+    if (document.querySelector("[data-trace]")) void import("./presse/trace.ts").then((m) => m.initTrace());
   }
   const style = document.createElement("style");
   style.textContent = CSS + SETTINGS_CSS;

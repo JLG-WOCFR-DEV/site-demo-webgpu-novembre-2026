@@ -9,6 +9,10 @@ import { TEMPLATES, projectPage } from "./templates.ts";
 import { exportZip } from "./export.ts";
 import { zip } from "./zip.ts";
 import type { FromPreview, ToPreview } from "./protocol.ts";
+import { creerFocusItinerant } from "../presse/comportements/focus-itinerant.ts";
+import { creerReordonner } from "../presse/comportements/reordonner.ts";
+import { creerPopup } from "../presse/comportements/popup.ts";
+import { creerPanoramiqueZoom, facteurMolette } from "../presse/comportements/panoramique-zoom.ts";
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector<T>(s)!;
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => [...r.querySelectorAll<T>(s)];
@@ -179,6 +183,16 @@ addEventListener("message", (e: MessageEvent) => {
     case "edit":
       applyEdit(m);
       break;
+    case "zoom": {
+      // Coordonnées de l'iframe (px CSS de la page) → écran : l'iframe est mise à l'échelle dans son cadre.
+      const r = iframe.getBoundingClientRect();
+      const k = r.width / (iframe.offsetWidth || 1);
+      vueApercu.zoomer(facteurMolette(m.deltaY, m.deltaMode), { x: r.left + m.x * k, y: r.top + m.y * k }, "molette");
+      break;
+    }
+    case "pan":
+      vueApercu.deplacer(m.dx, m.dy, "glisser");
+      break;
     case "key":
       key(new KeyboardEvent("keydown", { key: m.key, metaKey: m.meta, ctrlKey: m.meta, shiftKey: m.shift, altKey: m.alt }));
       break;
@@ -218,6 +232,13 @@ function applyEdit(m: Extract<FromPreview, { type: "edit" }>) {
 /* ───────────────────────── Appareil, zoom ───────────────────────── */
 
 const DEVICES: Record<string, number> = { bureau: 1440, tablette: 834, mobile: 390 };
+let fit = 1;
+/** L'échelle affichée : celle qui fait tenir l'appareil dans la scène, fois le zoom de l'aperçu. */
+function renderZoom() {
+  const w = DEVICES[ui.device] ?? 1440;
+  const z = vueApercu?.vue().echelle ?? 1;
+  $("[data-cr-zoom]").textContent = `${w} px · ${Math.round(fit * z * 100)} %${z !== 1 ? " · 0 : revenir" : ""}`;
+}
 function layout() {
   const w = DEVICES[ui.device] ?? 1440;
   const r = stage.getBoundingClientRect();
@@ -229,16 +250,28 @@ function layout() {
   iframe.style.transform = `scale(${s})`;
   frame.style.width = `${w * s}px`;
   frame.style.height = `${h * s}px`;
-  $("[data-cr-zoom]").textContent = `${w} px · ${Math.round(s * 100)} %`;
+  fit = s;
+  renderZoom();
   for (const b of $$<HTMLButtonElement>("[data-cr-device]")) b.setAttribute("aria-pressed", String(b.dataset.crDevice === ui.device));
 }
 new ResizeObserver(layout).observe(stage);
 for (const b of $$<HTMLButtonElement>("[data-cr-device]"))
   b.addEventListener("click", () => {
+    const autre = ui.device !== b.dataset.crDevice;
     ui.device = b.dataset.crDevice!;
     saveUi();
     layout();
+    if (autre) vueApercu.reinitialiser();
   });
+/*
+ * L'aperçu se zoome et se déplace (comportement panoramique-zoom) : Ctrl ou ⌘ + molette, ou le pincement du pavé
+ * (sur l'aperçu, l'iframe le transmet : message `zoom`), glisser le fond de la scène ou le bouton du milieu n'importe
+ * où (sur l'aperçu : message `pan`), + − 0 et flèches quand la scène a le focus, double-clic sur le fond pour revenir.
+ * Le clic et la molette seule dans l'aperçu restent à l'aperçu.
+ */
+const vueApercu = creerPanoramiqueZoom(stage, { cible: frame, min: 0.25, max: 4, molette: "ctrl", glisser: "fond", inertie: true, surChangement: renderZoom });
+// Groupes de segments (appareil, mode) : un seul arrêt de Tab, flèches pour passer d'un bouton à l'autre.
+for (const g of $$(".cr-seg")) creerFocusItinerant(g, { elements: "button", orientation: "horizontal", cle: (el) => el.dataset.crDevice ?? el.dataset.crMode ?? "" });
 function setMode(edit: boolean) {
   ui.edit = edit;
   saveUi();
@@ -297,12 +330,11 @@ function addBlock(type: string, at?: number) {
 
 const layersEl = $("[data-cr-layers]");
 const summary = (b: Block) => String(b.props.title || b.props.brand || b.props.word || b.props.quote || b.props.text || b.props.lines || b.props.words || b.props.caption || b.props.kicker || (b.props.src ? String(b.props.src).split("/").pop() : "") || "").split("\n")[0]!.slice(0, 48);
-let dragId = "";
 function renderLayers() {
   layersEl.innerHTML = doc().blocks
     .map((b) => {
       const d = BLOCKS[b.type]!;
-      return `<li class="cr-layer" role="option" tabindex="${b.id === selected || (!selected && b === doc().blocks[0]) ? 0 : -1}" aria-selected="${b.id === selected}" data-layer="${b.id}" draggable="true"${b.hidden ? " data-hidden" : ""}>
+      return `<li class="cr-layer" role="option" tabindex="${b.id === selected || (!selected && b === doc().blocks[0]) ? 0 : -1}" aria-selected="${b.id === selected}" data-layer="${b.id}"${b.hidden ? " data-hidden" : ""}>
   <span class="cr-glyph" aria-hidden="true">${d.glyph}</span>
   <span class="cr-layer-txt"><b>${esc(d.label)}</b><span>${esc(summary(b)) || "&nbsp;"}</span></span>
   <button type="button" class="cr-mini" data-eye title="${b.hidden ? "Afficher" : "Masquer"}" aria-label="${b.hidden ? "Afficher" : "Masquer"} ${esc(d.label)}">${b.hidden ? "◌" : "●"}</button>
@@ -324,31 +356,34 @@ layersEl.addEventListener("click", (e) => {
   }
   select(li.dataset.layer!);
 });
+// ↑ ↓ Début Fin : le calque suivant, choisi (la sélection suit le focus) ; un seul arrêt de Tab pour la liste.
+creerFocusItinerant(layersEl, { elements: "[data-layer]", orientation: "vertical", boucle: false, cle: (el) => el.dataset.layer!, surDeplacement: (el) => select(el.dataset.layer!) });
+// Réordonner : glisser un calque, Alt + ↑ ↓, ou Espace pour le prendre, flèches, Espace pour le poser.
+creerReordonner(layersEl, {
+  elements: "[data-layer]",
+  cle: (el) => el.dataset.layer!,
+  nom: (el) => el.querySelector(".cr-layer-txt b")?.textContent ?? "Bloc",
+  surOrdre: (de, vers) => moveBlock(de, vers),
+});
 layersEl.addEventListener("keydown", (e) => {
   const li = (e.target as HTMLElement).closest<HTMLElement>("[data-layer]");
-  if (!li) return;
-  const i = doc().blocks.findIndex((b) => b.id === li.dataset.layer);
-  if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) return;
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    e.preventDefault();
-    const n = doc().blocks[i + (e.key === "ArrowDown" ? 1 : -1)];
-    if (n) {
-      select(n.id);
-      $<HTMLElement>(`[data-layer="${n.id}"]`).focus();
-    }
-  } else if (e.key === "Enter" || e.key === " ") {
+  if (!li || e.target !== li) return;
+  if (e.key === "Enter") {
     e.preventDefault();
     select(li.dataset.layer!);
   }
 });
-layersEl.addEventListener("dragstart", (e) => {
-  const li = (e.target as HTMLElement).closest<HTMLElement>("[data-layer]");
-  if (!li) return;
-  dragId = li.dataset.layer!;
-  e.dataTransfer?.setData("text/x-cr-block", dragId);
-  if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
-  li.classList.add("is-drag");
-});
+/** Un calque change de rang (glissé ou au clavier) : il devient le bloc choisi, l'aperçu le montre. */
+function moveBlock(from: number, to: number) {
+  const id = doc().blocks[from]?.id;
+  if (!id || to === from || to < 0 || to >= doc().blocks.length) return false;
+  selected = id;
+  change(() => {
+    const [b] = doc().blocks.splice(from, 1);
+    doc().blocks.splice(to, 0, b!);
+  });
+  sendPreview({ type: "select", id, reveal: true });
+}
 const dropIndex = (e: DragEvent) => {
   const lis = $$<HTMLElement>("[data-layer]", layersEl);
   for (let i = 0; i < lis.length; i++) {
@@ -358,9 +393,10 @@ const dropIndex = (e: DragEvent) => {
   return lis.length;
 };
 let dropMark: HTMLElement | null = null;
+// Glisser un bloc de la bibliothèque (onglet Ajouter) dans les calques : glisser natif, à part du réordonnancement.
 layersEl.addEventListener("dragover", (e) => {
   const t = e.dataTransfer?.types ?? [];
-  if (!t.includes("text/x-cr-block") && !t.includes("text/x-cr-new")) return;
+  if (!t.includes("text/x-cr-new")) return;
   e.preventDefault();
   const i = dropIndex(e);
   const lis = $$<HTMLElement>("[data-layer]", layersEl);
@@ -376,21 +412,7 @@ layersEl.addEventListener("drop", (e) => {
   dropMark?.classList.remove("is-drop-before", "is-drop-after");
   const i = dropIndex(e);
   const fresh = e.dataTransfer?.getData("text/x-cr-new");
-  if (fresh) return addBlock(fresh, i);
-  const id = e.dataTransfer?.getData("text/x-cr-block") || dragId;
-  const from = doc().blocks.findIndex((b) => b.id === id);
-  if (from < 0) return;
-  const to = i > from ? i - 1 : i;
-  if (to === from) return;
-  change((s) => {
-    const [b] = doc().blocks.splice(from, 1);
-    doc().blocks.splice(to, 0, b!);
-  });
-  sendPreview({ type: "select", id, reveal: true });
-});
-layersEl.addEventListener("dragend", () => {
-  dragId = "";
-  $$(".is-drag", layersEl).forEach((x) => x.classList.remove("is-drag"));
+  if (fresh) addBlock(fresh, i);
 });
 
 /* ───────────────────────── Pages ───────────────────────── */
@@ -481,6 +503,8 @@ function setTab(t: "layers" | "add") {
   for (const p of $$("[data-cr-pane]")) p.hidden = p.dataset.crPane !== t;
 }
 for (const b of $$<HTMLButtonElement>("[data-cr-tab]")) b.addEventListener("click", () => setTab(b.dataset.crTab as "layers" | "add"));
+// Onglets : ← → (en boucle), Début, Fin ; arriver sur un onglet l'ouvre ; seul l'onglet ouvert est un arrêt de Tab.
+for (const t of $$("[role=tablist]")) creerFocusItinerant(t, { elements: "[role=tab]", orientation: "horizontal", activation: "auto", cle: (el) => el.dataset.crTab ?? el.dataset.crRtab ?? "" });
 $("[data-cr-tab-go]").addEventListener("click", () => setTab("add"));
 
 /* ───────────────────────── Inspecteur ───────────────────────── */
@@ -764,21 +788,17 @@ insp.addEventListener(
 /* Choisir une photo : la bibliothèque du site, ou une adresse. */
 const picker = document.createElement("div");
 picker.className = "cr-picker";
-picker.setAttribute("popover", "");
+picker.setAttribute("aria-label", "Choisir une photo");
 document.body.append(picker);
+// Popup : posée sous le bouton (retournée si elle déborde), Échap ou un clic ailleurs la ferment, le focus y entre et
+// revient au bouton.
+const pickerPop = creerPopup(picker, { cote: "bas", alignement: "debut", decalage: 6, focusInitial: ["[data-pick][aria-pressed=true]", "[data-pick]"] });
 let pickFor: HTMLButtonElement | null = null;
 function pickImage(btn: HTMLButtonElement) {
   pickFor = btn;
   const cur = btn.value;
   picker.innerHTML = `<div class="cr-picker-grid">${PHOTOS.map((p) => `<button type="button" data-pick="${esc(p.src)}" aria-pressed="${p.src === cur}" title="${esc(p.title)}"><img src="${esc(p.src)}" alt="${esc(p.title)}" loading="lazy" /></button>`).join("")}</div><label class="cr-picker-url"><span>Ou une adresse</span><input type="text" data-pick-url placeholder="https://… ou ./images/photo.jpg" value="${PHOTOS.some((p) => p.src === cur) ? "" : esc(cur)}" /></label>`;
-  const r = btn.getBoundingClientRect();
-  picker.style.left = `${Math.max(8, Math.min(innerWidth - 340, r.left - 40))}px`;
-  picker.style.top = `${Math.min(innerHeight - 330, r.bottom + 6)}px`;
-  try {
-    picker.showPopover();
-  } catch {
-    /* déjà ouvert */
-  }
+  pickerPop.ouvrir(btn);
 }
 function setPicked(src: string) {
   const btn = pickFor;
@@ -798,11 +818,7 @@ function setPicked(src: string) {
       if ("title" in holder && btn.dataset.if !== undefined && (!holder.title || holder.title === old?.title)) holder.title = ph.title;
     });
   } else onField(btn, true);
-  try {
-    picker.hidePopover();
-  } catch {
-    /* fermé */
-  }
+  pickerPop.fermer();
 }
 picker.addEventListener("click", (e) => {
   const p = (e.target as HTMLElement).closest<HTMLElement>("[data-pick]");
@@ -829,7 +845,9 @@ $("[data-cr-full]").addEventListener("click", () => {
 });
 
 const dialogs = Object.fromEntries($$<HTMLDialogElement>("[data-cr-dialog]").map((d) => [d.dataset.crDialog!, d]));
-for (const b of $$<HTMLButtonElement>("[data-cr-open]")) b.addEventListener("click", () => dialogs[b.dataset.crOpen!]?.showModal());
+// Dialogues natifs (modaux) : le comportement popup ajoute la fermeture au clic sur le fond et le retour du focus.
+const dialogPops = Object.fromEntries(Object.entries(dialogs).map(([k, d]) => [k, creerPopup(d, { modal: true, sansPosition: true })]));
+for (const b of $$<HTMLButtonElement>("[data-cr-open]")) b.addEventListener("click", () => dialogPops[b.dataset.crOpen!]?.ouvrir(b));
 $("[data-cr-templates]").innerHTML = TEMPLATES.map((t) => `<button type="button" class="cr-x" data-template="${t.id}" value="${t.id}"><b>${esc(t.label)}</b><span>${esc(t.desc)}</span></button>`).join("");
 $("[data-cr-templates]").addEventListener("click", (e) => {
   const t = TEMPLATES.find((x) => x.id === (e.target as HTMLElement).closest<HTMLElement>("[data-template]")?.dataset.template);
@@ -944,7 +962,7 @@ function key(e: KeyboardEvent) {
     act(selected, "dup");
   } else if (meta && e.key.toLowerCase() === "e") {
     e.preventDefault();
-    dialogs.export?.showModal();
+    dialogPops.export?.ouvrir(document.activeElement instanceof HTMLElement ? document.activeElement : null);
   } else if (meta && e.key.toLowerCase() === "s") {
     e.preventDefault();
     store.set(KEY, JSON.stringify(site));

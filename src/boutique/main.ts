@@ -28,6 +28,8 @@ import { initRail } from "../presse/rail.ts";
 import { cleLigne, estFavori, formaterCentimes, formaterPrix, initPanier, nombreArticles, QTE_MAX, totalCentimes, type EtatPanier, type Raison } from "../presse/panier.ts";
 import { CATALOGUE, CATEGORIES, PHOTOS, chercher, nombreDans, nomCategorie, pieceParId, type IdCategorie, type Photo, type Piece } from "./catalogue.ts";
 import { surveillerPhoto } from "./silhouettes.ts";
+import { cotesDe, phraseSchema, svgCoupe, tableauCoupe, tailleDeReference } from "./schema.ts";
+import { tracer, type ControleTrace } from "../presse/trace.ts";
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector<T>(s)!;
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => [...r.querySelectorAll<T>(s)];
@@ -299,6 +301,36 @@ const ficheOk = $("#fiche-ok");
 const ficheFav = $<HTMLButtonElement>("#fiche-favori");
 let pieceCourante: Piece | null = null;
 
+/* Le schéma de coupe : redessiné à chaque fiche, ses cotes suivent la taille choisie. */
+const coupe = $("#fiche-coupe");
+const coupeDessin = $("#fiche-coupe-dessin");
+let traceCoupe: ControleTrace | null = null;
+
+function poserCoupe(p: Piece) {
+  traceCoupe?.detruire();
+  traceCoupe = null;
+  coupeDessin.replaceChildren();
+  $("#fiche-coupe-tableau").replaceChildren();
+  coupe.hidden = !p.coupe;
+  if (!p.coupe) return;
+  const t = tailleDeReference(p);
+  const indicative = p.tailles.length > 1;
+  coupeDessin.append(svgCoupe(p, t, indicative));
+  $("#fiche-coupe-tableau").append(tableauCoupe(p));
+  $("#fiche-coupe-taille").textContent = indicative ? `Taille ${t} · indicatif` : "Taille unique";
+  traceCoupe = tracer(coupeDessin);
+}
+
+function coterCoupe(p: Piece, taille: string) {
+  if (!p.coupe || !traceCoupe) return;
+  for (const c of cotesDe(p.coupe, taille)) {
+    const el = traceCoupe.svg.querySelector(`[data-cote="${c.id}"]`);
+    if (el) traceCoupe.coter(el, c.texte);
+  }
+  traceCoupe.svg.setAttribute("aria-label", phraseSchema(p, taille, false));
+  $("#fiche-coupe-taille").textContent = `Taille ${taille}`;
+}
+
 function peindreFavFiche() {
   if (!pieceCourante) return;
   const oui = estFavori(magasin.etat(), pieceCourante.id);
@@ -346,6 +378,7 @@ function ouvrirFiche(id: string) {
     input.checked = p.tailles.length === 1;
     $("span", l).textContent = t;
     input.addEventListener("change", () => {
+      coterCoupe(p, t);
       ficheTailles.classList.remove("invalide", "secoue");
       ficheTailles.removeAttribute("aria-invalid");
       ficheErreur.textContent = "";
@@ -358,6 +391,7 @@ function ouvrirFiche(id: string) {
   ficheOk.replaceChildren();
   ficheFav.dataset.favori = p.id;
   peindreFavFiche();
+  poserCoupe(p);
   ouvrir(fiche);
   // Le focus va au titre : on lit d'abord ce qu'on regarde.
   const h = $("#fiche-nom");

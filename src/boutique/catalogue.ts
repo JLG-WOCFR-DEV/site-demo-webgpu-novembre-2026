@@ -24,6 +24,52 @@ export interface Couleur {
   hex: string;
 }
 
+/** Le gabarit du schéma de coupe dessiné sur la fiche (voir schema.ts). */
+export type Gabarit = "haut" | "pantalon" | "jupe" | "echarpe" | "bijou";
+export type IdCote = "poitrine" | "longueur" | "manche" | "taille" | "entrejambe" | "bas" | "largeur" | "hauteur";
+/** Mesures à plat, en centimètres. */
+export type Mesures = Readonly<Partial<Record<IdCote, number>>>;
+
+export interface Coupe {
+  gabarit: Gabarit;
+  /** Pour les bijoux : la forme du pendant. */
+  variante?: "ovale" | "fleur";
+  /** Par taille (les clés de Piece.tailles). */
+  mesures: Readonly<Record<string, Mesures>>;
+}
+
+/** Les cotes de chaque gabarit, dans l'ordre de lecture. */
+export const COTES_GABARIT: Readonly<Record<Gabarit, readonly IdCote[]>> = {
+  haut: ["poitrine", "longueur", "manche"],
+  pantalon: ["taille", "longueur", "entrejambe", "bas"],
+  jupe: ["taille", "longueur", "bas"],
+  echarpe: ["longueur", "largeur"],
+  bijou: ["hauteur", "largeur"],
+};
+
+export const LIBELLES_COTES: Readonly<Record<IdCote, string>> = {
+  poitrine: "Poitrine",
+  longueur: "Longueur",
+  manche: "Manche",
+  taille: "Taille",
+  entrejambe: "Entrejambe",
+  bas: "Bas",
+  largeur: "Largeur",
+  hauteur: "Hauteur",
+};
+
+/** Ce que mesure chaque cote, pour le tableau lu par les lecteurs d'écran. */
+export const AIDES_COTES: Readonly<Record<IdCote, string>> = {
+  poitrine: "largeur à plat, d'une couture de côté à l'autre, sous les bras",
+  longueur: "du point le plus haut au bas",
+  manche: "de l'épaule au bord de la manche",
+  taille: "demi-tour de taille, à plat",
+  entrejambe: "de l'entrejambe au bas",
+  bas: "largeur du bas de jambe, à plat",
+  largeur: "d'un bord à l'autre, au plus large",
+  hauteur: "du haut du crochet au bas du pendant",
+};
+
 export interface Piece {
   id: string;
   nom: string;
@@ -38,6 +84,8 @@ export interface Piece {
   etiquette?: "Best-seller" | "Nouveau" | "Dernières pièces";
   description: string;
   matiere: string;
+  /** Schéma de coupe et mesures par taille (facultatif : sans lui, pas de schéma). */
+  coupe?: Coupe;
 }
 
 export interface Categorie {
@@ -74,6 +122,26 @@ export const PHOTOS = {
 const VETEMENT = ["XS", "S", "M", "L", "XL"] as const;
 const UNIQUE = ["Taille unique"] as const;
 
+/**
+ * Les mesures de chaque taille, à partir du M et d'un pas de gradation par taille (arrondi au
+ * demi-centimètre) : des valeurs plausibles de vêtement ample, pas une fiche d'atelier.
+ */
+function grader(m: Mesures, pas: Mesures, tailles: readonly string[] = VETEMENT): Record<string, Mesures> {
+  const iM = tailles.indexOf("M");
+  const out: Record<string, Mesures> = {};
+  tailles.forEach((t, i) => {
+    const r: Partial<Record<IdCote, number>> = {};
+    for (const [k, v] of Object.entries(m) as [IdCote, number][]) r[k] = Math.round((v + (pas[k] ?? 0) * (i - iM)) * 2) / 2;
+    out[t] = r;
+  });
+  return out;
+}
+const PAS_HAUT: Mesures = { poitrine: 3, longueur: 1.5, manche: 1 };
+const PAS_BAS: Mesures = { taille: 3, longueur: 1, entrejambe: 0.5, bas: 1 };
+const haut = (m: Mesures): Coupe => ({ gabarit: "haut", mesures: grader(m, PAS_HAUT) });
+const bas = (m: Mesures): Coupe => ({ gabarit: "pantalon", mesures: grader(m, PAS_BAS) });
+const unique = (gabarit: Gabarit, m: Mesures, variante?: Coupe["variante"]): Coupe => ({ gabarit, variante, mesures: { [UNIQUE[0]]: m } });
+
 export const CATALOGUE: readonly Piece[] = [
   {
     id: "haut-griotte",
@@ -86,6 +154,7 @@ export const CATALOGUE: readonly Piece[] = [
     cadrage: "50% 28%",
     description: "Le haut qui tombe tout seul : épaules basses, manches trois-quarts, une encolure bateau qui ne serre rien.",
     matiere: "Jersey de coton bio, 180 g/m²",
+    coupe: haut({ poitrine: 58, longueur: 64, manche: 46 }),
   },
   {
     id: "haut-brique",
@@ -99,6 +168,7 @@ export const CATALOGUE: readonly Piece[] = [
     etiquette: "Best-seller",
     description: "Une couleur de brique mouillée, coupe carrée, à rentrer ou non. Il se porte de septembre à mai.",
     matiere: "Jersey de coton bio, 180 g/m²",
+    coupe: haut({ poitrine: 60, longueur: 62, manche: 44 }),
   },
   {
     id: "haut-glycine",
@@ -112,6 +182,7 @@ export const CATALOGUE: readonly Piece[] = [
     etiquette: "Nouveau",
     description: "Lilas pâle, fendu sur les côtés, plus long derrière : il accompagne le mouvement au lieu de le suivre.",
     matiere: "Lin et coton lavés",
+    coupe: haut({ poitrine: 59, longueur: 70, manche: 42 }),
   },
   {
     id: "haut-sauge",
@@ -124,6 +195,7 @@ export const CATALOGUE: readonly Piece[] = [
     cadrage: "50% 27%",
     description: "Le vert d'une feuille après l'averse. Ample aux épaules, resserré au poignet par un simple revers.",
     matiere: "Jersey de coton bio, 180 g/m²",
+    coupe: haut({ poitrine: 61, longueur: 66, manche: 48 }),
   },
   {
     id: "pantalon-nuit",
@@ -137,6 +209,7 @@ export const CATALOGUE: readonly Piece[] = [
     etiquette: "Best-seller",
     description: "Taille élastique, jambes très larges qui balaient la cheville. Le noir qui va avec toutes les couleurs de la saison.",
     matiere: "Twill de coton lourd",
+    coupe: bas({ taille: 37, longueur: 104, entrejambe: 76, bas: 34 }),
   },
   {
     id: "jean-averse",
@@ -149,6 +222,7 @@ export const CATALOGUE: readonly Piece[] = [
     cadrage: "50% 76%",
     description: "Deux pinces devant, une jambe qui s'arrondit puis se resserre : le jean qu'on garde dix ans.",
     matiere: "Denim 13 oz, coton recyclé",
+    coupe: bas({ taille: 39, longueur: 102, entrejambe: 74, bas: 21 }),
   },
   {
     id: "pantalon-chataigne",
@@ -161,6 +235,7 @@ export const CATALOGUE: readonly Piece[] = [
     cadrage: "50% 76%",
     description: "Droit, souple, un brun de sous-bois. Une poche plaquée derrière, rien de plus.",
     matiere: "Sergé de coton et lin",
+    coupe: bas({ taille: 38, longueur: 103, entrejambe: 75, bas: 25 }),
   },
   {
     id: "pantalon-ciel",
@@ -174,6 +249,7 @@ export const CATALOGUE: readonly Piece[] = [
     etiquette: "Nouveau",
     description: "Le confort d'un pantalon d'intérieur, la tenue d'un pantalon de ville : molleton délavé, nervure devant.",
     matiere: "Molleton de coton bio",
+    coupe: bas({ taille: 36, longueur: 100, entrejambe: 73, bas: 27 }),
   },
   {
     id: "mariniere-grenadine",
@@ -187,6 +263,7 @@ export const CATALOGUE: readonly Piece[] = [
     etiquette: "Best-seller",
     description: "Rayures rouges sur fond écru, coupe ample et courte. Se porte avec le foulard noué, comme sur la photo.",
     matiere: "Jersey de coton épais",
+    coupe: haut({ poitrine: 62, longueur: 60, manche: 45 }),
   },
   {
     id: "mariniere-encre",
@@ -199,6 +276,7 @@ export const CATALOGUE: readonly Piece[] = [
     cadrage: "50% 40%",
     description: "La rayure classique, élargie : épaules tombantes, manches à retrousser deux fois.",
     matiere: "Jersey de coton épais",
+    coupe: haut({ poitrine: 63, longueur: 66, manche: 50 }),
   },
   {
     id: "echarpe-cassis",
@@ -212,6 +290,7 @@ export const CATALOGUE: readonly Piece[] = [
     etiquette: "Nouveau",
     description: "Deux mètres de carreaux magenta et prune, bords effilochés. Elle se drape, elle se noue, elle se prête.",
     matiere: "Laine mérinos et coton",
+    coupe: unique("echarpe", { longueur: 200, largeur: 70 }),
   },
   {
     id: "echarpe-bruyere",
@@ -224,6 +303,7 @@ export const CATALOGUE: readonly Piece[] = [
     cadrage: "50% 30%",
     description: "Carreaux violets serrés, assez longue pour deux tours. Avec un haut uni, c'est elle qui parle.",
     matiere: "Coton tissé teint en fil",
+    coupe: unique("echarpe", { longueur: 180, largeur: 45 }),
   },
   {
     id: "boucles-ovale",
@@ -237,6 +317,7 @@ export const CATALOGUE: readonly Piece[] = [
     etiquette: "Dernières pièces",
     description: "Un ovale ajouré, gravé à la main, qui bouge à chaque pas. Légères : on les oublie.",
     matiere: "Argent 925 recyclé",
+    coupe: unique("bijou", { hauteur: 4.5, largeur: 2.2 }, "ovale"),
   },
   {
     id: "boucles-fleur",
@@ -249,6 +330,7 @@ export const CATALOGUE: readonly Piece[] = [
     cadrage: "60% 45%",
     description: "Une petite fleur d'argent au bout d'une tige fine. Discrète de face, elle attrape la lumière de profil.",
     matiere: "Argent 925 recyclé",
+    coupe: unique("bijou", { hauteur: 3.5, largeur: 1.6 }, "fleur"),
   },
 ];
 
