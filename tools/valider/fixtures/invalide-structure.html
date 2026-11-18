@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture · structure, parents, collisions</title>
+    <script type="module">
+      import { mountPagesNav } from "/src/pages-nav.ts";
+      mountPagesNav();
+    </script>
+  </head>
+  <body>
+    <main>
+      <div data-rail><p>Pas de piste ici, du texte.</p></div>
+      <p data-cinetique-par="lettre">Option sans son module</p>
+      <img src="/plates/pont.jpg" width="1728" height="1150" alt="Le pont." data-gl-reveal="rideau" />
+      <button type="button" data-favori>Favori</button>
+      <h2 data-cinetique="monte" data-typo="encre">Deux modules sur le même texte</h2>
+      <p data-graffiti></p>
+      <div data-vague><p>Aucune vue</p></div>
+      <div data-dechirure-coupe="0.5"><img src="/plates/lac.jpg" width="1728" height="1150" alt="Une seule image." /></div>
+    </main>
+  </body>
+</html>

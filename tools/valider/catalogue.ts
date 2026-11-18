@@ -35,8 +35,10 @@ export type Sur = {
   avec: string[];
   /** Sélecteur exact (`section[data-diapo-slide]`). */
   attrsSelecteur: string[];
-  /** Descendants requis (sélecteurs simples `[data-…]` ou balises). */
+  /** Descendants requis, dits dans la colonne « Effet » (« ses `[data-goo-item]` ») ou « conteneur d'`img` ». */
   enfants: string[];
+  /** Descendants cités dans la colonne « Sur » (« piste `[data-rail-piste]` ») : attendus, le module a parfois un repli. */
+  conseilles: string[];
   /** Nombre minimal d'images descendantes (« deux images » : 2), 0 sinon. */
   images: number;
   /** Une img ou une vidéo descendante. */
@@ -189,10 +191,10 @@ const NOM = /data-[a-z0-9]+(?:-[a-z0-9]+)*/g;
 
 /** La colonne « Sur ». */
 export function lireSur(brut: string): Sur {
-  const sur: Sur = { brut, balises: [], stricte: false, avec: [], attrsSelecteur: [], enfants: [], images: 0, media: false };
+  const sur: Sur = { brut, balises: [], stricte: false, avec: [], attrsSelecteur: [], enfants: [], conseilles: [], images: 0, media: false };
   const t = brut.trim();
   for (const m of t.matchAll(/avec `(data-[a-z0-9-]+)`/g)) sur.avec.push(m[1]!);
-  for (const m of t.matchAll(/`\[(data-[a-z0-9-]+)\]`/g)) sur.enfants.push(`[${m[1]}]`);
+  for (const m of t.matchAll(/`\[(data-[a-z0-9-]+)\]`/g)) sur.conseilles.push(`[${m[1]}]`);
   const codes = spans(t).map((s) => s.code);
   const premier = codes[0];
   if (premier && !sur.avec.length) {

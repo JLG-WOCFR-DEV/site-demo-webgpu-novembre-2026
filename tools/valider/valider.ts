@@ -256,6 +256,11 @@ export function validerHtml(html: string, cat: Catalogue, opts: Options = {}): C
       for (const sel of l.sur.enfants) if (!el.querySelector(sel)) manque.push(sel);
       if (l.sur.images && el.querySelectorAll("img").length < l.sur.images) manque.push(`${l.sur.images} img`);
       if (l.sur.media && !el.querySelector("img, video")) manque.push("img ou video");
+      const conseil = l.sur.conseilles.filter((sel) => !el.querySelector(sel));
+      if (conseil.length) {
+        if (enfantsVides(el)) dire("avertissement", "structure", el, `${at.nom} : ${conseil.join(", ")} absent du HTML — rempli par script ? (invérifiable ici)`);
+        else dire("avertissement", "structure", el, `${at.nom} : pas de ${conseil.join(", ")} dedans — PRESSE.md l'attend (« ${l.sur.brut.replace(/`/g, "")} », l.${l.n}) ; le module se rabat peut-être sur un repli`);
+      }
       if (!manque.length) continue;
       if (enfantsVides(el)) dire("avertissement", "structure", el, `${at.nom} : ${manque.join(", ")} absent du HTML — rempli par script ? (invérifiable ici ; sinon le module n'a rien à animer)`);
       else dire("erreur", "structure", el, `${at.nom} : il manque ${manque.join(", ")} dedans (PRESSE.md:${l.n})`);
@@ -284,7 +289,13 @@ export function validerHtml(html: string, cat: Catalogue, opts: Options = {}): C
   const lang = racineHtml ? a(racineHtml, "lang") : undefined;
   if (!lang) dire("erreur", "langue", racineHtml, `<html> sans lang : écrire lang="fr"`);
   else if (!/^fr\b/i.test(lang)) dire("erreur", "langue", racineHtml, `<html lang="${lang}"> : le site est en français (lang="fr")`);
-  const etranger = (el: HTMLElement) => [...ancetresEtSoi(el)].some((e) => (a(e, "lang") && !/^fr\b/i.test(a(e, "lang")!)) || /^(script|style|code|pre|kbd|samp|svg|template|noscript)$/.test(balise(e)));
+  // Le lang le plus proche fait foi (body lang="fr" sous html lang="en" : du français).
+  const etranger = (el: HTMLElement) => {
+    const chaine = [...ancetresEtSoi(el)];
+    if (chaine.some((e) => /^(script|style|code|pre|kbd|samp|svg|template|noscript)$/.test(balise(e)))) return true;
+    const l = chaine.map((e) => a(e, "lang")).find((x) => x !== undefined);
+    return l !== undefined && !/^fr\b/i.test(l);
+  };
   for (const el of tous) {
     if (etranger(el)) continue;
     const textes: [string, string][] = [];
@@ -340,8 +351,9 @@ export function validerHtml(html: string, cat: Catalogue, opts: Options = {}): C
     if (!nom && !/^(input|select|textarea)$/.test(t)) nom = texteAccessible(el).replace(/\s+/g, " ").trim();
     if (!nom) nom = a(el, "title")?.trim() ?? "";
     if (nom) continue;
-    if (!el.childNodes.length) dire("avertissement", "libelle", el, `${decrire(el)} vide dans le HTML, sans aria-label : rempli par script ? sinon, cible sans nom accessible`);
-    else dire("erreur", "libelle", el, `${decrire(el)} sans nom accessible (texte, aria-label ou <label>) — une icône seule ne dit rien au lecteur d'écran`);
+    if (/^(input|select|textarea)$/.test(t)) dire("erreur", "libelle", el, `champ sans libellé : <label for>, label englobant ou aria-label`);
+    else if (!el.childNodes.length) dire("avertissement", "libelle", el, `cible vide dans le HTML, sans aria-label : remplie par script ? sinon, sans nom accessible`);
+    else dire("erreur", "libelle", el, `cible sans nom accessible (texte, aria-label ou <label>) — une icône seule ne dit rien au lecteur d'écran`);
   }
 
   /* ── identifiants ── */
