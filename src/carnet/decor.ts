@@ -24,6 +24,8 @@
  *   - annuler, rétablir : Ctrl+Z / Ctrl+Maj+Z, boutons, ou toucher à deux / trois doigts.
  */
 import { getStroke } from "perfect-freehand";
+import { announce, createAutoScroll } from "@ui-sdk/core";
+import { arrowGroup } from "./arrows.ts";
 import type { PageItem, PhotoItem, StickerItem, StrokeItem } from "./core.ts";
 import { InkHistory, inverse, lassoPick, MultiTap, recognize, straight, type InkOp, type Pt, type ShapeKind } from "./ink.ts";
 import { mediaUrl } from "./media.ts";
@@ -363,9 +365,11 @@ export class Decor {
     hint.className = "cn-tray-hint";
     hint.setAttribute("aria-live", "polite");
     t.append(head, seasons, groups, grid, hint);
+    this.trayArrows = [arrowGroup(seasons, "button"), arrowGroup(groups, "[role=tab]", { activate: true }), arrowGroup(grid, ".cn-tray-sticker")];
     this.renderGrid();
   }
 
+  private trayArrows: { refresh(): void }[] = [];
   private renderGrid() {
     const t = this.tray;
     for (const b of t.querySelectorAll<HTMLElement>("[data-season]")) b.setAttribute("aria-pressed", String(b.dataset.season === this.season));
@@ -391,6 +395,7 @@ export class Decor {
       b.addEventListener("pointerdown", (ev) => this.trayDrag(ev, st.id, b));
       grid.append(b);
     }
+    for (const a of this.trayArrows) a.refresh();
     this.hint();
   }
 
@@ -447,8 +452,12 @@ export class Decor {
     let last = { x: x0, y: y0 };
     let dragging = false;
     let hold = 0;
+    // Près d'un bord, la page défile (un jour hors de l'écran reste atteignable) — ui-sdk.
+    let scroll: ReturnType<typeof createAutoScroll> | null = null;
     const start = () => {
       dragging = true;
+      scroll = createAutoScroll({ ignore: () => this.ghost, onScroll: () => this.dropTarget(last.x, last.y) });
+      announce(`${stickerById.get(sticker)?.name ?? "Autocollant"} pris : lâche-le sur une page.`);
       if (this.armed) this.disarm();
       document.body.classList.add("is-placing", "is-dragging-sticker");
       this.tray.classList.add("is-faded");
@@ -469,6 +478,7 @@ export class Decor {
       }
       this.showGhost(sticker, e.clientX, e.clientY);
       this.dropTarget(e.clientX, e.clientY);
+      scroll?.update(e.clientX, e.clientY);
     };
     const end = (e: PointerEvent) => {
       if (e.pointerId !== ev.pointerId) return;
@@ -483,10 +493,15 @@ export class Decor {
       if (!block) return this.h.toast("Lâche-le sur un jour, les notes, la page du mois ou une collection.");
       const r = block.getBoundingClientRect();
       const id = this.place(block, sticker, this.season, e.clientX - r.left, e.clientY - r.top);
-      if (id) this.focusSticker(block.dataset.block!, id);
+      if (id) {
+        this.focusSticker(block.dataset.block!, id);
+        announce("Autocollant posé. Flèches pour le déplacer, Suppr pour le retirer.");
+      }
     };
     const stop = () => {
       clearTimeout(hold);
+      scroll?.stop();
+      scroll = null;
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", end);
       removeEventListener("pointercancel", end);

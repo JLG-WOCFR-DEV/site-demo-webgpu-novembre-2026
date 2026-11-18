@@ -2145,3 +2145,61 @@ body.is-dragging-sticker * {
     transition: none;
   }
 }
+
+/* ───── Glisser une ligne vers une autre page (drag-entry.ts) ───── */
+body.is-moving-entry #spread :is([data-block^="day:"], [data-block^="week:"], [data-block^="month:"], [data-block^="collection:"]) {
+  outline: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: -3px;
+  border-radius: 6px;
+}
+body.is-moving-entry #spread :is([data-block], .cn-cal-row, [data-col]).is-drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+.cn-row.is-lifted {
+  opacity: 0.3;
+}
+/* La copie qui suit le pointeur (bindDragPreview) : une bande de papier soulevée. Son texte est
+   dessiné par le DOM : la règle qui le rend transparent pour le GPU ne s'y applique pas. */
+[data-drag-preview] {
+  /* Juste la ligne, pas la largeur de la page. */
+  width: max-content !important;
+  max-width: min(440px, 80vw);
+  padding-right: 14px;
+  background: var(--paper);
+  border-radius: 6px;
+  box-shadow: 0 14px 30px -10px var(--shadow), 0 0 0 1px var(--line);
+  rotate: -1.2deg;
+  opacity: 0.96;
+}
+html.gl-on [data-drag-preview] [data-gl-text] {
+  color: var(--ink) !important;
+}
+[data-drag-preview][data-over="1"] {
+  box-shadow: 0 14px 30px -10px var(--shadow), 0 0 0 2px var(--accent);
+}
+[data-drag-preview] .cn-ops {
+  display: none;
+}
+body.is-moving-entry,
+body.is-moving-entry * {
+  cursor: grabbing !important;
+}
+@media (pointer: coarse) {
+  /* Appui tenu sur une ligne = la prendre, pas sélectionner son texte. */
+  .cn-row {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+@media (pointer: fine) {
+  .cn-row:not(.cn-ghost):not(.state-migrated) .cn-bullet {
+    cursor: grab;
+  }
+}
+[data-drag-preview] .cn-text {
+  white-space: nowrap;
+}

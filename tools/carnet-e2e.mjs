@@ -558,6 +558,83 @@ await step("autocollants : glisser de la planche jusqu'à la page, zones de pose
   await c.close();
 });
 
+await step("glisser une ligne vers un autre jour (souris, doigt) : elle migre", async () => {
+  const c = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const q = await c.newPage();
+  await q.goto(url);
+  await q.waitForFunction(() => window.__carnet?.core);
+  const now = await q.evaluate(() => window.__carnet.ctx.now);
+  const dayOf = (text) => q.evaluate((t) => window.__carnet.core.all().find((e) => e.text === t && !e.deletedAt)?.place.day, text);
+  // Une ligne d'aujourd'hui vers un autre jour de la semaine.
+  const row = q.locator(`[data-block="day:${now}"] .cn-row:not(.cn-ghost)`, { hasText: "Finir le brief" });
+  const other = await q.evaluate((n) => [...document.querySelectorAll('#spread [data-block^="day:"]')].map((b) => b.dataset.block.slice(4)).find((d) => d !== n), now);
+  const r = await row.locator(".cn-text").boundingBox();
+  const t = await q.locator(`[data-block="day:${other}"]`).boundingBox();
+  await q.mouse.move(r.x + 20, r.y + r.height / 2);
+  await q.mouse.down();
+  for (let i = 1; i <= 12; i++) await q.mouse.move(r.x + 20 + (t.x + 120 - r.x - 20) * (i / 12), r.y + (t.y + 40 - r.y) * (i / 12));
+  ok(await q.evaluate(() => document.body.classList.contains("is-moving-entry") && !!document.querySelector("[data-drag-preview]") && !!document.querySelector("#spread .is-drop-target")), "pas de copie ni de cible pendant le glisser");
+  await q.mouse.up();
+  await q.waitForFunction(([t, d]) => window.__carnet.core.all().find((e) => e.text === t)?.place.day === d, ["Finir le brief de Carnet", other]);
+  ok(await q.locator(`[data-block="day:${now}"] .cn-row.state-migrated`, { hasText: "Finir le brief" }).count(), "pas de trace « > » au jour quitté");
+  eq(await q.evaluate(() => [document.body.classList.contains("is-moving-entry"), !!document.querySelector("[data-drag-preview]")]), [false, false], "nettoyé");
+  // Un simple clic ouvre toujours la ligne.
+  await q.locator(`[data-block="day:${other}"] .cn-text`, { hasText: "Finir le brief" }).click();
+  await q.waitForSelector("textarea.cn-edit");
+  await q.keyboard.press("Escape");
+  // Échap pendant le glisser : rien ne bouge.
+  const r2 = await q.locator(`[data-block="day:${other}"] .cn-text`, { hasText: "Finir le brief" }).boundingBox();
+  await q.mouse.move(r2.x + 10, r2.y + 8);
+  await q.mouse.down();
+  await q.mouse.move(r2.x + 60, r2.y + 120, { steps: 6 });
+  await q.keyboard.press("Escape");
+  await q.mouse.up();
+  eq(await dayOf("Finir le brief de Carnet"), other, "Échap n'a pas annulé");
+  await c.close();
+
+  // Au doigt (téléphone) : appui tenu, puis on glisse.
+  const m = await b.newContext({ ...devices["Pixel 7"] });
+  const p2 = await m.newPage();
+  await p2.goto(url);
+  await p2.waitForFunction(() => window.__carnet?.core);
+  const cdp2 = await m.newCDPSession(p2);
+  const n2 = await p2.evaluate(() => window.__carnet.ctx.now);
+  const row2 = p2.locator(`[data-block="day:${n2}"] .cn-row:not(.cn-ghost)`, { hasText: "Course" });
+  await row2.scrollIntoViewIfNeeded();
+  const a = await row2.locator(".cn-text").boundingBox();
+  const dest = await p2.evaluate((n) => {
+    const bs = [...document.querySelectorAll('#spread [data-block^="day:"]')];
+    const i = bs.findIndex((b) => b.dataset.block === `day:${n}`);
+    const b = bs[i - 1] ?? bs[i + 1];
+    const r = b.getBoundingClientRect();
+    return { day: b.dataset.block.slice(4), x: r.left + r.width / 2, y: r.top + 30 };
+  }, n2);
+  const pt = (x, y) => [{ x, y, id: 0, radiusX: 4, radiusY: 4, force: 0.5 }];
+  await cdp2.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pt(a.x + 20, a.y + a.height / 2) });
+  await p2.waitForTimeout(520);
+  for (let i = 1; i <= 10; i++) await cdp2.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pt(a.x + 20 + (dest.x - a.x - 20) * (i / 10), a.y + a.height / 2 + (dest.y - a.y - a.height / 2) * (i / 10)) });
+  await cdp2.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await p2.waitForFunction(([d]) => window.__carnet.core.all().find((e) => e.text === "Course, 6 km")?.place.day === d, [dest.day], { timeout: 5000 });
+  await m.close();
+});
+
+await step("planche et thèmes : une tabulation, puis les flèches", async () => {
+  const c = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const q = await c.newPage();
+  await q.goto(url);
+  await q.waitForFunction(() => window.__carnet?.core);
+  await q.click("#cn-stickers");
+  eq(await q.locator(".cn-tray-sticker[tabindex='0']").count(), 1, "une seule tabulation dans la planche");
+  await q.locator(".cn-tray-sticker").first().focus();
+  await q.keyboard.press("ArrowRight");
+  eq(await q.evaluate(() => [...document.querySelectorAll(".cn-tray-sticker")].indexOf(document.activeElement)), 1, "flèche droite");
+  await q.keyboard.press("ArrowDown");
+  ok((await q.evaluate(() => [...document.querySelectorAll(".cn-tray-sticker")].indexOf(document.activeElement))) > 1, "flèche bas");
+  await q.keyboard.press("End");
+  eq(await q.evaluate(() => document.activeElement === [...document.querySelectorAll(".cn-tray-sticker")].at(-1)), true, "Fin");
+  await c.close();
+});
+
 /* ───── Comme artefact claude.ai : la copie dans Claude (db privé, simulé ici) et l'enregistrement de fichiers ───── */
 const cloudStore = new Map();
 async function asArtifact(c) {

@@ -49,6 +49,8 @@ import { seedDecor } from "./sample-decor.ts";
 import { choice, monthTheme, signature } from "./prefs.ts";
 import { accents, borderMask, pageMonth, THEMES, themeFor, type Theme } from "./themes.ts";
 import { ago, connectCloud, deviceId, type Cloud, type CloudMeta } from "./cloud.ts";
+import { initEntryDrag, type DropTarget } from "./drag-entry.ts";
+import { arrowGroup } from "./arrows.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
 const spread = $("#spread");
@@ -81,6 +83,7 @@ function draw() {
   for (const id of ["#prev", "#next", "#today"]) $(id).hidden = ctx.view === "collections";
   $("#cn-sample").hidden = !isSample() || sampleBannerHidden();
   helpCard();
+  entryDrag.bindRows();
   // Préférences du carnet (P7) : l'apparence ne se réapplique que si elles ont changé (ici, dans un
   // autre onglet, ou par une restauration).
   const sig = signature(core);
@@ -154,6 +157,7 @@ function buildAppearance() {
     grid.append(b);
   }
   host.append(label, grid);
+  arrowGroup(grid, ".cn-theme");
 }
 /** L'apparence qui dépend des préférences du carnet (thème du mois, L2 ; fond, encre, L8). */
 function applyAppearance() {
@@ -487,6 +491,38 @@ function startEdit(t: HTMLElement, append?: string) {
 spread.addEventListener("click", (ev) => {
   const t = (ev.target as HTMLElement).closest<HTMLElement>('[data-act="edit"]');
   if (t) startEdit(t);
+});
+
+/* ───── Glisser une ligne vers une autre page (drag-entry.ts, comportements de ui-sdk) ───── */
+const fWeekday = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+const samePlace = (a: Place, b: Place) => a.scope === b.scope && (a.day ?? null) === (b.day ?? null);
+function dropTargetAt(x: number, y: number, id: string): DropTarget | null {
+  const under = document.elementFromPoint(x, y) as HTMLElement | null;
+  if (!under || !spread.contains(under)) return null;
+  let t: DropTarget | null = null;
+  const cal = under.closest<HTMLElement>(".cn-cal-row");
+  const colItem = under.closest<HTMLElement>(".cn-cindex [data-col], button[data-col]");
+  const block = under.closest<HTMLElement>("[data-block]");
+  if (cal) {
+    const day = cal.querySelector<HTMLElement>("[data-open]")?.dataset.open;
+    if (day) t = { el: cal, place: dayPlace(day), label: `au ${fWeekday.format(parseDay(day))}` };
+  } else if (colItem && colItem.closest(".cn-left")) {
+    const c = colItem.dataset.col!;
+    t = { el: colItem, place: collectionPlace(c), label: `dans « ${core.collectionView(c)?.collection.name ?? "la collection"} »` };
+  } else if (block) {
+    const k = block.dataset.block!;
+    if (k.startsWith("day:")) t = { el: block, place: dayPlace(k.slice(4)), label: `au ${fWeekday.format(parseDay(k.slice(4)))}` };
+    else if (k.startsWith("week:")) t = { el: block, place: weekPlace(k.slice(5)), label: "dans les notes de la semaine" };
+    else if (k.startsWith("month:")) t = { el: block, place: monthPlace(k.slice(6)), label: "sur la page du mois" };
+    else if (k.startsWith("collection:")) t = { el: block, place: collectionPlace(k.slice(11)), label: `dans « ${core.collectionView(k.slice(11))?.collection.name ?? "la collection"} »` };
+  }
+  const from = core.get(id)?.place;
+  return t && from && !samePlace(t.place, from) ? t : null;
+}
+const entryDrag = initEntryDrag(spread, {
+  enabled: () => !readOnly && !editing && !document.body.classList.contains("is-drawing") && !document.body.classList.contains("is-placing"),
+  targetAt: dropTargetAt,
+  drop: (id, to) => moveEntry(id, to),
 });
 
 /** Migration : même entrée, nouvelle place ; ses lettres voyagent, la place quittée garde « > ». */

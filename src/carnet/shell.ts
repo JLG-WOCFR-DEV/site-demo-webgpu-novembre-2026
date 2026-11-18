@@ -7,6 +7,8 @@
  * (.cn-move) s'affichent au-dessus des Réglages, qui restent ouverts derrière.
  */
 
+import { arrowGroup } from "./arrows.ts";
+
 export type ShellHooks = {
   /** Le bouton « + » : écrire une ligne aujourd'hui. */
   writeToday(): void;
@@ -76,6 +78,7 @@ export function initShell(h: ShellHooks) {
     if (refocus) more.focus({ preventScroll: true });
   };
   more.addEventListener("click", () => (sheet.hidden ? openSheet() : closeSheet()));
+  arrowGroup(sheet, "button");
   sheet.addEventListener("click", (ev) => {
     const b = (ev.target as HTMLElement).closest<HTMLButtonElement>("button");
     if (!b) return;
