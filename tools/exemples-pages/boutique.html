@@ -1,0 +1,119 @@
+<!doctype html>
+<!--
+  GABARIT — page boutique Presse : rail glissant + panier et favoris (localStorage) + autocollant + forme-masque.
+  À copier à la racine (ex. atelier-boutique.html) ; mêmes étapes que le gabarit éditorial (vite.config.ts input,
+  PAGES de src/pages-nav.ts, ligne PRESSE.md si besoin, npm run valider -- <page>.html).
+
+  data-presse-manuel sur <html> : la page arme ELLE-MÊME rail, autocollant, forme, dechirure (pages-nav ne le fait
+  plus quand il voit cet attribut) et panier (que personne n'arme). Le validateur le vérifie (règle « armement »).
+  Pourquoi manuel : pour tenir les contrôleurs (rails.get(el).aller(i), magasin.ajouter(…)) et brancher les fiches
+  produits rendues par script avant l'armement.
+
+  Tout est DOM : rien d'invérifiable en environnement de test sans GPU. Coût au repos : nul (le rail sans fin
+  s'arrête hors écran, au survol et au focus).
+-->
+<html lang="fr" data-presse-manuel>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Comptoir · boutique d'essai · Presse</title>
+    <meta name="description" content="Gabarit de boutique Presse : rail glissant, panier et favoris en localStorage, autocollant au survol, photo vue à travers une goutte." />
+    <script type="module">
+      import { mountPagesNav } from "/src/pages-nav.ts";
+      import { initRail } from "/src/presse/rail.ts";
+      import { initPanier } from "/src/presse/panier.ts";
+      import { initAutocollant } from "/src/presse/autocollant.ts";
+      import { initForme } from "/src/presse/forme.ts";
+      import { initDechirure } from "/src/presse/dechirure.ts";
+      mountPagesNav();
+      // Magasin : compteurs [data-panier-nombre] / [data-favoris-nombre] et boutons [data-favori="id"] tenus à jour.
+      const magasin = initPanier(document, undefined, { cle: "comptoir:panier", idsConnus: ["pull", "pantalon", "echarpe"] });
+      for (const b of document.querySelectorAll("[data-ajouter]"))
+        b.addEventListener("click", () => magasin.ajouter({ id: b.dataset.ajouter, taille: "M", couleur: "unie" }));
+      initRail();
+      initAutocollant();
+      initForme();
+      initDechirure();
+    </script>
+    <style>
+      :root { --fond: #f4f1ea; --encre: #18161a; --accent: #5257cc; --f: system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      html { background: var(--fond); color: var(--encre); }
+      body { margin: 0; font: 400 16px/1.45 var(--f); }
+      .tete { display: flex; justify-content: space-between; align-items: center; padding: 12px clamp(16px, 4vw, 48px); }
+      .actions { display: flex; gap: 8px; }
+      /* Interface d'action : des icônes (aria-label pour le nom), cibles de 44 px. */
+      .icone { position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px solid currentColor; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
+      .icone:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+      .compteur { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 12px; display: grid; place-items: center; }
+      section { padding: clamp(40px, 6vw, 96px) clamp(16px, 4vw, 48px); }
+      .bande { background: #dcd6ff; }
+      [data-rail-piste] { display: flex; gap: 16px; list-style: none; margin: 0; padding: 0; }
+      .carte { flex: 0 0 min(72vw, 320px); }
+      .carte img { width: 100%; height: auto; display: block; border-radius: 6px; }
+      .ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .fleches { display: flex; gap: 8px; margin-top: 16px; }
+      @media (prefers-reduced-motion: reduce) { .carte img { transition: none; } }
+    </style>
+  </head>
+  <body>
+    <header class="tete">
+      <a href="#haut" aria-label="Comptoir, retour en haut">Comptoir</a>
+      <div class="actions">
+        <button type="button" class="icone" aria-label="Favoris">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>
+          <span class="compteur" data-favoris-nombre>0</span>
+        </button>
+        <button type="button" class="icone" aria-label="Panier">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 8h14l-1.5 11h-11ZM9 8V6a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>
+          <span class="compteur" data-panier-nombre>0</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="haut">
+      <!-- Le rail : glisser avec inertie, molette, flèches ; autocollant « voir » sur les cartes (pointeur fin seulement). -->
+      <section class="bande" aria-labelledby="t-nouv" data-autocollant="voir" data-autocollant-forme="goutte" data-autocollant-couleur="#5257cc" data-dechirure="bas" data-dechirure-graine="nouv">
+        <h2 id="t-nouv">Nouveautés</h2>
+        <div id="rail-nouv" data-rail role="region" aria-label="Nouveautés : faites glisser ou utilisez les flèches">
+          <ul data-rail-piste>
+            <li class="carte">
+              <a data-autocollant-cible href="#pull"><img src="./plates/flower.jpg" width="1408" height="1408" alt="Pull écru à grosses mailles, posé à plat." /></a>
+              <div class="ligne">
+                <span>Pull écru · 89 €</span>
+                <button type="button" class="icone" data-favori="pull" aria-pressed="false" aria-label="Pull écru en favori">♡</button>
+                <button type="button" class="icone" data-ajouter="pull" aria-label="Ajouter le pull écru au panier">+</button>
+              </div>
+            </li>
+            <li class="carte">
+              <a data-autocollant-cible href="#pantalon"><img src="./plates/steel.jpg" width="1408" height="1408" alt="Pantalon large gris acier." /></a>
+              <div class="ligne">
+                <span>Pantalon acier · 110 €</span>
+                <button type="button" class="icone" data-favori="pantalon" aria-pressed="false" aria-label="Pantalon acier en favori">♡</button>
+                <button type="button" class="icone" data-ajouter="pantalon" aria-label="Ajouter le pantalon acier au panier">+</button>
+              </div>
+            </li>
+            <li class="carte">
+              <a data-autocollant-cible href="#echarpe"><img src="./plates/vanilla.jpg" width="1728" height="1152" alt="Écharpe vanille roulée sur un papier crème." /></a>
+              <div class="ligne">
+                <span>Écharpe vanille · 45 €</span>
+                <button type="button" class="icone" data-favori="echarpe" aria-pressed="false" aria-label="Écharpe vanille en favori">♡</button>
+                <button type="button" class="icone" data-ajouter="echarpe" aria-label="Ajouter l'écharpe vanille au panier">+</button>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <!-- Boutons hors du rail : leur valeur est l'id du rail. -->
+        <div class="fleches">
+          <button type="button" class="icone" data-rail-precedent="rail-nouv" aria-label="Pièce précédente">←</button>
+          <button type="button" class="icone" data-rail-suivant="rail-nouv" aria-label="Pièce suivante">→</button>
+        </div>
+      </section>
+
+      <!-- Forme-masque : la photo vue à travers une goutte qui grandit au défilement (scène collante). -->
+      <section aria-label="Campagne" data-forme="goutte" data-forme-quand="defilement" data-forme-taille="0.42">
+        <img src="./plates/alcatraz.jpg" width="1728" height="1150" alt="L'île d'Alcatraz vue à travers une goutte qui grandit." />
+      </section>
+    </main>
+  </body>
+</html>

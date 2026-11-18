@@ -137,7 +137,7 @@ export const COLLISIONS: { a: string; b: string; grave: boolean; pourquoi: strin
 
 const SIMPLE = /^[a-z0-9][a-z0-9-]*$/;
 /** Mots HTML / CSS qui suivent parfois une option sans en être une valeur (« `data-caption` ou `figcaption` »). */
-const MOTS_HTML = new Set(["a", "img", "href", "src", "alt", "html", "body", "head", "figcaption", "figure", "picture", "video", "iframe", "input", "change", "nav", "main", "section", "aside", "button", "label", "sticky", "translate", "transform"]);
+const MOTS_HTML = new Set(["a", "img", "href", "src", "alt", "html", "body", "head", "figcaption", "figure", "picture", "video", "iframe", "input", "change", "nav", "main", "section", "aside", "button", "label", "sticky", "translate", "transform", "stroke-dashoffset", "clip-path", "object-fit", "pointer-events"]);
 const estValeur = (s: string) => SIMPLE.test(s) && !s.startsWith("data-") && !s.startsWith("aria-") && !MOTS_HTML.has(s);
 /** Profondeur de parenthèses après un texte, partant de `d`. */
 const profondeur = (texte: string, d: number) => {

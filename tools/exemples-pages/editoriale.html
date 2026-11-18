@@ -1,0 +1,82 @@
+<!doctype html>
+<!--
+  GABARIT — page éditoriale Presse. À copier à la racine du dépôt (ex. carnet.html), puis :
+    1. vite.config.ts  : ajouter  carnet: "carnet.html"  dans build.rollupOptions.input ;
+    2. src/pages-nav.ts : ajouter  { href: "carnet.html", name: "Carnet", text: "…" }  dans PAGES ;
+    3. PRESSE.md        : si la page introduit un module ou un attribut, sa ligne dans le tableau « Attributs » ;
+    4. npm run valider -- carnet.html  (0 erreur), npx tsc --noEmit -p ., npm test.
+
+  Choix de cette page : tout ce qui porte le texte est en DOM (cinétique, déchirure, graffiti en canvas 2D) —
+  vérifiable sans GPU, lisible sans JavaScript, rendu net à toutes les tailles. Un seul effet WebGPU (le ruban),
+  parce qu'il a un repli CSS documenté (bande à scroll-snap). Budget : 1 canvas WebGPU par écran au plus.
+
+  Pas de data-presse-manuel : pages-nav arme lui-même cinetique, dechirure, ruban (src/pages-nav.ts). graffiti
+  n'est armé par personne : on l'importe ici.
+-->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Carnet · une page éditoriale · Presse</title>
+    <meta name="description" content="Gabarit de page éditoriale Presse : titre cinétique, bords de papier déchiré, mot peint à la bombe, bande d'images en ruban." />
+    <meta name="theme-color" content="#efe9dd" />
+    <!-- Un script module en ligne suffit pour une petite page ; au-delà, un fichier src/<page>/main.ts (cf. boutique). -->
+    <script type="module">
+      import "@fontsource-variable/archivo/standard.css";
+      import "@fontsource/rubik-wet-paint/latin-400.css";
+      import { mountPagesNav } from "/src/pages-nav.ts";
+      import { initGraffiti } from "/src/presse/graffiti.ts";
+      mountPagesNav();
+      initGraffiti();
+    </script>
+    <style>
+      :root { --fond: #efe9dd; --encre: #1d1b17; --accent: #c8321c; --f: "Archivo Variable", "Helvetica Neue", Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      html { background: var(--fond); color: var(--encre); }
+      body { margin: 0; font: 400 18px/1.5 var(--f); }
+      main > section { padding: clamp(48px, 8vw, 120px) clamp(16px, 5vw, 64px); }
+      /* data-dechirure demande un bloc à fond uni : le papier déchiré dépasse sur la voisine. */
+      .sombre { background: var(--encre); color: var(--fond); }
+      h1 { font-size: clamp(48px, 9vw, 140px); line-height: 0.95; margin: 0 0 0.3em; font-weight: 800; }
+      .chapo { max-width: 46ch; font-size: 22px; }
+      .graffiti { min-height: 40vh; display: grid; place-items: center; }
+      /* Cibles de 44 px au moins (doigt), focus visible. */
+      .bouton { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 18px; border: 1px solid currentColor; border-radius: 999px; color: inherit; text-decoration: none; }
+      .bouton:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    </style>
+  </head>
+  <body>
+    <a class="bouton evitement" href="#contenu">Aller au contenu</a>
+    <main id="contenu">
+      <!-- Ouverture. data-cinetique (DOM, Web Animations) : coût nul hors entrée, texte réel, mouvement réduit = fondu. -->
+      <section aria-labelledby="titre" data-dechirure="bas" data-dechirure-graine="ouverture">
+        <h1 id="titre" data-cinetique="monte" data-cinetique-par="mot" data-cinetique-quand="chargement">Le temps d'après</h1>
+        <p class="chapo" data-cinetique="doux" data-cinetique-par="ligne" data-cinetique-delai="0,4">Une page qui se lit d'abord, et qui bouge ensuite : le HTML reste la vérité, les effets s'ajoutent par attributs.</p>
+        <a class="bouton" href="#images">Voir les images</a>
+      </section>
+
+      <!-- Un mot peint (canvas 2D, pas de GPU) ; le vrai texte reste dans le DOM pour les lecteurs d'écran. -->
+      <section class="sombre graffiti" aria-label="Manifeste" data-dechirure="haut" data-dechirure-graine="manifeste">
+        <p data-graffiti="Douceur" data-graffiti-couleur="#e3122b">Douceur</p>
+      </section>
+
+      <!-- data-typo : une entrée de texte (DOM, sauf encre et fragments en WebGPU). -->
+      <section aria-labelledby="t-typo">
+        <h2 id="t-typo" data-typo="trace" data-typo-quand="entree">Tracé à la main</h2>
+        <p>Chaque titre entre une fois, à son arrivée dans l'écran ; à la fin, c'est exactement le texte normal.</p>
+      </section>
+
+      <!-- Le seul effet WebGPU de la page : un ruban d'images. Sans WebGPU : bande CSS à scroll-snap. -->
+      <section id="images" aria-labelledby="t-images">
+        <h2 id="t-images">Images</h2>
+        <div data-ruban="torsade" data-ruban-hauteur="300" data-ruban-joint="6" aria-label="Quatre photos en ruban torsadé">
+          <img src="./plates/pont.jpg" width="1728" height="1150" alt="Le Golden Gate au-dessus d'une plage, falaises vertes à droite." />
+          <img src="./plates/lac.jpg" width="1728" height="1150" alt="Un lac de barrage entre des collines dorées." />
+          <img src="./plates/dunes.jpg" width="1728" height="1150" alt="Des dunes de sable clair, une branche morte, des montagnes au loin." />
+          <img src="./plates/cerf.jpg" width="1728" height="1150" alt="Un cerf sur un sentier bordé de troncs, dans l'herbe verte." />
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
