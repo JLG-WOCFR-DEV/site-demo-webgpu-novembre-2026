@@ -19,6 +19,7 @@ erreur.
 | Balises `<x-…>` | `presse/build/validate.ts` (`SCHEMAS`) | `PRESSE.md`, section « Composants » |
 | Pour un agent externe | `llms.txt`, `presse-catalog.json` | écrits par `vite build` (`presse/build/catalog.ts`) |
 | Options fines d'un module | l'en-tête de `src/presse/<module>.ts` | souvent plus complet que PRESSE.md (voir « Pièges ») |
+| Réglages d'un effet (Studio) | `src/registre/parametres/<id>.ts` (fiche : paramètres typés + démo), champ `parametres` du manifeste | `studio-effet.html?effet=<id>` : régler à l'œil, puis « copier les attributs » (Maj+A) ; goo, couloir, cinetique, typo, ruban, rouleau |
 
 ## Procédure
 
@@ -37,6 +38,10 @@ erreur.
 4. **Armer les modules** : voir « Armement ». Sans `data-presse-manuel`, `mountPagesNav()` suffit pour les modules
    marqués « pages-nav » ; le reste s'importe. Avec `data-presse-manuel`, la page importe et appelle tous les `init…`.
 5. **Boucle de vérification** (plus bas) jusqu'à zéro erreur, puis lire les avertissements un par un.
+6. **Régler un effet à l'œil** : `studio-effet.html?effet=<id>` (effets qui ont une fiche) donne les valeurs, la
+   courbe et les attributs à coller ; le lien `#v=1;…` garde les réglages. Nouvel effet réglable : une fiche dans
+   `src/registre/parametres/<id>.ts` + `parametres: () => import("./parametres/<id>.ts")` dans son manifeste, puis
+   `npm test` (`parametres.test.ts` : attributs documentés, démo aux défauts, démo validée).
 
 ## Gabarit minimal
 

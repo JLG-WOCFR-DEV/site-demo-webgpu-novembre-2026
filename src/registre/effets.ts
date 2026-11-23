@@ -6,12 +6,16 @@
  *   - src/pages-nav.ts (`armerEffets`) : le sélecteur, `manuel`, `parametre`, `tot`, `charger`, `armer` ;
  *   - tools/valider/catalogue.ts (`lireArmement`) et tools/gen-skill-tableau.mjs : quels modules pages-nav arme, et
  *     lesquels seulement sans `data-presse-manuel` ;
- *   - src/registre/registre.test.ts : accord avec PRESSE.md (catalogue dérivé) et avec le code.
+ *   - src/registre/registre.test.ts : accord avec PRESSE.md (catalogue dérivé) et avec le code ;
+ *   - le Studio (src/studio/) : le Sampler Presse (`resume`, `exemple`, `rendu`, `statut`) et la page d'effet générée
+ *     (`parametres`, chargés à la demande : src/registre/parametres/<id>.ts, testés par parametres.test.ts).
  *
  * Contraintes : importable par Node (`node --experimental-strip-types`, sans alias tsconfig) — aucun import de CSS, de
  * DOM ni d'alias ici ; `charger` garde des chemins LITTÉRAUX (Vite en tire un morceau par module) et n'est appelée
  * qu'en page. Pour ajouter un effet : un manifeste ci-dessous, rien d'autre dans pages-nav.ts.
  */
+
+import type { FicheParametres } from "./parametres/types.ts";
 
 export type Categorie = "texte" | "image" | "matiere" | "interface" | "transition" | "forme" | "dessin" | "page";
 export type Rendu = "DOM" | "canvas 2D" | "WebGL2" | "WebGPU" | "DOM + WebGPU";
@@ -41,6 +45,15 @@ export type Manifeste<M = unknown> = {
   statut: Statut;
   /** Le fichier source, depuis la racine du dépôt. */
   module: string;
+  /** Une ligne : ce que l'effet fait (Sampler Presse, palette de commandes). */
+  resume: string;
+  /** La page de démonstration du dépôt (`goo.html`), s'il y en a une. */
+  exemple?: string;
+  /**
+   * Les paramètres réglables et la démo du Studio (genre, bornes, pas, défaut, libellé, groupe, attribut `data-*`
+   * cible) : une fiche chargée à la demande, pour ne pas alourdir pages-nav. Chemin littéral, comme `charger`.
+   */
+  parametres?: () => Promise<{ default: FicheParametres }>;
 };
 
 /** Garde l'inférence du type du module entre `charger` et `armer`. */
@@ -68,6 +81,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/systeme.ts",
+    resume: "Un système de design (couleurs, fontes, look, mouvement) posé sur toute la page, par l'adresse ou un attribut.",
+    exemple: "variations.html",
   }),
   effet({
     id: "lightbox",
@@ -82,6 +97,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGPU",
     statut: "stable",
     module: "src/presse/lightbox.ts",
+    resume: "Chaque image du groupe s'ouvre en grand, en vol depuis sa place.",
+    exemple: "presse.html",
   }),
   effet({
     id: "vague",
@@ -96,6 +113,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGPU",
     statut: "stable",
     module: "src/presse/vague.ts",
+    resume: "Une vague déformante passe d'une vue à l'autre, depuis l'endroit pressé.",
+    exemple: "presse.html",
   }),
   effet({
     id: "goo",
@@ -112,6 +131,9 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGPU",
     statut: "stable",
     module: "src/presse/goo.ts",
+    resume: "Des pièces d'interface qui fusionnent comme une pâte, s'étirent et se séparent en gouttes.",
+    exemple: "goo.html",
+    parametres: () => import("./parametres/goo.ts"),
   }),
   effet({
     id: "metal",
@@ -127,6 +149,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGPU",
     statut: "stable",
     module: "src/presse/metal.ts",
+    resume: "Chrome liquide sur une bordure, des lettres ou un badge : reflets qui coulent, franges, halo.",
+    exemple: "metal.html",
   }),
   effet({
     id: "voix",
@@ -142,6 +166,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGPU",
     statut: "stable",
     module: "src/presse/voix.ts",
+    resume: "Une lueur qui monte avec le niveau du micro, puis balaie pendant la réponse.",
+    exemple: "voix.html",
   }),
   // Ruban (bande d'images en 3D) et typographie, d'après Aristide Benoist.
   effet({
@@ -158,6 +184,9 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGPU",
     statut: "stable",
     module: "src/presse/ruban.ts",
+    resume: "Une bande d'images qui se vrille, se comprime ou se bombe selon la vitesse du défilement.",
+    exemple: "ruban.html",
+    parametres: () => import("./parametres/ruban.ts"),
   }),
   effet({
     id: "typo",
@@ -172,6 +201,9 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM + WebGPU",
     statut: "stable",
     module: "src/presse/typo.ts",
+    resume: "Six entrées de texte : éclats, tracé, sphère, étirement, encre, fragments.",
+    exemple: "typo.html",
+    parametres: () => import("./parametres/typo.ts"),
   }),
   effet({
     id: "rouleau",
@@ -187,6 +219,9 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGPU",
     statut: "stable",
     module: "src/presse/rouleau.ts",
+    resume: "Menu roulant de grands titres ; derrière le titre courant, une photo ondule comme une étoffe.",
+    exemple: "rouleau.html",
+    parametres: () => import("./parametres/rouleau.ts"),
   }),
   // Une rangée d'images en perspective fuyante (DOM, matrix3d).
   effet({
@@ -208,6 +243,9 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/couloir.ts",
+    resume: "Un mur d'images vu en perspective fuyante, qui défile au pointeur, frangé par la vitesse.",
+    exemple: "couloir.html",
+    parametres: () => import("./parametres/couloir.ts"),
   }),
   // Une matière animée (Paper Shaders, WebGL2) sur un logo ; le rendu se charge à la demande.
   effet({
@@ -239,6 +277,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "WebGL2",
     statut: "stable",
     module: "src/presse/logo.ts",
+    resume: "Une matière animée sur un logo : métal liquide, fumée, chaleur, eau, verre, trames.",
+    exemple: "logos.html",
   }),
   // Ses huit composants (roule, marque, défilé…) arment le même module.
   effet({
@@ -250,7 +290,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
       "data-cinetique", "data-roule", "data-marque", "data-defile", "data-reflet", "data-cercle", "data-coupe",
       "data-brouille", "data-frappe", "data-cinetique-par", "data-cinetique-quand", "data-cinetique-duree",
       "data-cinetique-delai", "data-cinetique-cascade", "data-cinetique-ordre", "data-cinetique-sortie",
-      "data-cinetique-rejoue", "data-cinetique-courbe", "data-roule-tempo", "data-defile-rangs", "data-defile-vitesse", "data-defile-incline",
+      "data-cinetique-rejoue", "data-cinetique-courbe", "data-cinetique-courbe-sortie", "data-roule-tempo", "data-defile-rangs", "data-defile-vitesse", "data-defile-incline",
       "data-defile-separateur", "data-cercle-rayon", "data-cercle-vitesse", "data-frappe-vitesse",
     ],
     charger: () => import("../presse/cinetique.ts"),
@@ -259,6 +299,9 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/cinetique.ts",
+    resume: "Texte animé en DOM : dix-huit entrées par ligne, mot ou lettre, et huit composants.",
+    exemple: "cinetique.html",
+    parametres: () => import("./parametres/cinetique.ts"),
   }),
   // Modules nés de la boutique (déchirure, forme, autocollant, rail, tracé) : une page qui les arme elle-même porte
   // data-presse-manuel sur <html>.
@@ -278,6 +321,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/dechirure.ts",
+    resume: "Un bord de papier déchiré entre deux blocs, ou une déchirure qui suit le pointeur.",
+    exemple: "boutique.html",
   }),
   effet({
     id: "forme",
@@ -294,6 +339,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/forme.ts",
+    resume: "Le média vu à travers une forme qui grandit jusqu'à couvrir l'écran.",
+    exemple: "boutique.html",
   }),
   effet({
     id: "autocollant",
@@ -310,6 +357,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/autocollant.ts",
+    resume: "Un autocollant suit le pointeur sur les cibles, avec retard et bascule.",
+    exemple: "boutique.html",
   }),
   effet({
     id: "rail",
@@ -326,6 +375,8 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/rail.ts",
+    resume: "Un rail de cartes au glisser, avec inertie, aimantation, flèches et barre de progression.",
+    exemple: "boutique.html",
   }),
   // Dessin technique qui se trace (cotes, hachures, lignes de construction).
   effet({
@@ -344,5 +395,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     rendu: "DOM",
     statut: "stable",
     module: "src/presse/trace.ts",
+    resume: "Un dessin technique qui se trace : construction, formes, cotes, hachures.",
+    exemple: "boutique.html",
   }),
 ];

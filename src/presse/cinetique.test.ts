@@ -384,3 +384,12 @@ test("cinétique : data-cinetique-courbe — un nom ou une écriture CSS, illisi
   assert.equal(lireReglages({ cinetique: "monte", cinetiqueCourbe: "steps(3)" }).courbe, "steps(3, jump-end)");
   assert.equal(lireReglages({ cinetique: "monte", cinetiqueCourbe: "cubic-bezier(2,0,0,1)" }).courbe, null);
 });
+
+test("cinétique : data-cinetique-courbe-sortie — la courbe de la sortie, à part de celle de l'entrée", () => {
+  assert.equal(lireReglages({ cinetique: "monte" }).courbeSortie, null, "par défaut, celle du préréglage");
+  const r = lireReglages({ cinetique: "monte", cinetiqueCourbe: "out", cinetiqueCourbeSortie: "in" });
+  assert.equal(r.courbe, "cubic-bezier(0.16, 1, 0.3, 1)");
+  assert.notEqual(r.courbeSortie, null);
+  assert.notEqual(r.courbeSortie, r.courbe, "entrée et sortie séparées");
+  assert.equal(lireReglages({ cinetique: "monte", cinetiqueCourbeSortie: "pas une courbe" }).courbeSortie, null);
+});

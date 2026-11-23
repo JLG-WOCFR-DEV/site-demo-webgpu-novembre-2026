@@ -122,6 +122,7 @@ export const COMPLEMENTS: Record<string, { valeurs?: string[]; valeursDe?: strin
   "data-vague-palette": { parentsSelecteurs: ['[data-transition="vague"]'], pourquoi: "idem data-vague-type." },
   "data-anim-ease": { courbe: true, pourquoi: "« courbe (`out`, `in-out`…) » : un nom ou une écriture CSS, lue par src/registre/mouvement/courbes.ts (lireCourbe)." },
   "data-cinetique-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
+  "data-cinetique-courbe-sortie": { courbe: true, pourquoi: "idem data-anim-ease." },
   "data-goo-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
   "data-couloir-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
   "data-graffiti": { texteOuValeur: true, pourquoi: "« bloc (p, div) avec le mot » : le mot en valeur, ou le texte de l'élément." },

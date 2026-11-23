@@ -133,7 +133,24 @@ Décisions :
 - **E1 Hygiène** : `npm ci` sur copie propre ; `package.json` synchronisé ; `public/legacy` ne grossit plus à chaque build (même nombre de `.js` sur deux builds) ; meshoptimizer 1.3 et playwright 1.65 chacun dans un commit, références visuelles justifiées.
 - **E2 Registre et armement** : `src/registre/effets.ts` pilote `mountPagesNav` ; `npm run valider -- --catalogue` : diff vide avant/après ; `npm run skill:tableau` : diff vide ; même liste de chunks dans `dist` ; plus de `querySelector("[data-` dans `pages-nav.ts` ; validateur en échec si 0 page.
 - **E3 Schéma, courbes, inspecteur** : schéma partagé extrait (Vitrine le ré-exporte, `vitrine.test.ts` inchangé) avec `courbe` et `temps` ; courbes testées contre les valeurs CSS (1e-3) ; `data-anim-ease="cubic-bezier(.2,0,0,1)"` accepté ; éditeur de courbe au clavier (`aria-valuetext`) + test Playwright ; trois effets pilotes (cinétique, goo, couloir) exposent `-dur` et `-ease`.
-- **E4 Gabarit page d'effet + Sampler Presse** (données du registre, lots d'effets DOM).
+- **E4 Gabarit page d'effet + Sampler Presse** (données du registre, lots d'effets DOM). **Fait (2026-11-23).**
+  - Gabarit `src/studio/page-effet.ts` (+ `jetons.css`, `page-effet.css`), page unique `studio-effet.html?effet=<id>`,
+    aperçu isolé `studio-apercu.html` (cadre, messages même origine, `charger`/`armer` du registre) ; inspecteur généré
+    (`inspecteur-plan.ts` pur → `inspecteur.ts`), éditeur de courbe intégré, courbes d'entrée et de sortie séparées
+    (cinétique : nouvel attribut `data-cinetique-courbe-sortie`), auto / défaut par champ, liste `data-*` en direct,
+    copier attributs / HTML / JSON / lien, réinitialiser, comparer avant / après, appareils.
+  - Schéma du registre : champ `parametres` (fiche chargée à la demande, types `src/registre/parametres/types.ts`),
+    `resume` et `exemple` sur chaque manifeste. Six fiches : goo, couloir (préréglages tirés du module), cinetique,
+    typo, ruban (défauts par figure via `si`), rouleau.
+  - Lien de partage versionné `#v=1;cle=valeur…` (documenté dans `src/studio/etat.ts` et PRESSE.md), JSON de réglages.
+  - Registre de raccourcis `src/studio/raccourcis.ts` (conflits refusés, Ctrl+K et ⌘⇧K réservés, champs de saisie).
+  - Sampler Presse `sampler-presse.html` (filtres catégorie / rendu / statut / Studio, recherche, filtres dans
+    l'adresse, puces « WebGPU requis » et repli détecté par `requestAdapter`) ; `sampler.html` (PLI) inchangé.
+  - Tests node:test (le dépôt n'a pas Vitest) : `parametres.test.ts`, `etat.test.ts`, `inspecteur.test.ts`,
+    `raccourcis.test.ts`, `filtres.test.ts`. Vérification Playwright 1440 × 900 et 390 × 844, clair et sombre,
+    mouvement réduit, clavier.
+  - Reste : fiches des autres effets (lot E7) ; aperçu WebGPU jugé sur machine réelle ; palette Ctrl+K (E6) sur le
+    registre de raccourcis.
 - **E5 PPTX niveau 1, PDF, HTML autonome.**
 - **E6 Navigation unifiée** (taxonomie, palette Ctrl+K en combobox ARIA, registre de raccourcis, redirections des 37 URL, migration des clés `localStorage`), puis coque commune des trois éditeurs.
 - **E7 Veille** : Paper (écart de couverture), HTML-in-Canvas (module unique à partir de `src/html-in-canvas.ts`).

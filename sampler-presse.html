@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sampler Presse · les effets du registre · Presse</title>
+    <meta name="description" content="Le Sampler Presse : tous les effets du registre, filtrés par catégorie, rendu et statut, avec une recherche ; chaque effet réglable ouvre sa page dans le Studio." />
+    <meta name="theme-color" content="#18181b" />
+    <script type="module" src="/src/studio/sampler-presse.ts"></script>
+  </head>
+  <body>
+    <a class="evitement" href="#effets">Aller aux effets</a>
+    <div class="sp">
+      <header class="sp-tete">
+        <div class="sp-tete-barre">
+          <button type="button" class="st-bouton" data-pages-trigger aria-label="Pages du dépôt" title="Pages du dépôt"></button>
+          <p class="sp-sur">Presse · registre des effets</p>
+        </div>
+        <h1>Sampler Presse</h1>
+        <p class="sp-chapo">Chaque effet du registre, d'un coup d'œil : ce qu'il fait, ce qu'il demande au navigateur, et — pour ceux qui ont une fiche — sa page de réglage dans le Studio. Pour le moteur 3D, l'autre échantillonneur : <a href="sampler.html">le Sampler PLI</a>.</p>
+      </header>
+      <section class="sp-filtres" aria-label="Filtres">
+        <div class="sp-recherche">
+          <label for="sp-q" class="sr">Rechercher un effet</label>
+          <input type="search" id="sp-q" placeholder="Rechercher : nom, attribut, mot…" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="sp-groupes" id="sp-groupes"></div>
+        <p class="sp-compte" id="sp-compte" role="status" aria-live="polite"></p>
+      </section>
+      <main id="effets" tabindex="-1">
+        <ul class="sp-grille" id="sp-grille">
+          <noscript><li class="sp-vide">Le Sampler lit le registre (src/registre/effets.ts) : il demande JavaScript. La liste des attributs est dans <a href="presse.html">Presse</a>.</li></noscript>
+        </ul>
+      </main>
+    </div>
+  </body>
+</html>

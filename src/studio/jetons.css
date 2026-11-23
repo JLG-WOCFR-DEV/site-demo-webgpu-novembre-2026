@@ -1,0 +1,98 @@
+/* Studio — jetons et base communs (page d'effet, Sampler Presse). Sombre par défaut (un logiciel), clair si le
+   système le demande. */
+:root {
+  --st-fond: #18181b;
+  --st-panneau: #222226;
+  --st-surface: #2d2d32;
+  --st-surface-2: #38383e;
+  --st-filet: #3a3a41;
+  --st-texte: #ececf0;
+  --st-doux: #a6a6b1;
+  --st-accent: #5b8cff;
+  --st-accent-texte: #9dbbff;
+  --st-accent-doux: rgba(91, 140, 255, 0.18);
+  /* Fond d'un bouton plein, texte blanc : ≥ 4,5:1. */
+  --st-accent-plein: #3562d6;
+  --st-regle: #f0b429;
+  --st-attention: #ffb38a;
+  --st-scene: #111114;
+  --st-point: rgba(255, 255, 255, 0.07);
+  --st-focus: #9dbbff;
+  --st-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --st-texte-police: "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --st-largeur: 100%;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --st-fond: #f3f3f5;
+    --st-panneau: #ffffff;
+    --st-surface: #f0f0f3;
+    --st-surface-2: #e4e4e9;
+    --st-filet: #dcdce2;
+    --st-texte: #17171b;
+    --st-doux: #5b5b66;
+    --st-accent: #2f5fd8;
+    --st-accent-texte: #2449b0;
+    --st-accent-doux: rgba(47, 95, 216, 0.12);
+    --st-accent-plein: #2f5fd8;
+    --st-regle: #b26a00;
+    --st-attention: #a0410f;
+    --st-scene: #e6e6ea;
+    --st-point: rgba(0, 0, 0, 0.08);
+    --st-focus: #2f5fd8;
+    color-scheme: light;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--st-fond); color: var(--st-texte); font: 400 13px/1.4 var(--st-texte-police); -webkit-font-smoothing: antialiased; }
+.sr { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.evitement { position: absolute; left: 8px; top: -60px; z-index: 50; padding: 8px 12px; background: var(--st-accent-plein); color: #fff; border-radius: 6px; }
+.evitement:focus { top: 8px; }
+:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+code, kbd, pre { font-family: var(--st-mono); }
+a { color: var(--st-accent-texte); }
+
+
+/* ───────── Composants partagés : bouton à icône, puce, bascule ───────── */
+.st-bouton {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--st-texte);
+  cursor: pointer;
+  text-decoration: none;
+}
+.st-bouton:hover { background: var(--st-surface); }
+.st-bouton[aria-pressed="true"] { background: var(--st-accent-doux); color: var(--st-accent-texte); }
+.st-puce {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-doux);
+  font: 500 12px/1 var(--st-texte-police);
+  white-space: nowrap;
+}
+.st-puce-dom { color: var(--st-texte); }
+.st-puce-gpu { color: var(--st-accent-texte); background: var(--st-accent-doux); }
+.st-puce-repli { color: var(--st-attention); background: color-mix(in srgb, var(--st-attention) 14%, transparent); }
+.ins-bascule { appearance: none; position: relative; width: 36px; height: 22px; margin: 0; border-radius: 999px; background: var(--st-surface-2); cursor: pointer; transition: background-color 0.15s; }
+.ins-bascule::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--st-texte); transition: translate 0.15s; }
+.ins-bascule:checked { background: var(--st-accent); }
+.ins-bascule:checked::after { translate: 14px 0; background: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}

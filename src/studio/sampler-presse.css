@@ -1,0 +1,68 @@
+/* Le Sampler Presse (src/studio/sampler-presse.ts). Jetons : jetons.css. */
+.sp { max-width: 1280px; margin: 0 auto; padding: 0 20px 64px; }
+.sp-tete { padding: 18px 0 20px; }
+.sp-tete-barre { display: flex; align-items: center; gap: 10px; margin-left: -8px; }
+.sp-sur { margin: 0; color: var(--st-doux); font: 600 12px/1 var(--st-texte-police); letter-spacing: 0.06em; text-transform: uppercase; }
+.sp-tete h1 { margin: 22px 0 10px; font: 500 clamp(40px, 7vw, 76px)/0.98 "Bodoni Moda Variable", "Bodoni Moda", Didot, Georgia, serif; letter-spacing: -0.02em; }
+.sp-chapo { max-width: 68ch; margin: 0; color: var(--st-doux); font-size: 15px; line-height: 1.55; }
+
+.sp-filtres { position: sticky; top: 0; z-index: 5; display: grid; gap: 10px; margin: 0 -20px 20px; padding: 12px 20px; background: color-mix(in srgb, var(--st-fond) 92%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--st-filet); }
+.sp-recherche input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 40px;
+  border: 1px solid var(--st-filet);
+  border-radius: 10px;
+  background: var(--st-panneau) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23a6a6b1' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M16 16l4.5 4.5'/%3E%3C/svg%3E") no-repeat 13px center;
+  color: var(--st-texte);
+  font: 500 15px/1 var(--st-texte-police);
+}
+.sp-recherche input::placeholder { color: var(--st-doux); }
+.sp-recherche input:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 0; }
+.sp-filtres > * { min-width: 0; }
+.sp-groupes { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.sp-groupe { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.sp-groupe legend { float: left; margin-right: 8px; color: var(--st-doux); font: 600 11px/32px var(--st-texte-police); letter-spacing: 0.05em; text-transform: uppercase; }
+.sp-puces { display: flex; flex-wrap: wrap; gap: 4px; }
+.sp-puce { position: relative; display: inline-flex; }
+.sp-puce input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.sp-puce > span { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 11px; border: 1px solid var(--st-filet); border-radius: 999px; color: var(--st-texte); font: 500 13px/1 var(--st-texte-police); white-space: nowrap; }
+.sp-puce:hover > span { background: var(--st-surface); }
+.sp-puce input:checked + span { border-color: var(--st-accent); background: var(--st-accent-doux); color: var(--st-accent-texte); }
+.sp-puce input:focus-visible + span { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.sp-n { color: var(--st-doux); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.sp-studio { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; font-weight: 550; }
+.sp-compte { margin: 0; color: var(--st-doux); font-size: 12.5px; }
+
+.sp-grille { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.sp-carte article { display: flex; flex-direction: column; height: 100%; border: 1px solid var(--st-filet); border-radius: 14px; background: var(--st-panneau); overflow: hidden; }
+.sp-image { display: grid; place-items: center; aspect-ratio: 5 / 3; background: var(--st-surface); background-image: radial-gradient(var(--st-point) 1px, transparent 1.2px); background-size: 12px 12px; color: var(--st-doux); }
+.sp-vignette { width: 62%; height: auto; overflow: visible; }
+.sp-vignette .a { fill: var(--st-accent-doux); stroke: var(--st-accent-texte); }
+.sp-vignette .p { fill: color-mix(in srgb, var(--st-texte) 10%, transparent); }
+.sp-vignette .t { stroke: var(--st-texte); }
+.sp-carte[data-rendu="WebGPU"] .sp-vignette .a, .sp-carte[data-rendu="WebGL2"] .sp-vignette .a { stroke: var(--st-regle); fill: color-mix(in srgb, var(--st-regle) 16%, transparent); }
+.sp-texte { flex: 1 1 auto; padding: 14px 16px 6px; }
+.sp-texte h2 { margin: 0 0 6px; font: 650 17px/1.2 var(--st-texte-police); }
+.sp-texte p { margin: 0 0 12px; color: var(--st-doux); font-size: 13.5px; line-height: 1.45; }
+.sp-etiquettes { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 0; }
+.sp-attr code { color: var(--st-doux); font-size: 11.5px; }
+.sp-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 12px; }
+.sp-action { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 12px; border: 1px solid var(--st-filet); border-radius: 9px; color: var(--st-texte); font: 550 13px/1 var(--st-texte-police); text-decoration: none; }
+.sp-action:hover { background: var(--st-surface); }
+.sp-action-studio { border-color: transparent; background: var(--st-accent-plein); color: #fff; }
+.sp-action-studio:hover { background: color-mix(in srgb, var(--st-accent-plein) 86%, #000); }
+.sp-vide { grid-column: 1 / -1; padding: 40px 0; color: var(--st-doux); font-size: 15px; }
+.sp-lien { padding: 0; border: 0; background: none; color: var(--st-accent-texte); font: inherit; text-decoration: underline; cursor: pointer; }
+@media (prefers-reduced-motion: no-preference) {
+  .sp-carte article { transition: border-color 0.15s, translate 0.2s; }
+  .sp-carte article:hover { border-color: color-mix(in srgb, var(--st-accent) 60%, var(--st-filet)); translate: 0 -2px; }
+}
+@media (max-width: 520px) {
+  .sp { padding: 0 16px 48px; }
+  .sp-filtres { margin: 0 -16px 16px; padding: 10px 16px; }
+  .sp-groupes { gap: 6px; }
+  .sp-groupe { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .sp-groupe legend { flex: 0 0 auto; }
+  .sp-puces { flex-wrap: nowrap; }
+}

@@ -55,7 +55,7 @@ p.replay();                  // rejouer l'impression des sections
 | `data-ruban` | conteneur d'`img` | **Ruban** (`src/presse/ruban.ts`, d'après des démonstrations d'Aristide Benoist) : une bande d'images dessinée en WebGPU (maillage engendré dans le shader, `texture_2d_array`), qu'on fait défiler au glisser, à la molette ou aux flèches, avec inertie, en boucle. Figures : `torsade` (la bande se vrille comme un ruban, on voit le verso ; la torsion suit la vitesse), `accordeon` (les images se compriment avec la vitesse), `barillet` (pile verticale bombée), `lentille` (une bosse traverse une rangée de cartes), `roue` (vignettes sur un arc, grande image à côté). `data-ruban-hauteur`, `data-ruban-joint`, `data-ruban-rayon`, `data-ruban-repos`, `data-ruban-auto` ; `ruban(el).aller(i)`, événement `ruban:choix`. Sans WebGPU : bande CSS à `scroll-snap` ; mouvement réduit : bande à plat. Exemples : `ruban.html`. |
 | `data-typo` | texte | **Typographie cinétique** (`src/presse/typo.ts`, d'après des démonstrations d'Aristide Benoist) : `etire` (les lignes d'une liste s'élargissent avec la vitesse de défilement et loin du centre), `sphere` (les lettres arrivent posées sur une boule), `encre` (le mot naît d'une tache qui se resserre, WebGPU), `trace` (lettres dessinées par bandes obliques), `eclats` (le mot s'assemble d'éclats de lettres en vol), `fragments` (le texte se remplit par morceaux, WebGPU). `data-typo-quand` : `entree`, `chargement`, `survol`, `clic`, `defilement`, `manuel` ; `data-typo-duree`, `data-typo-delai`, `data-typo-rejoue` ; `data-typo-ligne` : pour l'étirement, marque chacune des lignes à étirer (sans eux : les enfants de l'élément, sinon l'élément lui-même). Le texte reste le texte du DOM (lu une fois) ; à la fin il est exactement le texte normal. `typo(el).jouer() / aller(p) / retour()`, événements `typo:debut`, `typo:fin`. Mouvement réduit : fondu court. Exemples : `typo.html`. |
 | `data-cinetique` | élément de texte | **Typographie cinétique en DOM** (`src/presse/cinetique.ts`, Web Animations API, d'après les idées du kit Taleframe) : 18 préréglages (`monte`, `doux`, `net`, `approche`, `graisse`, `balai`, `volet`, `porte`, `glisse`, `penche`, `fonce`, `parasite`, `tombe`, `eclot`, `houle`, `etire`, `vrille`, `essaim`) par `data-cinetique-par` `ligne`, `mot` ou `lettre` ; `-quand` (`entree`, `chargement`, `survol`, `manuel`), `-duree`, `-delai`, `-cascade`, `-ordre`, `-sortie`, `-rejoue`. Composants : `data-roule`, `data-marque`, `data-defile`, `data-reflet`, `data-cercle`, `data-coupe`, `data-brouille`, `data-frappe`. Le texte reste du texte (lu une fois, graphèmes, balises en ligne), lignes recalculées au redimensionnement et aux polices ; à la fin, DOM d'origine au pixel près. Interruption propre ; mouvement réduit : fondu court. `cinetique(el).jouer() / sortir() / aller(p) / detruire()`, événements `cinetique:debut`, `cinetique:fin`. Exemples : `cinetique.html`. |
-| `data-cinetique-courbe` | avec `data-cinetique` | Courbe d'ensemble de l'entrée d'un morceau, à la place de celle du préréglage : un nom ou `cubic-bezier(…)`, `steps(…)`, `linear(…)` (comme `data-anim-ease`) ; illisible : celle du préréglage. |
+| `data-cinetique-courbe`, `data-cinetique-courbe-sortie` | avec `data-cinetique` | Courbe d'ensemble de l'entrée d'un morceau (`-courbe`) et de sa sortie (`-courbe-sortie`), chacune à la place de celle du préréglage : un nom ou `cubic-bezier(…)`, `steps(…)`, `linear(…)` (comme `data-anim-ease`) ; illisible : celle du préréglage. |
 | `data-roule`, `data-marque`, `data-defile`, `data-reflet`, `data-cercle`, `data-coupe`, `data-brouille`, `data-frappe` | élément de texte | **Composants de la typographie cinétique** (`src/presse/cinetique.ts`, armés comme elle) : mêmes déclencheurs — `data-cinetique-quand`, `data-cinetique-delai` (secondes avant le départ, 0), `data-cinetique-duree` (en secondes ; défaut propre à chaque composant : 0,55 par mot qui roule, 0,45 à 0,95 selon le trait marqué, 1,4 pour le reflet, 0,9 pour le cercle et la coupe, 1,2 pour le brouillage, le rythme de frappe sinon), `data-cinetique-rejoue`, `data-cinetique-sortie`. `data-roule` (les mots, séparés par des barres verticales) : une fente où un mot roule vers le suivant, la largeur suit ; `data-roule-tempo` (2,2 s par mot, 0,6 au moins). `data-marque` (`surligneur`, `souligne`, `barre`, `cadre`, `cercle`) : l'emphase se dessine à l'entrée, sur un `mark` ou un `span` (variables `--marque-couleur`, `--marque-texte`). `data-defile` : rangées de texte répété sans fin, sens alternés, une rangée par enfant, sinon `data-defile-rangs` (3) ; `data-defile-vitesse` (80 px/s), `data-defile-incline` (0°, de −45 à 45), `data-defile-separateur` (« — »). `data-reflet` : un reflet traverse les lettres une fois (`--reflet-couleur`). `data-cercle` : le texte posé sur un cercle qui tourne ; `data-cercle-rayon` (px ; défaut : le tour fait la longueur du texte, 2 em au moins), `data-cercle-vitesse` (18 °/s ; négative : sens inverse). `data-coupe` : coupé en son milieu, les deux moitiés glissent en sens contraires et se verrouillent. `data-brouille` : les caractères défilent puis se résolvent de gauche à droite, largeur stable. `data-frappe` : frappé au clavier, rythme naturel reproductible, avec curseur ; `data-frappe-vitesse` (16 caractères par seconde). Mouvement réduit : fondu court. Exemples : `cinetique.html`. |
 | `data-graffiti` | bloc (p, div) avec le mot | Mot peint à la bombe dans un canvas 2D : bord flou, brume, grain, éclaboussures à graine fixe, coulures. Pulvérisé par une buse automatique à l'entrée dans l'écran, puis le pointeur repasse de la peinture (rayon qui grossit avec la lenteur, coulures qui s'allongent si on insiste) ; `-couleur` (#e3122b), `-police` (Rubik Wet Paint), `-taille`, `-graine`, `-auto="0"`, `-effacable`, `-indice`. Vrai texte gardé dans le DOM ; mouvement réduit : mot entier fixe. |
 | `data-derriere` | conteneur de couches | Empile `[data-derriere-fond]`, `[data-derriere-sujet]` (photo détourée) et `[data-derriere-devant]` : le mot passe derrière la silhouette. `"pile"` ou `"libre"` ; parallaxe pointeur + défilement par `translate` ; `-amplitude` (18), `-pointeur="0"`, `-defilement="0"`. |
@@ -128,6 +128,45 @@ validateur et le tableau du skill lisent le registre. **Ajouter un effet armé a
 `() => import("../presse/x.ts")` pour que Vite en fasse un morceau à part ; `manuel: true` s'il doit céder la main aux
 pages qui arment elles-mêmes), documenter ses attributs dans le tableau « Attributs » ci-dessus, puis `npm test`
 (`src/registre/registre.test.ts` vérifie l'accord registre ⇄ PRESSE.md ⇄ code) et `npm run skill:tableau`.
+
+## Studio : pages d'effet et Sampler Presse
+
+Le registre alimente deux pages, sans rien écrire à la main par effet :
+
+- **`sampler-presse.html`** — le Sampler Presse : tous les effets de `src/registre/effets.ts` (champs `resume`,
+  `exemple`, `rendu`, `statut`), filtrés par catégorie, rendu (« WebGPU » réunit WebGPU et DOM + WebGPU), statut et
+  « réglable dans le Studio », avec une recherche (nom, résumé, attributs ; `/` y amène). Les filtres sont dans la
+  requête (`?categorie=texte&rendu=DOM&q=…`). Le Sampler PLI (`sampler.html`, généré par `tools/build-sampler.py`)
+  reste à part.
+- **`studio-effet.html?effet=<id>`** — la page d'effet, une seule page routée par l'identifiant (gabarit
+  `src/studio/page-effet.ts`) : aperçu au centre (la démo de la fiche, montée dans un cadre `studio-apercu.html`,
+  document à part), inspecteur à droite **généré depuis le schéma** (curseur, sélecteur, interrupteur, couleur, texte,
+  durée, courbe — l'éditeur de courbe du registre ; dans le groupe Mouvement, durée et délai puis courbe d'entrée et
+  courbe de sortie séparées quand le module les a), liste des attributs `data-*` en direct, code HTML / JSON, copier
+  les attributs, le HTML, le JSON, le lien ; réinitialiser ; comparer avant / après ; appareil bureau, tablette,
+  téléphone. Raccourcis (registre `src/studio/raccourcis.ts`, liste par `?`) : `R` rejouer, `B` comparer, `1` `2` `3`
+  appareils, `Maj+A` / `Maj+H` / `Maj+J` / `Maj+L` copier, `Maj+R` réinitialiser. Les pages d'exemple (goo, couloir,
+  cinétique, typo, ruban, rouleau) gardent leur adresse et portent un lien « Ouvrir dans le Studio ».
+
+**Fiche d'un effet** : le champ facultatif `parametres` d'un manifeste, chargé à la demande (`() =>
+import("./parametres/<id>.ts")`, pour ne pas alourdir `pages-nav`), rend `{ parametres, demo, prereglages? }`
+(types : `src/registre/parametres/types.ts`). Chaque paramètre est un champ du schéma partagé (genre, `min`/`max`/`pas`,
+`defaut`, `libelle` court, `groupe`, `aide`, condition `si`) plus l'attribut qu'il écrit (`attribut`, dans les
+`attributs` du manifeste donc documenté ici), où (`cible`, sélecteur dans la démo ; défaut : la racine), `auto`
+(absent, le module décide : « ressort », « selon le préréglage »), `mouvement` (`duree`, `delai`, `cascade`, `entree`,
+`sortie`) et `ecriture` (texte d'un interrupteur, suffixe d'unité). Un paramètre à son défaut n'écrit rien : la démo
+est écrite aux défauts. `prereglages` : un paramètre qui donne une base aux autres (`data-couloir-presets`) ; les
+défauts affichés suivent la base. `src/registre/parametres/parametres.test.ts` vérifie l'accord fiche ⇄ registre ⇄
+PRESSE.md ⇄ module, et passe la démo au validateur, aux défauts et chaque paramètre réglé. Fiches : goo, couloir,
+cinetique, typo, ruban, rouleau.
+
+**Lien de partage, format v1** (`src/studio/etat.ts`) : `studio-effet.html?effet=<id>#v=1;<cle>=<valeur>;…` — la
+version d'abord, puis seulement les réglages hors défaut (et les `auto` réglés), le préréglage en premier ; `<cle>`
+est la clé du paramètre dans la fiche (pas le nom de l'attribut), `<valeur>` passée par `encodeURIComponent` :
+nombres en notation JS, durées dans l'unité du paramètre sans suffixe, interrupteurs `oui` / `non`, couleurs
+`#rrggbb`, courbes en écriture CSS ou par nom. À la lecture, chaque valeur repasse par la validation du schéma ; une
+clé inconnue, une valeur illisible ou une autre version sont dites, jamais bloquantes. JSON de réglages :
+`{ "effet": "goo", "v": 1, "reglages": { "<cle>": valeur | null } }` (`null` : auto).
 
 ## Composants
 

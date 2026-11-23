@@ -20,6 +20,8 @@ import { EFFETS } from "./registre/effets.ts";
 export const PAGES = [
   { href: "index.html", name: "WebGPU-demo-UBS", text: "La presse WebGPU : le guide et la démo" },
   { href: "sampler.html", name: "Sampler", text: "Un effet à la fois, par catégories" },
+  { href: "sampler-presse.html", name: "Sampler Presse", text: "Les effets du registre : filtres par catégorie, rendu et statut, recherche, lien vers le Studio" },
+  { href: "studio-effet.html", name: "Studio · effet", text: "Régler un effet en direct : inspecteur généré, courbes, attributs, HTML, JSON, lien de partage" },
   { href: "liquide.html", name: "Liquide", text: "Glisser, mélanger, filtrer : des photos en verre qui fusionne" },
   { href: "grille.html", name: "Grille infinie", text: "Un mur sans fin ; chaque photo ouvre sa page, l'image vole" },
   { href: "galerie.html", name: "Galerie", text: "Dix arrangements 3D : tonneau, cartes, film, ruban, fond dégradé…" },
@@ -118,6 +120,12 @@ const CSS = `
   backdrop-filter: blur(6px);
   cursor: pointer;
 }
+/* « Ouvrir dans le Studio » (src/studio/) : un lien dans l'en-tête d'une page d'effet, ou une pastille flottante
+   (.presse-studio-flottant, à côté de « Pages ») sur une page plein écran. */
+.presse-studio { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: inherit; font-weight: 600; text-underline-offset: 3px; }
+.presse-studio::before { content: ""; width: 16px; height: 16px; flex: 0 0 auto; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E") center / contain no-repeat; }
+.presse-studio-flottant { position: fixed; top: max(10px, env(safe-area-inset-top)); left: calc(max(10px, env(safe-area-inset-left)) + 92px); z-index: 50; min-height: 36px; padding: 0 14px; border: 1px solid currentColor; border-radius: 999px; background: #f6f1e4; color: #16110d; font: 600 13px/1 "Archivo Variable", "Archivo", system-ui, sans-serif; text-decoration: none; }
+.presse-studio:focus-visible { outline: 2px solid #d9472b; outline-offset: 3px; }
 `;
 
 /** Le bouton de la page qui ouvre le menu (sinon, une pastille « Pages » est ajoutée). */

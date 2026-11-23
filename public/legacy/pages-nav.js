@@ -1123,7 +1123,9 @@ var $ = (e) => e, vt = [
 		tot: !0,
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/systeme.ts"
+		module: "src/presse/systeme.ts",
+		resume: "Un système de design (couleurs, fontes, look, mouvement) posé sur toute la page, par l'adresse ou un attribut.",
+		exemple: "variations.html"
 	}),
 	$({
 		id: "lightbox",
@@ -1135,7 +1137,9 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initLightbox(t),
 		rendu: "WebGPU",
 		statut: "stable",
-		module: "src/presse/lightbox.ts"
+		module: "src/presse/lightbox.ts",
+		resume: "Chaque image du groupe s'ouvre en grand, en vol depuis sa place.",
+		exemple: "presse.html"
 	}),
 	$({
 		id: "vague",
@@ -1154,7 +1158,9 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initVague(t),
 		rendu: "WebGPU",
 		statut: "stable",
-		module: "src/presse/vague.ts"
+		module: "src/presse/vague.ts",
+		resume: "Une vague déformante passe d'une vue à l'autre, depuis l'endroit pressé.",
+		exemple: "presse.html"
 	}),
 	$({
 		id: "goo",
@@ -1183,7 +1189,10 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initGoo(t),
 		rendu: "WebGPU",
 		statut: "stable",
-		module: "src/presse/goo.ts"
+		module: "src/presse/goo.ts",
+		resume: "Des pièces d'interface qui fusionnent comme une pâte, s'étirent et se séparent en gouttes.",
+		exemple: "goo.html",
+		parametres: () => import("./goo-CIqABoe6.js")
 	}),
 	$({
 		id: "metal",
@@ -1205,7 +1214,9 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initMetal(t),
 		rendu: "WebGPU",
 		statut: "stable",
-		module: "src/presse/metal.ts"
+		module: "src/presse/metal.ts",
+		resume: "Chrome liquide sur une bordure, des lettres ou un badge : reflets qui coulent, franges, halo.",
+		exemple: "metal.html"
 	}),
 	$({
 		id: "voix",
@@ -1229,7 +1240,9 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initVoix(t),
 		rendu: "WebGPU",
 		statut: "stable",
-		module: "src/presse/voix.ts"
+		module: "src/presse/voix.ts",
+		resume: "Une lueur qui monte avec le niveau du micro, puis balaie pendant la réponse.",
+		exemple: "voix.html"
 	}),
 	$({
 		id: "ruban",
@@ -1248,7 +1261,10 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initRuban(t),
 		rendu: "WebGPU",
 		statut: "stable",
-		module: "src/presse/ruban.ts"
+		module: "src/presse/ruban.ts",
+		resume: "Une bande d'images qui se vrille, se comprime ou se bombe selon la vitesse du défilement.",
+		exemple: "ruban.html",
+		parametres: () => import("./ruban-BL_LNu5V.js")
 	}),
 	$({
 		id: "typo",
@@ -1267,7 +1283,10 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initTypo(t),
 		rendu: "DOM + WebGPU",
 		statut: "stable",
-		module: "src/presse/typo.ts"
+		module: "src/presse/typo.ts",
+		resume: "Six entrées de texte : éclats, tracé, sphère, étirement, encre, fragments.",
+		exemple: "typo.html",
+		parametres: () => import("./typo-CGI2FDLl.js")
 	}),
 	$({
 		id: "rouleau",
@@ -1289,7 +1308,10 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initRouleau(t),
 		rendu: "WebGPU",
 		statut: "stable",
-		module: "src/presse/rouleau.ts"
+		module: "src/presse/rouleau.ts",
+		resume: "Menu roulant de grands titres ; derrière le titre courant, une photo ondule comme une étoffe.",
+		exemple: "rouleau.html",
+		parametres: () => import("./rouleau-Bxbp6PmY.js")
 	}),
 	$({
 		id: "couloir",
@@ -1301,7 +1323,10 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initCouloir(t),
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/couloir.ts"
+		module: "src/presse/couloir.ts",
+		resume: "Un mur d'images vu en perspective fuyante, qui défile au pointeur, frangé par la vitesse.",
+		exemple: "couloir.html",
+		parametres: () => import("./couloir-CD2KgiQJ.js")
 	}),
 	$({
 		id: "logo",
@@ -1313,20 +1338,25 @@ var $ = (e) => e, vt = [
 		armer: (e, t) => e.initLogo(t),
 		rendu: "WebGL2",
 		statut: "stable",
-		module: "src/presse/logo.ts"
+		module: "src/presse/logo.ts",
+		resume: "Une matière animée sur un logo : métal liquide, fumée, chaleur, eau, verre, trames.",
+		exemple: "logos.html"
 	}),
 	$({
 		id: "cinetique",
 		nom: "Typographie cinétique en DOM",
 		categorie: "texte",
 		selecteur: "[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]",
-		attributs: /* @__PURE__ */ "data-cinetique.data-roule.data-marque.data-defile.data-reflet.data-cercle.data-coupe.data-brouille.data-frappe.data-cinetique-par.data-cinetique-quand.data-cinetique-duree.data-cinetique-delai.data-cinetique-cascade.data-cinetique-ordre.data-cinetique-sortie.data-cinetique-rejoue.data-cinetique-courbe.data-roule-tempo.data-defile-rangs.data-defile-vitesse.data-defile-incline.data-defile-separateur.data-cercle-rayon.data-cercle-vitesse.data-frappe-vitesse".split("."),
-		charger: () => import("./cinetique-3mHVrMdx.js"),
+		attributs: /* @__PURE__ */ "data-cinetique.data-roule.data-marque.data-defile.data-reflet.data-cercle.data-coupe.data-brouille.data-frappe.data-cinetique-par.data-cinetique-quand.data-cinetique-duree.data-cinetique-delai.data-cinetique-cascade.data-cinetique-ordre.data-cinetique-sortie.data-cinetique-rejoue.data-cinetique-courbe.data-cinetique-courbe-sortie.data-roule-tempo.data-defile-rangs.data-defile-vitesse.data-defile-incline.data-defile-separateur.data-cercle-rayon.data-cercle-vitesse.data-frappe-vitesse".split("."),
+		charger: () => import("./cinetique-BaS7YQJ3.js"),
 		armer: (e, t) => e.initCinetique(t),
 		manuel: !0,
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/cinetique.ts"
+		module: "src/presse/cinetique.ts",
+		resume: "Texte animé en DOM : dix-huit entrées par ligne, mot ou lettre, et huit composants.",
+		exemple: "cinetique.html",
+		parametres: () => import("./cinetique-CvgKvwOl.js")
 	}),
 	$({
 		id: "dechirure",
@@ -1349,7 +1379,9 @@ var $ = (e) => e, vt = [
 		manuel: !0,
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/dechirure.ts"
+		module: "src/presse/dechirure.ts",
+		resume: "Un bord de papier déchiré entre deux blocs, ou une déchirure qui suit le pointeur.",
+		exemple: "boutique.html"
 	}),
 	$({
 		id: "forme",
@@ -1371,7 +1403,9 @@ var $ = (e) => e, vt = [
 		manuel: !0,
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/forme.ts"
+		module: "src/presse/forme.ts",
+		resume: "Le média vu à travers une forme qui grandit jusqu'à couvrir l'écran.",
+		exemple: "boutique.html"
 	}),
 	$({
 		id: "autocollant",
@@ -1391,7 +1425,9 @@ var $ = (e) => e, vt = [
 		manuel: !0,
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/autocollant.ts"
+		module: "src/presse/autocollant.ts",
+		resume: "Un autocollant suit le pointeur sur les cibles, avec retard et bascule.",
+		exemple: "boutique.html"
 	}),
 	$({
 		id: "rail",
@@ -1413,7 +1449,9 @@ var $ = (e) => e, vt = [
 		manuel: !0,
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/rail.ts"
+		module: "src/presse/rail.ts",
+		resume: "Un rail de cartes au glisser, avec inertie, aimantation, flèches et barre de progression.",
+		exemple: "boutique.html"
 	}),
 	$({
 		id: "trace",
@@ -1441,7 +1479,9 @@ var $ = (e) => e, vt = [
 		manuel: !0,
 		rendu: "DOM",
 		statut: "stable",
-		module: "src/presse/trace.ts"
+		module: "src/presse/trace.ts",
+		resume: "Un dessin technique qui se trace : construction, formes, cotes, hachures.",
+		exemple: "boutique.html"
 	})
 ], yt = [
 	{
@@ -1453,6 +1493,16 @@ var $ = (e) => e, vt = [
 		href: "sampler.html",
 		name: "Sampler",
 		text: "Un effet à la fois, par catégories"
+	},
+	{
+		href: "sampler-presse.html",
+		name: "Sampler Presse",
+		text: "Les effets du registre : filtres par catégorie, rendu et statut, recherche, lien vers le Studio"
+	},
+	{
+		href: "studio-effet.html",
+		name: "Studio · effet",
+		text: "Régler un effet en direct : inspecteur généré, courbes, attributs, HTML, JSON, lien de partage"
 	},
 	{
 		href: "liquide.html",
@@ -1624,7 +1674,7 @@ var $ = (e) => e, vt = [
 		name: "WebGPU-demo-UBS v0",
 		text: "La toute première version, générée par Grok"
 	}
-], bt = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n", xt = "[data-pages-trigger]";
+], bt = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n/* « Ouvrir dans le Studio » (src/studio/) : un lien dans l'en-tête d'une page d'effet, ou une pastille flottante\n   (.presse-studio-flottant, à côté de « Pages ») sur une page plein écran. */\n.presse-studio { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: inherit; font-weight: 600; text-underline-offset: 3px; }\n.presse-studio::before { content: \"\"; width: 16px; height: 16px; flex: 0 0 auto; background: currentColor; -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E\") center / contain no-repeat; mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E\") center / contain no-repeat; }\n.presse-studio-flottant { position: fixed; top: max(10px, env(safe-area-inset-top)); left: calc(max(10px, env(safe-area-inset-left)) + 92px); z-index: 50; min-height: 36px; padding: 0 14px; border: 1px solid currentColor; border-radius: 999px; background: #f6f1e4; color: #16110d; font: 600 13px/1 \"Archivo Variable\", \"Archivo\", system-ui, sans-serif; text-decoration: none; }\n.presse-studio:focus-visible { outline: 2px solid #d9472b; outline-offset: 3px; }\n", xt = "[data-pages-trigger]";
 function St(e, t) {
 	let n = e.documentElement.hasAttribute("data-presse-manuel");
 	for (let r of vt) !!r.tot !== t || r.manuel && n || (r.parametre && RegExp(`[?&]${r.parametre}=`).test(location.search) || e.querySelector(r.selecteur)) && r.charger().then((t) => r.armer(t, e));

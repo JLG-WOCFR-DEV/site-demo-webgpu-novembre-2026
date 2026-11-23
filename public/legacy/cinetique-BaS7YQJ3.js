@@ -101,7 +101,8 @@ function ne(e) {
 		sortie: s !== null && Number.isFinite(s) ? s : null,
 		dureeSortie: o.duree,
 		cascadeSortie: o.cascade,
-		courbe: t(e.cinetiqueCourbe)
+		courbe: t(e.cinetiqueCourbe),
+		courbeSortie: t(e.cinetiqueCourbeSortie)
 	};
 }
 function y(e, t = 0) {
@@ -1401,7 +1402,7 @@ var Y = (e) => Promise.all(e.map((e) => e.finished)).then(() => !0, () => !1), U
 				delay: B(o),
 				endDelay: B(t.total - o - this.r.dureeSortie),
 				fill: "forwards",
-				easing: a
+				easing: this.r.courbeSortie ?? a
 			}));
 		}), this.etat = "sort", this.signal("debut", "sortie");
 		let n = this.gen;

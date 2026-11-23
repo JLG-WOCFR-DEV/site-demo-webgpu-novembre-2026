@@ -24,6 +24,7 @@
  *                            la même que `easeOf`) ; illisible : celle du préréglage (avertissement en console). Les
  *                            préréglages à plusieurs étapes (tombe, etire…) gardent leurs courbes par étape : celle-ci
  *                            règle le temps qui les traverse. La sortie garde sa courbe ;
+ *   data-cinetique-courbe-sortie  la courbe de la sortie (même écriture), à la place de celle du préréglage ;
  *   data-cinetique-delai     secondes avant le départ ;
  *   data-cinetique-cascade   secondes entre deux morceaux (défaut 0,12 par ligne, 0,06 par mot, 0,03 par lettre) ;
  *   data-cinetique-ordre     debut (défaut) | fin | centre | bords | hasard : l'ordre de la cascade ;
@@ -156,6 +157,8 @@ export type Reglages = {
   cascadeSortie: number;
   /** `data-cinetique-courbe`, en chaîne CSS ; `null` : la courbe du préréglage. */
   courbe: string | null;
+  /** `data-cinetique-courbe-sortie`, en chaîne CSS ; `null` : la courbe de sortie du préréglage. */
+  courbeSortie: string | null;
 };
 /** Les réglages d'un élément, d'après son dataset (ou tout objet de même forme). */
 export function lireReglages(d: Record<string, string | undefined>): Reglages {
@@ -178,6 +181,7 @@ export function lireReglages(d: Record<string, string | undefined>): Reglages {
     dureeSortie: ts.duree,
     cascadeSortie: ts.cascade,
     courbe: courbeCss(d.cinetiqueCourbe),
+    courbeSortie: courbeCss(d.cinetiqueCourbeSortie),
   };
 }
 
@@ -1439,7 +1443,7 @@ class Texte extends Piece {
       const { kf, easing } = this.preset.sortie(c);
       const debut = cal.debuts[a.g] ?? 0;
       this.anims.push(
-        a.p.animate(kf, { duration: ms(this.r.dureeSortie), delay: ms(debut), endDelay: ms(cal.total - debut - this.r.dureeSortie), fill: "forwards", easing }),
+        a.p.animate(kf, { duration: ms(this.r.dureeSortie), delay: ms(debut), endDelay: ms(cal.total - debut - this.r.dureeSortie), fill: "forwards", easing: this.r.courbeSortie ?? easing }),
       );
     });
     this.etat = "sort";
