@@ -1,9 +1,9 @@
-import { n as e, t } from "./motion-lint-B_Jhc2Ml.js";
-import { i as n, n as r, t as i } from "./tokens-CU1XRp3I.js";
-import { r as a } from "./look-DdZbCSiK.js";
-import { a as o, r as s } from "./timeline-DCSKPj1x.js";
-import { t as c } from "./device-CdovFy3S.js";
-//#region src/motion-scale.ts
+import { n as e, t } from "./motion-lint-EfEMk6cY.js";
+import { i as n, n as r, t as i } from "./tokens-Nj0c2PcI.js";
+import { r as a } from "./look-BnXlF57J.js";
+import { a as o, r as s } from "./timeline-Ds5NFDux.js";
+import { t as c } from "./device-Bprp8tGr.js";
+// src/motion-scale.ts
 var l = "ubs-motion", u = "normal";
 try {
 	let e = sessionStorage.getItem(l);
@@ -17,8 +17,7 @@ function p(e) {
 	} catch {}
 	for (let t of d) t(e);
 }
-//#endregion
-//#region src/debug-panel.ts
+// src/debug-panel.ts
 var m = "pli-debug", h = {
 	wire: !1,
 	col: !1,
@@ -83,7 +82,7 @@ function D(e) {
 		r.hidden = n || !l, i.hidden = !t.col, a.hidden = !t.row, o.hidden = !t.ctr;
 		let u = h.wire || l;
 		for (let e of C) e.setAttribute("aria-pressed", String(u));
-		(!c.textContent || c.dataset.idle === "1") && (c.dataset.idle = "1", c.textContent = _.record ? "À pas fixe : la vidéo est fluide même si l'écran ne l'est pas. Seul le rendu du GPU est filmé." : "En temps réel, depuis le canvas de la page. Seul le rendu du GPU est filmé.");
+		c.textContent && c.dataset.idle !== "1" || (c.dataset.idle = "1", c.textContent = _.record ? "À pas fixe : la vidéo est fluide même si l'écran ne l'est pas. Seul le rendu du GPU est filmé." : "En temps réel, depuis le canvas de la page. Seul le rendu du GPU est filmé.");
 	};
 	for (let e of s) e.addEventListener("change", () => {
 		h[e.dataset.dbg] = e.checked, g(), y();
@@ -129,8 +128,7 @@ function D(e) {
 		D = () => a.state === "recording" && a.stop(), a.addEventListener("stop", () => clearInterval(d)), a.start(250);
 	}), y();
 }
-//#endregion
-//#region src/presse/presentation.ts
+// src/presse/presentation.ts
 var O = () => window.__presseMotion, k = "presse-presentation", A = "presse-presentation-arrivee", j = () => document.documentElement.classList.contains("presse-presentation"), ee = () => {
 	try {
 		return localStorage.getItem("presse-animations") === "toujours";
@@ -238,8 +236,7 @@ function oe(e, t, n) {
 	} catch {}
 	j() && ie();
 }
-//#endregion
-//#region src/presse/flight.ts
+// src/presse/flight.ts
 var N = "presse:flight", se = 15e3, P = () => matchMedia("(prefers-reduced-motion: reduce)").matches, ce = () => {
 	try {
 		return JSON.parse(sessionStorage.getItem(N) ?? "null");
@@ -470,8 +467,7 @@ function Oe() {
 	let t = window;
 	t.__presseFlight ? (B(t.__presseFlight.f, t.__presseFlight.el, t.__presseFlight.tt ?? null), delete t.__presseFlight) : B(ce(), null);
 }
-//#endregion
-//#region src/presse/cursor.ts
+// src/presse/cursor.ts
 var ke = `
 html.presse-cursor-on, html.presse-cursor-on * { cursor: none !important; }
 html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [contenteditable="true"]) { cursor: text !important; }
@@ -538,8 +534,7 @@ function Pe() {
 		n.classList.remove("is-on"), l && (l.style.translate = ""), l = null;
 	}), addEventListener("scroll", () => (f(document.elementFromPoint(o.x, o.y)), m()), { passive: !0 });
 }
-//#endregion
-//#region src/presse/intro.ts
+// src/presse/intro.ts
 var Fe = `
 html.presse-intro-pending [data-intro] { opacity: 0; translate: 0 26px; filter: blur(6px); }
 html.presse-intro-done [data-intro] { transition: opacity ${i[3]}ms ${r.out}, translate ${i[3]}ms ${r.out}, filter ${i[3]}ms ${r.out}; transition-delay: calc(var(--intro-i, 0) * 70ms + 120ms); }
@@ -601,8 +596,7 @@ function Le() {
 		}, i[3] * .35), e.finished.then(() => t.el.remove());
 	};
 }
-//#endregion
-//#region src/presse/scroll.ts
+// src/presse/scroll.ts
 var Re = () => matchMedia("(prefers-reduced-motion: reduce)").matches, ze = 9, Be = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", Ve = /* @__PURE__ */ new Set(), V = !1;
 function He() {
 	if (V || typeof window > "u") return;
@@ -639,7 +633,7 @@ function He() {
 	addEventListener("wheel", (t) => {
 		if (!l() || t.defaultPrevented || t.ctrlKey || t.metaKey) return;
 		let n = t.deltaY;
-		t.deltaMode === 1 ? n *= 16 : t.deltaMode === 2 && (n *= innerHeight), !(!n || Math.abs(t.deltaX) > Math.abs(n) || h(t.target, n, t.deltaX)) && (t.preventDefault(), f || (d = u = scrollY), u = Math.max(0, Math.min(p(), u + n)), f = !0, e.classList.add("presse-scroll-doux"), c());
+		t.deltaMode === 1 ? n *= 16 : t.deltaMode === 2 && (n *= innerHeight), !n || Math.abs(t.deltaX) > Math.abs(n) || h(t.target, n, t.deltaX) || (t.preventDefault(), f || (d = u = scrollY), u = Math.max(0, Math.min(p(), u + n)), f = !0, e.classList.add("presse-scroll-doux"), c());
 	}, { passive: !1 }), addEventListener("scroll", () => {
 		f && Math.abs(scrollY - Math.round(d)) > 2 && (f = !1), f || (d = u = scrollY), c();
 	}, { passive: !0 }), l() && e.classList.add("presse-scroll-doux");
@@ -680,8 +674,7 @@ function He() {
 	};
 	document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", x, { once: !0 }) : x(), addEventListener("resize", () => c(200));
 }
-//#endregion
-//#region src/presse/sweep.ts
+// src/presse/sweep.ts
 var Ue = "presse:sweep", H = 9, U = 16, We = 520, Ge = 720, Ke = " .,:;-=+*%#@aeinorstuldcmphbgfvqjykxwz", qe = () => matchMedia("(prefers-reduced-motion: reduce)").matches, W = () => document.querySelector("meta[name=\"presse-transition\"]")?.getAttribute("content") === "ascii" && !!navigator.gpu && !qe(), Je = /* @__PURE__ */ new Set();
 function Ye(e, t, n, r, i, a) {
 	let o = G.get(t);
@@ -989,8 +982,7 @@ function at() {
 		}
 	});
 }
-//#endregion
-//#region src/presse/script.ts
+// src/presse/script.ts
 var ot = "[data-presse-component], [data-gl-text], [data-gl-img], [data-gl-filter], [data-anim], [data-presse-match], a[href], button, input, select, textarea, h1, h2, h3, [role]";
 function st(e) {
 	if (e.id) return `#${e.id}`;
@@ -1117,8 +1109,7 @@ function gt() {
 		document.documentElement.dataset.presseScript = "fini", console.info(`[presse:script] ${n.length} gestes rejoués`);
 	})();
 }
-//#endregion
-//#region src/pages-nav.ts
+// src/pages-nav.ts
 var _t = [
 	{
 		href: "index.html",
@@ -1297,7 +1288,7 @@ var _t = [
 	}
 ], vt = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
 function yt(e = "./") {
-	gt(), n(), a(), (/[?&]systeme=/.test(location.search) || document.querySelector("[data-systeme]")) && import("./systeme-Dz8No8N0.js").then((e) => e.initSysteme()), Le(), Oe(), at(), He(), s(), Pe(), document.querySelector("[data-lightbox]") && import("./lightbox-Clb504MI.js").then((e) => e.initLightbox()), document.querySelector("[data-vague]") && import("./vague-CvcrLG7s.js").then((e) => e.initVague()), document.querySelector("[data-goo]") && import("./goo-BOCP7K1b.js").then((e) => e.initGoo()), document.querySelector("[data-metal], [data-metal-texte], [data-metal-badge]") && import("./metal-eQNEy4jm.js").then((e) => e.initMetal()), document.querySelector("[data-voix]") && import("./voix-BjvYVk6m.js").then((e) => e.initVoix()), document.querySelector("[data-ruban]") && import("./ruban-dmhVFMwn.js").then((e) => e.initRuban()), document.querySelector("[data-typo]") && import("./typo-DtC78RAM.js").then((e) => e.initTypo()), document.querySelector("[data-rouleau]") && import("./rouleau-DR66RwY3.js").then((e) => e.initRouleau()), document.querySelector("[data-couloir]") && import("./couloir-ButT0qEr.js").then((e) => e.initCouloir()), document.querySelector("[data-logo]") && import("./logo-DOq5dJ8a.js").then((e) => e.initLogo()), !document.documentElement.hasAttribute("data-presse-manuel") && document.querySelector("[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]") && import("./cinetique-DHNt4zbD.js").then((e) => e.initCinetique()), document.documentElement.hasAttribute("data-presse-manuel") || (document.querySelector("[data-dechirure], [data-dechirure-coupe]") && import("./dechirure-09lNIX3X.js").then((e) => e.initDechirure()), document.querySelector("[data-forme]") && import("./forme-Bv_AiHxE.js").then((e) => e.initForme()), document.querySelector("[data-autocollant]") && import("./autocollant-DGvRfz3F.js").then((e) => e.initAutocollant()), document.querySelector("[data-rail]") && import("./rail-BAH4kXfF.js").then((e) => e.initRail()), document.querySelector("[data-trace]") && import("./trace-BTF0ZcrD.js").then((e) => e.initTrace()));
+	gt(), n(), a(), (/[?&]systeme=/.test(location.search) || document.querySelector("[data-systeme]")) && import("./systeme-DYoORQxc.js").then((e) => e.initSysteme()), Le(), Oe(), at(), He(), s(), Pe(), document.querySelector("[data-lightbox]") && import("./lightbox-z8H1tizc.js").then((e) => e.initLightbox()), document.querySelector("[data-vague]") && import("./vague-CIPl6n2_.js").then((e) => e.initVague()), document.querySelector("[data-goo]") && import("./goo-Dp87ij6P.js").then((e) => e.initGoo()), document.querySelector("[data-metal], [data-metal-texte], [data-metal-badge]") && import("./metal-uotjRrke.js").then((e) => e.initMetal()), document.querySelector("[data-voix]") && import("./voix-BJaqTIa1.js").then((e) => e.initVoix()), document.querySelector("[data-ruban]") && import("./ruban-jbq1yB2I.js").then((e) => e.initRuban()), document.querySelector("[data-typo]") && import("./typo-Dmhg61t4.js").then((e) => e.initTypo()), document.querySelector("[data-rouleau]") && import("./rouleau-D_EC_WRz.js").then((e) => e.initRouleau()), document.querySelector("[data-couloir]") && import("./couloir-BBARXHpP.js").then((e) => e.initCouloir()), document.querySelector("[data-logo]") && import("./logo-Buwr1VsP.js").then((e) => e.initLogo()), !document.documentElement.hasAttribute("data-presse-manuel") && document.querySelector("[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]") && import("./cinetique-CQuiLMmn.js").then((e) => e.initCinetique()), document.documentElement.hasAttribute("data-presse-manuel") || (document.querySelector("[data-dechirure], [data-dechirure-coupe]") && import("./dechirure-Ckdx29vY.js").then((e) => e.initDechirure()), document.querySelector("[data-forme]") && import("./forme-Cg8n8vdq.js").then((e) => e.initForme()), document.querySelector("[data-autocollant]") && import("./autocollant-DCbttCml.js").then((e) => e.initAutocollant()), document.querySelector("[data-rail]") && import("./rail-DhcbZ1vj.js").then((e) => e.initRail()), document.querySelector("[data-trace]") && import("./trace-DQUX_RfL.js").then((e) => e.initTrace()));
 	let t = document.createElement("style");
 	t.textContent = vt + ne, document.head.append(t);
 	let r = document.querySelector("[data-pages-trigger]");
@@ -1320,4 +1311,3 @@ function yt(e = "./") {
 	});
 }
 yt("../"), D();
-//#endregion
