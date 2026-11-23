@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Vitrine · éditeur de boutique par sections · Presse</title>
+    <meta name="description" content="Composer la page d'accueil d'une boutique par sections : une cinquantaine de variantes réglables, quatre préréglages complets, aperçu en direct bureau, tablette et téléphone, export HTML autonome, JSON et lien." />
+    <script type="module" src="/src/vitrine/main.ts"></script>
+  </head>
+  <body class="ve">
+    <a class="ve-evitement" href="#ve-inspecteur">Aller à l'inspecteur</a>
+    <header class="ve-barre">
+      <button type="button" class="ve-ico" data-pages-trigger aria-label="Pages du site" title="Pages du site">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="4" width="6" height="6" /><rect x="14" y="4" width="6" height="6" /><rect x="4" y="14" width="6" height="6" /><rect x="14" y="14" width="6" height="6" /></svg>
+      </button>
+      <h1 class="ve-titre">Vitrine</h1>
+      <div class="ve-prereglages" id="ve-prereglages" role="radiogroup" aria-label="Préréglage de boutique"></div>
+      <div class="ve-outils">
+        <span class="ve-sauve" id="ve-sauve" data-etat="ok" role="img" aria-label="Sauvegarde locale" title="Sauvegardé dans ce navigateur"></span>
+        <button type="button" class="ve-ico" id="ve-annuler" aria-label="Annuler (Ctrl+Z)" title="Annuler (Ctrl+Z)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
+        </button>
+        <button type="button" class="ve-ico" id="ve-retablir" aria-label="Rétablir (Ctrl+Maj+Z)" title="Rétablir (Ctrl+Maj+Z)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5" /><path d="M20 9H10a6 6 0 0 0 0 12h3" /></svg>
+        </button>
+        <span class="ve-sep" aria-hidden="true"></span>
+        <div class="ve-segments" id="ve-appareils" role="radiogroup" aria-label="Appareil de l'aperçu">
+          <button type="button" role="radio" aria-checked="true" data-appareil="bureau" aria-label="Bureau, 1440 pixels" title="Bureau (1440 px)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1" /><path d="M8 20h8M12 16v4" /></svg>
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-appareil="tablette" aria-label="Tablette, 834 pixels" title="Tablette (834 px)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M11 18h2" /></svg>
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-appareil="mobile" aria-label="Téléphone, 390 pixels" title="Téléphone (390 px)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2" /><path d="M11 18h2" /></svg>
+          </button>
+        </div>
+        <span class="ve-sep" aria-hidden="true"></span>
+        <button type="button" class="ve-ico" id="ve-importer" aria-label="Importer un fichier JSON" title="Importer un JSON">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 14v6h16v-6" /></svg>
+        </button>
+        <input type="file" id="ve-fichier" accept="application/json,.json" hidden aria-label="Fichier JSON à importer" />
+        <button type="button" class="ve-ico ve-ico--fort" id="ve-exporter" aria-label="Exporter" title="Exporter : HTML, JSON, lien">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5" /><path d="M4 14v6h16v-6" /></svg>
+        </button>
+        <div class="ve-menu" id="ve-menu-export" aria-label="Exporter">
+          <button type="button" role="menuitem" data-export="copier-html">Copier le HTML autonome</button>
+          <button type="button" role="menuitem" data-export="html">Télécharger le HTML autonome</button>
+          <button type="button" role="menuitem" data-export="json">Télécharger le JSON du plan</button>
+          <button type="button" role="menuitem" data-export="lien">Copier le lien partageable</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="ve-corps">
+      <aside class="ve-gauche" aria-labelledby="ve-gauche-titre">
+        <div class="ve-gauche-tete">
+          <h2 id="ve-gauche-titre">Page d'accueil</h2>
+          <span id="ve-nombre" class="ve-discret"></span>
+        </div>
+        <ol class="ve-liste" id="ve-liste" aria-label="Sections, dans l'ordre de la page"></ol>
+        <button type="button" class="ve-btn ve-btn--ajouter" id="ve-ajouter" aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 8v8M8 12h8" /></svg>
+          Ajouter une section
+        </button>
+        <p class="ve-aide">Glisser pour réordonner ; au clavier : Alt + ↑/↓, ou Espace puis flèches.</p>
+      </aside>
+
+      <main class="ve-centre" id="ve-centre" aria-label="Aperçu">
+        <div class="ve-cadre" id="ve-cadre">
+          <iframe id="ve-iframe" src="vitrine-apercu.html" title="Aperçu de la boutique"></iframe>
+        </div>
+        <p class="ve-echelle" id="ve-echelle" aria-hidden="true"></p>
+      </main>
+
+      <aside class="ve-droite" id="ve-inspecteur" tabindex="-1" aria-label="Inspecteur">
+        <div class="ve-onglets" id="ve-onglets" role="tablist" aria-label="Inspecteur">
+          <button type="button" role="tab" data-onglet="section" aria-selected="true" aria-controls="ve-inspecteur-corps">Section</button>
+          <button type="button" role="tab" data-onglet="style" aria-selected="false" aria-controls="ve-inspecteur-corps">Style</button>
+        </div>
+        <div class="ve-inspecteur-corps" id="ve-inspecteur-corps" role="tabpanel"></div>
+      </aside>
+    </div>
+
+    <dialog class="ve-bibliotheque" id="ve-bibliotheque" aria-labelledby="ve-biblio-titre">
+      <div class="ve-biblio-tete">
+        <h2 id="ve-biblio-titre">Ajouter une section</h2>
+        <label class="ve-cache" for="ve-biblio-filtre">Filtrer les sections</label>
+        <input type="search" id="ve-biblio-filtre" placeholder="Filtrer : carrousel, avis, vidéo…" autocomplete="off" />
+        <button type="button" class="ve-ico" data-fermer aria-label="Fermer la bibliothèque" title="Fermer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div class="ve-biblio-liste" id="ve-biblio-liste"></div>
+    </dialog>
+
+    <p class="ve-bulle" id="ve-bulle" hidden></p>
+    <p class="ve-cache" id="ve-statut" role="status"></p>
+  </body>
+</html>

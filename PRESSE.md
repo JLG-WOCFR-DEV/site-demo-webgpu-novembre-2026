@@ -70,6 +70,8 @@ p.replay();                  // rejouer l'impression des sections
 | `data-rail-sansfin` | avec `data-rail` | Ruban sans fin : copies inertes, défilement lent (`data-rail-vitesse`, 36 px/s), pause au survol, au focus ou hors écran, poussé par le défilement de la page. |
 | `data-panier-nombre`, `data-favoris-nombre`, `data-favori` | compteurs, boutons | Magasin panier et favoris (`initPanier`, `src/presse/panier.ts`) : localStorage, synchro entre onglets, événement `panier:change` ; `data-favori="id"` bascule, `aria-pressed` tenu à jour. Exemple complet : `boutique.html`. |
 | `diapo-createur.html?doc=…` | page | **Créateur de diaporama** (`src/diapo-createur/`) : à gauche les diapos (vignettes ; glisser pour ordonner, dupliquer, supprimer, masquer, ajouter sur le modèle d'une mise en page) ou en bande sous l'aperçu ; au centre le vrai diaporama (iframe, `?createur`), ses **notes de l'orateur dessous** (repliables) ; à droite l'inspecteur — diapo (titre, `data-transition`, durée, **durée prévue** `data-duree`), élément choisi (texte, style de paragraphe, `data-step` et sa durée, **ordre des apparitions** `data-step-ordre` / `data-step-depart="avec"|"apres"` — plus tôt, plus tard, départ —, image, `data-move`, position d'un élément libre), diaporama (transition par défaut, titre courant, durée totale prévue, **durée visée** `data-duree-visee` en minutes). Barre d'icônes, les groupes secondaires repliés dans un menu « plus » quand la place manque : **trieuse de diapositives** (grille, glisser pour ordonner, double-clic ou Entrée : y aller, Échap : revenir) ; **mise en forme directe** (alignement, taille ±8 % en `--u`, couleur, effacer : styles en ligne) ; **zone de texte et image libres** (`data-libre`, `left`/`top`/`width` en % de la diapo, déplacées à la souris dans l'aperçu, poignée de largeur) ; **répétition minutée** (présente depuis le début, mesure le temps par diapo, propose de l'écrire en `data-duree` ; la vue présentateur affiche le prévu et l'avance ou le retard) ; **export PDF** (`conference.html?impression`, `&notes` avec Maj : une diapo par page 16:9, ou A4 avec les notes). **Sections** (`data-section="Nom"` sur leur première diapo) : titre au-dessus de la diapo, renommer (double-clic), replier (gardé dans ce navigateur), monter, descendre, retirer ; « commencer une section ici » ; « sections depuis les intercalaires » (`.cf-divider`). Annuler / rétablir ; « Rejouer » montre la transition ; « Essayer » rend la main au clavier du diaporama. Le modèle est le HTML des diapos, gardé dans le navigateur (`presse-diapo-doc:<chemin>`, `src/presse/diapo-doc.ts`) et repris par le diaporama à son chargement ; « Télécharger » rend la page à déposer dans le projet (zip si des images ont été importées). |
+| `vitrine.html#v=…` | page | **Éditeur Vitrine** (`src/vitrine/main.ts`) : composer la page d'accueil d'une boutique par sections, façon éditeur de thème ; le fragment `#v=` porte un document entier (lien partageable) ; `?prereglage=district` démarre d'un préréglage. Voir la section « Vitrine » plus bas. |
+| `data-vitrine` | conteneur (`div`) | **Vitrine** (`src/vitrine/demo.ts`, moteur `src/vitrine/`) : le conteneur reçoit une boutique entière, rendue par sections depuis un préréglage : `maison`, `district`, `tribus` ou `atelier`. Le contenu écrit dans le conteneur sert de repli et est remplacé ; le moteur pose ses classes `v-*` et ses attributs `data-v-*` (états internes : ne pas les écrire). Panier et favoris par `src/presse/panier.ts` (clé `vitrine:panier`), clavier et fenêtres par `src/presse/comportements/`. Sans JavaScript : le repli du conteneur ; mouvement réduit : ni lecture automatique (diaporama, vidéo, bandeau), ni glissement ni zoom, fondus courts. Exemples : `vitrine-maison.html`, `vitrine-district.html`, `vitrine-tribus.html`. |
 | `data-gl-source` | conteneur d'image | L'image peut céder la place à une source animée. |
 | `data-presse-transition` | `html` | `impression`, `trame`, `quadri`, `buvard`, `massicot`, `fondu`, `rouleau`, `composition`, `ligne`, `revelateur`, `pli`, `tri`, `aucune`. |
 | `data-presse-effects` | `html` | `loupe`, `rvb`, `trame`, `bloom`, `grain`, `courbure` (la page se bombe avec la vitesse de défilement : bords haut et bas resserrés, milieu qui traîne ; plane au repos). |
@@ -208,6 +210,52 @@ déterministe : un flux de hasard par famille, si bien que verrouiller la palett
 contrastes sont tenus par un solveur qui déplace la clarté OKLCH (au lieu de rejeter le tirage), jugés sur les couleurs
 quantifiées et après l'étalonnage du look (`etalonner`, `src/presse/oklch.ts`). Le Créateur ne reprend d'un système que
 ce que son modèle connaît : papier, encre, accent 1, type, look, transition, effets, mouvement, arrondi.
+
+## Vitrine : des boutiques par sections
+
+`vitrine.html` compose la page d'accueil d'une boutique comme un éditeur de thème : à gauche la liste des sections
+(choisir, glisser ou Alt + flèches pour réordonner, masquer, dupliquer, supprimer ; ajout depuis une bibliothèque à
+vignettes), au centre l'aperçu en direct (`vitrine-apercu.html` en iframe, bureau 1440 / tablette 834 / téléphone 390,
+mis à l'échelle), à droite l'inspecteur généré depuis le schéma de la section et l'onglet Style (jetons, et « Tirer une
+direction » : un système de Variations). Quatre préréglages complets (Maison, District, Tribus, Atelier), annuler /
+rétablir (Ctrl Z, Ctrl Maj Z), sauvegarde locale, export HTML autonome (styles, jetons, polices et comportements en
+ligne : `src/vitrine/autonome.js`), JSON du document, lien `#v=`, import JSON (v1 converti).
+
+Le noyau (`src/vitrine/`) :
+
+- **Schéma** (`schema.ts`) : chaque type de section déclare ses champs — `curseur`, `selecteur` (segments à icônes ou
+  liste ; `source` produits, collections), `interrupteur`, `couleur`, `texte`, `image` (photothèque), `liste` (éléments
+  à sous-schéma) — avec défauts, bornes, pas, libellés, icônes, groupes et conditions déclaratives (`si` : variantes,
+  valeur d'un autre champ). Il pilote les défauts, la validation (`validerReglages` : bornes, pas, options inconnues,
+  clés retirées, corrections dites en français), l'inspecteur (`inspecteur.ts`) et le rendu.
+- **Modèle** (`modele.ts`, `types.ts`) : section `{ id, type, variante, masque?, reglages }`, plan `{ marque, sections }`,
+  document `{ format: "presse-vitrine", v: 2, depuis, plan, jetons }` ; opérations pures (ajouter à la bonne place,
+  dupliquer, masquer, déplacer, changer variante ou réglage), `migrer` (v1 → v2), `encoder` / `decoder` (base64url).
+- **Jetons** (`jetons.ts`) : un objet plat décrit par le même schéma, converti en système de Variations
+  (`resoudrePalette` : encre et accent texte ≥ 4,5:1) puis en variables `--presse-*` et `--v-*` ; densité, boutons
+  (`plein`, `contour`, `souligne`), largeur, vitesse.
+- **Rendu** (`rendu.ts`, `sections/*.ts`) : `htmlSection(section, ctx)` est une fonction pure (texte HTML, testée sous
+  Node, réutilisée par l'export), `rendreSection` en fait du DOM ; `armer.ts` pose les comportements.
+- **Données** (`donnees.ts`) : le catalogue d'Éclaircie vu comme celui d'une boutique (prix barrés, badges, stock, notes,
+  collections, matières, devises) — fictif et déterministe ; la boutique Éclaircie n'est pas touchée.
+
+Bibliothèque : 19 types, 50 variantes — bandeau d'annonce (fixe, défilant, rotatif, lettre −x %), en-tête (classique,
+logo centré, bouton « Menu » ; collant, transparent sur le hero, mega-menus au survol, au clic et au clavier, recherche à
+suggestions et produits en direct, pays et devise, tiroir à piège de focus), hero (image, deux visuels, partagé, vidéo
+avec lecture et son, diaporama : fondu, glissement, zoom lent, rideau ; flèches, points, progression, compteur, lecture
+automatique réglable, pause au survol), catégories (grille de 2 à 8, carrousel, par matière), collection (grille,
+carrousel à flèches, carrousel à curseur, rail aimanté, grille compacte, mur en mosaïque ; colonnes, format, espacement,
+contour, survol seconde image ou zoom, pastilles, badges, stock, favoris, achat rapide en bulle ou en panneau, prix
+barré), pièce phare (achat direct), produits liés (recommandés, vus récemment), lookbook à points chauds (sur la photo,
+avec liste), tuiles promotionnelles, cartes éditoriales, histoire, avis, FAQ, services, logos presse, lettre, journal,
+pied de page (colonnes, plan du site, minimal), fenêtre promotionnelle (une fois par session, Échap).
+
+Points d'extension (phase 2 : fiche produit, paniers, pages collection et compte) : `inscrire(definition)`
+(`bibliotheque.ts`) ajoute ou remplace un type de section ; `Contexte.lienProduit` et `lienCollection` (`rendu.ts`)
+disent où mènent cartes et collections ; événements `vitrine:ajout`, `vitrine:ouvrir-panier` et `vitrine:apercu`
+(annulables : le tiroir de panier ou la fiche prennent la main), `vitrine:vu`, `vitrine:devise` ; options d'`armer`
+(`ouvrirPanier`, `ouvrirProduit`, `magasin`) ; `formulaireAchat` (sections/avant.ts) et `carte` (sections/produits.ts)
+se réemploient tels quels.
 
 ## Contrôler une page : `npm run check`
 

@@ -1266,6 +1266,26 @@ var _t = [
 		text: "Éclaircie, boutique de vêtements d'essai : déchirure, forme-masque, autocollant, rails, panier"
 	},
 	{
+		href: "vitrine.html",
+		name: "Vitrine",
+		text: "Éditeur de boutique par sections : 50 variantes réglables, quatre préréglages, aperçu bureau et téléphone, export"
+	},
+	{
+		href: "vitrine-maison.html",
+		name: "Boutiques · Maison",
+		text: "Luxe sobre : hero vidéo, bouton Menu, huit univers, grille compacte détourée"
+	},
+	{
+		href: "vitrine-district.html",
+		name: "Boutiques · District",
+		text: "Mode contemporaine : mega-menus, diaporama, badges, stock, achat rapide, avis"
+	},
+	{
+		href: "vitrine-tribus.html",
+		name: "Boutiques · Tribus",
+		text: "Artisanal : deux visuels, acheter par tissu, histoire, lookbook, lettre −10 %"
+	},
+	{
 		href: "diapo-createur.html",
 		name: "Créateur de diaporama",
 		text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU"

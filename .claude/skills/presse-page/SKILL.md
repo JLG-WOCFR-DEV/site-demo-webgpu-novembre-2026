@@ -193,6 +193,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | Un autocollant suit le pointeur sur les cibles, avec retard, bascule selon la vitesse et apparition en ressort | `data-autocollant` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | Glisser souris ou doigt avec inertie et aimantation, molette horizontale, flèches, focus amené à l'écran, barre de… | `data-rail` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | Magasin panier et favoris : localStorage, synchro entre onglets, événement panier:change | `data-panier-nombre`, `data-favoris-nombre`, `data-favori` | — | DOM | à importer : `src/presse/panier.ts` | boutique.html |
+| **Vitrine** — le conteneur reçoit une boutique entière, rendue par sections depuis un préréglage : maison, district, tribus ou atelier | `data-vitrine` | maison, district, tribus, atelier | DOM | à importer : `src/presse/panier.ts` | vitrine-maison.html |
 | **Système de design** — data-systeme="…" porte un système | `data-systeme` | — | DOM | pages-nav | variations.html |
 | Le bouton qui ouvre le menu Pages | `data-pages-trigger` | — | DOM | — | boutique.html |
 
