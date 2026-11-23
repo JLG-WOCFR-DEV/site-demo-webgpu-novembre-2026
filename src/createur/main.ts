@@ -522,20 +522,35 @@ function renderLinks() {
 }
 const fieldId = (k: string) => `cr-f-${k.replace(/[^a-z0-9-]/gi, "")}`;
 const thumb = (src: Value | undefined) => (src ? `<img src="${esc(src)}" alt="" loading="lazy" />` : `<span>—</span>`);
+/** Une icône de l'inspecteur (traits, 24 × 24), décorative : le nom est dit à côté. */
+const ico = (paths: string) => `<svg class="cr-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
 
 /** Un champ : son HTML. `item` : index de l'élément de liste (ses champs ont data-if). */
 function fieldHtml(f: Field, v: Value | undefined, item?: number) {
   const id = fieldId(`${item ?? ""}${f.key}`);
   const data = item === undefined ? `data-f="${f.key}"` : `data-if="${f.key}"`;
   const hint = f.hint ? `<small class="cr-hint-txt">${esc(f.hint)}</small>` : "";
-  const label = `<label class="cr-lab" for="${id}">${esc(f.label)}</label>`;
+  // Avec une icône : l'icône se voit, le libellé reste dit (et devient l'infobulle).
+  const label = f.icon ? `<label class="cr-lab cr-lab--ico" for="${id}" title="${esc(f.label)}">${ico(f.icon)}<span class="sr-only">${esc(f.label)}</span></label>` : `<label class="cr-lab" for="${id}">${esc(f.label)}</label>`;
+  const cls = f.icon ? "cr-field cr-field--ico" : "cr-field";
   switch (f.type) {
+    case "segment": {
+      // Boutons radio (ou cases, `multiple`) : les flèches passent d'un choix à l'autre, Espace coche.
+      const on = new Set(f.multiple ? String(v ?? "").split(/\s+/).filter(Boolean) : [String(v ?? "")]);
+      const segs = (f.choices ?? [])
+        .map(([k, l]) => {
+          const svg = f.icons?.[k];
+          return `<label class="cr-segb" title="${esc(l)}"><input type="${f.multiple ? "checkbox" : "radio"}" id="${id}-${esc(k)}" name="${id}" ${data} value="${esc(k)}"${f.multiple ? " data-multi" : ""}${on.has(k) ? " checked" : ""} />${svg ? `${ico(svg)}<span class="sr-only">${esc(l)}</span>` : `<span>${esc(l)}</span>`}</label>`;
+        })
+        .join("");
+      return `<fieldset class="cr-field cr-segf"><legend class="cr-lab">${esc(f.label)}</legend><div class="cr-segs"${f.multiple ? "" : ' role="radiogroup"'}>${segs}</div>${hint}</fieldset>`;
+    }
     case "toggle":
       return `<div class="cr-field cr-field--toggle"><label class="cr-switch"><input id="${id}" type="checkbox" ${data}${v === true ? " checked" : ""} /><span>${esc(f.label)}</span></label>${hint}</div>`;
     case "select":
       return `<div class="cr-field">${label}<select id="${id}" ${data}>${(f.choices ?? []).map(([k, l]) => `<option value="${esc(k)}"${String(v ?? "") === k ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>${hint}</div>`;
     case "range":
-      return `<div class="cr-field">${label}<div class="cr-range"><input id="${id}" type="range" ${data} min="${f.min ?? 0}" max="${f.max ?? 1}" step="${f.step ?? 0.01}" value="${esc(v)}" /><output>${esc(v)}${f.unit ? ` ${f.unit}` : ""}</output></div>${hint}</div>`;
+      return `<div class="${cls}">${label}<div class="cr-range"><input id="${id}" type="range" ${data} min="${f.min ?? 0}" max="${f.max ?? 1}" step="${f.step ?? 0.01}" value="${esc(v)}" /><output>${esc(v)}${f.unit ? ` ${f.unit}` : ""}</output></div>${hint}</div>`;
     case "area":
       return `<div class="cr-field">${label}<textarea id="${id}" ${data} rows="${String(v ?? "").length > 120 ? 6 : 3}" spellcheck="true">${esc(v)}</textarea>${hint}</div>`;
     case "color":
@@ -558,6 +573,14 @@ function grouped(fields: Field[], values: Props) {
     .join("");
 }
 
+/** Une clé par élément de liste, stable tant que l'objet vit (réordonner garde le focus et l'état ouvert). */
+const itemKeys = new WeakMap<object, string>();
+let itemSeq = 0;
+const itemKey = (it: object) => {
+  let k = itemKeys.get(it);
+  if (!k) itemKeys.set(it, (k = `i${(++itemSeq).toString(36)}`));
+  return k;
+};
 const openItems = new Set<string>();
 function itemsHtml(b: Block) {
   const spec = BLOCKS[b.type]!.items!;
@@ -565,9 +588,9 @@ function itemsHtml(b: Block) {
   return `<details class="cr-group" open data-group="items"><summary>${esc(spec.label)} <span class="cr-count">${items.length}</span></summary><div class="cr-group-body">
   <ol class="cr-items">${items
     .map((it, i) => {
-      const key = `${b.id}:${i}`;
+      const key = itemKey(it);
       const title = String(it.title || it.label || it.value || it.kicker || `${spec.noun} ${i + 1}`);
-      return `<li class="cr-item" data-item="${i}"><details${openItems.has(key) ? " open" : ""} data-ikey="${key}"><summary>${it.src !== undefined ? `<span class="cr-item-thumb">${thumb(it.src)}</span>` : ""}<span class="cr-item-name">${esc(title)}</span><span class="cr-item-tools"><button type="button" class="cr-mini" data-iop="up" aria-label="Monter">↑</button><button type="button" class="cr-mini" data-iop="down" aria-label="Descendre">↓</button><button type="button" class="cr-mini" data-iop="del" aria-label="Retirer"${items.length <= spec.min ? " disabled" : ""}>✕</button></span></summary><div class="cr-item-body">${spec.fields
+      return `<li class="cr-item" data-item="${i}" data-ik="${key}" tabindex="0" aria-label="${esc(`${spec.noun[0]!.toUpperCase()}${spec.noun.slice(1)} ${i + 1} sur ${items.length} : ${title}`)}"><details${openItems.has(key) ? " open" : ""} data-ikey="${key}"><summary>${it.src !== undefined ? `<span class="cr-item-thumb">${thumb(it.src)}</span>` : ""}<span class="cr-item-name">${esc(title)}</span><span class="cr-item-tools"><button type="button" class="cr-mini" data-iop="up" aria-label="Monter">↑</button><button type="button" class="cr-mini" data-iop="down" aria-label="Descendre">↓</button><button type="button" class="cr-mini" data-iop="del" aria-label="Retirer"${items.length <= spec.min ? " disabled" : ""}>✕</button></span></summary><div class="cr-item-body">${spec.fields
         .filter((f) => !f.when || f.when(it))
         .map((f) => fieldHtml(f, it[f.key], i))
         .join("")}${b.type === "projets" && !site.pages.some((p) => `./${fileOf(p)}` === it.page) ? `<button type="button" class="cr-add-wide" data-mkpage>Créer la page de ce projet</button>` : ""}</div></details></li>`;
@@ -599,7 +622,7 @@ function pageFields(p: Page): string {
     { key: "intro", label: "Rideau d'entrée", type: "toggle", hint: "Compteur de chargement, une fois par session (page publiée seulement)", group: "Comportement" },
   ];
   const vals = p as unknown as Props;
-  const fx = `<div class="cr-field"><span class="cr-lab">Passes de la chaîne</span><div class="cr-chips">${EFFECTS.map(([k, l]) => `<label class="cr-chip"><input type="checkbox" data-fx="${k}"${p.effects.includes(k) ? " checked" : ""} /><span>${l}</span></label>`).join("")}</div></div>`;
+  const fx = `<div class="cr-field"><span class="cr-lab">Effets de la chaîne</span><div class="cr-chips">${EFFECTS.map(([k, l]) => `<label class="cr-chip"><input type="checkbox" data-fx="${k}"${p.effects.includes(k) ? " checked" : ""} /><span>${l}</span></label>`).join("")}</div></div>`;
   let html = grouped(fs, vals);
   html = html.replace(`data-group="Rendu GPU"><summary>Rendu GPU</summary><div class="cr-group-body">`, (m) => m + fx);
   const warn = ratio < 4.5 ? `<p class="cr-warn">Contraste encre / papier : ${ratio.toFixed(1)} : 1 — trop faible pour lire (4,5 au moins).</p>` : `<p class="cr-dim cr-contrast">Contraste encre / papier : ${ratio.toFixed(1)} : 1</p>`;
@@ -612,6 +635,9 @@ function renderInspector() {
   for (const b of $$<HTMLButtonElement>("[data-cr-rtab]")) b.setAttribute("aria-selected", String(b.dataset.crRtab === rtab));
   const scroll = insp.scrollTop;
   const closed = new Set($$<HTMLDetailsElement>("details.cr-group:not([open])", insp).map((d) => d.dataset.group!));
+  // Le champ qui a le focus le retrouve après le redessin (un segment qu'on parcourt aux flèches, un menu).
+  const act = document.activeElement instanceof HTMLElement && insp.contains(document.activeElement) ? document.activeElement : null;
+  const focusSel = act?.id ? `#${CSS.escape(act.id)}` : act?.dataset.ik ? `[data-ik="${act.dataset.ik}"]` : "";
   if (rtab === "page") {
     const FONT: Record<string, string> = { grotesque: "'Archivo Variable'", didone: "'Bodoni Moda Variable', serif", garalde: "'Cormorant Garamond', serif", technique: "'Archivo Variable'" };
     const presets = STYLE_PRESETS.map((sp) => {
@@ -638,6 +664,7 @@ function renderInspector() {
   }
   for (const g of closed) $$<HTMLDetailsElement>(`details.cr-group[data-group="${CSS.escape(g)}"]`, insp).forEach((d) => (d.open = false));
   insp.scrollTop = scroll;
+  if (focusSel) insp.querySelector<HTMLElement>(focusSel)?.focus({ preventScroll: true });
 }
 for (const b of $$<HTMLButtonElement>("[data-cr-rtab]"))
   b.addEventListener("click", () => {
@@ -646,6 +673,11 @@ for (const b of $$<HTMLButtonElement>("[data-cr-rtab]"))
   });
 
 const readInput = (el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement): Value => {
+  // Segments à choix multiples : les choix cochés du groupe, dans l'ordre affiché.
+  if (el instanceof HTMLInputElement && el.type === "checkbox" && el.hasAttribute("data-multi"))
+    return $$<HTMLInputElement>(`input[name="${CSS.escape(el.name)}"]:checked`, el.closest("fieldset") ?? insp)
+      .map((i) => i.value)
+      .join(" ");
   if (el instanceof HTMLInputElement && el.type === "checkbox") return el.checked;
   if (el instanceof HTMLInputElement && el.type === "range") return Number(el.value);
   return el.value;
@@ -680,7 +712,14 @@ function onField(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement 
     return;
   }
   const k = el.dataset.f!;
-  change(() => void (b.props[k] = v), { key: `block:${b.id}:${k}`, quiet: quiet || typing });
+  const adjust = BLOCKS[b.type]?.adjust;
+  change(
+    () => {
+      b.props[k] = v;
+      adjust?.(b, k);
+    },
+    { key: `block:${b.id}:${k}`, quiet: quiet || typing },
+  );
 }
 insp.addEventListener("input", (e) => {
   const el = e.target as HTMLInputElement;
@@ -771,10 +810,27 @@ insp.addEventListener("click", (e) => {
   if (t.closest("[data-iadd]")) {
     const spec = BLOCKS[b.type]!.items!;
     const n = b.items!.length;
-    change(() => void b.items!.push(spec.make(n)));
-    openItems.add(`${b.id}:${n}`);
-    renderInspector();
+    const it = spec.make(n);
+    openItems.add(itemKey(it));
+    change(() => void b.items!.push(it));
   }
+});
+// Réordonner les éléments d'une liste (photos, cartes, liens) : glisser leur titre, Alt + ↑ ↓, ou Espace pour prendre,
+// flèches, Espace pour poser — le même comportement que les calques. L'inspecteur est le conteneur (il reste) ; la clé
+// d'un élément le suit d'un rang à l'autre, le focus aussi.
+creerReordonner(insp, {
+  elements: ".cr-items > .cr-item",
+  poignee: ".cr-item > details > summary",
+  cle: (el) => el.dataset.ik ?? "",
+  nom: (el) => el.querySelector(".cr-item-name")?.textContent ?? "Élément",
+  surOrdre: (de, vers) => {
+    const b = blockById(selected);
+    if (!b?.items || vers < 0 || vers >= b.items.length) return false;
+    change(() => {
+      const [it] = b.items!.splice(de, 1);
+      b.items!.splice(vers, 0, it!);
+    });
+  },
 });
 insp.addEventListener(
   "toggle",

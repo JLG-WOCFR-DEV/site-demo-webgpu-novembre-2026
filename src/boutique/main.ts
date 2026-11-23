@@ -214,7 +214,7 @@ for (const c of CATEGORIES) {
   });
 }
 $("#cat-compte").textContent = `${CATEGORIES.length} familles · ${CATALOGUE.length} pièces`;
-for (const el of $$("[data-compte]")) el.textContent = `[${nombreDans(el.dataset.compte as IdCategorie)}]`;
+for (const el of $$("[data-bq-compte]")) el.textContent = `[${nombreDans(el.dataset.bqCompte as IdCategorie)}]`;
 
 // Filtres.
 const filtres = $("#filtres");

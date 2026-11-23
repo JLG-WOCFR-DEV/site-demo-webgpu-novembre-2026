@@ -9,14 +9,16 @@
     <script type="module" src="/src/presse/doc.ts"></script>
   </head>
   <body class="pd">
-    <header class="pd-hero" data-gl-print>
-      <p class="pd-kicker" data-gl-text>WebGPU-demo-UBS · Presse</p>
-      <h1 class="pd-title" data-gl-text data-gl-morph data-pd-morph="Presse|Un Webflow WebGPU">Presse</h1>
-      <p class="pd-lede" data-gl-text>
-        Un « Webflow » WebGPU, sous forme de bibliothèque : on écrit une page HTML ordinaire, quelques attributs disent au GPU
-        ce qu'il doit en faire, et une ligne de script lance le moteur. Cette page est faite ainsi, et rien d'autre.
-      </p>
-      <button type="button" class="pd-btn" data-magnet data-pd-morph-btn>Changer le titre</button>
+    <header>
+      <section class="pd-hero" data-gl-print>
+        <p class="pd-kicker" data-gl-text>WebGPU-demo-UBS · Presse</p>
+        <h1 class="pd-title" data-gl-text data-gl-morph data-pd-morph="Presse|Un Webflow WebGPU">Presse</h1>
+        <p class="pd-lede" data-gl-text>
+          Un « Webflow » WebGPU, sous forme de bibliothèque : on écrit une page HTML ordinaire, quelques attributs disent au GPU
+          ce qu'il doit en faire, et une ligne de script lance le moteur. Cette page est faite ainsi, et rien d'autre.
+        </p>
+        <button type="button" class="pd-btn" data-magnet data-pd-morph-btn>Changer le titre</button>
+      </section>
     </header>
 
     <main>
@@ -208,10 +210,10 @@ timeline()
         </p>
         <div class="pd-match" data-pd-match>
           <ul class="pd-match-grid" aria-label="Quatre photos : cliquer pour agrandir sur place">
-            <li><button type="button" data-presse-match="m-dunes" data-pd-tile><img src="./img/dunes-480.webp" alt="Des dunes au soleil couchant." /></button></li>
-            <li><button type="button" data-presse-match="m-lac" data-pd-tile><img src="./img/lac-480.webp" alt="Un lac de montagne." /></button></li>
-            <li><button type="button" data-presse-match="m-pont" data-pd-tile><img src="./img/pont-480.webp" alt="Un pont dans la brume." /></button></li>
-            <li><button type="button" data-presse-match="m-flower" data-pd-tile><img src="./img/flower-480.webp" alt="Une fleur en gros plan." /></button></li>
+            <li><button type="button" data-presse-match="m-dunes" data-pd-tile><img src="./img/dunes-480.webp" width="480" height="319" alt="Des dunes au soleil couchant." /></button></li>
+            <li><button type="button" data-presse-match="m-lac" data-pd-tile><img src="./img/lac-480.webp" width="480" height="319" alt="Un lac de montagne." /></button></li>
+            <li><button type="button" data-presse-match="m-pont" data-pd-tile><img src="./img/pont-480.webp" width="480" height="319" alt="Un pont dans la brume." /></button></li>
+            <li><button type="button" data-presse-match="m-flower" data-pd-tile><img src="./img/flower-480.webp" width="480" height="480" alt="Une fleur en gros plan." /></button></li>
           </ul>
           <div class="pd-match-stage" data-pd-stage hidden></div>
         </div>
@@ -351,12 +353,12 @@ roll(compteur, "129");                         // seuls les chiffres changés ro
           mipmap lointain) : la visionneuse prend sa couleur. Coins et ombre sont calculés dans le shader.
         </p>
         <ul class="pd-lb" data-lightbox aria-label="Six photos : cliquer pour agrandir">
-          <li><figure><img src="./img/pont-480.webp" data-full="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." /><figcaption>Le pont, à marée montante.</figcaption></figure></li>
-          <li><figure><img src="./img/lac-480.webp" data-full="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." /><figcaption>Le lac, entre des collines dorées.</figcaption></figure></li>
-          <li><figure><img src="./img/dunes-480.webp" data-full="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu." /><figcaption>Les dunes, Vallée de la Mort.</figcaption></figure></li>
-          <li><figure><img src="./img/flower-480.webp" data-full="./plates/flower.jpg" alt="Une renoncule blanche sur fond gris." /><figcaption>La renoncule.</figcaption></figure></li>
-          <li><figure><img src="./img/alcatraz-480.webp" data-full="./plates/alcatraz.jpg" alt="L'île d'Alcatraz et son phare au milieu de la baie." /><figcaption>L'île, au milieu de la baie.</figcaption></figure></li>
-          <li><figure><img src="./img/bowl-480.webp" data-full="./plates/bowl.jpg" alt="Un bol de grès blanc sur une table claire." /><figcaption>Le bol de grès.</figcaption></figure></li>
+          <li><figure><img src="./img/pont-480.webp" width="480" height="319" data-full="./plates/pont.jpg" alt="Le Golden Gate depuis la côte, l'écume au pied d'une falaise verte." /><figcaption>Le pont, à marée montante.</figcaption></figure></li>
+          <li><figure><img src="./img/lac-480.webp" width="480" height="319" data-full="./plates/lac.jpg" alt="Un lac entre des collines dorées, sous un ciel strié." /><figcaption>Le lac, entre des collines dorées.</figcaption></figure></li>
+          <li><figure><img src="./img/dunes-480.webp" width="480" height="319" data-full="./plates/dunes.jpg" alt="Des dunes claires et un bois mort tordu." /><figcaption>Les dunes, Vallée de la Mort.</figcaption></figure></li>
+          <li><figure><img src="./img/flower-480.webp" width="480" height="480" data-full="./plates/flower.jpg" alt="Une renoncule blanche sur fond gris." /><figcaption>La renoncule.</figcaption></figure></li>
+          <li><figure><img src="./img/alcatraz-480.webp" width="480" height="319" data-full="./plates/alcatraz.jpg" alt="L'île d'Alcatraz et son phare au milieu de la baie." /><figcaption>L'île, au milieu de la baie.</figcaption></figure></li>
+          <li><figure><img src="./img/bowl-480.webp" width="480" height="320" data-full="./plates/bowl.jpg" alt="Un bol de grès blanc sur une table claire." /><figcaption>Le bol de grès.</figcaption></figure></li>
         </ul>
         <pre class="pd-code"><code>&lt;ul data-lightbox&gt;
   &lt;li&gt;&lt;figure&gt;&lt;img src="petite.webp" data-full="grande.jpg" alt="…"&gt;&lt;figcaption&gt;Légende&lt;/figcaption&gt;&lt;/figure&gt;&lt;/li&gt;

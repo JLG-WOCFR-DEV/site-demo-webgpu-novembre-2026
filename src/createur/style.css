@@ -799,6 +799,106 @@ body[data-cr-mode="try"] .cr-frame {
   gap: 10px;
   padding: 4px 10px 12px;
 }
+.cr-item {
+  border-radius: 8px;
+}
+.cr-item:focus-visible {
+  outline-offset: 1px;
+}
+.cr-item > details > summary {
+  cursor: grab;
+}
+.cr-item[data-reordonner="glisse"] > details {
+  background: var(--panel-2);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    0 10px 24px -8px rgba(0, 0, 0, 0.6);
+}
+.cr-item[data-reordonner="glisse"] > details > summary {
+  cursor: grabbing;
+}
+.cr-item[data-reordonner="pris"] > details {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Champs à icône (curseurs du couloir) : l'icône à la place du libellé, sur la même ligne que le curseur. */
+.cr-ico {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cr-field--ico {
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.cr-field--ico > .cr-hint-txt {
+  grid-column: 2;
+}
+.cr-lab--ico {
+  display: grid;
+  place-items: center;
+  cursor: help;
+}
+/* Segments : radios ou cases à icônes, un groupe par réglage. */
+.cr-segf {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.cr-segf > legend {
+  padding: 0;
+  margin-bottom: 5px;
+}
+.cr-segs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  width: max-content;
+  max-width: 100%;
+}
+.cr-segb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 32px;
+  padding: 0 7px;
+  border-radius: 6px;
+  color: var(--dim);
+  cursor: pointer;
+}
+.cr-segb input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.cr-segb:hover {
+  color: var(--fg);
+  background: var(--panel-2);
+}
+.cr-segb:has(input:checked) {
+  color: #fff;
+  background: var(--accent);
+}
+.cr-segb:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.cr-segb .cr-ico {
+  pointer-events: none;
+}
 
 /* Choix de photo */
 .cr-picker[hidden] {

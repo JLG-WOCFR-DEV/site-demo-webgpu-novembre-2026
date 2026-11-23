@@ -25,8 +25,8 @@ export function bindLayers() {
       const out = op.parentElement?.querySelector("output");
       if (out) out.textContent = fmt(Number(op.value));
       settings.layers.visible[id] = row.querySelector<HTMLInputElement>("input[name=visible]")!.checked;
-      row.querySelector<HTMLButtonElement>("[data-move=up]")!.disabled = i === 0;
-      row.querySelector<HTMLButtonElement>("[data-move=down]")!.disabled = i === rows.length - 1;
+      row.querySelector<HTMLButtonElement>("[data-calque-deplace=haut]")!.disabled = i === 0;
+      row.querySelector<HTMLButtonElement>("[data-calque-deplace=bas]")!.disabled = i === rows.length - 1;
     });
     const mask = form.querySelector<HTMLInputElement>("input[name=mask]:checked");
     settings.layers.mask = mask ? Number(mask.value) : 0;
@@ -59,14 +59,14 @@ export function bindLayers() {
   form.addEventListener("input", sync);
   form.addEventListener("change", sync);
   stack.addEventListener("click", (e) => {
-    const btn = (e.target as Element).closest<HTMLButtonElement>("[data-move]");
+    const btn = (e.target as Element).closest<HTMLButtonElement>("[data-calque-deplace]");
     if (!btn) return;
     const row = btn.closest<HTMLElement>("[data-layer]")!;
-    if (btn.dataset.move === "up" && row.previousElementSibling) stack.insertBefore(row, row.previousElementSibling);
-    if (btn.dataset.move === "down" && row.nextElementSibling) stack.insertBefore(row.nextElementSibling, row);
+    if (btn.dataset.calqueDeplace === "haut" && row.previousElementSibling) stack.insertBefore(row, row.previousElementSibling);
+    if (btn.dataset.calqueDeplace === "bas" && row.nextElementSibling) stack.insertBefore(row.nextElementSibling, row);
     sync();
     // Le bouton peut devenir inactif en bout de pile : on garde le focus sur la ligne.
-    (btn.disabled ? row.querySelector<HTMLButtonElement>("[data-move]:not(:disabled)") : btn)?.focus();
+    (btn.disabled ? row.querySelector<HTMLButtonElement>("[data-calque-deplace]:not(:disabled)") : btn)?.focus();
   });
   sync();
 }

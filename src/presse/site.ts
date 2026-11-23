@@ -9,6 +9,7 @@
  * défilement, curseur, puis le moteur (qui monte aussi les composants <x-…> déroulés à la construction).
  */
 import "./sections.css";
+import { initCouloir } from "./couloir.ts";
 import { initCursor } from "./cursor.ts";
 import { presseFromHtml, type Presse } from "./index.ts";
 import { initIntro } from "./intro.ts";
@@ -24,8 +25,10 @@ export function startSite(): Promise<Presse> {
   initScroll();
   initAnim();
   initCursor();
+  // Le couloir (bloc du Créateur) : un module DOM, armé seulement si la page en a un.
+  if (document.querySelector("[data-couloir]")) initCouloir();
   return presseFromHtml();
 }
 
-// Importé seul (une page de site), il démarre ; importé par le Créateur (data-presse-manual), il attend qu'on l'appelle.
-if (document.documentElement.dataset.presseManual === undefined) void startSite();
+// Importé seul (une page de site), il démarre ; importé par le Créateur (data-presse-manuel), il attend qu'on l'appelle.
+if (document.documentElement.dataset.presseManuel === undefined) void startSite();

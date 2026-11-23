@@ -121,3 +121,90 @@ test("sommaire automatique : une entrée par section ancrée et titrée de la pa
   assert.match(out, /<a href="#a">Alpha<\/a>/);
   assert.ok(!out.includes("Sans ancre"));
 });
+
+/* ───── Couloir ───── */
+
+import { couloirDuPreset, reglagesCouloir } from "./model.ts";
+import { lireReglages } from "../presse/couloir.ts";
+import { lireCatalogue } from "../../tools/valider/catalogue.ts";
+import { validerHtml } from "../../tools/valider/valider.ts";
+import { fileURLToPath } from "node:url";
+
+/** Les attributs data-couloir-* d'un HTML, en dataset (comme le module les lira). */
+const datasetCouloir = (html: string) => {
+  const ul = parse(html).querySelector("[data-couloir]")!;
+  const ds: Record<string, string> = {};
+  for (const [k, v] of Object.entries(ul.attributes)) if (k.startsWith("data-couloir")) ds[k.replace(/^data-/, "").replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())] = v;
+  return ds;
+};
+
+test("couloir : les réglages de l'inspecteur deviennent des attributs que le module relit à l'identique", () => {
+  const { site, doc } = fresh();
+  const b = makeBlock("couloir", { profondeur: 3.2, angle: -12, horizon: 38, cote: "gauche", hauteur: 0.9, ecart: 14, vitesse: 2.5, aberration: 1.4, flou: 0.2, pilotage: "auto molette", mur: "trois", ouvre: false });
+  doc.blocks.push(b);
+  const html = renderBlock(b, site, doc);
+  assert.match(html, /<ul class="ps-couloir-mur" data-couloir data-couloir-presets="micro"/);
+  const r = lireReglages(datasetCouloir(html));
+  assert.deepEqual({ ...r, pilotage: r.pilotage.join(" ") }, { ...reglagesCouloir(b.props), pilotage: "auto molette" });
+  assert.equal(r.profondeur, 3.2);
+  assert.equal(r.cote, "gauche");
+  assert.equal(r.mur, "trois");
+  assert.equal(r.ouvre, "non");
+  assert.equal((html.match(/<li><img /g) ?? []).length, b.items!.length);
+  assert.match(html, /<img src="\.\/plates\/pont\.jpg" width="1728" height="1150" alt="[^"]+"/);
+  assert.match(html, /aria-label="Le couloir : flèches pour avancer"/);
+});
+
+test("couloir : seules les valeurs qui s'écartent du préréglage sont écrites ; changer de préréglage reprend ses valeurs", () => {
+  const { site, doc } = fresh();
+  const b = makeBlock("couloir");
+  doc.blocks.push(b);
+  const html = renderBlock(b, site, doc);
+  const attrs = Object.keys(datasetCouloir(html)).sort();
+  // Par défaut : le préréglage, la visionneuse et le fond de la page, rien d'autre.
+  assert.deepEqual(attrs, ["couloir", "couloirFond", "couloirOuvre", "couloirPresets"]);
+  b.props.preset = "tunnel";
+  BLOCKS.couloir!.adjust!(b, "preset");
+  assert.deepEqual({ ...b.props, ...couloirDuPreset("tunnel") }, b.props);
+  assert.equal(b.props.mur, "deux");
+  const r = lireReglages(datasetCouloir(renderBlock(b, site, doc)));
+  assert.equal(r.preset, "tunnel");
+  assert.equal(r.mur, "deux");
+  assert.equal(r.vitesse, lireReglages({ couloirPresets: "tunnel" }).vitesse);
+});
+
+test("couloir : valeurs hors bornes ou abîmées (JSON fait à la main) ramenées dans le domaine du module", () => {
+  const r = reglagesCouloir({ preset: "inconnu", profondeur: 99, angle: "abc", pilotage: "pointeur nimporte", mur: "quatre" });
+  assert.equal(r.preset, "micro");
+  assert.equal(r.profondeur, 8);
+  assert.equal(r.angle, lireReglages({ couloirPresets: "micro" }).angle);
+  assert.deepEqual(r.pilotage, ["pointeur"]);
+  assert.equal(r.mur, "un");
+});
+
+test("projet JSON ancien (sans couloir, une seule liste de blocs) : importé tel quel ; couloir partiel : complété", () => {
+  const ancien = normalize({ name: "Ancien", page: { title: "Ancien" }, blocks: [{ type: "hero", id: "h", props: { title: "Bonjour" } }, { type: "galerie", id: "g" }] });
+  assert.deepEqual(ancien.pages[0]!.blocks.map((b) => b.type), ["hero", "galerie"]);
+  assert.equal(ancien.pages[0]!.blocks[0]!.props.title, "Bonjour");
+  const partiel = normalize({ v: 2, name: "P", page: {}, pages: [{ slug: "index", title: "P", blocks: [{ type: "couloir", id: "c", props: { preset: "rapide", vitesse: 3 }, items: [{ src: "./plates/fig.jpg", alt: "Une figue" }, { src: "./plates/lac.jpg", alt: "Un lac" }] }] }] });
+  const c = partiel.pages[0]!.blocks[0]!;
+  assert.equal(c.props.vitesse, 3);
+  assert.equal(c.props.cadre, "moyen");
+  assert.equal(c.items!.length, 2);
+  const html = compileSite(partiel);
+  assert.match(html, /data-couloir-presets="rapide"/);
+  assert.match(html, /data-couloir-vitesse="3"/);
+  // Aller-retour JSON : rien ne se perd.
+  assert.deepEqual(normalize(JSON.parse(JSON.stringify(partiel))), partiel);
+});
+
+test("modèle Exposition : deux couloirs, et la page compilée passe le validateur Presse sans erreur", () => {
+  const site = TEMPLATES.find((t) => t.id === "exposition")!.make();
+  const html = compileSite(site);
+  assert.equal((html.match(/data-couloir /g) ?? []).length, 2);
+  assert.match(html, /data-couloir-presets="tunnel"/);
+  const racine = fileURLToPath(new URL("../..", import.meta.url));
+  // Les constats du couloir (le reste du kit a les siens, hors de ce bloc : data-size="grand" du bloc Texte).
+  const constats = validerHtml(html, lireCatalogue(racine)).filter((c) => c.gravite === "erreur" && /couloir/.test(c.element + c.message));
+  assert.deepEqual(constats, []);
+});

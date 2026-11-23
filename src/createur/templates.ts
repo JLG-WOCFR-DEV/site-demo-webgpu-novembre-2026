@@ -2,7 +2,7 @@
  * Créateur — modèles de départ. Chacun montre une façon d'employer le kit : un portfolio photo, un studio, un
  * lancement. Construits avec makeBlock : de nouveaux identifiants à chaque fois.
  */
-import { DEFAULT_PAGE, PHOTOS, makeBlock, makePage, photo, type Block, type Site } from "./model.ts";
+import { DEFAULT_PAGE, PHOTOS, couloirDuPreset, makeBlock, makePage, photo, type Block, type Site } from "./model.ts";
 
 const p = (src: string) => ({ src, alt: photo(src)!.alt, title: photo(src)!.title, cat: photo(src)!.cat, body: "" });
 
@@ -101,6 +101,28 @@ export const TEMPLATES: Template[] = [
         makeBlock("appel", { kicker: "Accès anticipé", title: "Essayez-le sur votre site.", cta: "Demander l'accès", stage: "flammes", fire: false, anchor: "acces" }),
         makeBlock("pied", { brand: "VOLT", legal: "© 2026 Volt · Sans WebGPU, la page reste son HTML." }),
       ]),
+  },
+  {
+    id: "exposition",
+    label: "Exposition",
+    desc: "Une galerie en couloirs : un mur clair qui défile au pointeur, un tunnel de nuit, des textes entre les deux",
+    make: () => {
+      const brand = "Galerie Couloir";
+      const page = { ...DEFAULT_PAGE, title: brand, description: "Une exposition de photographies, accrochée en perspective.", palette: "craie", type: "didone", look: "papier", transition: "fondu", effects: ["loupe", "grain"], radius: 2 };
+      return one(brand, page, [
+        makeBlock("nav", { brand, cta: "Visiter", ctaHref: "#salle-1", sticky: true }, [
+          { label: "Salle 1", href: "#salle-1" },
+          { label: "Salle 2", href: "#salle-2" },
+          { label: "Infos", href: "#infos" },
+        ]),
+        makeBlock("hero", { kicker: "Exposition · hiver 2026", title: "Un pas de plus\nvers le fond", lede: "Treize photographies accrochées le long d'un mur sans fin. Déplacez le pointeur : plus il va loin, plus le mur file.", cta: "Entrer", ctaHref: "#salle-1", cta2: "", size: "xl", height: "auto", kinetic: "", stage: "" }),
+        makeBlock("couloir", { kicker: "Salle 1", title: "Paysages", anchor: "salle-1", preset: "micro", cadre: "moyen" }, PHOTOS.slice(0, 7).map((x) => p(x.src))),
+        makeBlock("texte", { kicker: "Accrochage", title: "Le mur comme une phrase", body: "Chaque panneau est un trapèze calculé : immense et coupé au premier plan, une fine lamelle au coude, puis une bande qui file jusqu'au bord.\n\nAu clavier, les flèches avancent d'une image ; Entrée l'ouvre en grand.", layout: "cote", rule: true, anchor: "" }),
+        makeBlock("couloir", { ...couloirDuPreset("tunnel"), kicker: "Salle 2", title: "Objets, de nuit", anchor: "salle-2", preset: "tunnel", cadre: "ecran", fondPage: false }, PHOTOS.slice(7).map((x) => p(x.src))),
+        makeBlock("citation", { quote: "« Un couloir, c'est une image qui n'en finit pas d'arriver. »", by: "Carnet d'accrochage", align: "centre", anchor: "infos" }),
+        makeBlock("pied", { brand, legal: "© 2026 Galerie Couloir · Entrée libre." }),
+      ]);
+    },
   },
   {
     id: "vide",

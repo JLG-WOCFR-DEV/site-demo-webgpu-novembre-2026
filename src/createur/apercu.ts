@@ -17,6 +17,7 @@ import "../components/liquide/liquide.css";
 import "../components/matiere/matiere.css";
 import "../components/objet/objet.css";
 import { mountComponents, unmountComponents } from "../presse/components.ts";
+import { controleCouloir, initCouloir } from "../presse/couloir.ts";
 import { COMPONENTS } from "../presse/render.ts";
 import { applyLook } from "../presse/look.ts";
 import { startSite } from "../presse/site.ts";
@@ -96,9 +97,43 @@ const isComp = (n: Node): n is HTMLElement => n instanceof HTMLElement && n.hasA
 let editing: HTMLElement | null = null;
 /** Le HTML source de chaque composant posé (le composant modifie ensuite le sien : canvas, classes, état). */
 const compSrc = new WeakMap<Element, string>();
+/**
+ * Un couloir (src/presse/couloir.ts) refait ses enfants (panneaux, copies, vides) et pose ses commandes à côté : on garde
+ * le HTML source de ses images ; s'il n'a pas changé, seuls ses attributs sont repris et le module les relit (`regler`).
+ */
+const couloirSrc = new WeakMap<Element, string>();
+const isCouloir = (n: Node): n is HTMLElement => n instanceof HTMLElement && n.hasAttribute("data-couloir");
+/** Ce que le couloir pose à côté de lui (ses commandes) : pas dans la source, on le laisse. */
+const isLive = (n: Node) => n instanceof HTMLElement && n.classList.contains("couloir-commandes");
 function remember<T extends Node>(n: T): T {
-  if (n instanceof Element) for (const c of [n, ...n.querySelectorAll("[data-presse-component]")]) if (isComp(c)) compSrc.set(c, c.outerHTML);
+  if (n instanceof Element) {
+    for (const c of [n, ...n.querySelectorAll("[data-presse-component]")]) if (isComp(c)) compSrc.set(c, c.outerHTML);
+    for (const c of [n, ...n.querySelectorAll("[data-couloir]")]) if (isCouloir(c)) couloirSrc.set(c, c.innerHTML);
+  }
   return n;
+}
+/** Démonter un sous-arbre : composants et couloirs. */
+function demonter(el: Element) {
+  unmountComponents(el);
+  for (const c of [el, ...el.querySelectorAll("[data-couloir]")]) if (isCouloir(c)) controleCouloir(c)?.detruire();
+}
+/** Un couloir dont les images sont les mêmes : ses attributs, puis le module les relit. */
+function morphCouloir(a: HTMLElement, b: Element) {
+  if (couloirSrc.get(a) !== b.innerHTML) return false;
+  let change = false;
+  for (const at of [...a.attributes]) if (at.name.startsWith("data-couloir") && !b.hasAttribute(at.name)) (a.removeAttribute(at.name), (change = true));
+  for (const at of [...b.attributes]) {
+    if (at.name === "class") {
+      for (const c of b.classList) a.classList.add(c);
+      continue;
+    }
+    if (a.getAttribute(at.name) !== at.value) {
+      a.setAttribute(at.name, at.value);
+      if (at.name.startsWith("data-couloir")) change = true;
+    }
+  }
+  if (change) controleCouloir(a)?.regler();
+  return true;
 }
 
 /** Rend `a` semblable à `b` en gardant les nœuds ; renvoie false si la structure diffère (on remplacera). */
@@ -112,6 +147,7 @@ function morph(a: Node, b: Node): boolean {
   if (a === editing) return true;
   // Un composant a son propre état (GPU, glisser) : différent, il est remplacé entier et remonté.
   if (isComp(a)) return compSrc.get(a) === b.outerHTML;
+  if (isCouloir(a)) return morphCouloir(a, b);
   // Ce que le moteur et le défilement posent eux-mêmes (style --p / --in, classes d'état) n'est pas dans la source : on le garde.
   const live = (name: string) => name === "contenteditable" || (name === "style" && /--(p|in):/.test(a.getAttribute("style") ?? ""));
   for (const at of [...a.attributes]) if (!b.hasAttribute(at.name) && !live(at.name) && at.name !== "class") a.removeAttribute(at.name);
@@ -130,7 +166,7 @@ function morph(a: Node, b: Node): boolean {
     if (cls) a.setAttribute("class", cls);
     else a.removeAttribute("class");
   }
-  const ak = [...a.childNodes];
+  const ak = [...a.childNodes].filter((n) => !isLive(n));
   const bk = [...b.childNodes];
   let i = 0;
   for (; i < bk.length; i++) {
@@ -141,13 +177,13 @@ function morph(a: Node, b: Node): boolean {
       continue;
     }
     if (!morph(x, y)) {
-      if (x instanceof Element) unmountComponents(x);
+      if (x instanceof Element) demonter(x);
       a.replaceChild(remember(y.cloneNode(true)), x);
     }
   }
   for (; i < ak.length; i++) {
     const x = ak[i]!;
-    if (x instanceof Element) unmountComponents(x);
+    if (x instanceof Element) demonter(x);
     x.remove();
   }
   return true;
@@ -181,7 +217,7 @@ function applyPage(s: Site, first: boolean) {
   st.textContent = rootCss(s.page);
   document.title = docTitle(s, docOf(s));
   if (first) return;
-  // À chaud : direction artistique, transition, passes, mouvement, effet de page.
+  // À chaud : direction artistique, transition, effets, mouvement, effet de page.
   if (root.dataset.crLook !== s.page.look) applyLook(s.page.look);
   root.dataset.crLook = s.page.look;
   const ti = TRANSITIONS.indexOf(s.page.transition as (typeof TRANSITIONS)[number]);
@@ -210,7 +246,7 @@ function reconcile(s: Site, page = slug) {
     // Autre page : on repart d'une page vide (le moteur relit le DOM ; l'impression se rejoue).
     slug = page;
     for (const v of shown.values()) {
-      unmountComponents(v.el);
+      demonter(v.el);
       v.el.remove();
     }
     shown.clear();
@@ -231,7 +267,7 @@ function reconcile(s: Site, page = slug) {
       const next = nodeOf(html);
       if (morph(cur.el, next)) el = cur.el;
       else {
-        unmountComponents(cur.el);
+        demonter(cur.el);
         cur.el.replaceWith(next);
         el = next;
       }
@@ -244,12 +280,14 @@ function reconcile(s: Site, page = slug) {
   }
   for (const [id, v] of shown) {
     if (keep.has(id)) continue;
-    unmountComponents(v.el);
+    demonter(v.el);
     v.el.remove();
     shown.delete(id);
   }
   dispatchEvent(new Event("pli:relayout"));
   void mountComponents(main);
+  // Les couloirs nouveaux (ou remplacés) : armés ici, le module garde ceux qui le sont déjà.
+  if (main.querySelector("[data-couloir]")) initCouloir(main);
   if (first && !started) {
     started = true;
     void startSite();

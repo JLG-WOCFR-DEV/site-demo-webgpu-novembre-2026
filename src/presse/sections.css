@@ -500,6 +500,48 @@ html[data-ps-type="technique"] body.ps {
 .ps-comp-head {
   margin-bottom: 32px;
 }
+
+/* ───── Couloir (src/presse/couloir.ts) : le mur occupe toute la largeur, sa hauteur suit data-cadre ───── */
+.ps-couloir {
+  padding-inline: 0;
+}
+.ps-couloir > .ps-in {
+  padding: clamp(40px, 5vw, 72px) var(--ps-gutter) 0;
+}
+.ps-couloir-mur {
+  height: 75vh;
+  height: 75svh;
+  min-height: 320px;
+  margin: 0;
+  --couloir-focus: var(--spot);
+}
+.ps-couloir[data-cadre="bandeau"] .ps-couloir-mur {
+  height: 50vh;
+  height: 50svh;
+}
+.ps-couloir[data-cadre="ecran"] .ps-couloir-mur {
+  height: 100vh;
+  height: 100svh;
+}
+/* Sans le module (sans JavaScript, avant l'armement) : une bande d'images qui défile. */
+.ps-couloir-mur:not(.couloir) {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  align-items: center;
+  padding: 0 var(--ps-gutter);
+  list-style: none;
+}
+.ps-couloir-mur:not(.couloir) > li {
+  flex: 0 0 auto;
+  height: 80%;
+}
+.ps-couloir-mur:not(.couloir) img {
+  display: block;
+  width: auto;
+  height: 100%;
+  border-radius: var(--ps-radius);
+}
 .ps-split .x-matiere,
 .ps-split .x-objet {
   border-radius: var(--ps-radius);

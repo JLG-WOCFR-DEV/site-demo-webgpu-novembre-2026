@@ -11,6 +11,7 @@
  */
 import { CUI_EFFECTS } from "../gpu/cui.ts";
 import { TRANSITIONS } from "../state.ts";
+import { attributsDe, BORNES, lirePilotage, lireReglages, PRESETS_NOMS, type Preset, type Reglages } from "../presse/couloir.ts";
 
 export type Value = string | number | boolean;
 export type Props = Record<string, Value>;
@@ -41,7 +42,7 @@ export type SitePage = { id: string; slug: string; title: string; blocks: Block[
 /** Un site : une direction (réglages communes à toutes les pages) et des pages. */
 export type Site = { v: 2; name: string; page: Page; pages: SitePage[] };
 
-export type FieldType = "text" | "area" | "select" | "range" | "toggle" | "image" | "color" | "link";
+export type FieldType = "text" | "area" | "select" | "range" | "toggle" | "image" | "color" | "link" | "segment";
 export type Field = {
   key: string;
   label: string;
@@ -56,6 +57,12 @@ export type Field = {
   when?: (p: Props) => boolean;
   /** Groupe de l'inspecteur. */
   group?: string;
+  /** Icône du champ (contenu d'un SVG 24 × 24 à traits) : l'inspecteur la montre à la place du libellé, qui reste dit. */
+  icon?: string;
+  /** Segments : une icône par choix (le libellé du choix devient l'infobulle et le nom accessible). */
+  icons?: Readonly<Record<string, string>>;
+  /** Segments : plusieurs choix à la fois (valeur : les choix cochés, séparés par des espaces). */
+  multiple?: boolean;
 };
 export type ItemSpec = { label: string; noun: string; fields: Field[]; min: number; max: number; make: (i: number) => Item };
 export type RenderCtx = {
@@ -77,6 +84,8 @@ export type BlockDef = {
   defaults: Props;
   defaultItems?: () => Item[];
   render: (b: Block, ctx: RenderCtx) => string;
+  /** Après le changement d'un champ dans l'inspecteur : accorder les autres (un préréglage réécrit ses valeurs). */
+  adjust?: (b: Block, key: string) => void;
 };
 
 /* ───────────────────────── Bibliothèque ───────────────────────── */
@@ -124,7 +133,7 @@ export const PALETTES: Record<string, { label: string; paper: string; ink: strin
   encre: { label: "Encre", paper: "#101522", ink: "#e9edf5", spot: "#7aa2ff", dark: true },
   libre: { label: "Libre", paper: "", ink: "", spot: "" },
 };
-/** Directions complètes : palette, typographie, étalonnage, impression, passes — un clic. */
+/** Directions complètes : palette, typographie, étalonnage, impression, effets — un clic. */
 export const STYLE_PRESETS: { id: string; label: string; page: Partial<Page> }[] = [
   { id: "editorial", label: "Éditorial", page: { palette: "papier", type: "grotesque", look: "papier", transition: "buvard", effects: ["loupe", "bloom", "grain"], radius: 10 } },
   { id: "nuit", label: "Galerie de nuit", page: { palette: "nuit", type: "didone", look: "argentique", transition: "revelateur", effects: ["loupe", "bloom", "grain"], radius: 4 } },
@@ -792,6 +801,113 @@ def({
       ${(b.items ?? []).map((it) => imgTag(it, `${attr("data-cat", it.cat)}${attr("data-caption", it.title)}`)).join("\n      ")}
     </x-liquide>
   </div>
+</section>`;
+  },
+});
+
+/* ───── Couloir : src/presse/couloir.ts (DOM, matrix3d), réglé par ses attributs data-couloir-… ───── */
+
+/** Icônes de l'inspecteur du couloir (traits, 24 × 24), celles du panneau de couloir.html quand il y en a une. */
+const IC = {
+  micro: '<rect x="2.5" y="5" width="6" height="14" /><rect x="10.5" y="7.5" width="4.5" height="9" /><rect x="17" y="9.5" width="3" height="5" />',
+  tunnel: '<path d="M3 2l18 9H3zM3 22l18-9H3z" />',
+  lookbook: '<path d="M10 6.5a2 2 0 1 1 3 1.7c-.6.4-1 .9-1 1.6v.7l9 6.5H3l9-6.5" />',
+  doux: '<path d="M2 14c3.3-4.5 6.7-4.5 10 0s6.7 4.5 10 0" />',
+  rapide: '<path d="M4 6l6 6-6 6M12 6l6 6-6 6" />',
+  droite: '<path d="M3 3l18 8v2L3 21z" />',
+  gauche: '<path d="M21 3L3 11v2l18 8z" />',
+  un: '<path d="M3 4l18 7v2L3 20z" />',
+  deux: '<path d="M3 2l18 9H3zM3 22l18-9H3z" />',
+  trois: '<path d="M3 1l18 9.5H3zM3 9.5h18v5H3zM3 23l18-9.5H3z" />',
+  pointeur: '<path d="M5 3l13 8-6 1.5L9 19z" />',
+  glisser: '<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4" />',
+  auto: '<path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v4h-4" />',
+  molette: '<rect x="7" y="3" width="10" height="18" rx="5" /><path d="M12 7v4" />',
+  defilement: '<path d="M12 3v18M8 17l4 4 4-4M8 7l4-4 4 4" />',
+  bandeau: '<rect x="3" y="8.5" width="18" height="7" rx="1" />',
+  moyen: '<rect x="3" y="5.5" width="18" height="13" rx="1" />',
+  ecran: '<rect x="3" y="3" width="18" height="18" rx="1" /><path d="M7 3v3M17 3v3M7 21v-3M17 21v-3" />',
+  profondeur: '<path d="M2 4l20 7v2L2 20z" />',
+  angle: '<path d="M3 20h18M3 20L17 6" /><path d="M10 20a7 7 0 0 0-2-5" />',
+  horizon: '<path d="M2 12h20" /><circle cx="12" cy="12" r="3" />',
+  hauteur: '<path d="M12 2v20M8 6l4-4 4 4M8 18l4 4 4-4" />',
+  ecart: '<rect x="3" y="5" width="7" height="14" /><rect x="14" y="5" width="7" height="14" />',
+  vitesse: '<path d="M4 18a9 9 0 1 1 16 0" /><path d="M12 14l5-5" />',
+  aberration: '<circle cx="9" cy="12" r="6" /><circle cx="15" cy="12" r="6" />',
+  flou: '<path d="M2 8h8M4 12h10M2 16h8" /><circle cx="17" cy="12" r="4" />',
+} as const;
+const PRESET_CHOIX = c(["micro", "Micro : un mur clair, quelques vides"], ["tunnel", "Tunnel : deux murs, fond nuit"], ["lookbook", "Lookbook : une vitrine, perspective douce"], ["doux", "Doux : lent, presque de face"], ["rapide", "Rapide : fuite brutale, franges"]);
+/** Les réglages numériques repris d'un préréglage (et leur pas d'arrondi). */
+const COULOIR_NOMBRES = ["profondeur", "angle", "horizon", "hauteur", "ecart", "vitesse", "aberration", "flou"] as const;
+const presetDe = (v: Value | undefined): Preset => ((PRESETS_NOMS as readonly string[]).includes(str(v)) ? (str(v) as Preset) : "micro");
+const arrondi = (n: number) => Math.round(n * 1000) / 1000;
+/** Les valeurs de l'inspecteur que donne un préréglage. */
+export function couloirDuPreset(preset: Preset): Props {
+  const r = lireReglages({ couloirPresets: preset });
+  const out: Props = { cote: r.cote, mur: r.mur, pilotage: r.pilotage.join(" ") };
+  for (const k of COULOIR_NOMBRES) out[k] = arrondi(r[k]);
+  return out;
+}
+/** Les réglages du module, tirés des propriétés du bloc (bornés comme le module les borne). */
+export function reglagesCouloir(p: Props): Reglages {
+  const preset = presetDe(p.preset);
+  const r = lireReglages({ couloirPresets: preset });
+  for (const k of COULOIR_NOMBRES) {
+    const n = Number(p[k]);
+    if (str(p[k]) !== "" && Number.isFinite(n)) r[k] = Math.max(BORNES[k][0], Math.min(BORNES[k][1], n));
+  }
+  if (p.cote === "droite" || p.cote === "gauche") r.cote = p.cote;
+  if (p.mur === "un" || p.mur === "deux" || p.mur === "trois") r.mur = p.mur;
+  if (typeof p.pilotage === "string") r.pilotage = lirePilotage(p.pilotage);
+  r.ouvre = on(p.ouvre) ? "visionneuse" : "non";
+  // Sur le papier de la page : le fond du préréglage s'efface (le filet reste le sien).
+  if (on(p.fondPage) && r.fond) r.fond = "transparent";
+  return r;
+}
+const imgCouloir = (it: Item) => {
+  const ph = photo(str(it.src));
+  return `<li><img src="${esc(it.src)}"${ph ? ` width="${ph.w}" height="${ph.h}"` : ""} alt="${esc(it.alt)}" /></li>`;
+};
+
+def({
+  type: "couloir",
+  label: "Couloir",
+  group: "Image",
+  glyph: "◺",
+  desc: "Un mur d'images vu en fuite : il défile au pointeur, frange de couleur à la vitesse",
+  fields: [
+    { key: "kicker", label: "Surtitre", type: "text", group: "Contenu" },
+    { key: "title", label: "Titre", type: "text", hint: "Aussi le nom du couloir pour les lecteurs d'écran", group: "Contenu" },
+    { key: "preset", label: "Préréglage", type: "segment", choices: PRESET_CHOIX, icons: IC, hint: "Repart des valeurs du préréglage", group: "Couloir" },
+    { key: "cadre", label: "Hauteur du bloc", type: "segment", choices: c(["bandeau", "Bandeau, un demi-écran"], ["moyen", "Trois quarts d'écran"], ["ecran", "Plein écran"]), icons: IC, group: "Couloir" },
+    { key: "cote", label: "Côté de fuite", type: "segment", choices: c(["droite", "Fuite à droite"], ["gauche", "Fuite à gauche"]), icons: IC, group: "Couloir" },
+    { key: "mur", label: "Murs", type: "segment", choices: c(["un", "Un mur"], ["deux", "Deux murs : tunnel"], ["trois", "Trois murs"]), icons: IC, group: "Couloir" },
+    { key: "fondPage", label: "Sur le papier de la page", type: "toggle", hint: "Sinon, le fond du préréglage", group: "Couloir" },
+    { key: "ouvre", label: "Visionneuse au clic", type: "toggle", hint: "Clic ou Entrée : la photo en grand", group: "Couloir" },
+    { key: "profondeur", label: "Profondeur", type: "range", min: BORNES.profondeur[0], max: BORNES.profondeur[1], step: 0.05, icon: IC.profondeur, group: "Perspective" },
+    { key: "angle", label: "Angle du mur", type: "range", min: BORNES.angle[0], max: BORNES.angle[1], step: 0.5, unit: "°", icon: IC.angle, group: "Perspective" },
+    { key: "horizon", label: "Horizon", type: "range", min: BORNES.horizon[0], max: BORNES.horizon[1], step: 1, unit: "%", icon: IC.horizon, group: "Perspective" },
+    { key: "hauteur", label: "Hauteur des panneaux", type: "range", min: BORNES.hauteur[0], max: BORNES.hauteur[1], step: 0.01, icon: IC.hauteur, group: "Perspective" },
+    { key: "ecart", label: "Écart entre panneaux", type: "range", min: BORNES.ecart[0], max: BORNES.ecart[1], step: 1, unit: "px", icon: IC.ecart, group: "Perspective" },
+    { key: "vitesse", label: "Vitesse", type: "range", min: BORNES.vitesse[0], max: BORNES.vitesse[1], step: 0.05, icon: IC.vitesse, group: "Mouvement" },
+    { key: "pilotage", label: "Pilotage", type: "segment", multiple: true, choices: c(["pointeur", "Au pointeur"], ["glisser", "Au glisser"], ["auto", "Défilement automatique"], ["molette", "À la molette"], ["defilement", "Au défilement de la page"]), icons: IC, group: "Mouvement" },
+    { key: "aberration", label: "Aberration chromatique", type: "range", min: BORNES.aberration[0], max: BORNES.aberration[1], step: 0.05, icon: IC.aberration, group: "Mouvement" },
+    { key: "flou", label: "Flou de mouvement", type: "range", min: BORNES.flou[0], max: BORNES.flou[1], step: 0.05, icon: IC.flou, group: "Mouvement" },
+  ],
+  defaults: { kicker: "", title: "Le couloir", preset: "micro", cadre: "moyen", fondPage: true, ouvre: true, ...couloirDuPreset("micro"), print: false, space: "aucun" },
+  items: { ...photoItem(), min: 2, max: 24 },
+  defaultItems: photos(10),
+  adjust: (b, key) => {
+    if (key === "preset") Object.assign(b.props, couloirDuPreset(presetDe(b.props.preset)));
+  },
+  render: (b, ctx) => {
+    const p = b.props;
+    const nom = `${str(p.title) || "Couloir d'images"} : flèches pour avancer${on(p.ouvre) ? ", Entrée pour agrandir" : ""}`;
+    return `${open(b, ctx, "ps-couloir", attr("data-cadre", p.cadre))}
+  ${compHead(b, ctx) ? `<div class="ps-in">${compHead(b, ctx)}</div>` : ""}
+  <ul class="ps-couloir-mur" ${attributsDe(reglagesCouloir(p))} aria-label="${esc(nom)}">
+    ${(b.items ?? []).map(imgCouloir).join("\n    ")}
+  </ul>
 </section>`;
   },
 });

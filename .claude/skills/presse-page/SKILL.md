@@ -128,9 +128,10 @@ Le moteur GPU des `data-gl-*` se charge par `src/presse/auto.ts` (ou `src/presse
   - `data-transition` : sur un lien, seulement `none` ; sur une diapo, les transitions de page et de diapo.
   - `data-gl-reveal` : `rideau`… avec `data-gl-img`, `lignes` / `erosion` avec `data-gl-text`.
   - Deux modules sur le même texte (`data-cinetique` + `data-typo`, ou + `data-gl-text`) : erreur.
-  - `data-presse-manuel` (lu par `pages-nav.ts`) et `data-presse-manual` (lu par `site.ts`) sont deux attributs.
-- **PRESSE.md en retard sur le code** : des options réelles n'y sont pas (`data-roule-tempo`, `data-defile-vitesse`,
-  `data-typo-ligne`, `data-forme-scene`, `data-forme-media`, `data-rail-aimant`, `data-presse-manuel`…). Le validateur les signale en
+  - `data-presse-manuel` est lu par `pages-nav.ts` (il n'arme plus cinétique, déchirure…) **et** par `site.ts` (il ne
+    démarre pas seul : le Créateur l'appelle). Un seul nom, pas de variante anglaise.
+- **PRESSE.md en retard sur le code** : des options réelles n'y sont pas encore (`data-rail-aimant`, `data-voix-braise`,
+  `data-gl-fx`, `data-gl-quad`, `data-gl-fluid`, `data-gl-flat`…). Le validateur les signale en
   avertissement « lu par le code mais absent de PRESSE.md » : les employer est permis, **les documenter** est mieux.
 - **Nommage WGSL** : identifiants ASCII sans accents (`epaisseur`, pas `épaisseur`) ; éviter les mots réservés de WGSL
   qui ressemblent à des noms ordinaires (`filter`, `module`, `type`, `match`, `target`, `smooth`, `self`, `meta`).
@@ -179,6 +180,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | **Ruban** — une bande d'images dessinée en WebGPU, qu'on fait défiler au glisser, à la molette ou aux flèches, avec inertie, en… | `data-ruban` | torsade, accordeon, barillet, lentille, roue | WebGPU | pages-nav | ruban.html |
 | **Typographie cinétique** — etire, sphere, encre, trace, eclats, fragments | `data-typo` | etire, sphere, encre, trace, eclats, fragments | DOM + WebGPU | pages-nav | typo.html |
 | **Typographie cinétique en DOM** — 18 préréglages par data-cinetique-par ligne, mot ou lettre | `data-cinetique` | monte, doux, net, approche, graisse, balai, volet, porte… | DOM | pages-nav, sauf `data-presse-manuel` | cinetique.html |
+| **Composants de la typographie cinétique** — mêmes déclencheurs — data-cinetique-quand, data-cinetique-delai, data-cinetique-duree, data-cinetique-rejoue,… | `data-roule`, `data-marque`, `data-defile`, `data-reflet`, `data-cercle`, `data-coupe`, `data-brouille`, `data-frappe` | — | DOM | pages-nav, sauf `data-presse-manuel` | cinetique.html |
 | Mot peint à la bombe dans un canvas 2D : bord flou, brume, grain, éclaboussures à graine fixe, coulures | `data-graffiti` | — | canvas 2D | à importer : `src/presse/graffiti.ts` | boutique.html |
 | Empile [data-derriere-fond], [data-derriere-sujet] et [data-derriere-devant] : le mot passe derrière la silhouette | `data-derriere` | — | DOM | à importer : `src/presse/derriere.ts` | boutique.html |
 | Dessin technique qui se trace, une étape à la fois : data-trace-role construction → formes → cote → hachure | `data-trace` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
@@ -190,6 +192,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | Un autocollant suit le pointeur sur les cibles, avec retard, bascule selon la vitesse et apparition en ressort | `data-autocollant` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | Glisser souris ou doigt avec inertie et aimantation, molette horizontale, flèches, focus amené à l'écran, barre de… | `data-rail` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | Magasin panier et favoris : localStorage, synchro entre onglets, événement panier:change | `data-panier-nombre`, `data-favoris-nombre`, `data-favori` | — | DOM | à importer : `src/presse/panier.ts` | boutique.html |
+| Le bouton qui ouvre le menu Pages | `data-pages-trigger` | — | DOM | — | boutique.html |
 
 ### Moteur, page, mouvement
 
@@ -214,6 +217,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | Entre après le rideau, dans l'ordre du document | `data-intro` | — | DOM | pages-nav (toujours) | defilement.html |
 | Le titre passe avec sa photo : posé avant le premier dessin, il vole vers le titre de même valeur de la page… | `data-flight-title` | — | DOM | pages-nav (toujours) | — |
 | Direction artistique de toute la page : neutre, papier, argentique, nuit, presse | `data-presse-look` | neutre, papier, argentique, nuit, presse | DOM | pages-nav (toujours) | presse.html |
+| La page arme elle-même ses modules : src/pages-nav.ts n'arme plus la typographie cinétique en DOM et ses composants,… | `data-presse-manuel` | — | WebGPU (moteur) | moteur (`src/presse/auto.ts` ou `site.ts`) | boutique.html |
 | Cadran d'angle façon Photoshop / InDesign / Illustrator : une aiguille dans un cercle, on la tourne au pointeur,… | `data-angle` | — | DOM | à importer : `src/presse/angle.ts` | fluide.html |
 | Panneau de débogage : fil de fer, grille, capture vidéo, image PNG | `data-presse-debug` | — | WebGPU (moteur) | moteur (`src/presse/auto.ts` ou `site.ts`) | presse.html |
 | Moteur de temps, sans script : un motif ou des pistes « propriété de vers » séparées par;, ex | `data-anim` | monte, fondu, glisse, zoom, masque, rideau, flou, bascule… | DOM | pages-nav (toujours) | presse.html |
