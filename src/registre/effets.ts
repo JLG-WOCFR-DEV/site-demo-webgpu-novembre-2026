@@ -1,0 +1,348 @@
+/**
+ * Registre des effets — un manifeste par module que `mountPagesNav()` (src/pages-nav.ts) arme de lui-même : chargé
+ * paresseusement (son morceau n'est demandé que si la page porte un de ses attributs), puis initialisé.
+ *
+ * Données écrites à la main, pas générées. Lues par :
+ *   - src/pages-nav.ts (`armerEffets`) : le sélecteur, `manuel`, `parametre`, `tot`, `charger`, `armer` ;
+ *   - tools/valider/catalogue.ts (`lireArmement`) et tools/gen-skill-tableau.mjs : quels modules pages-nav arme, et
+ *     lesquels seulement sans `data-presse-manuel` ;
+ *   - src/registre/registre.test.ts : accord avec PRESSE.md (catalogue dérivé) et avec le code.
+ *
+ * Contraintes : importable par Node (`node --experimental-strip-types`, sans alias tsconfig) — aucun import de CSS, de
+ * DOM ni d'alias ici ; `charger` garde des chemins LITTÉRAUX (Vite en tire un morceau par module) et n'est appelée
+ * qu'en page. Pour ajouter un effet : un manifeste ci-dessous, rien d'autre dans pages-nav.ts.
+ */
+
+export type Categorie = "texte" | "image" | "matiere" | "interface" | "transition" | "forme" | "dessin" | "page";
+export type Rendu = "DOM" | "canvas 2D" | "WebGL2" | "WebGPU" | "DOM + WebGPU";
+export type Statut = "stable" | "essai";
+
+export type Manifeste<M = unknown> = {
+  /** Identifiant : le nom du fichier du module (src/presse/<id>.ts). */
+  id: string;
+  /** Nom affiché (français). */
+  nom: string;
+  categorie: Categorie;
+  /** Sélecteur CSS qui déclenche l'armement : un élément de la page qui y répond, et le module est chargé. */
+  selecteur: string;
+  /** Les attributs du module, documentés dans PRESSE.md : ceux du sélecteur d'abord, puis leurs options. */
+  attributs: readonly string[];
+  /** Le chargeur paresseux. Chemin littéral : Vite en fait un morceau à part. */
+  charger: () => Promise<M>;
+  /** Initialise le module chargé sur `racine` (le document). */
+  armer: (module: M, racine: ParentNode) => unknown;
+  /** Vrai : pas armé si <html> porte data-presse-manuel (la page appelle elle-même `initX()`). */
+  manuel?: boolean;
+  /** Paramètre d'adresse qui arme aussi le module, sans attribut dans la page (`?systeme=…`). */
+  parametre?: string;
+  /** Vrai : armé tôt, avant le rideau d'entrée et les modules de page (systeme). */
+  tot?: boolean;
+  rendu: Rendu;
+  statut: Statut;
+  /** Le fichier source, depuis la racine du dépôt. */
+  module: string;
+};
+
+/** Garde l'inférence du type du module entre `charger` et `armer`. */
+const effet = <M>(m: Manifeste<M>): Manifeste<M> => m;
+
+/** Modules importés statiquement par src/pages-nav.ts : armés sur chaque page, sans condition (ordre des imports). */
+export const TOUJOURS: readonly string[] = ["presentation", "flight", "cursor", "intro", "look", "scroll", "timeline", "tokens", "sweep", "script"];
+
+/** Dans l'ordre d'armement de pages-nav (l'ordre des demandes de morceaux). Chaque manifeste a son type de module. */
+export const EFFETS: readonly Manifeste<any>[] = [
+  // Un système de design (variations.html) demandé par l'adresse (?systeme=) ou par la page (data-systeme) : il passe
+  // par-dessus les couleurs, fontes, look et mouvement de la page. Armé tôt, avant le rideau d'entrée.
+  effet({
+    id: "systeme",
+    nom: "Système de design",
+    categorie: "page",
+    selecteur: "[data-systeme]",
+    attributs: [
+      "data-systeme", "data-systeme-actif",
+    ],
+    charger: () => import("../presse/systeme.ts"),
+    armer: (m) => m.initSysteme(),
+    parametre: "systeme",
+    tot: true,
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/systeme.ts",
+  }),
+  effet({
+    id: "lightbox",
+    nom: "Visionneuse",
+    categorie: "image",
+    selecteur: "[data-lightbox]",
+    attributs: [
+      "data-lightbox",
+    ],
+    charger: () => import("../presse/lightbox.ts"),
+    armer: (m, racine) => m.initLightbox(racine),
+    rendu: "WebGPU",
+    statut: "stable",
+    module: "src/presse/lightbox.ts",
+  }),
+  effet({
+    id: "vague",
+    nom: "La vague entre deux vues",
+    categorie: "transition",
+    selecteur: "[data-vague]",
+    attributs: [
+      "data-vague", "data-vague-vue", "data-vague-vers", "data-vague-type", "data-vague-palette", "data-vague-duree",
+    ],
+    charger: () => import("../presse/vague.ts"),
+    armer: (m, racine) => m.initVague(racine),
+    rendu: "WebGPU",
+    statut: "stable",
+    module: "src/presse/vague.ts",
+  }),
+  effet({
+    id: "goo",
+    nom: "Goo",
+    categorie: "interface",
+    selecteur: "[data-goo]",
+    attributs: [
+      "data-goo", "data-goo-item", "data-goo-ouvert", "data-goo-x", "data-goo-y", "data-goo-ressort",
+      "data-goo-delai", "data-goo-bascule", "data-goo-fill", "data-goo-fusion", "data-goo-ombre", "data-goo-relief",
+      "data-goo-suit", "data-goo-fixe",
+    ],
+    charger: () => import("../presse/goo.ts"),
+    armer: (m, racine) => m.initGoo(racine),
+    rendu: "WebGPU",
+    statut: "stable",
+    module: "src/presse/goo.ts",
+  }),
+  effet({
+    id: "metal",
+    nom: "Métal",
+    categorie: "matiere",
+    selecteur: "[data-metal], [data-metal-texte], [data-metal-badge]",
+    attributs: [
+      "data-metal", "data-metal-texte", "data-metal-badge", "data-metal-forme", "data-metal-epaisseur",
+      "data-metal-ombre", "data-metal-force", "data-metal-nom", "data-metal-reflet",
+    ],
+    charger: () => import("../presse/metal.ts"),
+    armer: (m, racine) => m.initMetal(racine),
+    rendu: "WebGPU",
+    statut: "stable",
+    module: "src/presse/metal.ts",
+  }),
+  effet({
+    id: "voix",
+    nom: "La voix",
+    categorie: "interface",
+    selecteur: "[data-voix]",
+    attributs: [
+      "data-voix", "data-voix-micro", "data-voix-etat", "data-voix-palette", "data-voix-couleur", "data-voix-force",
+      "data-voix-hauteur", "data-voix-debord", "data-voix-fond", "data-voix-auto", "data-voix-demo",
+    ],
+    charger: () => import("../presse/voix.ts"),
+    armer: (m, racine) => m.initVoix(racine),
+    rendu: "WebGPU",
+    statut: "stable",
+    module: "src/presse/voix.ts",
+  }),
+  // Ruban (bande d'images en 3D) et typographie, d'après Aristide Benoist.
+  effet({
+    id: "ruban",
+    nom: "Ruban",
+    categorie: "image",
+    selecteur: "[data-ruban]",
+    attributs: [
+      "data-ruban", "data-ruban-hauteur", "data-ruban-joint", "data-ruban-rayon", "data-ruban-repos",
+      "data-ruban-auto",
+    ],
+    charger: () => import("../presse/ruban.ts"),
+    armer: (m, racine) => m.initRuban(racine),
+    rendu: "WebGPU",
+    statut: "stable",
+    module: "src/presse/ruban.ts",
+  }),
+  effet({
+    id: "typo",
+    nom: "Typographie cinétique",
+    categorie: "texte",
+    selecteur: "[data-typo]",
+    attributs: [
+      "data-typo", "data-typo-quand", "data-typo-duree", "data-typo-delai", "data-typo-rejoue", "data-typo-ligne",
+    ],
+    charger: () => import("../presse/typo.ts"),
+    armer: (m, racine) => m.initTypo(racine),
+    rendu: "DOM + WebGPU",
+    statut: "stable",
+    module: "src/presse/typo.ts",
+  }),
+  effet({
+    id: "rouleau",
+    nom: "Menu roulant à image-tissu",
+    categorie: "interface",
+    selecteur: "[data-rouleau]",
+    attributs: [
+      "data-rouleau", "data-rouleau-img", "data-rouleau-hauteur", "data-rouleau-largeur", "data-rouleau-decalage",
+      "data-rouleau-ecart", "data-rouleau-depart", "data-rouleau-respire", "data-rouleau-invite",
+    ],
+    charger: () => import("../presse/rouleau.ts"),
+    armer: (m, racine) => m.initRouleau(racine),
+    rendu: "WebGPU",
+    statut: "stable",
+    module: "src/presse/rouleau.ts",
+  }),
+  // Une rangée d'images en perspective fuyante (DOM, matrix3d).
+  effet({
+    id: "couloir",
+    nom: "Couloir",
+    categorie: "image",
+    selecteur: "[data-couloir]",
+    attributs: [
+      "data-couloir", "data-couloir-presets", "data-couloir-profondeur", "data-couloir-angle",
+      "data-couloir-horizon", "data-couloir-cote", "data-couloir-hauteur", "data-couloir-largeur",
+      "data-couloir-bande", "data-couloir-ecart", "data-couloir-filet", "data-couloir-vitesse",
+      "data-couloir-inertie", "data-couloir-pilotage", "data-couloir-sens", "data-couloir-sansfin",
+      "data-couloir-aberration", "data-couloir-flou", "data-couloir-vide", "data-couloir-survol",
+      "data-couloir-ouvre", "data-couloir-fond", "data-couloir-mur", "data-couloir-ouverture", "data-couloir-mode",
+      "data-couloir-commandes",
+    ],
+    charger: () => import("../presse/couloir.ts"),
+    armer: (m, racine) => m.initCouloir(racine),
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/couloir.ts",
+  }),
+  // Une matière animée (Paper Shaders, WebGL2) sur un logo ; le rendu se charge à la demande.
+  effet({
+    id: "logo",
+    nom: "Logo",
+    categorie: "matiere",
+    selecteur: "[data-logo]",
+    attributs: [
+      "data-logo", "data-logo-src", "data-logo-texte", "data-logo-police", "data-logo-marge", "data-logo-sans-fond",
+      "data-logo-presets", "data-logo-teinte", "data-logo-repetition", "data-logo-adoucissement",
+      "data-logo-frange-rouge", "data-logo-frange-bleue", "data-logo-distorsion", "data-logo-contour",
+      "data-logo-angle", "data-logo-echelle", "data-logo-couleurs", "data-logo-interieur",
+      "data-logo-distorsion-interieure", "data-logo-distorsion-exterieure", "data-logo-lueur-interieure",
+      "data-logo-lueur-exterieure", "data-logo-decalage", "data-logo-taille", "data-logo-grain",
+      "data-logo-caustique", "data-logo-vagues", "data-logo-couches", "data-logo-bords", "data-logo-reflet",
+      "data-logo-reflets", "data-logo-motif", "data-logo-relief", "data-logo-etirement", "data-logo-flou",
+      "data-logo-ombre", "data-logo-ombres", "data-logo-contraste", "data-logo-bruit", "data-logo-type",
+      "data-logo-cyan", "data-logo-magenta", "data-logo-jaune", "data-logo-noir", "data-logo-encre",
+      "data-logo-rayon", "data-logo-grille", "data-logo-inverse", "data-logo-couleurs-image", "data-logo-sombre",
+      "data-logo-pixel", "data-logo-niveaux", "data-logo-ecart", "data-logo-dispersion", "data-logo-tourbillon",
+      "data-logo-biais", "data-logo-perspective", "data-logo-nombre", "data-logo-spectre", "data-logo-centre",
+      "data-logo-bombement", "data-logo-papier", "data-logo-melange", "data-logo-graine", "data-logo-rugosite",
+      "data-logo-fibres", "data-logo-plis", "data-logo-froissage", "data-logo-froisses", "data-logo-gouttes",
+      "data-logo-feuille-coupee", "data-logo-fond", "data-logo-vitesse", "data-logo-pause", "data-logo-instant",
+      "data-logo-survol", "data-logo-masque", "data-logo-mouvement",
+    ],
+    charger: () => import("../presse/logo.ts"),
+    armer: (m, racine) => m.initLogo(racine),
+    rendu: "WebGL2",
+    statut: "stable",
+    module: "src/presse/logo.ts",
+  }),
+  // Ses huit composants (roule, marque, défilé…) arment le même module.
+  effet({
+    id: "cinetique",
+    nom: "Typographie cinétique en DOM",
+    categorie: "texte",
+    selecteur: "[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]",
+    attributs: [
+      "data-cinetique", "data-roule", "data-marque", "data-defile", "data-reflet", "data-cercle", "data-coupe",
+      "data-brouille", "data-frappe", "data-cinetique-par", "data-cinetique-quand", "data-cinetique-duree",
+      "data-cinetique-delai", "data-cinetique-cascade", "data-cinetique-ordre", "data-cinetique-sortie",
+      "data-cinetique-rejoue", "data-roule-tempo", "data-defile-rangs", "data-defile-vitesse", "data-defile-incline",
+      "data-defile-separateur", "data-cercle-rayon", "data-cercle-vitesse", "data-frappe-vitesse",
+    ],
+    charger: () => import("../presse/cinetique.ts"),
+    armer: (m, racine) => m.initCinetique(racine),
+    manuel: true,
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/cinetique.ts",
+  }),
+  // Modules nés de la boutique (déchirure, forme, autocollant, rail, tracé) : une page qui les arme elle-même porte
+  // data-presse-manuel sur <html>.
+  effet({
+    id: "dechirure",
+    nom: "Déchirure",
+    categorie: "forme",
+    selecteur: "[data-dechirure], [data-dechirure-coupe]",
+    attributs: [
+      "data-dechirure", "data-dechirure-coupe", "data-dechirure-detoure", "data-dechirure-graine",
+      "data-dechirure-amplitude", "data-dechirure-fibre", "data-dechirure-couleur", "data-dechirure-ombre",
+      "data-dechirure-retour",
+    ],
+    charger: () => import("../presse/dechirure.ts"),
+    armer: (m, racine) => m.initDechirure(racine),
+    manuel: true,
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/dechirure.ts",
+  }),
+  effet({
+    id: "forme",
+    nom: "Forme-masque",
+    categorie: "forme",
+    selecteur: "[data-forme]",
+    attributs: [
+      "data-forme", "data-forme-quand", "data-forme-hauteur", "data-forme-duree", "data-forme-fin",
+      "data-forme-taille", "data-forme-scene", "data-forme-media",
+    ],
+    charger: () => import("../presse/forme.ts"),
+    armer: (m, racine) => m.initForme(racine),
+    manuel: true,
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/forme.ts",
+  }),
+  effet({
+    id: "autocollant",
+    nom: "Autocollant",
+    categorie: "interface",
+    selecteur: "[data-autocollant]",
+    attributs: [
+      "data-autocollant", "data-autocollant-cible", "data-autocollant-forme", "data-autocollant-couleur",
+      "data-autocollant-encre", "data-autocollant-taille",
+    ],
+    charger: () => import("../presse/autocollant.ts"),
+    armer: (m, racine) => m.initAutocollant(racine),
+    manuel: true,
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/autocollant.ts",
+  }),
+  effet({
+    id: "rail",
+    nom: "Rail",
+    categorie: "interface",
+    selecteur: "[data-rail]",
+    attributs: [
+      "data-rail", "data-rail-piste", "data-rail-barre", "data-rail-precedent", "data-rail-suivant",
+      "data-rail-seuil", "data-rail-sansfin", "data-rail-vitesse",
+    ],
+    charger: () => import("../presse/rail.ts"),
+    armer: (m, racine) => m.initRail(racine),
+    manuel: true,
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/rail.ts",
+  }),
+  // Dessin technique qui se trace (cotes, hachures, lignes de construction).
+  effet({
+    id: "trace",
+    nom: "Dessin technique",
+    categorie: "dessin",
+    selecteur: "[data-trace]",
+    attributs: [
+      "data-trace", "data-trace-role", "data-trace-ordre", "data-trace-ignore", "data-trace-quand",
+      "data-trace-duree", "data-trace-delai", "data-trace-cascade", "data-trace-rejoue", "data-trace-cote",
+      "data-trace-cote-libelle", "data-trace-cote-decalage", "data-trace-cote-taille", "data-trace-cote-fleche",
+    ],
+    charger: () => import("../presse/trace.ts"),
+    armer: (m, racine) => m.initTrace(racine),
+    manuel: true,
+    rendu: "DOM",
+    statut: "stable",
+    module: "src/presse/trace.ts",
+  }),
+];

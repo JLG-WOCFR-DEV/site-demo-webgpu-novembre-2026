@@ -7,12 +7,15 @@
 //   npm run valider -- --strict x.html   les avertissements comptent aussi
 //   npm run valider -- --json x.html     sortie JSON (pour un agent)
 //   npm run valider -- --catalogue       le catalogue dérivé, en JSON (noms, valeurs, parents, modules)
+//   npm run valider -- --vite=autre.ts   lire les pages dans une autre configuration (tests)
 //
-// Code retour : 1 s'il y a une erreur (ou un avertissement avec --strict), 0 sinon.
+// Code retour : 1 s'il y a une erreur (ou un avertissement avec --strict), ou si vite.config.ts ne donne aucune page
+// (`input` doit rester un littéral objet : tools/valider/pages-vite.ts), 0 sinon.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { lireCatalogue } from "./valider/catalogue.ts";
+import { lirePagesVite } from "./valider/pages-vite.ts";
 import { rapport, validerFichier } from "./valider/valider.ts";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -32,9 +35,12 @@ if (drapeaux.has("--catalogue")) {
 }
 
 if (!fichiers.length) {
-  const vite = fs.readFileSync(path.join(racine, "vite.config.ts"), "utf8");
-  const input = vite.match(/input:\s*\{([^}]*)\}/)?.[1] ?? "";
-  fichiers = [...input.matchAll(/"([^"]+\.html)"/g)].map((m) => m[1]);
+  const config = [...drapeaux].find((x) => x.startsWith("--vite="))?.slice("--vite=".length) ?? path.join(racine, "vite.config.ts");
+  fichiers = lirePagesVite(fs.readFileSync(config, "utf8"));
+  if (!fichiers.length) {
+    console.error(`${path.relative(process.cwd(), config) || config} : aucune page dans build.rollupOptions.input (un littéral objet \`input: { cle: "page.html" }\` est attendu) — rien à valider.`);
+    process.exit(1);
+  }
 }
 
 let erreurs = 0;

@@ -17,10 +17,11 @@
  * Deux autres sources, lues elles aussi, jamais recopiées :
  *   - le code (src/presse, src/gpu, src/components, src/pages-nav.ts) : un attribut lu par le code mais absent de
  *     PRESSE.md n'est pas une faute de la page, c'est un trou de la documentation (avertissement « non documenté ») ;
- *   - src/pages-nav.ts : quels modules il arme lui-même, et lesquels seulement sans `data-presse-manuel`.
+ *   - src/registre/effets.ts : quels modules pages-nav arme lui-même, et lesquels seulement sans `data-presse-manuel`.
  */
 import fs from "node:fs";
 import path from "node:path";
+import { EFFETS, TOUJOURS } from "../../src/registre/effets.ts";
 
 /* ───────────────────────── Types ───────────────────────── */
 
@@ -97,7 +98,7 @@ export type Catalogue = {
   lignes: Ligne[];
   /** Paramètres d'adresse et variables CSS documentés (`?presse-lint`, `--paper`). */
   autres: string[];
-  /** Armement par src/pages-nav.ts. */
+  /** Armement par src/pages-nav.ts, lu dans le registre (src/registre/effets.ts). */
   armement: Armement[];
   /** Modules importés statiquement par pages-nav (armés dès qu'il est monté). */
   importsPagesNav: string[];
@@ -512,22 +513,20 @@ export function lireCode(racine: string): Map<string, string[]> {
   return out;
 }
 
-/* ───────────────────────── Armement (src/pages-nav.ts) ───────────────────────── */
+/* ───────────────────────── Armement (src/registre/effets.ts) ───────────────────────── */
 
-export function lireArmement(racine: string): { armement: Armement[]; imports: string[] } {
-  const t = fs.readFileSync(path.join(racine, "src/pages-nav.ts"), "utf8");
-  const debutBloc = t.indexOf('if (!document.documentElement.hasAttribute("data-presse-manuel")) {');
-  const finBloc = debutBloc >= 0 ? t.indexOf("\n  }", debutBloc) : -1;
-  const armement: Armement[] = [];
-  const re = /if \(([^{;]*?)document\.querySelector\("([^"]+)"\)\)\s*void import\("\.\/presse\/([\w-]+)\.ts"\)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(t))) {
-    const dansBloc = debutBloc >= 0 && m.index > debutBloc && m.index < finBloc;
-    const attrs = [...m[2]!.matchAll(/\[([a-z0-9-]+)\]/g)].map((x) => x[1]!);
-    armement.push({ module: m[3]!, attrs, sansManuel: dansBloc || m[1]!.includes("data-presse-manuel") });
-  }
-  const imports = [...t.matchAll(/^import [^;]*? from "\.\/presse\/([\w-]+)\.ts";/gm)].map((x) => x[1]!);
-  return { armement, imports };
+/**
+ * Ce que src/pages-nav.ts arme de lui-même, lu dans le registre (plus de lecture du code de pages-nav) : chaque
+ * manifeste donne son module, les attributs de son sélecteur et s'il cède la main à `data-presse-manuel` ; `TOUJOURS`
+ * liste les modules que pages-nav importe statiquement. `racine` est gardé pour la signature.
+ */
+export function lireArmement(_racine?: string): { armement: Armement[]; imports: string[] } {
+  const armement = EFFETS.map((e) => ({
+    module: e.id,
+    attrs: [...e.selecteur.matchAll(/\[([a-z0-9-]+)\]/g)].map((x) => x[1]!),
+    sansManuel: !!e.manuel,
+  }));
+  return { armement, imports: [...TOUJOURS] };
 }
 
 /* ───────────────────────── Pour les autres outils ───────────────────────── */

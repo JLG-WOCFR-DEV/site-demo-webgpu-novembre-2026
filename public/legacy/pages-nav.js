@@ -1,7 +1,7 @@
 import { n as e, t } from "./motion-lint-EfEMk6cY.js";
 import { i as n, n as r, t as i } from "./tokens-Nj0c2PcI.js";
 import { r as a } from "./look-BnXlF57J.js";
-import { a as o, r as s } from "./timeline-Ds5NFDux.js";
+import { c as o, i as s } from "./timeline-BqaHbjJE.js";
 import { t as c } from "./device-Bprp8tGr.js";
 // src/motion-scale.ts
 var l = "ubs-motion", u = "normal";
@@ -237,23 +237,23 @@ function oe(e, t, n) {
 	j() && ie();
 }
 // src/presse/flight.ts
-var N = "presse:flight", se = 15e3, P = () => matchMedia("(prefers-reduced-motion: reduce)").matches, ce = () => {
+var N = "presse:flight", se = 15e3, P = () => matchMedia("(prefers-reduced-motion: reduce)").matches, F = () => {
 	try {
 		return JSON.parse(sessionStorage.getItem(N) ?? "null");
 	} catch {
 		return null;
 	}
-}, le = (e) => {
+}, ce = (e) => {
 	try {
 		e ? sessionStorage.setItem(N, JSON.stringify(e)) : sessionStorage.removeItem(N);
 	} catch {}
-}, ue = (e) => {
+}, le = (e) => {
 	if (Date.now() - e.t > se) return !1;
 	if (e.to === null) return !0;
 	let t = new URL(e.to, location.href);
 	return t.pathname === location.pathname && t.search === location.search;
 };
-function de(e) {
+function ue(e) {
 	let t = e instanceof HTMLImageElement ? e : e.querySelector("img"), n = t ?? e;
 	return {
 		img: t,
@@ -261,9 +261,9 @@ function de(e) {
 		rect: n.getBoundingClientRect()
 	};
 }
-function F(e, t, n) {
+function I(e, t, n) {
 	let r = e.rect;
-	return !e.src || r.w < 8 || r.h < 8 || r.y + r.h < 0 || r.y > innerHeight || r.x + r.w < 0 || r.x > innerWidth ? !1 : (le({
+	return !e.src || r.w < 8 || r.h < 8 || r.y + r.h < 0 || r.y > innerHeight || r.x + r.w < 0 || r.x > innerWidth ? !1 : (ce({
 		id: t,
 		src: e.src,
 		x: r.x,
@@ -273,26 +273,26 @@ function F(e, t, n) {
 		r: e.radius,
 		t: Date.now(),
 		to: n,
-		tt: pe(t) ?? void 0
+		tt: fe(t) ?? void 0
 	}), !0);
 }
-function fe(e) {
+function de(e) {
 	for (let t of document.querySelectorAll(`[data-flight-title="${CSS.escape(e)}"]`)) {
-		let e = I(t);
+		let e = L(t);
 		if (e.width > 4 && e.bottom > 0 && e.top < innerHeight && getComputedStyle(t).visibility !== "hidden") return t;
 	}
 	return null;
 }
-function I(e) {
+function L(e) {
 	let t = document.createRange();
 	t.selectNodeContents(e);
 	let n = t.getBoundingClientRect();
 	return n.width ? n : e.getBoundingClientRect();
 }
-function pe(e) {
-	let t = fe(e);
+function fe(e) {
+	let t = de(e);
 	if (!t) return null;
-	let n = getComputedStyle(t), r = I(t);
+	let n = getComputedStyle(t), r = L(t);
 	return {
 		text: (t.getAttribute("aria-label") ?? t.textContent ?? "").trim(),
 		x: r.left,
@@ -307,9 +307,9 @@ function pe(e) {
 		fvs: n.fontVariationSettings
 	};
 }
-function me(e, t, n) {
-	let { img: r, el: i, rect: a } = de(e), o = e.dataset.flightSrc || r?.currentSrc || r?.src || "", s = parseFloat(getComputedStyle(i).borderTopLeftRadius) || parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0;
-	return F({
+function pe(e, t, n) {
+	let { img: r, el: i, rect: a } = ue(e), o = e.dataset.flightSrc || r?.currentSrc || r?.src || "", s = parseFloat(getComputedStyle(i).borderTopLeftRadius) || parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0;
+	return I({
 		rect: {
 			x: a.left,
 			y: a.top,
@@ -320,45 +320,45 @@ function me(e, t, n) {
 		radius: s
 	}, t, n);
 }
-var he = /* @__PURE__ */ new Map(), ge = (e, t) => {
+var me = /* @__PURE__ */ new Map(), he = (e, t) => {
 	let n = `[data-flight-id="${CSS.escape(e)}"]`;
 	return (t?.closest(n) ?? t?.closest("[data-presse-component]")?.querySelector(n) ?? document.querySelector(n)) || null;
-}, _e = /* @__PURE__ */ new Set(), L = 0, ve = /* @__PURE__ */ new Set(), R = null;
-function ye(e) {
+}, ge = /* @__PURE__ */ new Set(), R = 0, _e = /* @__PURE__ */ new Set(), z = null;
+function ve(e) {
 	let t = new Image();
 	return t.src = e.src, t.alt = "", t.decoding = "sync", t.setAttribute("aria-hidden", "true"), t.className = "presse-flight", t.style.cssText = `position:fixed;z-index:2147483000;left:${e.x}px;top:${e.y}px;width:${e.w}px;height:${e.h}px;object-fit:cover;border-radius:${e.r}px;pointer-events:none;margin:0;max-width:none`, document.documentElement.append(t), t;
 }
-function be(e) {
+function ye(e) {
 	let t = document.createElement("div");
 	return t.className = "presse-flight-title", t.setAttribute("aria-hidden", "true"), t.textContent = e.text, t.style.cssText = `position:fixed;z-index:2147483001;left:${e.x}px;top:${e.y}px;margin:0;white-space:pre;pointer-events:none;transform-origin:0 0;font:${e.font};color:${e.color};letter-spacing:${e.ls};text-transform:${e.tt};font-variation-settings:${e.fvs}`, document.documentElement.append(t), t;
 }
-async function xe(e) {
+async function be(e) {
 	let t = e.tt, n = e.d.tt;
 	if (!t || !n) return;
 	e.tt = null;
-	let r = fe(e.d.id);
+	let r = de(e.d.id);
 	if (!r || P()) {
-		z(t, 260);
+		B(t, 260);
 		return;
 	}
-	let i = I(r), a = Number.parseFloat(getComputedStyle(r).fontSize) / Math.max(1, n.size), o = r.style.opacity;
+	let i = L(r), a = Number.parseFloat(getComputedStyle(r).fontSize) / Math.max(1, n.size), o = r.style.opacity;
 	r.style.opacity = "0", await t.animate([{ transform: "translate(0, 0) scale(1)" }, { transform: `translate(${i.left - n.x}px, ${i.top - n.y}px) scale(${a})` }], {
 		duration: 820,
 		easing: "cubic-bezier(0.65, 0, 0.15, 1)",
 		fill: "forwards"
-	}).finished.catch(() => void 0), r.style.transition = "opacity 0.32s", r.style.opacity = o || "1", window.setTimeout(() => r.style.transition = "", 400), z(t, 320);
+	}).finished.catch(() => void 0), r.style.transition = "opacity 0.32s", r.style.opacity = o || "1", window.setTimeout(() => r.style.transition = "", 400), B(t, 320);
 }
-var Se = 0;
-function Ce(n, r) {
+var xe = 0;
+function Se(n, r) {
 	if (!t()) return;
-	let i = `passage-${++Se}`, a = -1, o = (t) => {
+	let i = `passage-${++xe}`, a = -1, o = (t) => {
 		if (!n.isConnected) return;
 		let r = document.timeline?.currentTime, s = typeof r == "number" ? r : t, c = n.getBoundingClientRect();
 		e(i, "x", c.left, s), e(i, "y", c.top, s), e(i, "width", c.width, s), e(i, "opacity", Number(getComputedStyle(n).opacity), s), a > 0 && a--, a !== 0 && requestAnimationFrame(o);
 	};
 	r.then(() => a = 6), requestAnimationFrame(o);
 }
-async function we(e, t, n) {
+async function Ce(e, t, n) {
 	await Promise.race([e.decode().catch(() => void 0), new Promise((e) => setTimeout(e, 250))]);
 	let r = e.getBoundingClientRect(), i = P() ? 0 : Math.min(950, 560 + Math.hypot(t.x - r.left, t.y - r.top) * .35), a = {
 		left: `${t.x}px`,
@@ -389,34 +389,34 @@ async function we(e, t, n) {
 			duration: i,
 			easing: "cubic-bezier(0.65, 0, 0.15, 1)"
 		});
-		Ce(e, t.finished.catch(() => void 0)), await t.finished.catch(() => void 0);
+		Se(e, t.finished.catch(() => void 0)), await t.finished.catch(() => void 0);
 	}
 	Object.assign(e.style, a);
 }
-function z(e, t = 220) {
+function B(e, t = 220) {
 	P() && (t = 0), e.animate([{ opacity: 1 }, { opacity: 0 }], {
 		duration: t,
 		fill: "forwards"
 	}).finished.catch(() => void 0).then(() => e.remove());
 }
-async function Te(e) {
+async function we(e) {
 	if (e.claimed) return;
-	e.claimed = !0, R === e && (R = null), xe(e);
-	let t = ge(e.d.id);
+	e.claimed = !0, z === e && (z = null), be(e);
+	let t = he(e.d.id);
 	if (t) {
-		let { el: n, rect: r } = de(t);
+		let { el: n, rect: r } = ue(t);
 		if (r.width > 8 && r.bottom > 0 && r.top < innerHeight) {
-			await we(e.el, {
+			await Ce(e.el, {
 				x: r.left,
 				y: r.top,
 				w: r.width,
 				h: r.height
-			}, parseFloat(getComputedStyle(n).borderTopLeftRadius) || 0), z(e.el, 200);
+			}, parseFloat(getComputedStyle(n).borderTopLeftRadius) || 0), B(e.el, 200);
 			return;
 		}
 	}
 	if ((document.documentElement.dataset.flightFill ?? "").split(/\s+/).includes(e.d.id)) {
-		await we(e.el, {
+		await Ce(e.el, {
 			x: 0,
 			y: 0,
 			w: innerWidth,
@@ -424,51 +424,51 @@ async function Te(e) {
 		}, 0);
 		let t = performance.now();
 		for (; document.querySelector(".presse-sweep-cover") && performance.now() - t < 3e3;) await new Promise((e) => setTimeout(e, 50));
-		z(e.el, 520);
-	} else z(e.el, 300);
+		B(e.el, 520);
+	} else B(e.el, 300);
 }
-var Ee = new Promise((e) => e);
-function B(e, t, n = null) {
-	if (le(null), !e || !ue(e)) {
+var Te = new Promise((e) => e);
+function V(e, t, n = null) {
+	if (ce(null), !e || !le(e)) {
 		t?.remove(), n?.remove();
 		return;
 	}
 	let r = {
 		d: e,
-		el: t ?? ye(e),
-		tt: n ?? (e.tt ? be(e.tt) : null),
+		el: t ?? ve(e),
+		tt: n ?? (e.tt ? ye(e.tt) : null),
 		claimed: !1
 	};
-	R = r;
-	for (let t of ve) r.claimed || t(e.id);
-	Promise.race([Ee.then(() => new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e)))), new Promise((e) => setTimeout(e, 1500))]).then(() => Te(r));
+	z = r;
+	for (let t of _e) r.claimed || t(e.id);
+	Promise.race([Te.then(() => new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e)))), new Promise((e) => setTimeout(e, 1500))]).then(() => we(r));
 }
-var De = !1;
-function Oe() {
-	if (De || typeof window > "u") return;
-	De = !0, document.addEventListener("click", (e) => {
+var Ee = !1;
+function De() {
+	if (Ee || typeof window > "u") return;
+	Ee = !0, document.addEventListener("click", (e) => {
 		if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 		let t = e.target?.closest?.("a[data-flight]");
 		if (!t || t.target && t.target !== "_self" || t.origin !== location.origin) return;
-		let n = t.dataset.flight, r = he.get(t.closest("[data-presse-component]"))?.(n), i = r ? null : ge(n, t);
-		(r && F(r, n, t.href) || i && me(i, n, t.href)) && (L = Date.now());
+		let n = t.dataset.flight, r = me.get(t.closest("[data-presse-component]"))?.(n), i = r ? null : he(n, t);
+		(r && I(r, n, t.href) || i && pe(i, n, t.href)) && (R = Date.now());
 	});
 	let e = (e) => {
-		if (!(Date.now() - L < 3e3)) for (let t of _e) {
+		if (!(Date.now() - R < 3e3)) for (let t of ge) {
 			let n = t();
-			if (n && ("box" in n ? me(n.box, n.id, e) : F(n.source, n.id, e))) return;
+			if (n && ("box" in n ? pe(n.box, n.id, e) : I(n.source, n.id, e))) return;
 		}
 	};
 	addEventListener("pageswap", ((t) => {
 		t.activation?.navigationType === "traverse" && e(t.activation.entry.url);
 	})), addEventListener("pageshow", (e) => {
-		L = 0, e.persisted && B(ce(), null);
+		R = 0, e.persisted && V(F(), null);
 	});
 	let t = window;
-	t.__presseFlight ? (B(t.__presseFlight.f, t.__presseFlight.el, t.__presseFlight.tt ?? null), delete t.__presseFlight) : B(ce(), null);
+	t.__presseFlight ? (V(t.__presseFlight.f, t.__presseFlight.el, t.__presseFlight.tt ?? null), delete t.__presseFlight) : V(F(), null);
 }
 // src/presse/cursor.ts
-var ke = `
+var Oe = `
 html.presse-cursor-on, html.presse-cursor-on * { cursor: none !important; }
 html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [contenteditable="true"]) { cursor: text !important; }
 .presse-cursor { position: fixed; inset: 0 auto auto 0; z-index: 2147482990; pointer-events: none; mix-blend-mode: difference; opacity: 0; transition: opacity 0.25s; }
@@ -485,14 +485,14 @@ html.presse-cursor-on :is(input, textarea, select, [contenteditable=""], [conten
 .presse-cursor.is-stuck .pc-dot { scale: 0; }
 .presse-cursor.is-stuck .pc-ring { background: transparent; }
 [data-magnet] { transition: translate 0.5s ${r.out}; }
-`, Ae = "a[href], button, [role=button], label[for], summary, input[type=checkbox], input[type=radio], input[type=range]", je = ".gr-gl, .gx-gl, .or-gl, .ob-gl, .lq-card, [data-cursor=glisser]", Me = "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]", Ne = !1;
-function Pe() {
-	if (Ne || typeof window > "u") return;
+`, ke = "a[href], button, [role=button], label[for], summary, input[type=checkbox], input[type=radio], input[type=range]", Ae = ".gr-gl, .gx-gl, .or-gl, .ob-gl, .lq-card, [data-cursor=glisser]", je = "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]", Me = !1;
+function Ne() {
+	if (Me || typeof window > "u") return;
 	let e = document.documentElement;
 	if (e.dataset.presseCursor === void 0 || !matchMedia("(hover: hover) and (pointer: fine)").matches || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-	Ne = !0;
+	Me = !0;
 	let t = document.createElement("style");
-	t.dataset.presseCursor = "", t.textContent = ke, document.head.append(t);
+	t.dataset.presseCursor = "", t.textContent = Oe, document.head.append(t);
 	let n = document.createElement("div");
 	n.className = "presse-cursor", n.setAttribute("aria-hidden", "true"), n.innerHTML = "<span class=\"pc-ring\"><span class=\"pc-label\"></span></span><span class=\"pc-dot\"></span>", e.append(n), e.classList.add("presse-cursor-on");
 	let r = n.querySelector(".pc-dot"), i = n.querySelector(".pc-ring"), a = n.querySelector(".pc-label"), o = {
@@ -505,7 +505,7 @@ function Pe() {
 		h: 34
 	}, c = null, l = null, u = 0, d = performance.now(), f = (e) => {
 		c = e;
-		let t = e?.closest("[data-cursor]"), r = !!e?.closest(Me), i = !!e?.closest(Ae), o = !i && !!e?.closest(je), s = t && t.dataset.cursor !== "glisser" ? t.dataset.cursor : o || t?.dataset.cursor === "glisser" ? "↔" : "";
+		let t = e?.closest("[data-cursor]"), r = !!e?.closest(je), i = !!e?.closest(ke), o = !i && !!e?.closest(Ae), s = t && t.dataset.cursor !== "glisser" ? t.dataset.cursor : o || t?.dataset.cursor === "glisser" ? "↔" : "";
 		a.textContent = s, n.classList.toggle("is-text", r), n.classList.toggle("is-link", i || !!s), n.classList.toggle("is-label", !!s);
 		let u = e?.closest("[data-magnet]") ?? null;
 		u !== l && (l && (l.style.translate = ""), l = u);
@@ -535,23 +535,23 @@ function Pe() {
 	}), addEventListener("scroll", () => (f(document.elementFromPoint(o.x, o.y)), m()), { passive: !0 });
 }
 // src/presse/intro.ts
-var Fe = `
+var Pe = `
 html.presse-intro-pending [data-intro] { opacity: 0; translate: 0 26px; filter: blur(6px); }
 html.presse-intro-done [data-intro] { transition: opacity ${i[3]}ms ${r.out}, translate ${i[3]}ms ${r.out}, filter ${i[3]}ms ${r.out}; transition-delay: calc(var(--intro-i, 0) * 70ms + 120ms); }
 .presse-intro .pi-num { font-variant-numeric: tabular-nums; }
-`, Ie = [
+`, Fe = [
 	"liquide",
 	"grille",
 	"galerie",
 	"objet",
 	"orbite"
 ];
-function Le() {
+function Ie() {
 	let e = window, t = e.__presseIntro, n = document.documentElement, a = () => document.querySelectorAll("[data-intro]").forEach((e, t) => e.style.setProperty("--intro-i", e.dataset.intro || String(t)));
 	if (!t) return;
 	delete e.__presseIntro;
 	let o = document.createElement("style");
-	o.textContent = Fe, document.head.append(o);
+	o.textContent = Pe, document.head.append(o);
 	let s = 0, c = 0, l = 0, u = 0, d = (e) => {
 		u++, e.catch(() => void 0).then(() => {
 			l++, s = l / u;
@@ -563,7 +563,7 @@ function Le() {
 			t.width > 0 && t.top < innerHeight && t.bottom > 0 && d(Promise.race([e.decode(), f(3500)]));
 		}
 		for (let e of document.querySelectorAll("[data-presse-component]")) {
-			if (!Ie.includes(e.dataset.presseComponent ?? "")) continue;
+			if (!Fe.includes(e.dataset.presseComponent ?? "")) continue;
 			let t = e.getBoundingClientRect();
 			t.bottom < 0 || t.top > innerHeight || d(Promise.race([e.dataset.painted === void 0 ? new Promise((t) => e.addEventListener("presse:painted", t, { once: !0 })) : Promise.resolve(), f(3800)]));
 		}
@@ -597,12 +597,12 @@ function Le() {
 	};
 }
 // src/presse/scroll.ts
-var Re = () => matchMedia("(prefers-reduced-motion: reduce)").matches, ze = 9, Be = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", Ve = /* @__PURE__ */ new Set(), V = !1;
+var Le = () => matchMedia("(prefers-reduced-motion: reduce)").matches, Re = 9, ze = "\nhtml.presse-scroll-doux { scroll-behavior: auto !important; }\n[data-scroll=\"pin\"] { position: relative; }\n[data-scroll=\"pin\"] > :first-child { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }\n", Be = /* @__PURE__ */ new Set(), Ve = !1;
 function He() {
-	if (V || typeof window > "u") return;
-	V = !0;
+	if (Ve || typeof window > "u") return;
+	Ve = !0;
 	let e = document.documentElement, t = document.createElement("style");
-	t.dataset.presseScroll = "", t.textContent = Be, document.head.append(t);
+	t.dataset.presseScroll = "", t.textContent = ze, document.head.append(t);
 	let n = 0, r = performance.now(), i = scrollY, a = 0, o = 0, s = (t) => {
 		n = 0;
 		let c = Math.min(.1, Math.max(.001, (t - r) / 1e3));
@@ -611,16 +611,16 @@ function He() {
 		i = u;
 		let f = Math.abs(d) > innerHeight * .9 ? 0 : d / c;
 		a += (f - a) * (1 - Math.exp(-c * 10)), Math.abs(a) < 2 ? a = 0 : l = !0, e.style.setProperty("--v", Math.max(-1, Math.min(1, a / 3e3)).toFixed(3)), b();
-		for (let e of Ve) e({
+		for (let e of Be) e({
 			y: u,
 			v: a
 		});
 		(l || t < o) && (n = requestAnimationFrame(s));
 	}, c = (e = 120) => {
 		o = Math.max(o, performance.now() + e), n ||= (r = performance.now(), requestAnimationFrame(s));
-	}, l = () => e.dataset.presseScroll === "doux" && !Re(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
+	}, l = () => e.dataset.presseScroll === "doux" && !Le(), u = scrollY, d = scrollY, f = !1, p = () => document.documentElement.scrollHeight - innerHeight;
 	function m(e) {
-		return f ? (d += (u - d) * (1 - Math.exp(-e * ze)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
+		return f ? (d += (u - d) * (1 - Math.exp(-e * Re)), Math.abs(u - d) < .4 && (d = u, f = !1), scrollTo(0, d), f) : !1;
 	}
 	let h = (t, n, r) => {
 		for (let i = t; i && i !== document.body && i !== e; i = i.parentElement) {
@@ -762,7 +762,7 @@ function et() {
 	let e = new OffscreenCanvas(1216, 56), t = e.getContext("2d");
 	return t.fillStyle = "#fff", t.textAlign = "center", t.textBaseline = "middle", t.font = "500 40px \"IBM Plex Mono\", ui-monospace, monospace", [...Ke].forEach((e, n) => t.fillText(e, n * 32 + 16, 56 * .54)), e;
 }
-async function X(e, t, n, r, i) {
+async function tt(e, t, n, r, i) {
 	let a = await c(), o = Math.min(devicePixelRatio || 1, 2), s = Math.ceil(innerWidth / H), l = Math.ceil(innerHeight / U), u = performance.now(), d = Qe(s, l);
 	performance.measure("presse:capture", {
 		start: u,
@@ -900,11 +900,11 @@ async function X(e, t, n, r, i) {
 		]) e.destroy();
 	};
 }
-var Z = (e) => {
+var X = (e) => {
 	try {
 		e ? sessionStorage.setItem(Ue, JSON.stringify(e)) : sessionStorage.removeItem(Ue);
 	} catch {}
-}, tt = () => {
+}, nt = () => {
 	try {
 		let e = JSON.parse(sessionStorage.getItem("presse:flight") ?? "null");
 		return e && Date.now() - e.t < 2e3 ? {
@@ -916,51 +916,51 @@ var Z = (e) => {
 	} catch {
 		return null;
 	}
-}, nt = !1, Q = !1, rt = [
+}, rt = !1, Z = !1, it = [
 	"liquide",
 	"grille",
 	"galerie",
 	"objet",
 	"orbite"
 ];
-async function it() {
+async function at() {
 	document.readyState === "loading" && await new Promise((e) => document.addEventListener("DOMContentLoaded", e, { once: !0 }));
 	let e = [...document.querySelectorAll("[data-presse-component]")].filter((e) => {
-		if (!rt.includes(e.dataset.presseComponent ?? "")) return !1;
+		if (!it.includes(e.dataset.presseComponent ?? "")) return !1;
 		let t = e.getBoundingClientRect();
 		return t.bottom > 0 && t.top < innerHeight && t.width > 0;
 	}), t = Promise.all(e.map((e) => e.dataset.painted === void 0 ? new Promise((t) => e.addEventListener("presse:painted", t, { once: !0 })) : null));
 	await Promise.race([t, new Promise((e) => setTimeout(e, 1400))]);
 }
-function at() {
-	if (nt || typeof window > "u") return;
-	nt = !0;
+function ot() {
+	if (rt || typeof window > "u") return;
+	rt = !0;
 	let e = window;
 	if (e.__presseSweep) {
 		let { d: t, cover: n } = e.__presseSweep;
-		delete e.__presseSweep, Z(null);
+		delete e.__presseSweep, X(null);
 		let r = () => n.remove();
 		W() ? (async () => {
-			await it(), await new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e))), (await X(-1, Ge, t.paper, null, r).catch(() => (r(), null)))?.();
+			await at(), await new Promise((e) => requestAnimationFrame(() => requestAnimationFrame(e))), (await tt(-1, Ge, t.paper, null, r).catch(() => (r(), null)))?.();
 		})() : r();
-	} else Z(null);
+	} else X(null);
 	if (W()) {
 		addEventListener("load", () => J(() => q()), { once: !0 }), document.readyState === "complete" && J(() => q());
 		let e = 0;
 		addEventListener("scroll", () => (clearTimeout(e), e = window.setTimeout(() => J(() => q()), 250)), { passive: !0 }), document.addEventListener("pointerover", (e) => e.target?.closest?.("a[href]") && q(), { passive: !0 });
 	}
 	document.addEventListener("click", (e) => {
-		if (Q || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !W()) return;
+		if (Z || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !W()) return;
 		let t = e.target?.closest?.("a[href]");
 		if (!t || t.target && t.target !== "_self" || t.hasAttribute("download") || t.origin !== location.origin || t.dataset.transition === "none" || t.closest("[data-transition=none]")) return;
 		let n = new URL(t.href);
 		if (n.pathname === location.pathname || !/(\/|\.html)$/.test(n.pathname)) return;
-		e.preventDefault(), Q = !0;
+		e.preventDefault(), Z = !0;
 		for (let e of document.querySelectorAll(":popover-open")) e.hidePopover();
 		let r = document.createElement("link");
 		r.rel = "prefetch", r.href = n.href, document.head.append(r);
 		let i = Xe(), a = () => {
-			Z({
+			X({
 				t: Date.now(),
 				to: n.href,
 				paper: i
@@ -974,17 +974,17 @@ function at() {
 			} catch {}
 			location.href = n.href;
 		};
-		X(1, We, i, tt()).then(() => a()).catch(() => a());
+		tt(1, We, i, nt()).then(() => a()).catch(() => a());
 	}), addEventListener("pageshow", (e) => {
 		if (e.persisted) {
-			Q = !1;
+			Z = !1;
 			for (let e of document.querySelectorAll("canvas.presse-sweep, .presse-sweep-cover")) e.remove();
 		}
 	});
 }
 // src/presse/script.ts
-var ot = "[data-presse-component], [data-gl-text], [data-gl-img], [data-gl-filter], [data-anim], [data-presse-match], a[href], button, input, select, textarea, h1, h2, h3, [role]";
-function st(e) {
+var st = "[data-presse-component], [data-gl-text], [data-gl-img], [data-gl-filter], [data-anim], [data-presse-match], a[href], button, input, select, textarea, h1, h2, h3, [role]";
+function ct(e) {
 	if (e.id) return `#${e.id}`;
 	let t = e.getAttribute("data-presse-match") ?? e.getAttribute("data-id") ?? e.getAttribute("name"), n = [], r = e;
 	for (; r && r !== document.body;) {
@@ -997,7 +997,7 @@ function st(e) {
 	}
 	return t ? `${n.join(">")}[${t}]` : n.join(">");
 }
-var ct = (e) => e.getAttribute("role") ?? {
+var lt = (e) => e.getAttribute("role") ?? {
 	A: "lien",
 	BUTTON: "bouton",
 	INPUT: "champ",
@@ -1007,30 +1007,30 @@ var ct = (e) => e.getAttribute("role") ?? {
 	H2: "titre",
 	H3: "titre",
 	IMG: "image"
-}[e.tagName] ?? (e.hasAttribute("data-presse-component") ? `composant:${e.getAttribute("data-presse-component")}` : "bloc"), lt = (e) => (e.getAttribute("aria-label") ?? e.getAttribute("alt") ?? e.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
-function ut(e) {
+}[e.tagName] ?? (e.hasAttribute("data-presse-component") ? `composant:${e.getAttribute("data-presse-component")}` : "bloc"), ut = (e) => (e.getAttribute("aria-label") ?? e.getAttribute("alt") ?? e.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+function dt(e) {
 	let t = 1;
 	for (let n = e; n; n = n.parentElement) t *= Number(getComputedStyle(n).opacity) || 0;
 	return +t.toFixed(3);
 }
-function dt() {
-	return [...document.querySelectorAll(ot)].filter((e) => !e.closest("[hidden], .pk")).map((e) => {
+function ft() {
+	return [...document.querySelectorAll(st)].filter((e) => !e.closest("[hidden], .pk")).map((e) => {
 		let t = e.getBoundingClientRect();
 		return {
-			id: st(e),
-			role: ct(e),
-			name: lt(e),
+			id: ct(e),
+			role: lt(e),
+			name: ut(e),
 			rect: [
 				Math.round(t.x),
 				Math.round(t.y + scrollY),
 				Math.round(t.width),
 				Math.round(t.height)
 			],
-			opacity: ut(e)
+			opacity: dt(e)
 		};
 	}).filter((e) => e.rect[2] > 0 && e.rect[3] > 0);
 }
-var ft = (e) => {
+var pt = (e) => {
 	if (e.target) {
 		let t = document.querySelector(e.target);
 		if (!t) throw Error(`[presse:script] introuvable : ${e.target}`);
@@ -1047,7 +1047,7 @@ var ft = (e) => {
 		x: t,
 		y: n
 	};
-}, $ = (e, t, n, r, i) => e.dispatchEvent(new PointerEvent(t, {
+}, Q = (e, t, n, r, i) => e.dispatchEvent(new PointerEvent(t, {
 	bubbles: !0,
 	cancelable: !0,
 	composed: !0,
@@ -1058,13 +1058,13 @@ var ft = (e) => {
 	isPrimary: !0,
 	button: 0,
 	buttons: i
-})), pt = () => new Promise((e) => requestAnimationFrame(e));
-async function mt(e, t) {
-	for (; o() - e < t * 1e3;) await pt();
+})), mt = () => new Promise((e) => requestAnimationFrame(e));
+async function ht(e, t) {
+	for (; o() - e < t * 1e3;) await mt();
 }
-async function ht(e) {
+async function gt(e) {
 	let t = o(), n = [];
-	for (let r of [...e].sort((e, t) => e.at - t.at)) if (await mt(t, r.at), r.type !== "wait") {
+	for (let r of [...e].sort((e, t) => e.at - t.at)) if (await ht(t, r.at), r.type !== "wait") {
 		if (r.type === "scroll") scrollBy({
 			top: r.dy,
 			behavior: "instant"
@@ -1080,37 +1080,394 @@ async function ht(e) {
 			let e = (r.target ? document.querySelector(r.target) : document.activeElement) ?? null;
 			e && "value" in e && (e.value += r.text, e.dispatchEvent(new Event("input", { bubbles: !0 })));
 		} else {
-			let e = ft(r);
-			if ($(e.el, "pointerover", e.x, e.y, 0), $(e.el, "pointerdown", e.x, e.y, 1), r.type === "drag") {
+			let e = pt(r);
+			if (Q(e.el, "pointerover", e.x, e.y, 0), Q(e.el, "pointerdown", e.x, e.y, 1), r.type === "drag") {
 				let t = (r.dur ?? .4) * 1e3, n = o(), i = 0;
 				for (; i < 1;) {
-					await pt(), i = Math.min(1, (o() - n) / t);
+					await mt(), i = Math.min(1, (o() - n) / t);
 					let a = i * i * (3 - 2 * i);
-					$(e.el, "pointermove", e.x + r.dx * a, e.y + r.dy * a, 1);
+					Q(e.el, "pointermove", e.x + r.dx * a, e.y + r.dy * a, 1);
 				}
-				$(e.el, "pointerup", e.x + r.dx, e.y + r.dy, 0);
-			} else $(e.el, "pointerup", e.x, e.y, 0), e.el.click?.();
+				Q(e.el, "pointerup", e.x + r.dx, e.y + r.dy, 0);
+			} else Q(e.el, "pointerup", e.x, e.y, 0), e.el.click?.();
 		}
 		n.push(`${r.at}s ${r.type}`);
 	}
 	return n;
 }
-function gt() {
+function _t() {
 	let e = window;
 	e.__presse = Object.assign(e.__presse ?? {}, {
-		tree: dt,
-		play: ht
+		tree: ft,
+		play: gt
 	});
 	let t = new URLSearchParams(location.search).get("presse-script");
 	t && (async () => {
 		let e = t.trim().startsWith("[") ? JSON.parse(t) : await (await fetch(t)).json();
 		await new Promise((e) => setTimeout(e, 300));
-		let n = await ht(e);
+		let n = await gt(e);
 		document.documentElement.dataset.presseScript = "fini", console.info(`[presse:script] ${n.length} gestes rejoués`);
 	})();
 }
-// src/pages-nav.ts
-var _t = [
+// src/registre/effets.ts
+var $ = (e) => e, vt = [
+	$({
+		id: "systeme",
+		nom: "Système de design",
+		categorie: "page",
+		selecteur: "[data-systeme]",
+		attributs: ["data-systeme", "data-systeme-actif"],
+		charger: () => import("./systeme-CJVQC_uT.js"),
+		armer: (e) => e.initSysteme(),
+		parametre: "systeme",
+		tot: !0,
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/systeme.ts"
+	}),
+	$({
+		id: "lightbox",
+		nom: "Visionneuse",
+		categorie: "image",
+		selecteur: "[data-lightbox]",
+		attributs: ["data-lightbox"],
+		charger: () => import("./lightbox-z8H1tizc.js"),
+		armer: (e, t) => e.initLightbox(t),
+		rendu: "WebGPU",
+		statut: "stable",
+		module: "src/presse/lightbox.ts"
+	}),
+	$({
+		id: "vague",
+		nom: "La vague entre deux vues",
+		categorie: "transition",
+		selecteur: "[data-vague]",
+		attributs: [
+			"data-vague",
+			"data-vague-vue",
+			"data-vague-vers",
+			"data-vague-type",
+			"data-vague-palette",
+			"data-vague-duree"
+		],
+		charger: () => import("./vague-CN70MyWd.js"),
+		armer: (e, t) => e.initVague(t),
+		rendu: "WebGPU",
+		statut: "stable",
+		module: "src/presse/vague.ts"
+	}),
+	$({
+		id: "goo",
+		nom: "Goo",
+		categorie: "interface",
+		selecteur: "[data-goo]",
+		attributs: [
+			"data-goo",
+			"data-goo-item",
+			"data-goo-ouvert",
+			"data-goo-x",
+			"data-goo-y",
+			"data-goo-ressort",
+			"data-goo-delai",
+			"data-goo-bascule",
+			"data-goo-fill",
+			"data-goo-fusion",
+			"data-goo-ombre",
+			"data-goo-relief",
+			"data-goo-suit",
+			"data-goo-fixe"
+		],
+		charger: () => import("./goo-CFsUCa3K.js"),
+		armer: (e, t) => e.initGoo(t),
+		rendu: "WebGPU",
+		statut: "stable",
+		module: "src/presse/goo.ts"
+	}),
+	$({
+		id: "metal",
+		nom: "Métal",
+		categorie: "matiere",
+		selecteur: "[data-metal], [data-metal-texte], [data-metal-badge]",
+		attributs: [
+			"data-metal",
+			"data-metal-texte",
+			"data-metal-badge",
+			"data-metal-forme",
+			"data-metal-epaisseur",
+			"data-metal-ombre",
+			"data-metal-force",
+			"data-metal-nom",
+			"data-metal-reflet"
+		],
+		charger: () => import("./metal-DhiLXJ8J.js"),
+		armer: (e, t) => e.initMetal(t),
+		rendu: "WebGPU",
+		statut: "stable",
+		module: "src/presse/metal.ts"
+	}),
+	$({
+		id: "voix",
+		nom: "La voix",
+		categorie: "interface",
+		selecteur: "[data-voix]",
+		attributs: [
+			"data-voix",
+			"data-voix-micro",
+			"data-voix-etat",
+			"data-voix-palette",
+			"data-voix-couleur",
+			"data-voix-force",
+			"data-voix-hauteur",
+			"data-voix-debord",
+			"data-voix-fond",
+			"data-voix-auto",
+			"data-voix-demo"
+		],
+		charger: () => import("./voix-CZKU20Od.js"),
+		armer: (e, t) => e.initVoix(t),
+		rendu: "WebGPU",
+		statut: "stable",
+		module: "src/presse/voix.ts"
+	}),
+	$({
+		id: "ruban",
+		nom: "Ruban",
+		categorie: "image",
+		selecteur: "[data-ruban]",
+		attributs: [
+			"data-ruban",
+			"data-ruban-hauteur",
+			"data-ruban-joint",
+			"data-ruban-rayon",
+			"data-ruban-repos",
+			"data-ruban-auto"
+		],
+		charger: () => import("./ruban-DoiNyoNj.js"),
+		armer: (e, t) => e.initRuban(t),
+		rendu: "WebGPU",
+		statut: "stable",
+		module: "src/presse/ruban.ts"
+	}),
+	$({
+		id: "typo",
+		nom: "Typographie cinétique",
+		categorie: "texte",
+		selecteur: "[data-typo]",
+		attributs: [
+			"data-typo",
+			"data-typo-quand",
+			"data-typo-duree",
+			"data-typo-delai",
+			"data-typo-rejoue",
+			"data-typo-ligne"
+		],
+		charger: () => import("./typo-CjZWxNga.js"),
+		armer: (e, t) => e.initTypo(t),
+		rendu: "DOM + WebGPU",
+		statut: "stable",
+		module: "src/presse/typo.ts"
+	}),
+	$({
+		id: "rouleau",
+		nom: "Menu roulant à image-tissu",
+		categorie: "interface",
+		selecteur: "[data-rouleau]",
+		attributs: [
+			"data-rouleau",
+			"data-rouleau-img",
+			"data-rouleau-hauteur",
+			"data-rouleau-largeur",
+			"data-rouleau-decalage",
+			"data-rouleau-ecart",
+			"data-rouleau-depart",
+			"data-rouleau-respire",
+			"data-rouleau-invite"
+		],
+		charger: () => import("./rouleau-DwhmWLGC.js"),
+		armer: (e, t) => e.initRouleau(t),
+		rendu: "WebGPU",
+		statut: "stable",
+		module: "src/presse/rouleau.ts"
+	}),
+	$({
+		id: "couloir",
+		nom: "Couloir",
+		categorie: "image",
+		selecteur: "[data-couloir]",
+		attributs: /* @__PURE__ */ "data-couloir.data-couloir-presets.data-couloir-profondeur.data-couloir-angle.data-couloir-horizon.data-couloir-cote.data-couloir-hauteur.data-couloir-largeur.data-couloir-bande.data-couloir-ecart.data-couloir-filet.data-couloir-vitesse.data-couloir-inertie.data-couloir-pilotage.data-couloir-sens.data-couloir-sansfin.data-couloir-aberration.data-couloir-flou.data-couloir-vide.data-couloir-survol.data-couloir-ouvre.data-couloir-fond.data-couloir-mur.data-couloir-ouverture.data-couloir-mode.data-couloir-commandes".split("."),
+		charger: () => import("./couloir-rejIHBv0.js"),
+		armer: (e, t) => e.initCouloir(t),
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/couloir.ts"
+	}),
+	$({
+		id: "logo",
+		nom: "Logo",
+		categorie: "matiere",
+		selecteur: "[data-logo]",
+		attributs: /* @__PURE__ */ "data-logo.data-logo-src.data-logo-texte.data-logo-police.data-logo-marge.data-logo-sans-fond.data-logo-presets.data-logo-teinte.data-logo-repetition.data-logo-adoucissement.data-logo-frange-rouge.data-logo-frange-bleue.data-logo-distorsion.data-logo-contour.data-logo-angle.data-logo-echelle.data-logo-couleurs.data-logo-interieur.data-logo-distorsion-interieure.data-logo-distorsion-exterieure.data-logo-lueur-interieure.data-logo-lueur-exterieure.data-logo-decalage.data-logo-taille.data-logo-grain.data-logo-caustique.data-logo-vagues.data-logo-couches.data-logo-bords.data-logo-reflet.data-logo-reflets.data-logo-motif.data-logo-relief.data-logo-etirement.data-logo-flou.data-logo-ombre.data-logo-ombres.data-logo-contraste.data-logo-bruit.data-logo-type.data-logo-cyan.data-logo-magenta.data-logo-jaune.data-logo-noir.data-logo-encre.data-logo-rayon.data-logo-grille.data-logo-inverse.data-logo-couleurs-image.data-logo-sombre.data-logo-pixel.data-logo-niveaux.data-logo-ecart.data-logo-dispersion.data-logo-tourbillon.data-logo-biais.data-logo-perspective.data-logo-nombre.data-logo-spectre.data-logo-centre.data-logo-bombement.data-logo-papier.data-logo-melange.data-logo-graine.data-logo-rugosite.data-logo-fibres.data-logo-plis.data-logo-froissage.data-logo-froisses.data-logo-gouttes.data-logo-feuille-coupee.data-logo-fond.data-logo-vitesse.data-logo-pause.data-logo-instant.data-logo-survol.data-logo-masque.data-logo-mouvement".split("."),
+		charger: () => import("./logo-DJ6z-YGZ.js"),
+		armer: (e, t) => e.initLogo(t),
+		rendu: "WebGL2",
+		statut: "stable",
+		module: "src/presse/logo.ts"
+	}),
+	$({
+		id: "cinetique",
+		nom: "Typographie cinétique en DOM",
+		categorie: "texte",
+		selecteur: "[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]",
+		attributs: [
+			"data-cinetique",
+			"data-roule",
+			"data-marque",
+			"data-defile",
+			"data-reflet",
+			"data-cercle",
+			"data-coupe",
+			"data-brouille",
+			"data-frappe",
+			"data-cinetique-par",
+			"data-cinetique-quand",
+			"data-cinetique-duree",
+			"data-cinetique-delai",
+			"data-cinetique-cascade",
+			"data-cinetique-ordre",
+			"data-cinetique-sortie",
+			"data-cinetique-rejoue",
+			"data-roule-tempo",
+			"data-defile-rangs",
+			"data-defile-vitesse",
+			"data-defile-incline",
+			"data-defile-separateur",
+			"data-cercle-rayon",
+			"data-cercle-vitesse",
+			"data-frappe-vitesse"
+		],
+		charger: () => import("./cinetique-BLQF3vQ_.js"),
+		armer: (e, t) => e.initCinetique(t),
+		manuel: !0,
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/cinetique.ts"
+	}),
+	$({
+		id: "dechirure",
+		nom: "Déchirure",
+		categorie: "forme",
+		selecteur: "[data-dechirure], [data-dechirure-coupe]",
+		attributs: [
+			"data-dechirure",
+			"data-dechirure-coupe",
+			"data-dechirure-detoure",
+			"data-dechirure-graine",
+			"data-dechirure-amplitude",
+			"data-dechirure-fibre",
+			"data-dechirure-couleur",
+			"data-dechirure-ombre",
+			"data-dechirure-retour"
+		],
+		charger: () => import("./dechirure-BzPZkiWB.js"),
+		armer: (e, t) => e.initDechirure(t),
+		manuel: !0,
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/dechirure.ts"
+	}),
+	$({
+		id: "forme",
+		nom: "Forme-masque",
+		categorie: "forme",
+		selecteur: "[data-forme]",
+		attributs: [
+			"data-forme",
+			"data-forme-quand",
+			"data-forme-hauteur",
+			"data-forme-duree",
+			"data-forme-fin",
+			"data-forme-taille",
+			"data-forme-scene",
+			"data-forme-media"
+		],
+		charger: () => import("./forme-BIMa4r-M.js"),
+		armer: (e, t) => e.initForme(t),
+		manuel: !0,
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/forme.ts"
+	}),
+	$({
+		id: "autocollant",
+		nom: "Autocollant",
+		categorie: "interface",
+		selecteur: "[data-autocollant]",
+		attributs: [
+			"data-autocollant",
+			"data-autocollant-cible",
+			"data-autocollant-forme",
+			"data-autocollant-couleur",
+			"data-autocollant-encre",
+			"data-autocollant-taille"
+		],
+		charger: () => import("./autocollant-DxKwbZ4a.js"),
+		armer: (e, t) => e.initAutocollant(t),
+		manuel: !0,
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/autocollant.ts"
+	}),
+	$({
+		id: "rail",
+		nom: "Rail",
+		categorie: "interface",
+		selecteur: "[data-rail]",
+		attributs: [
+			"data-rail",
+			"data-rail-piste",
+			"data-rail-barre",
+			"data-rail-precedent",
+			"data-rail-suivant",
+			"data-rail-seuil",
+			"data-rail-sansfin",
+			"data-rail-vitesse"
+		],
+		charger: () => import("./rail-DxZDDSFB.js"),
+		armer: (e, t) => e.initRail(t),
+		manuel: !0,
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/rail.ts"
+	}),
+	$({
+		id: "trace",
+		nom: "Dessin technique",
+		categorie: "dessin",
+		selecteur: "[data-trace]",
+		attributs: [
+			"data-trace",
+			"data-trace-role",
+			"data-trace-ordre",
+			"data-trace-ignore",
+			"data-trace-quand",
+			"data-trace-duree",
+			"data-trace-delai",
+			"data-trace-cascade",
+			"data-trace-rejoue",
+			"data-trace-cote",
+			"data-trace-cote-libelle",
+			"data-trace-cote-decalage",
+			"data-trace-cote-taille",
+			"data-trace-cote-fleche"
+		],
+		charger: () => import("./trace-B4tEqMxC.js"),
+		armer: (e, t) => e.initTrace(t),
+		manuel: !0,
+		rendu: "DOM",
+		statut: "stable",
+		module: "src/presse/trace.ts"
+	})
+], yt = [
 	{
 		href: "index.html",
 		name: "WebGPU-demo-UBS",
@@ -1286,17 +1643,21 @@ var _t = [
 		name: "WebGPU-demo-UBS v0",
 		text: "La toute première version, générée par Grok"
 	}
-], vt = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n";
-function yt(e = "./") {
-	gt(), n(), a(), (/[?&]systeme=/.test(location.search) || document.querySelector("[data-systeme]")) && import("./systeme-DYoORQxc.js").then((e) => e.initSysteme()), Le(), Oe(), at(), He(), s(), Pe(), document.querySelector("[data-lightbox]") && import("./lightbox-z8H1tizc.js").then((e) => e.initLightbox()), document.querySelector("[data-vague]") && import("./vague-CIPl6n2_.js").then((e) => e.initVague()), document.querySelector("[data-goo]") && import("./goo-Dp87ij6P.js").then((e) => e.initGoo()), document.querySelector("[data-metal], [data-metal-texte], [data-metal-badge]") && import("./metal-uotjRrke.js").then((e) => e.initMetal()), document.querySelector("[data-voix]") && import("./voix-BJaqTIa1.js").then((e) => e.initVoix()), document.querySelector("[data-ruban]") && import("./ruban-jbq1yB2I.js").then((e) => e.initRuban()), document.querySelector("[data-typo]") && import("./typo-Dmhg61t4.js").then((e) => e.initTypo()), document.querySelector("[data-rouleau]") && import("./rouleau-D_EC_WRz.js").then((e) => e.initRouleau()), document.querySelector("[data-couloir]") && import("./couloir-BBARXHpP.js").then((e) => e.initCouloir()), document.querySelector("[data-logo]") && import("./logo-Buwr1VsP.js").then((e) => e.initLogo()), !document.documentElement.hasAttribute("data-presse-manuel") && document.querySelector("[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]") && import("./cinetique-CQuiLMmn.js").then((e) => e.initCinetique()), document.documentElement.hasAttribute("data-presse-manuel") || (document.querySelector("[data-dechirure], [data-dechirure-coupe]") && import("./dechirure-Ckdx29vY.js").then((e) => e.initDechirure()), document.querySelector("[data-forme]") && import("./forme-Cg8n8vdq.js").then((e) => e.initForme()), document.querySelector("[data-autocollant]") && import("./autocollant-DCbttCml.js").then((e) => e.initAutocollant()), document.querySelector("[data-rail]") && import("./rail-DhcbZ1vj.js").then((e) => e.initRail()), document.querySelector("[data-trace]") && import("./trace-DQUX_RfL.js").then((e) => e.initTrace()));
+], bt = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pop {\n  inset: auto;\n  margin: 0;\n  padding: 8px;\n  min-width: min(340px, calc(100vw - 32px));\n  border: 1px solid currentColor;\n  border-radius: 6px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait\n     illisible (texte crème sur fond crème). */\n  background: #f6f1e4;\n  color: #16110d;\n  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  font-family: inherit;\n  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pages-pop a {\n  display: grid;\n  gap: 2px;\n  padding: 10px 12px;\n  border-radius: 4px;\n  color: inherit;\n  text-decoration: none;\n}\n.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop a[aria-current=\"page\"] { box-shadow: inset 3px 0 0 #c8321c; }\n.pages-pop .pages-name { font-weight: 700; font-size: 16px; }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;\n  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;\n  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;\n}\n.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }\n.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n", xt = "[data-pages-trigger]";
+function St(e, t) {
+	let n = e.documentElement.hasAttribute("data-presse-manuel");
+	for (let r of vt) !!r.tot !== t || r.manuel && n || (r.parametre && RegExp(`[?&]${r.parametre}=`).test(location.search) || e.querySelector(r.selecteur)) && r.charger().then((t) => r.armer(t, e));
+}
+function Ct(e = "./") {
+	_t(), n(), a(), St(document, !0), Ie(), De(), ot(), He(), s(), Ne(), St(document, !1);
 	let t = document.createElement("style");
-	t.textContent = vt + ne, document.head.append(t);
-	let r = document.querySelector("[data-pages-trigger]");
+	t.textContent = bt + ne, document.head.append(t);
+	let r = document.querySelector(xt);
 	r || (r = document.createElement("button"), r.type = "button", r.className = "pages-pill", r.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(r));
 	let i = document.createElement("nav");
 	i.id = "pages-pop", i.className = "pages-pop", i.setAttribute("popover", ""), i.setAttribute("aria-label", "Pages");
 	let o = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0].split("?")[0], c = document.createElement("ul");
-	for (let t of _t) {
+	for (let t of yt) {
 		let n = document.createElement("li"), r = document.createElement("a");
 		r.href = e + t.href, r.href === o && r.setAttribute("aria-current", "page"), r.innerHTML = "<span class=\"pages-name\"></span><span class=\"pages-text\"></span>", r.querySelector(".pages-name").textContent = t.name, r.querySelector(".pages-text").textContent = t.text, n.append(r), c.append(n);
 	}
@@ -1304,10 +1665,10 @@ function yt(e = "./") {
 	let l = document.createElement("button");
 	l.type = "button", l.className = "pages-debug", l.innerHTML = "<span class=\"pages-name\">Débogage</span><span class=\"pages-text\">Fil de fer, grille, capture vidéo</span>", l.addEventListener("click", () => {
 		i.hidePopover(), E(r);
-	}), i.append(l), oe(i, _t, e), document.body.append(i), r.setAttribute("popovertarget", "pages-pop"), r.setAttribute("aria-haspopup", "true"), r.setAttribute("aria-controls", "pages-pop"), i.addEventListener("toggle", (e) => {
+	}), i.append(l), oe(i, yt, e), document.body.append(i), r.setAttribute("popovertarget", "pages-pop"), r.setAttribute("aria-haspopup", "true"), r.setAttribute("aria-controls", "pages-pop"), i.addEventListener("toggle", (e) => {
 		if (e.newState !== "open") return;
 		let t = r.getBoundingClientRect();
 		i.style.left = `${Math.max(8, Math.min(t.left, innerWidth - i.offsetWidth - 8))}px`, i.style.top = `${t.bottom + 8}px`, i.style.maxHeight = `${Math.max(200, innerHeight - t.bottom - 24)}px`;
 	});
 }
-yt("../"), D();
+Ct("../"), D();

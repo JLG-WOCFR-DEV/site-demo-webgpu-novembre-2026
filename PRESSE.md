@@ -115,6 +115,17 @@ p.replay();                  // rejouer l'impression des sections
 5. **Une chaîne après la scène** : bloom, repérage, trame, matières, transitions et grain dans une passe de composition.
 6. **Le contenu change** (CMS, script) : un `MutationObserver` relance la mise en page, et le morphing s'en charge si l'élément le demande.
 
+## Registre
+
+Les modules que `mountPagesNav()` arme de lui-même sont décrits dans `src/registre/effets.ts`, un manifeste par effet :
+identifiant, nom, catégorie, sélecteur qui déclenche l'armement, attributs (ceux de ce fichier), chargeur paresseux,
+fonction d'armement, rendu, statut, fichier source. `src/pages-nav.ts` ne contient plus de sélecteur écrit à la main ; le
+validateur et le tableau du skill lisent le registre. **Ajouter un effet armé automatiquement** : écrire
+`src/presse/x.ts` avec `initX(racine)`, ajouter son manifeste à `EFFETS` (chargeur au chemin littéral
+`() => import("../presse/x.ts")` pour que Vite en fasse un morceau à part ; `manuel: true` s'il doit céder la main aux
+pages qui arment elles-mêmes), documenter ses attributs dans le tableau « Attributs » ci-dessus, puis `npm test`
+(`src/registre/registre.test.ts` vérifie l'accord registre ⇄ PRESSE.md ⇄ code) et `npm run skill:tableau`.
+
 ## Composants
 
 Une balise dans la page, déroulée en HTML statique à la construction (`presse/build/`, plugin Vite, en développement comme

@@ -15,6 +15,7 @@ import { initAnim } from "./presse/timeline.ts";
 import { initTokens } from "./presse/tokens.ts";
 import { initSweep } from "./presse/sweep.ts";
 import { mountScript } from "./presse/script.ts";
+import { EFFETS } from "./registre/effets.ts";
 
 export const PAGES = [
   { href: "index.html", name: "WebGPU-demo-UBS", text: "La presse WebGPU : le guide et la démo" },
@@ -118,6 +119,23 @@ const CSS = `
 }
 `;
 
+/** Le bouton de la page qui ouvre le menu (sinon, une pastille « Pages » est ajoutée). */
+const DECLENCHEUR = "[data-pages-trigger]";
+
+/**
+ * Arme les effets du registre (src/registre/effets.ts) dont la page se sert : `tot` choisit ceux qui passent avant
+ * le rideau d'entrée. Un manifeste `manuel` n'est pas armé si <html> porte data-presse-manuel ; un `parametre`
+ * d'adresse (?systeme=) arme aussi, sans attribut dans la page. Chargement paresseux : un morceau par module.
+ */
+function armerEffets(racine: Document, tot: boolean) {
+  const manuel = racine.documentElement.hasAttribute("data-presse-manuel");
+  for (const e of EFFETS) {
+    if (!!e.tot !== tot || (e.manuel && manuel)) continue;
+    const parAdresse = !!e.parametre && new RegExp(`[?&]${e.parametre}=`).test(location.search);
+    if (parAdresse || racine.querySelector(e.selecteur)) void e.charger().then((m) => e.armer(m, racine));
+  }
+}
+
 /**
  * base : le chemin de la racine du site depuis la page (« ./ » pour les pages
  * de la racine, « ../ » pour PLI v0, servie depuis legacy/).
@@ -130,45 +148,21 @@ export function mountPagesNav(base = "./") {
   initLook();
   // Un système de design (variations.html) demandé par l'adresse (?systeme=) ou par la page (data-systeme) : il passe
   // par-dessus les couleurs, fontes, look et mouvement de la page.
-  if (/[?&]systeme=/.test(location.search) || document.querySelector("[data-systeme]")) void import("./presse/systeme.ts").then((m) => m.initSysteme());
+  armerEffets(document, true);
   initIntro();
   initFlights();
   initSweep();
   initScroll();
   initAnim();
   initCursor();
-  // La visionneuse : chargée seulement si la page a un [data-lightbox].
-  if (document.querySelector("[data-lightbox]")) void import("./presse/lightbox.ts").then((m) => m.initLightbox());
-  // La vague entre deux vues : de même.
-  if (document.querySelector("[data-vague]")) void import("./presse/vague.ts").then((m) => m.initVague());
-  // Goo (pièces qui fusionnent), métal (chrome liquide), voix (lueur du micro) : chacun chargé si la page s'en sert.
-  if (document.querySelector("[data-goo]")) void import("./presse/goo.ts").then((m) => m.initGoo());
-  if (document.querySelector("[data-metal], [data-metal-texte], [data-metal-badge]")) void import("./presse/metal.ts").then((m) => m.initMetal());
-  if (document.querySelector("[data-voix]")) void import("./presse/voix.ts").then((m) => m.initVoix());
-  // Ruban (bande d'images en 3D) et typographie cinétique, d'après Aristide Benoist.
-  if (document.querySelector("[data-ruban]")) void import("./presse/ruban.ts").then((m) => m.initRuban());
-  if (document.querySelector("[data-typo]")) void import("./presse/typo.ts").then((m) => m.initTypo());
-  if (document.querySelector("[data-rouleau]")) void import("./presse/rouleau.ts").then((m) => m.initRouleau());
-  // Couloir : une rangée d'images en perspective fuyante (DOM, matrix3d).
-  if (document.querySelector("[data-couloir]")) void import("./presse/couloir.ts").then((m) => m.initCouloir());
-  // Logo : une matière animée (Paper Shaders, WebGL2) sur un logo ; le rendu se charge à la demande.
-  if (document.querySelector("[data-logo]")) void import("./presse/logo.ts").then((m) => m.initLogo());
-  if (!document.documentElement.hasAttribute("data-presse-manuel") && document.querySelector("[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]"))
-    void import("./presse/cinetique.ts").then((m) => m.initCinetique());
-  // Modules nés de la boutique ; une page qui les arme elle-même porte data-presse-manuel sur <html>.
-  if (!document.documentElement.hasAttribute("data-presse-manuel")) {
-    if (document.querySelector("[data-dechirure], [data-dechirure-coupe]")) void import("./presse/dechirure.ts").then((m) => m.initDechirure());
-    if (document.querySelector("[data-forme]")) void import("./presse/forme.ts").then((m) => m.initForme());
-    if (document.querySelector("[data-autocollant]")) void import("./presse/autocollant.ts").then((m) => m.initAutocollant());
-    if (document.querySelector("[data-rail]")) void import("./presse/rail.ts").then((m) => m.initRail());
-    // Dessin technique qui se trace (cotes, hachures, lignes de construction).
-    if (document.querySelector("[data-trace]")) void import("./presse/trace.ts").then((m) => m.initTrace());
-  }
+  // Les effets du registre (visionneuse, vague, goo, métal, voix, ruban, typo, rouleau, couloir, logo, cinétique,
+  // déchirure, forme, autocollant, rail, tracé) : chacun chargé seulement si la page s'en sert.
+  armerEffets(document, false);
   const style = document.createElement("style");
   style.textContent = CSS + SETTINGS_CSS;
   document.head.append(style);
 
-  let trigger = document.querySelector<HTMLButtonElement>("[data-pages-trigger]");
+  let trigger = document.querySelector<HTMLButtonElement>(DECLENCHEUR);
   if (!trigger) {
     trigger = document.createElement("button");
     trigger.type = "button";

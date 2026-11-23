@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 // Presse — régénère le tableau « intention → module » du skill .claude/skills/presse-page/SKILL.md depuis PRESSE.md
-// (via le catalogue dérivé, tools/valider/catalogue.ts) et src/pages-nav.ts (armement). Le tableau est écrit entre
-// les marqueurs <!-- tableau:debut --> et <!-- tableau:fin --> ; le reste du skill n'est pas touché.
+// (via le catalogue dérivé, tools/valider/catalogue.ts) et le registre des effets, src/registre/effets.ts (l'armement
+// par pages-nav). Le tableau est écrit entre les marqueurs <!-- tableau:debut --> et <!-- tableau:fin --> ; le reste du
+// skill n'est pas touché (le texte du marqueur, qui cite encore src/pages-nav.ts, est gardé tel quel).
 //
 //   npm run skill:tableau               réécrit le tableau
 //   npm run skill:tableau -- --verifier code retour 1 si le tableau n'est plus à jour (rien n'est écrit)
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { lireCatalogue } from "./valider/catalogue.ts";
+import { lireArmement, lireCatalogue } from "./valider/catalogue.ts";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SKILL = path.join(racine, ".claude/skills/presse-page/SKILL.md");
 const cat = lireCatalogue(racine);
+// L'armement vient du registre (src/registre/effets.ts), par lireArmement : plus de lecture de src/pages-nav.ts.
+const { armement: ARMEMENT, imports: TOUJOURS } = lireArmement();
 const pages = fs.readdirSync(racine).filter((f) => f.endsWith(".html"));
 const sources = new Map(pages.map((p) => [p, fs.readFileSync(path.join(racine, p), "utf8")]));
 
@@ -39,7 +42,7 @@ function moduleDe(nom, a) {
   const dernier = nom.split("-").at(-1);
   if (/^data-presse-/.test(nom)) return fs.existsSync(path.join(racine, `src/presse/${dernier}.ts`)) ? dernier : undefined;
   const f = (a?.code ?? []).map((x) => x.match(/^src\/presse\/([a-z-]+)\.ts$/)?.[1]).filter(Boolean);
-  return f.find((m) => cat.importsPagesNav.includes(m)) ?? f[0];
+  return f.find((m) => TOUJOURS.includes(m)) ?? f[0];
 }
 function rendu(nom, texte, a) {
   if (estMoteur(nom, a)) return "WebGPU (moteur)";
@@ -59,10 +62,10 @@ function rendu(nom, texte, a) {
 }
 function armement(L, a) {
   if (estMoteur(L.principal, a)) return "moteur (`src/presse/auto.ts` ou `site.ts`)";
-  const mod = moduleDe(L.principal, a) ?? cat.armement.find((x) => x.attrs.includes(L.principal))?.module;
-  const ar = cat.armement.find((x) => x.module === mod && x.attrs.some((n) => L.noms.includes(n)));
+  const mod = moduleDe(L.principal, a) ?? ARMEMENT.find((x) => x.attrs.includes(L.principal))?.module;
+  const ar = ARMEMENT.find((x) => x.module === mod && x.attrs.some((n) => L.noms.includes(n)));
   if (ar) return ar.sansManuel ? "pages-nav, sauf `data-presse-manuel`" : "pages-nav";
-  if (mod && cat.importsPagesNav.includes(mod)) return "pages-nav (toujours)";
+  if (mod && TOUJOURS.includes(mod)) return "pages-nav (toujours)";
   if (mod) return `à importer : \`src/presse/${mod}.ts\``;
   return "—";
 }

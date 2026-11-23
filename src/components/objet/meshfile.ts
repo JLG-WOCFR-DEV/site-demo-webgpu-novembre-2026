@@ -6,7 +6,7 @@
  *
  * Un .json plutôt qu'un .glb : il passe chez tous les hébergeurs.
  */
-import { MeshoptDecoder } from "meshoptimizer/meshopt_decoder.module.js";
+import { MeshoptDecoder } from "meshoptimizer/decoder";
 import type { Mesh } from "./meshes.ts";
 
 /** Les modèles fournis (identifiant → fichier), dans l'ordre du sélecteur de l'Atelier. */
