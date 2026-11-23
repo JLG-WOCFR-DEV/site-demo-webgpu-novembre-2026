@@ -302,7 +302,7 @@ export function genererSysteme(graine: number, contraintes: Contraintes = {}, ve
     look,
   };
 }
-const copie = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+const copie = <T>(x: T): T => structuredClone(x);
 /** Les verrous d'un système : ses familles nommées, recopiées. */
 export const verrousDe = (s: Systeme, familles: Iterable<Famille>): Verrous => Object.fromEntries([...familles].map((f) => [f, copie(s[f])])) as Verrous;
 

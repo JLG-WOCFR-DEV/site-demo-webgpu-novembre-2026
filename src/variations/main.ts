@@ -893,7 +893,7 @@ function basculerInstantane(s: Systeme) {
     instantanes.splice(i, 1);
     dire(`${s.nom} retiré des instantanés.`);
   } else {
-    instantanes.push(JSON.parse(JSON.stringify(s)) as Systeme);
+    instantanes.push(structuredClone(s) as Systeme);
     if (instantanes.length > 40) instantanes.shift();
     dire(`${s.nom} gardé (${instantanes.length} instantané${instantanes.length > 1 ? "s" : ""}).`);
   }
@@ -938,7 +938,7 @@ bande.addEventListener("click", (e) => {
     dire(systemeB ? `B : ${s.nom}. Glisser le rideau pour comparer.` : "Plus de B.");
   } else if (t.closest(".vr-inst-appliquer")) {
     retouches = [];
-    appliquer(JSON.parse(JSON.stringify(s)) as Systeme, { dire: `Appliqué : ${s.nom}.` });
+    appliquer(structuredClone(s) as Systeme, { dire: `Appliqué : ${s.nom}.` });
   }
 });
 

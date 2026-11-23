@@ -328,7 +328,7 @@ export function mountEditor(root: HTMLElement) {
     const el = e.target as HTMLElement;
     if (!el.isContentEditable) return;
     // Entrée valide (un paragraphe reste un paragraphe), Échap aussi ; Maj + Entrée : retour à la ligne.
-    if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
+    if ((e.key === "Enter" && !e.shiftKey && !e.isComposing) || e.key === "Escape") {
       e.preventDefault();
       el.blur();
     }

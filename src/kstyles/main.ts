@@ -175,7 +175,7 @@ const STYLES: Style[] = [
 /* ───── État ───── */
 
 const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
-const clone = <T>(p: T): T => JSON.parse(JSON.stringify(p));
+const clone = <T>(p: T): T => structuredClone(p);
 /** Réglages d'une entrée : le naturel, puis ceux du style, puis ceux de l'entrée. */
 const target = (si: number, ei: number): Params => {
   const s = STYLES[si]!;

@@ -1263,9 +1263,12 @@ function dialogueSimple(img: HTMLImageElement | null) {
   f.addEventListener("click", () => d.close());
   d.append(grand, p, f);
   d.addEventListener("close", () => d.remove());
-  d.addEventListener("click", (e) => {
-    if (e.target === d) d.close();
-  });
+  d.setAttribute("closedby", "any");
+  if (!("closedBy" in HTMLDialogElement.prototype)) {
+    d.addEventListener("click", (e) => {
+      if (e.target === d) d.close();
+    });
+  }
   document.body.append(d);
   d.showModal();
 }

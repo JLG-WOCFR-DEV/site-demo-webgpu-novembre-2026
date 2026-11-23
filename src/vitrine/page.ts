@@ -69,7 +69,7 @@ export function monter(racine: HTMLElement, doc: DocumentVitrine, o: OptionsArme
     detruire() {
       armement.detruire();
       document.head.querySelector(`style[data-v-jetons="${racine.dataset.vRacine}"]`)?.remove();
-      racine.innerHTML = "";
+      racine.replaceChildren();
     },
   };
 }

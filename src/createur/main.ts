@@ -303,7 +303,7 @@ function act(id: string, op: "up" | "down" | "dup" | "del") {
     sendPreview({ type: "select", id: selected });
     toast(`${label} supprimé — ⌘Z pour le rendre`);
   } else if (op === "dup") {
-    const copy = JSON.parse(JSON.stringify(doc().blocks[i])) as Block;
+    const copy = structuredClone(doc().blocks[i]) as Block;
     copy.id = newId(copy.type);
     if (copy.props.anchor) copy.props.anchor = `${copy.props.anchor}-2`;
     change((s) => void doc().blocks.splice(i + 1, 0, copy));
@@ -368,7 +368,7 @@ creerReordonner(layersEl, {
 layersEl.addEventListener("keydown", (e) => {
   const li = (e.target as HTMLElement).closest<HTMLElement>("[data-layer]");
   if (!li || e.target !== li) return;
-  if (e.key === "Enter") {
+  if (e.key === "Enter" && !e.isComposing) {
     e.preventDefault();
     select(li.dataset.layer!);
   }

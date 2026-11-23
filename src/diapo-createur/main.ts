@@ -459,7 +459,7 @@ frame.addEventListener("load", () => {
       const el = e.target as HTMLElement;
       if (el.isContentEditable) {
         e.stopPropagation(); // le diaporama n'avance pas pendant la frappe
-        if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") (e.preventDefault(), el.blur());
+        if ((e.key === "Enter" && !e.shiftKey && !e.isComposing) || e.key === "Escape") (e.preventDefault(), el.blur());
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") (e.preventDefault(), e.shiftKey ? restore(redo, undo) : restore(undo, redo));
@@ -590,7 +590,7 @@ function renameSection(start: number) {
     };
     inp.addEventListener("keydown", (e) => {
       e.stopPropagation();
-      if (e.key === "Enter") (e.preventDefault(), end(true));
+      if (e.key === "Enter" && !e.isComposing) (e.preventDefault(), end(true));
       else if (e.key === "Escape") (e.preventDefault(), end(false));
     });
     inp.addEventListener("blur", () => end(true));
