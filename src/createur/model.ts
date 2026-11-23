@@ -12,6 +12,7 @@
 import { CUI_EFFECTS } from "../gpu/cui.ts";
 import { TRANSITIONS } from "../state.ts";
 import { attributsDe, BORNES, lirePilotage, lireReglages, PRESETS_NOMS, type Preset, type Reglages } from "../presse/couloir.ts";
+import { attributsHtml, estMatiere, ICONES, lirePaires, MATIERES, MATIERES_NOMS, valeursDe, type ConfigLogo, type DefReglage, type Matiere } from "../presse/logo.ts";
 
 export type Value = string | number | boolean;
 export type Props = Record<string, Value>;
@@ -908,6 +909,117 @@ def({
   <ul class="ps-couloir-mur" ${attributsDe(reglagesCouloir(p))} aria-label="${esc(nom)}">
     ${(b.items ?? []).map(imgCouloir).join("\n    ")}
   </ul>
+</section>`;
+  },
+});
+
+/* ───── Logo : src/presse/logo.ts (Paper Shaders en WebGL2), réglé par ses attributs data-logo-… ───── */
+
+/** Les logos du dépôt (et un texte), pour le bloc. */
+const LOGOS = c(["./conference/ubs-logo.svg", "Université Bretagne Sud"], ["./conference/llshs-logo.svg", "Faculté LLSHS"], ["texte", "Un texte"]);
+const LOGO_TAILLES: Record<string, [number, number]> = { "./conference/ubs-logo.svg": [830, 445], "./conference/llshs-logo.svg": [660, 480] };
+/** Les trois réglages du bloc pour une matière : ses réglages principaux qu'un champ simple sait montrer, complétés par ses nombres. */
+export function reglagesBlocLogo(m: Matiere): DefReglage[] {
+  const simples = MATIERES[m].reglages.filter((r) => r.type === "nombre" || r.type === "couleur" || r.type === "choix");
+  const principaux = simples.filter((r) => r.principal);
+  return [...principaux, ...simples.filter((r) => !r.principal && r.type === "nombre" && r.cle !== "echelle")].slice(0, 3);
+}
+/** Les champs de l'inspecteur : la clé `matiere.reglage`, montrée seulement pour sa matière. */
+const LOGO_CHAMPS: Field[] = MATIERES_NOMS.flatMap((m) =>
+  reglagesBlocLogo(m).map((r): Field => {
+    const base = { key: `${m}.${r.cle}`, label: r.libelle, icon: r.icone, group: "Matière", when: (p: Props) => p.matiere === m };
+    if (r.type === "couleur") return { ...base, type: "color" };
+    if (r.type === "choix") return { ...base, type: "select", choices: r.choix!.map(([k, , lib]) => [k, lib] as const) };
+    return { ...base, type: "range", min: r.min, max: r.max, step: r.pas, unit: r.angle ? "°" : undefined };
+  }),
+);
+/** La configuration du module tirée des propriétés du bloc. */
+export function configLogoDuBloc(p: Props): ConfigLogo {
+  const m = estMatiere(p.matiere) ? p.matiere : "liquide-metal";
+  const paires: [string, string][] = [["", m]];
+  if (str(p.source) === "texte") paires.push(["texte", str(p.texte) || "Presse"]);
+  else paires.push(["src", str(p.source) || "./conference/ubs-logo.svg"]);
+  if (str(p.preset)) paires.push(["presets", str(p.preset)]);
+  for (const r of reglagesBlocLogo(m)) if (str(p[`${m}.${r.cle}`]) !== "") paires.push([r.cle, str(p[`${m}.${r.cle}`])]);
+  if (str(p.fond) && p.fond !== "transparent") paires.push(["fond", str(p.fond)]);
+  if (Number(p.vitesse) >= 0 && str(p.vitesse) !== "") paires.push(["vitesse", str(p.vitesse)]);
+  if (str(p.survol) && p.survol !== "aucun") paires.push(["survol", str(p.survol)]);
+  return lirePaires(paires);
+}
+/** Les valeurs du préréglage pour les trois réglages du bloc (le préréglage les réécrit, comme le couloir). */
+function logoDuPreset(m: Matiere, preset: string): Props {
+  const v = valeursDe(m, preset);
+  const out: Props = {};
+  for (const r of reglagesBlocLogo(m)) out[`${m}.${r.cle}`] = v[r.cle] as Value;
+  return out;
+}
+
+def({
+  type: "logo",
+  label: "Logo",
+  group: "Matière",
+  glyph: "◈",
+  desc: "Un logo en matière animée : métal liquide, fumée, chaleur, eau, verre cannelé, trames, lentille, papier",
+  fields: [
+    { key: "kicker", label: "Surtitre", type: "text", group: "Contenu" },
+    { key: "title", label: "Titre", type: "text", group: "Contenu" },
+    { key: "source", label: "Logo", type: "select", choices: LOGOS, group: "Logo" },
+    { key: "texte", label: "Texte", type: "text", hint: "Rastérisé dans une police embarquée", group: "Logo", when: (p) => p.source === "texte" },
+    { key: "nom", label: "Nom pour les lecteurs d'écran", type: "text", group: "Logo" },
+    { key: "matiere", label: "Matière", type: "select", choices: MATIERES_NOMS.map((m) => [m, MATIERES[m].nom] as const), hint: "Repart des valeurs de la matière", group: "Matière" },
+    ...MATIERES_NOMS.map(
+      (m): Field => ({ key: `preset.${m}`, label: "Préréglage", type: "select", choices: Object.entries(MATIERES[m].presets).map(([k, v]) => [k, v.nom] as const), group: "Matière", when: (p) => p.matiere === m }),
+    ),
+    ...LOGO_CHAMPS,
+    { key: "vitesse", label: "Vitesse", type: "range", min: 0, max: 3, step: 0.05, icon: ICONES.vitesse, group: "Mouvement" },
+    { key: "survol", label: "Au survol", type: "segment", choices: c(["aucun", "Le pointeur ne change rien"], ["vitesse", "La vitesse suit le pointeur"], ["distorsion", "La distorsion suit le pointeur"]), icons: { aucun: '<circle cx="12" cy="12" r="8" /><path d="M6.5 6.5l11 11" />', vitesse: ICONES.vitesse, distorsion: ICONES.distorsion }, group: "Mouvement" },
+    { key: "fond", label: "Fond du logo", type: "color", hint: "Vide : transparent, le papier de la page", group: "Mouvement" },
+    { key: "cadre", label: "Proportion", type: "segment", choices: c(["16/9", "16 : 9"], ["4/3", "4 : 3"], ["1/1", "Carré"]), icons: { "16/9": '<rect x="2" y="6" width="20" height="12" rx="1" />', "4/3": '<rect x="3" y="4.5" width="18" height="15" rx="1" />', "1/1": '<rect x="4" y="4" width="16" height="16" rx="1" />' }, group: "Mouvement" },
+  ],
+  defaults: {
+    kicker: "",
+    title: "",
+    source: "./conference/ubs-logo.svg",
+    texte: "Presse",
+    nom: "",
+    matiere: "liquide-metal",
+    preset: "chrome",
+    // Chaque matière garde ses valeurs : changer de matière puis revenir ne perd rien.
+    ...Object.fromEntries(MATIERES_NOMS.flatMap((m) => {
+      const premier = Object.keys(MATIERES[m].presets)[0]!;
+      return [[`preset.${m}`, premier], ...Object.entries(logoDuPreset(m, premier))];
+    })),
+    vitesse: 1,
+    survol: "aucun",
+    fond: "",
+    cadre: "16/9",
+    space: "normal",
+  },
+  adjust: (b, key) => {
+    const p = b.props;
+    const m = estMatiere(p.matiere) ? p.matiere : "liquide-metal";
+    if (key === "matiere") {
+      const premier = Object.keys(MATIERES[m].presets)[0]!;
+      p.preset = premier;
+      p[`preset.${m}`] = premier;
+      Object.assign(p, logoDuPreset(m, premier));
+    }
+    if (key === `preset.${m}`) {
+      p.preset = str(p[key]);
+      Object.assign(p, logoDuPreset(m, str(p[key])));
+    }
+  },
+  render: (b, ctx) => {
+    const p = b.props;
+    const cfg = configLogoDuBloc(p);
+    const nom = str(p.nom) || (cfg.texte ? cfg.texte : (LOGOS.find(([k]) => k === p.source)?.[1] ?? "Logo"));
+    const t = LOGO_TAILLES[str(p.source)];
+    const repli = cfg.src ? `<img src="${esc(cfg.src)}"${t ? ` width="${t[0]}" height="${t[1]}"` : ""} alt="" />` : "";
+    return `${open(b, ctx, "ps-logo")}
+  <div class="ps-in">
+    ${compHead(b, ctx)}
+    <div class="ps-logo-cadre" ${attributsHtml(cfg)} role="img" aria-label="${esc(nom)}" style="aspect-ratio: ${esc(str(p.cadre) || "16/9")}">${repli}</div>
+  </div>
 </section>`;
   },
 });

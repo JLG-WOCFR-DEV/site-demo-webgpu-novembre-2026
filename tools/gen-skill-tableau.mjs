@@ -48,6 +48,8 @@ function rendu(nom, texte, a) {
   const t = texte.replace(/[Ss]ans WebGPU[^.;]*[.;]/g, "").replace(/(Le|Un plan) GPU suit[^.;]*/g, "");
   const gpu = repli || /WebGPU|shader|WGSL|GPU|mipmap|champ de distance|src\/gpu\/|transitions? à deux images/.test(t.replace(/composant WebGPU/g, ""));
   const c2d = /canvas 2D/.test(t);
+  // Un module rendu en WebGL2 (Paper Shaders tel quel), sans WebGPU.
+  if (/\bWebGL2?\b/.test(t) && !/WebGPU/.test(t)) return "WebGL2";
   const dom = /\bDOM\b|Web Animations|transform|translate|CSS|localStorage/.test(t);
   if (c2d) return "canvas 2D";
   if (gpu && dom) return "DOM + WebGPU";

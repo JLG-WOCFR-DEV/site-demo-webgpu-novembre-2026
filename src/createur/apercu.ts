@@ -18,6 +18,7 @@ import "../components/matiere/matiere.css";
 import "../components/objet/objet.css";
 import { mountComponents, unmountComponents } from "../presse/components.ts";
 import { controleCouloir, initCouloir } from "../presse/couloir.ts";
+import { controleLogo, initLogo } from "../presse/logo.ts";
 import { COMPONENTS } from "../presse/render.ts";
 import { applyLook } from "../presse/look.ts";
 import { startSite } from "../presse/site.ts";
@@ -116,6 +117,31 @@ function remember<T extends Node>(n: T): T {
 function demonter(el: Element) {
   unmountComponents(el);
   for (const c of [el, ...el.querySelectorAll("[data-couloir]")]) if (isCouloir(c)) controleCouloir(c)?.detruire();
+  for (const c of [el, ...el.querySelectorAll("[data-logo]")]) if (isLogo(c)) controleLogo(c)?.detruire();
+}
+/** Un logo (src/presse/logo.ts) pose son canvas dans l'élément : on garde ses enfants, ses attributs changent, il les relit. */
+const isLogo = (n: Node): n is HTMLElement => n instanceof HTMLElement && n.hasAttribute("data-logo");
+function morphLogo(a: HTMLElement, b: Element) {
+  let change = false;
+  // L'état que le module pose lui-même (data-logo-etat, classe logo-pret) n'est pas dans la source : on le garde.
+  for (const at of [...a.attributes]) if (at.name.startsWith("data-logo") && at.name !== "data-logo-etat" && !b.hasAttribute(at.name)) (a.removeAttribute(at.name), (change = true));
+  for (const at of [...b.attributes]) {
+    if (at.name === "class") {
+      for (const c of b.classList) a.classList.add(c);
+      continue;
+    }
+    if (at.name === "style") {
+      // Le module pose son fond ; la proportion vient de la source.
+      a.style.aspectRatio = (b as HTMLElement).style.aspectRatio;
+      continue;
+    }
+    if (a.getAttribute(at.name) !== at.value) {
+      a.setAttribute(at.name, at.value);
+      if (at.name.startsWith("data-logo")) change = true;
+    }
+  }
+  if (change) void controleLogo(a)?.regler();
+  return true;
 }
 /** Un couloir dont les images sont les mêmes : ses attributs, puis le module les relit. */
 function morphCouloir(a: HTMLElement, b: Element) {
@@ -148,6 +174,7 @@ function morph(a: Node, b: Node): boolean {
   // Un composant a son propre état (GPU, glisser) : différent, il est remplacé entier et remonté.
   if (isComp(a)) return compSrc.get(a) === b.outerHTML;
   if (isCouloir(a)) return morphCouloir(a, b);
+  if (isLogo(a)) return morphLogo(a, b);
   // Ce que le moteur et le défilement posent eux-mêmes (style --p / --in, classes d'état) n'est pas dans la source : on le garde.
   const live = (name: string) => name === "contenteditable" || (name === "style" && /--(p|in):/.test(a.getAttribute("style") ?? ""));
   for (const at of [...a.attributes]) if (!b.hasAttribute(at.name) && !live(at.name) && at.name !== "class") a.removeAttribute(at.name);
@@ -288,6 +315,7 @@ function reconcile(s: Site, page = slug) {
   void mountComponents(main);
   // Les couloirs nouveaux (ou remplacés) : armés ici, le module garde ceux qui le sont déjà.
   if (main.querySelector("[data-couloir]")) initCouloir(main);
+  if (main.querySelector("[data-logo]")) void initLogo(main);
   if (first && !started) {
     started = true;
     void startSite();

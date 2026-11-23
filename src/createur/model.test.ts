@@ -208,3 +208,22 @@ test("modèle Exposition : deux couloirs, et la page compilée passe le validate
   const constats = validerHtml(html, lireCatalogue(racine)).filter((c) => c.gravite === "erreur" && /couloir/.test(c.element + c.message));
   assert.deepEqual(constats, []);
 });
+
+test("bloc Logo : la matière et ses trois réglages deviennent des attributs data-logo ; le préréglage réécrit les réglages", () => {
+  const { site, doc } = fresh();
+  const b = makeBlock("logo", { matiere: "chaleur", source: "./conference/llshs-logo.svg", "chaleur.contour": 0.9, survol: "vitesse", nom: "LLSHS" });
+  doc.blocks.push(b);
+  const html = renderBlock(b, site, doc);
+  assert.match(html, /data-logo="chaleur" data-logo-src="\.\/conference\/llshs-logo\.svg"/);
+  assert.match(html, /data-logo-contour="0\.9"/);
+  assert.match(html, /data-logo-survol="vitesse"/);
+  assert.match(html, /role="img" aria-label="LLSHS"/);
+  assert.match(html, /<img src="\.\/conference\/llshs-logo\.svg" width="660" height="480" alt="" \/>/);
+  BLOCKS.logo!.adjust!(b, "matiere");
+  assert.equal(b.props.preset, "thermique");
+  b.props["preset.chaleur"] = "braise";
+  BLOCKS.logo!.adjust!(b, "preset.chaleur");
+  assert.equal(b.props["chaleur.contour"], 0.7, "valeur du préréglage braise");
+  const t = makeBlock("logo", { source: "texte", texte: "Atelier", matiere: "verre-cannele" });
+  assert.match(renderBlock(t, site, doc), /data-logo="verre-cannele" data-logo-texte="Atelier"/);
+});

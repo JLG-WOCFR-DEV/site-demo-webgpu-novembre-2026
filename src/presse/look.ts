@@ -71,6 +71,25 @@ export const LOOKS: Record<string, Look> = {
 const table = ([lo, gamma, hi]: [number, number, number]) =>
   Array.from({ length: 33 }, (_, i) => (lo + (hi - lo) * Math.pow(i / 32, gamma)).toFixed(4)).join(" ");
 
+/**
+ * Le filtre SVG d'un look (`<filter id="…">`), ou "" s'il n'y a rien à étalonner. La page l'emploie sur sa racine ;
+ * Variations (src/variations/) en pose un par vignette, pour montrer chaque direction à côté des autres.
+ */
+export function filtreLook(name: string, id = "presse-look") {
+  const base = LOOKS[name] ?? LOOKS.neutre!;
+  if (!base.curves && (base.saturate === undefined || base.saturate === 1)) return "";
+  const curves = base.curves;
+  return `<filter id="${id}" color-interpolation-filters="sRGB">${
+    base.saturate !== undefined ? `<feColorMatrix type="saturate" values="${base.saturate}"/>` : ""
+  }${curves ? `<feComponentTransfer><feFuncR type="table" tableValues="${table(curves[0])}"/><feFuncG type="table" tableValues="${table(curves[1])}"/><feFuncB type="table" tableValues="${table(curves[2])}"/></feComponentTransfer>` : ""}</filter>`;
+}
+
+/** La tuile de grain partagée (une image PNG en data: URL), dessinée une fois par page. */
+export function tuileGrain() {
+  tile ||= noiseTile();
+  return tile;
+}
+
 /** Une tuile de bruit (gris centré), dessinée une fois. */
 function noiseTile(size = 160) {
   const c = document.createElement("canvas");
@@ -113,15 +132,13 @@ export function applyLook(name: string, over: { grain?: number; vignette?: numbe
   els.svg?.remove();
   els.svg = undefined;
   root.style.filter = "";
-  if (base.curves || (base.saturate !== undefined && base.saturate !== 1)) {
+  const filtre = filtreLook(name);
+  if (filtre) {
     const NS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(NS, "svg");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("style", "position:absolute;width:0;height:0;overflow:hidden");
-    const curves = base.curves;
-    svg.innerHTML = `<filter id="presse-look" color-interpolation-filters="sRGB">${
-      base.saturate !== undefined ? `<feColorMatrix type="saturate" values="${base.saturate}"/>` : ""
-    }${curves ? `<feComponentTransfer><feFuncR type="table" tableValues="${table(curves[0])}"/><feFuncG type="table" tableValues="${table(curves[1])}"/><feFuncB type="table" tableValues="${table(curves[2])}"/></feComponentTransfer>` : ""}</filter>`;
+    svg.innerHTML = filtre;
     document.body.prepend(svg);
     els.svg = svg;
     root.style.filter = "url(#presse-look)";
@@ -136,7 +153,7 @@ export function applyLook(name: string, over: { grain?: number; vignette?: numbe
 .presse-vignette { inset: 0; background: radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(0, 0, 0, ${vignette}) 100%); mix-blend-mode: multiply; }
 `;
   if (grain > 0 && !els.grain) {
-    tile ||= noiseTile();
+    tuileGrain();
     const g = document.createElement("div");
     g.className = "presse-grain";
     g.setAttribute("aria-hidden", "true");

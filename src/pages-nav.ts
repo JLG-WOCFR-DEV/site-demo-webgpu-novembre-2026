@@ -31,6 +31,7 @@ export const PAGES = [
   { href: "atelier.html", name: "Atelier", text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide" },
   { href: "presse.html", name: "Presse", text: "Le framework : un Webflow WebGPU, en attributs HTML" },
   { href: "createur.html", name: "Créateur", text: "Composer un site Presse par blocs, aperçu WebGPU en direct, export" },
+  { href: "variations.html", name: "Variations", text: "Des directions artistiques tirées en quelques secondes sur la même page : jetons, verrous, instantanés, export" },
   { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
   { href: "kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },
   { href: "conference.html", name: "Conférence", text: "Un diaporama Presse : la 3D et l'IA, au clavier (F plein écran, P présentateur)" },
@@ -43,6 +44,7 @@ export const PAGES = [
   { href: "cinetique.html", name: "Cinétique", text: "Texte animé en DOM : 18 entrées par ligne, mot ou lettre, et huit composants (roule, marque, défilé, reflet, cercle, coupe, brouille, frappe)" },
   { href: "rouleau.html", name: "Rouleau", text: "Menu roulant : les titres défilent, l'image ondule derrière comme une étoffe" },
   { href: "couloir.html", name: "Couloir", text: "Un mur d'images vu en fuite : il défile au pointeur, frange de couleur à la vitesse, réglable en direct" },
+  { href: "logos.html", name: "Logos", text: "Une matière animée pour un logo : métal liquide, fumée, chaleur, eau, verre, trames ; PNG, séquence, WebM" },
   { href: "boutique.html", name: "Boutique", text: "Éclaircie, boutique de vêtements d'essai : déchirure, forme-masque, autocollant, rails, panier" },
   { href: "diapo-createur.html", name: "Créateur de diaporama", text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU" },
   { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
@@ -122,6 +124,9 @@ export function mountPagesNav(base = "./") {
   // Entre les pages : la photo qui passe, le balayage ASCII (si la page le demande).
   initTokens();
   initLook();
+  // Un système de design (variations.html) demandé par l'adresse (?systeme=) ou par la page (data-systeme) : il passe
+  // par-dessus les couleurs, fontes, look et mouvement de la page.
+  if (/[?&]systeme=/.test(location.search) || document.querySelector("[data-systeme]")) void import("./presse/systeme.ts").then((m) => m.initSysteme());
   initIntro();
   initFlights();
   initSweep();
@@ -142,6 +147,8 @@ export function mountPagesNav(base = "./") {
   if (document.querySelector("[data-rouleau]")) void import("./presse/rouleau.ts").then((m) => m.initRouleau());
   // Couloir : une rangée d'images en perspective fuyante (DOM, matrix3d).
   if (document.querySelector("[data-couloir]")) void import("./presse/couloir.ts").then((m) => m.initCouloir());
+  // Logo : une matière animée (Paper Shaders, WebGL2) sur un logo ; le rendu se charge à la demande.
+  if (document.querySelector("[data-logo]")) void import("./presse/logo.ts").then((m) => m.initLogo());
   if (!document.documentElement.hasAttribute("data-presse-manuel") && document.querySelector("[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]"))
     void import("./presse/cinetique.ts").then((m) => m.initCinetique());
   // Modules nés de la boutique ; une page qui les arme elle-même porte data-presse-manuel sur <html>.

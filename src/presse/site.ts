@@ -27,6 +27,8 @@ export function startSite(): Promise<Presse> {
   initCursor();
   // Le couloir (bloc du Créateur) : un module DOM, armé seulement si la page en a un.
   if (document.querySelector("[data-couloir]")) initCouloir();
+  // Le logo (bloc du Créateur) : Paper Shaders en WebGL2, chargé seulement si la page en a un.
+  if (document.querySelector("[data-logo]")) void import("./logo.ts").then((m) => m.initLogo());
   return presseFromHtml();
 }
 

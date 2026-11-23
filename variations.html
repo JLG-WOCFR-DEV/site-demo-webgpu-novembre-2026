@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Variations · des directions artistiques en quelques secondes · Presse</title>
+    <meta name="description" content="Explorer des systèmes de design pour les pages Presse : palette OKLCH à contraste garanti, typographie, forme, mouvement et look tirés à graine, verrous par famille, instantanés, comparaison A/B, export CSS, attributs et JSON." />
+    <script type="module" src="/src/variations/main.ts"></script>
+  </head>
+  <body class="vr">
+    <a class="vr-evitement" href="#vr-scene">Aller à la composition</a>
+
+    <header class="vr-barre">
+      <button type="button" class="vr-logo" data-pages-trigger aria-label="Pages de Presse" title="Pages de Presse"><span class="vr-logo-marque" aria-hidden="true"></span><span class="vr-logo-nom">Variations</span></button>
+      <div class="vr-systeme" aria-live="polite">
+        <span class="vr-systeme-nom" data-vr-nom></span>
+        <label class="vr-graine" title="Graine : un nombre, un système (verrous compris)">
+          <span class="vr-ico" aria-hidden="true" data-vr-ico="graine"></span>
+          <span class="sr-only">Graine</span>
+          <input type="number" inputmode="numeric" min="0" max="4294967295" step="1" data-vr-graine />
+        </label>
+      </div>
+      <div class="vr-barre-outils" role="toolbar" aria-label="Système">
+        <button type="button" class="vr-btn-ico vr-btn-plein" data-vr-tirer aria-label="Tirer un nouveau système (verrous gardés)" title="Tirer un nouveau système, verrous gardés (R)"></button>
+        <button type="button" class="vr-btn-ico" data-vr-garder aria-label="Garder dans les instantanés" title="Garder dans les instantanés (G)" aria-pressed="false"></button>
+        <span class="vr-sep" aria-hidden="true"></span>
+        <button type="button" class="vr-btn-ico" data-vr-annuler aria-label="Annuler" title="Annuler (Ctrl Z)"></button>
+        <button type="button" class="vr-btn-ico" data-vr-retablir aria-label="Rétablir" title="Rétablir (Ctrl Maj Z)"></button>
+        <span class="vr-sep" aria-hidden="true"></span>
+        <button type="button" class="vr-btn-ico" data-vr-ab aria-label="Comparer A et B au rideau" title="Comparer A / B au rideau (B)" aria-pressed="false"></button>
+        <button type="button" class="vr-btn-ico" data-vr-rejouer aria-label="Rejouer l'entrée avec le mouvement du système" title="Rejouer le mouvement"></button>
+      </div>
+      <p class="vr-rendu" data-vr-rendu title="Rendu de la planche"></p>
+    </header>
+
+    <details class="vr-panneau vr-jetons" data-vr-panneau open>
+      <summary><span class="vr-ico" aria-hidden="true" data-vr-ico="jetons"></span>Jetons</summary>
+      <div class="vr-familles" data-vr-familles></div>
+    </details>
+
+    <main class="vr-centre" id="vr-scene" tabindex="-1">
+      <h1 class="sr-only">Variations : explorer des directions artistiques pour une page Presse</h1>
+      <section class="vr-scene" aria-labelledby="vr-scene-titre">
+        <h2 class="sr-only" id="vr-scene-titre">Composition de référence</h2>
+        <div class="vr-scene-cadre" data-vr-scene>
+          <div class="vr-calque vr-calque-a" data-vr-calque="a"></div>
+          <div class="vr-calque vr-calque-b" data-vr-calque="b" hidden aria-hidden="true"></div>
+          <div class="vr-rideau" data-vr-rideau hidden role="slider" tabindex="0" aria-label="Rideau A / B" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50 % de B">
+            <span class="vr-rideau-etiquette vr-rideau-a" aria-hidden="true">A</span>
+            <span class="vr-rideau-poignee" aria-hidden="true"></span>
+            <span class="vr-rideau-etiquette vr-rideau-b" aria-hidden="true">B</span>
+          </div>
+        </div>
+        <p class="vr-retouches" data-vr-retouches aria-live="polite"></p>
+      </section>
+
+      <section class="vr-instantanes" aria-labelledby="vr-inst-titre">
+        <div class="vr-entete">
+          <h2 id="vr-inst-titre"><span class="vr-ico" aria-hidden="true" data-vr-ico="coeur"></span>Instantanés</h2>
+          <div class="vr-entete-outils">
+            <button type="button" class="vr-btn-ico vr-petit" data-vr-inst-exporter aria-label="Exporter les instantanés (JSON)" title="Exporter les instantanés (JSON)"></button>
+            <label class="vr-btn-ico vr-petit" title="Importer des instantanés ou un système (JSON)">
+              <span class="sr-only">Importer des instantanés ou un système (JSON)</span>
+              <input type="file" accept="application/json,.json" data-vr-inst-importer class="sr-only" />
+              <span class="vr-ico" aria-hidden="true" data-vr-ico="importer"></span>
+            </label>
+          </div>
+        </div>
+        <ol class="vr-bande" data-vr-bande aria-label="Instantanés gardés"></ol>
+        <p class="vr-vide" data-vr-bande-vide>Rien de gardé pour l'instant : le cœur d'une vignette, ou <kbd>G</kbd>, garde un système ici.</p>
+      </section>
+
+      <section class="vr-planche" aria-labelledby="vr-planche-titre">
+        <div class="vr-entete">
+          <h2 id="vr-planche-titre"><span class="vr-ico" aria-hidden="true" data-vr-ico="planche"></span>Planche</h2>
+          <div class="vr-entete-outils" role="toolbar" aria-label="Planche de variations">
+            <div class="vr-seg" role="radiogroup" aria-label="Façon de tirer" data-vr-mode></div>
+            <label class="vr-champ vr-champ-court" data-vr-intensite-champ title="Écart des voisines : proches ↔ lointaines">
+              <span class="vr-ico" aria-hidden="true" data-vr-ico="intensite"></span>
+              <span class="sr-only">Écart des voisines</span>
+              <input type="range" min="0.05" max="1" step="0.05" data-vr-intensite />
+            </label>
+            <label class="vr-champ vr-champ-court" title="Nombre de vignettes">
+              <span class="vr-ico" aria-hidden="true" data-vr-ico="grille"></span>
+              <span class="sr-only">Nombre de vignettes</span>
+              <select data-vr-nombre>
+                <option value="6">6</option>
+                <option value="9">9</option>
+                <option value="12">12</option>
+              </select>
+            </label>
+            <button type="button" class="vr-btn-ico vr-btn-plein" data-vr-planche-tirer aria-label="Re-tirer la planche" title="Re-tirer la planche (Maj R)"></button>
+          </div>
+        </div>
+        <ol class="vr-grille" data-vr-grille aria-label="Variations : cliquer pour appliquer"></ol>
+      </section>
+    </main>
+
+    <details class="vr-panneau vr-exports" data-vr-panneau open>
+      <summary><span class="vr-ico" aria-hidden="true" data-vr-ico="exporter"></span>Exporter</summary>
+      <div class="vr-exports-corps">
+        <div class="vr-onglets" role="tablist" aria-label="Aperçu de code">
+          <button type="button" role="tab" id="vr-onglet-css" aria-controls="vr-code" aria-selected="true" data-vr-onglet="css">CSS</button>
+          <button type="button" role="tab" id="vr-onglet-attrs" aria-controls="vr-code" aria-selected="false" data-vr-onglet="attributs" tabindex="-1">Attributs</button>
+          <button type="button" role="tab" id="vr-onglet-json" aria-controls="vr-code" aria-selected="false" data-vr-onglet="json" tabindex="-1">JSON</button>
+        </div>
+        <div class="vr-code-cadre">
+          <pre class="vr-code" id="vr-code" role="tabpanel" aria-labelledby="vr-onglet-css" tabindex="0"><code data-vr-code></code></pre>
+          <button type="button" class="vr-btn-ico vr-petit vr-copier" data-vr-copier aria-label="Copier ce code" title="Copier ce code"></button>
+        </div>
+        <div class="vr-actions">
+          <button type="button" class="vr-btn" data-vr-telecharger><span class="vr-ico" aria-hidden="true" data-vr-ico="telecharger"></span>presse-systeme.json</button>
+          <button type="button" class="vr-btn" data-vr-createur><span class="vr-ico" aria-hidden="true" data-vr-ico="createur"></span>Appliquer au Créateur</button>
+        </div>
+        <div class="vr-lien">
+          <label class="vr-champ" title="Page Presse sur laquelle essayer le système">
+            <span class="vr-ico" aria-hidden="true" data-vr-ico="lien"></span>
+            <span class="sr-only">Essayer sur la page</span>
+            <select data-vr-lien-page>
+              <option value="boutique.html">Boutique</option>
+              <option value="presse.html">Presse</option>
+              <option value="couloir.html">Couloir</option>
+              <option value="cinetique.html">Cinétique</option>
+            </select>
+          </label>
+          <a class="vr-btn vr-btn-plein" data-vr-lien href="./boutique.html" target="_blank" rel="noopener"><span class="vr-ico" aria-hidden="true" data-vr-ico="ouvrir"></span>Ouvrir</a>
+          <button type="button" class="vr-btn-ico vr-petit" data-vr-lien-copier aria-label="Copier le lien ?systeme=" title="Copier le lien ?systeme="></button>
+        </div>
+        <section class="vr-contrastes" aria-labelledby="vr-contrastes-titre">
+          <h2 id="vr-contrastes-titre">Contrastes <span class="vr-discret">brut / étalonné</span></h2>
+          <table data-vr-contrastes></table>
+        </section>
+        <p class="vr-etat" data-vr-etat role="status" aria-live="polite"></p>
+      </div>
+    </details>
+
+    <template id="vr-modele">
+      <div class="vr-compo">
+        <div class="vr-c-nav">
+          <span class="vr-c-marque">Atelier Nord</span>
+          <span class="vr-c-liens"><span>Projets</span><span>Journal</span><span>Contact</span></span>
+        </div>
+        <div class="vr-c-une">
+          <div class="vr-c-texte">
+            <p class="vr-c-kicker">Numéro 12 · automne</p>
+            <h3 class="vr-c-titre"><span class="vr-c-mot">La</span> <span class="vr-c-mot">lumière</span> <span class="vr-c-mot vr-c-accent">entre</span> <span class="vr-c-mot">deux</span> <span class="vr-c-mot">averses</span></h3>
+            <p class="vr-c-corps">Un atelier d'impression au bord de l'eau. Papiers, encres et photographies : douze pages pour regarder le temps changer, lentement, sur les toits du port.</p>
+            <div class="vr-c-actions"><span class="vr-c-bouton">Lire le numéro</span><span class="vr-c-bouton vr-c-bouton-trait">S'abonner</span></div>
+          </div>
+          <figure class="vr-c-image"><img src="./img/jardin-960.webp" width="960" height="639" alt="Un jardin japonais au printemps : azalées rouges, lanterne de pierre et maison de thé sous les pins." /></figure>
+        </div>
+        <div class="vr-c-cartes">
+          <div class="vr-c-carte"><span class="vr-c-etiquette">Atelier</span><p class="vr-c-carte-titre">Papiers de saison</p><p class="vr-c-carte-texte">Trois grammages, deux blancs.</p></div>
+          <div class="vr-c-carte vr-c-carte-2"><span class="vr-c-etiquette vr-c-etiquette-2">Journal</span><p class="vr-c-carte-titre">L'encre qui sèche</p><p class="vr-c-carte-texte">Notes de la semaine.</p></div>
+          <div class="vr-c-carte vr-c-carte-3"><span class="vr-c-chiffre">87<span class="vr-c-unite">%</span></span><p class="vr-c-carte-texte">de papier recyclé, cette année.</p></div>
+        </div>
+      </div>
+    </template>
+    <noscript><p class="vr-noscript">Variations a besoin de JavaScript : c'est un outil d'édition. Les systèmes s'appliquent ensuite aux pages Presse par de simples variables CSS et attributs.</p></noscript>
+  </body>
+</html>

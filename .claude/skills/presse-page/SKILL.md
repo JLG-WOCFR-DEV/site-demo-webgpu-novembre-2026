@@ -185,6 +185,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | Empile [data-derriere-fond], [data-derriere-sujet] et [data-derriere-devant] : le mot passe derrière la silhouette | `data-derriere` | — | DOM | à importer : `src/presse/derriere.ts` | boutique.html |
 | Dessin technique qui se trace, une étape à la fois : data-trace-role construction → formes → cote → hachure | `data-trace` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | **Couloir** — les panneaux vus en perspective fuyante, comme un mur très long vu de côté — immenses et coupés au premier plan,… | `data-couloir` | — | DOM | pages-nav | couloir.html |
+| **Logo** — une matière animée sur un logo | `data-logo` | liquide-metal, gemme-fumee, chaleur, eau, verre-cannele, trame-cmjn, trame-points, tramage… | WebGL2 | pages-nav | logos.html |
 | **Menu roulant à image-tissu** — les liens défilent à la verticale, aimantés sur un titre | `data-rouleau` | — | WebGPU | pages-nav | rouleau.html |
 | Bord de papier déchiré procédural : le papier dépasse sur la voisine, liseré blanc de fibre, ombre portée | `data-dechirure` | haut, bas, gauche, droite | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | Déchirure verticale entre les deux images, qui suit le pointeur ou le doigt avec inertie et revient au repos | `data-dechirure-coupe` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
@@ -192,6 +193,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | Un autocollant suit le pointeur sur les cibles, avec retard, bascule selon la vitesse et apparition en ressort | `data-autocollant` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | Glisser souris ou doigt avec inertie et aimantation, molette horizontale, flèches, focus amené à l'écran, barre de… | `data-rail` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | Magasin panier et favoris : localStorage, synchro entre onglets, événement panier:change | `data-panier-nombre`, `data-favoris-nombre`, `data-favori` | — | DOM | à importer : `src/presse/panier.ts` | boutique.html |
+| **Système de design** — data-systeme="…" porte un système | `data-systeme` | — | DOM | pages-nav | variations.html |
 | Le bouton qui ouvre le menu Pages | `data-pages-trigger` | — | DOM | — | boutique.html |
 
 ### Moteur, page, mouvement

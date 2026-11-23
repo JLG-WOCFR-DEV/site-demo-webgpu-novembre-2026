@@ -501,6 +501,12 @@ html[data-ps-type="technique"] body.ps {
   margin-bottom: 32px;
 }
 
+/* ───── Logo (src/presse/logo.ts) : le logo en matière, centré, à la proportion du bloc ───── */
+.ps-logo-cadre {
+  width: min(100%, 960px);
+  margin-inline: auto;
+}
+
 /* ───── Couloir (src/presse/couloir.ts) : le mur occupe toute la largeur, sa hauteur suit data-cadre ───── */
 .ps-couloir {
   padding-inline: 0;
