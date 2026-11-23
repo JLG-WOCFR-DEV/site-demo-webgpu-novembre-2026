@@ -1,7 +1,7 @@
 import { n as e, t } from "./motion-lint-EfEMk6cY.js";
 import { i as n, n as r, t as i } from "./tokens-Nj0c2PcI.js";
 import { r as a } from "./look-BnXlF57J.js";
-import { c as o, i as s } from "./timeline-BqaHbjJE.js";
+import { c as o, i as s } from "./timeline-DUX9XWeC.js";
 import { t as c } from "./device-Bprp8tGr.js";
 // src/motion-scale.ts
 var l = "ubs-motion", u = "normal";
@@ -1175,9 +1175,11 @@ var $ = (e) => e, vt = [
 			"data-goo-ombre",
 			"data-goo-relief",
 			"data-goo-suit",
-			"data-goo-fixe"
+			"data-goo-fixe",
+			"data-goo-duree",
+			"data-goo-courbe"
 		],
-		charger: () => import("./goo-CFsUCa3K.js"),
+		charger: () => import("./goo-B4xd1pEi.js"),
 		armer: (e, t) => e.initGoo(t),
 		rendu: "WebGPU",
 		statut: "stable",
@@ -1261,7 +1263,7 @@ var $ = (e) => e, vt = [
 			"data-typo-rejoue",
 			"data-typo-ligne"
 		],
-		charger: () => import("./typo-CjZWxNga.js"),
+		charger: () => import("./typo-ywBhIt1n.js"),
 		armer: (e, t) => e.initTypo(t),
 		rendu: "DOM + WebGPU",
 		statut: "stable",
@@ -1294,8 +1296,8 @@ var $ = (e) => e, vt = [
 		nom: "Couloir",
 		categorie: "image",
 		selecteur: "[data-couloir]",
-		attributs: /* @__PURE__ */ "data-couloir.data-couloir-presets.data-couloir-profondeur.data-couloir-angle.data-couloir-horizon.data-couloir-cote.data-couloir-hauteur.data-couloir-largeur.data-couloir-bande.data-couloir-ecart.data-couloir-filet.data-couloir-vitesse.data-couloir-inertie.data-couloir-pilotage.data-couloir-sens.data-couloir-sansfin.data-couloir-aberration.data-couloir-flou.data-couloir-vide.data-couloir-survol.data-couloir-ouvre.data-couloir-fond.data-couloir-mur.data-couloir-ouverture.data-couloir-mode.data-couloir-commandes".split("."),
-		charger: () => import("./couloir-rejIHBv0.js"),
+		attributs: /* @__PURE__ */ "data-couloir.data-couloir-presets.data-couloir-profondeur.data-couloir-angle.data-couloir-horizon.data-couloir-cote.data-couloir-hauteur.data-couloir-largeur.data-couloir-bande.data-couloir-ecart.data-couloir-filet.data-couloir-vitesse.data-couloir-inertie.data-couloir-pilotage.data-couloir-sens.data-couloir-sansfin.data-couloir-aberration.data-couloir-flou.data-couloir-vide.data-couloir-survol.data-couloir-ouvre.data-couloir-fond.data-couloir-mur.data-couloir-ouverture.data-couloir-mode.data-couloir-commandes.data-couloir-duree.data-couloir-courbe".split("."),
+		charger: () => import("./couloir-DaYODJEI.js"),
 		armer: (e, t) => e.initCouloir(t),
 		rendu: "DOM",
 		statut: "stable",
@@ -1318,34 +1320,8 @@ var $ = (e) => e, vt = [
 		nom: "Typographie cinétique en DOM",
 		categorie: "texte",
 		selecteur: "[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]",
-		attributs: [
-			"data-cinetique",
-			"data-roule",
-			"data-marque",
-			"data-defile",
-			"data-reflet",
-			"data-cercle",
-			"data-coupe",
-			"data-brouille",
-			"data-frappe",
-			"data-cinetique-par",
-			"data-cinetique-quand",
-			"data-cinetique-duree",
-			"data-cinetique-delai",
-			"data-cinetique-cascade",
-			"data-cinetique-ordre",
-			"data-cinetique-sortie",
-			"data-cinetique-rejoue",
-			"data-roule-tempo",
-			"data-defile-rangs",
-			"data-defile-vitesse",
-			"data-defile-incline",
-			"data-defile-separateur",
-			"data-cercle-rayon",
-			"data-cercle-vitesse",
-			"data-frappe-vitesse"
-		],
-		charger: () => import("./cinetique-BLQF3vQ_.js"),
+		attributs: /* @__PURE__ */ "data-cinetique.data-roule.data-marque.data-defile.data-reflet.data-cercle.data-coupe.data-brouille.data-frappe.data-cinetique-par.data-cinetique-quand.data-cinetique-duree.data-cinetique-delai.data-cinetique-cascade.data-cinetique-ordre.data-cinetique-sortie.data-cinetique-rejoue.data-cinetique-courbe.data-roule-tempo.data-defile-rangs.data-defile-vitesse.data-defile-incline.data-defile-separateur.data-cercle-rayon.data-cercle-vitesse.data-frappe-vitesse".split("."),
+		charger: () => import("./cinetique-3mHVrMdx.js"),
 		armer: (e, t) => e.initCinetique(t),
 		manuel: !0,
 		rendu: "DOM",
@@ -1537,6 +1513,11 @@ var $ = (e) => e, vt = [
 		href: "createur.html",
 		name: "Créateur",
 		text: "Composer un site Presse par blocs, aperçu WebGPU en direct, export"
+	},
+	{
+		href: "courbes.html",
+		name: "Courbes",
+		text: "Éditeur de courbe : poignées, ressort, marches, comparaison de quatre courbes"
 	},
 	{
 		href: "variations.html",

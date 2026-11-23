@@ -147,7 +147,7 @@ function oe(e) {
 	let s = Math.sqrt(o * o - 1), c = -a * (o - s), l = -a * (o + s), u = (i + c) / (l - c), d = -1 - u;
 	return (e) => d * Math.exp(c * e) + u * Math.exp(l * e);
 }
-function b(e, t = .001) {
+function se(e, t = .001) {
 	let n = oe(e), r = Math.max(.001, e.masse ?? 1), i = Math.max(0, e.amortissement) / (2 * Math.sqrt(Math.max(.001, e.raideur) * r)), a = 0;
 	for (let e = 0; e <= 2e4; e++) Math.abs(n(e / 1e3)) >= t && (a = e);
 	let o = Math.max(50, Math.min(2e4, a + 1)), s = o / 1e3, c = (e) => e <= 0 ? 0 : e >= 1 ? 1 : 1 + n(e * s);
@@ -158,243 +158,252 @@ function b(e, t = .001) {
 		css: y(v(c))
 	};
 }
-var x = (e) => {
+var b = (e) => {
 	let t = 7.5625, n = 2.75;
 	return e < 1 / n ? t * e * e : e < 2 / n ? t * (e -= 1.5 / n) * e + .75 : e < 2.5 / n ? t * (e -= 2.25 / n) * e + .9375 : t * (e -= 2.625 / n) * e + .984375;
-}, se = 2 * Math.PI / 3, ce = 2 * Math.PI / 4.5, S = (e) => (t) => t <= 0 ? 0 : t >= 1 ? 1 : e(t), C = {
-	"in-elastique": S((e) => -(2 ** (10 * e - 10)) * Math.sin((e * 10 - 10.75) * se)),
-	"out-elastique": S((e) => 2 ** (-10 * e) * Math.sin((e * 10 - .75) * se) + 1),
-	"in-out-elastique": S((e) => e < .5 ? -(2 ** (20 * e - 10) * Math.sin((20 * e - 11.125) * ce)) / 2 : 2 ** (-20 * e + 10) * Math.sin((20 * e - 11.125) * ce) / 2 + 1),
-	"in-rebond": S((e) => 1 - x(1 - e)),
-	"out-rebond": S(x),
-	"in-out-rebond": S((e) => e < .5 ? (1 - x(1 - 2 * e)) / 2 : (1 + x(2 * e - 1)) / 2)
-}, w = (e, t, n, r) => ({
+}, x = 2 * Math.PI / 3, S = 2 * Math.PI / 4.5, C = (e) => (t) => t <= 0 ? 0 : t >= 1 ? 1 : e(t), w = {
+	"in-elastique": C((e) => -(2 ** (10 * e - 10)) * Math.sin((e * 10 - 10.75) * x)),
+	"out-elastique": C((e) => 2 ** (-10 * e) * Math.sin((e * 10 - .75) * x) + 1),
+	"in-out-elastique": C((e) => e < .5 ? -(2 ** (20 * e - 10) * Math.sin((20 * e - 11.125) * S)) / 2 : 2 ** (-20 * e + 10) * Math.sin((20 * e - 11.125) * S) / 2 + 1),
+	"in-rebond": C((e) => 1 - b(1 - e)),
+	"out-rebond": C(b),
+	"in-out-rebond": C((e) => e < .5 ? (1 - b(1 - 2 * e)) / 2 : (1 + b(2 * e - 1)) / 2)
+}, T = (e, t, n, r) => ({
 	nom: e,
 	libelle: t,
 	famille: n,
 	bezier: r
-}), T = (e, t, n, r, i) => ({
+}), E = (e, t, n, r) => ({
 	nom: e,
 	libelle: t,
 	famille: n,
-	f: r,
-	...i ? { dureeMs: i } : {}
-}), E = b({
-	raideur: 300,
-	amortissement: 20
-}), D = b({
-	raideur: 120,
-	amortissement: 9
-}), O = b({
-	raideur: 170,
-	amortissement: 26
-}), le = [
-	w("lineaire", "Linéaire", "maison", [
+	f: r
+}), D = (e, t, n) => {
+	let r = se(n);
+	return {
+		nom: e,
+		libelle: t,
+		famille: "ressort",
+		f: r.f,
+		dureeMs: r.dureeMs,
+		ressort: n
+	};
+}, ce = [
+	T("lineaire", "Linéaire", "maison", [
 		0,
 		0,
 		1,
 		1
 	]),
-	w("out", "Sortie maison", "maison", [
+	T("out", "Sortie maison", "maison", [
 		.16,
 		1,
 		.3,
 		1
 	]),
-	w("in-out", "Aller-retour maison", "maison", [
+	T("in-out", "Aller-retour maison", "maison", [
 		.65,
 		0,
 		.35,
 		1
 	]),
-	w("in", "Départ maison", "maison", [
+	T("in", "Départ maison", "maison", [
 		.55,
 		0,
 		1,
 		.45
 	]),
-	w("ease", "CSS ease", "css", [
+	T("ease", "CSS ease", "css", [
 		.25,
 		.1,
 		.25,
 		1
 	]),
-	w("ease-in", "CSS ease-in", "css", [
+	T("ease-in", "CSS ease-in", "css", [
 		.42,
 		0,
 		1,
 		1
 	]),
-	w("ease-out", "CSS ease-out", "css", [
+	T("ease-out", "CSS ease-out", "css", [
 		0,
 		0,
 		.58,
 		1
 	]),
-	w("ease-in-out", "CSS ease-in-out", "css", [
+	T("ease-in-out", "CSS ease-in-out", "css", [
 		.42,
 		0,
 		.58,
 		1
 	]),
-	w("in-quad", "Quadratique, départ lent", "quad", [
+	T("in-quad", "Quadratique, départ lent", "quad", [
 		.11,
 		0,
 		.5,
 		0
 	]),
-	w("out-quad", "Quadratique, arrivée douce", "quad", [
+	T("out-quad", "Quadratique, arrivée douce", "quad", [
 		.5,
 		1,
 		.89,
 		1
 	]),
-	w("in-out-quad", "Quadratique, aller-retour", "quad", [
+	T("in-out-quad", "Quadratique, aller-retour", "quad", [
 		.45,
 		0,
 		.55,
 		1
 	]),
-	w("in-cubic", "Cubique, départ lent", "cubic", [
+	T("in-cubic", "Cubique, départ lent", "cubic", [
 		.32,
 		0,
 		.67,
 		0
 	]),
-	w("out-cubic", "Cubique, arrivée douce", "cubic", [
+	T("out-cubic", "Cubique, arrivée douce", "cubic", [
 		.33,
 		1,
 		.68,
 		1
 	]),
-	w("in-out-cubic", "Cubique, aller-retour", "cubic", [
+	T("in-out-cubic", "Cubique, aller-retour", "cubic", [
 		.65,
 		0,
 		.35,
 		1
 	]),
-	w("in-quart", "Quartique, départ lent", "quart", [
+	T("in-quart", "Quartique, départ lent", "quart", [
 		.5,
 		0,
 		.75,
 		0
 	]),
-	w("out-quart", "Quartique, arrivée douce", "quart", [
+	T("out-quart", "Quartique, arrivée douce", "quart", [
 		.25,
 		1,
 		.5,
 		1
 	]),
-	w("in-out-quart", "Quartique, aller-retour", "quart", [
+	T("in-out-quart", "Quartique, aller-retour", "quart", [
 		.76,
 		0,
 		.24,
 		1
 	]),
-	w("in-expo", "Exponentielle, départ lent", "expo", [
+	T("in-expo", "Exponentielle, départ lent", "expo", [
 		.7,
 		0,
 		.84,
 		0
 	]),
-	w("out-expo", "Exponentielle, arrivée douce", "expo", [
+	T("out-expo", "Exponentielle, arrivée douce", "expo", [
 		.16,
 		1,
 		.3,
 		1
 	]),
-	w("in-out-expo", "Exponentielle, aller-retour", "expo", [
+	T("in-out-expo", "Exponentielle, aller-retour", "expo", [
 		.87,
 		0,
 		.13,
 		1
 	]),
-	w("in-circ", "Circulaire, départ lent", "circ", [
+	T("in-circ", "Circulaire, départ lent", "circ", [
 		.55,
 		0,
 		1,
 		.45
 	]),
-	w("out-circ", "Circulaire, arrivée douce", "circ", [
+	T("out-circ", "Circulaire, arrivée douce", "circ", [
 		0,
 		.55,
 		.45,
 		1
 	]),
-	w("in-out-circ", "Circulaire, aller-retour", "circ", [
+	T("in-out-circ", "Circulaire, aller-retour", "circ", [
 		.85,
 		0,
 		.15,
 		1
 	]),
-	w("in-recul", "Recul avant le départ", "recul", [
+	T("in-recul", "Recul avant le départ", "recul", [
 		.36,
 		0,
 		.66,
 		-.56
 	]),
-	w("out-recul", "Dépasse puis revient", "recul", [
+	T("out-recul", "Dépasse puis revient", "recul", [
 		.34,
 		1.56,
 		.64,
 		1
 	]),
-	w("in-out-recul", "Recul et dépassement", "recul", [
+	T("in-out-recul", "Recul et dépassement", "recul", [
 		.68,
 		-.6,
 		.32,
 		1.6
 	]),
-	T("in-elastique", "Élastique au départ", "elastique", C["in-elastique"]),
-	T("out-elastique", "Élastique à l'arrivée", "elastique", C["out-elastique"]),
-	T("in-out-elastique", "Élastique, aller-retour", "elastique", C["in-out-elastique"]),
-	T("in-rebond", "Rebonds au départ", "rebond", C["in-rebond"]),
-	T("out-rebond", "Rebonds à l'arrivée", "rebond", C["out-rebond"]),
-	T("in-out-rebond", "Rebonds, aller-retour", "rebond", C["in-out-rebond"]),
-	T("ressort-vif", "Ressort vif", "ressort", E.f, E.dureeMs),
-	T("ressort-souple", "Ressort souple", "ressort", D.f, D.dureeMs),
-	T("ressort-pose", "Ressort posé", "ressort", O.f, O.dureeMs)
-], k = {
+	E("in-elastique", "Élastique au départ", "elastique", w["in-elastique"]),
+	E("out-elastique", "Élastique à l'arrivée", "elastique", w["out-elastique"]),
+	E("in-out-elastique", "Élastique, aller-retour", "elastique", w["in-out-elastique"]),
+	E("in-rebond", "Rebonds au départ", "rebond", w["in-rebond"]),
+	E("out-rebond", "Rebonds à l'arrivée", "rebond", w["out-rebond"]),
+	E("in-out-rebond", "Rebonds, aller-retour", "rebond", w["in-out-rebond"]),
+	D("ressort-vif", "Ressort vif", {
+		raideur: 300,
+		amortissement: 20
+	}),
+	D("ressort-souple", "Ressort souple", {
+		raideur: 120,
+		amortissement: 9
+	}),
+	D("ressort-pose", "Ressort posé", {
+		raideur: 170,
+		amortissement: 26
+	})
+], O = {
 	lineaire: (e) => e,
 	out: g(.16, 1, .3, 1),
 	"in-out": g(.65, 0, .35, 1),
 	in: g(.55, 0, 1, .45),
 	expo: (e) => e >= 1 ? 1 : 1 - 2 ** (-10 * e),
 	ressort: (e) => n(e)
-}, A = new Map(le.map((e) => [e.nom, e])), ue = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i, j = (e) => ue.test(e.trim()) ? Number(e.trim()) : null, de = /^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?)%$/i, M = (e) => String(_(e, 4)), N = {
+}, le = new Map(ce.map((e) => [e.nom, e])), ue = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i, k = (e) => ue.test(e.trim()) ? Number(e.trim()) : null, de = /^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?)%$/i, A = (e) => String(_(e, 4)), fe = {
 	linear: "linear",
 	"step-start": "steps(1, jump-start)",
 	"step-end": "steps(1, jump-end)"
-}, P = /* @__PURE__ */ new Map();
-function F(e) {
-	let t = e.trim().toLowerCase().replace(/\s+/g, " "), n = P.get(t);
+}, j = /* @__PURE__ */ new Map();
+function M(e) {
+	let t = e.trim().toLowerCase().replace(/\s+/g, " "), n = j.get(t);
 	if (n) return n;
-	let r = I(t);
-	return P.size > 500 && P.clear(), P.set(t, r), r;
+	let r = pe(t);
+	return j.size > 500 && j.clear(), j.set(t, r), r;
 }
-function I(e) {
+function pe(e) {
 	if (!e) return {
 		ok: !1,
 		erreur: "courbe vide"
 	};
-	if (e in k) {
-		let t = e, n = A.get(t), r = k[t];
+	if (e in O) {
+		let t = e, n = le.get(t), r = O[t];
 		return {
 			ok: !0,
 			genre: "nom",
 			nom: t,
-			css: t === "lineaire" ? "linear" : n?.bezier ? L(n.bezier) : y(v(r)),
+			css: t === "lineaire" ? "linear" : n?.bezier ? N(n.bezier) : y(v(r)),
 			f: r,
 			...n?.bezier ? { bezier: n.bezier } : {}
 		};
 	}
-	let t = A.get(e);
+	let t = le.get(e);
 	if (t) {
 		if (t.bezier) return {
 			ok: !0,
 			genre: "nom",
 			nom: t.nom,
-			css: L(t.bezier),
+			css: N(t.bezier),
 			f: g(...t.bezier),
 			bezier: t.bezier
 		};
@@ -408,13 +417,13 @@ function I(e) {
 			points: e
 		};
 	}
-	if (e in N) return e === "linear" ? {
+	if (e in fe) return e === "linear" ? {
 		ok: !0,
 		genre: "nom",
 		nom: e,
 		css: "linear",
 		f: (e) => e
-	} : I(N[e]);
+	} : pe(fe[e]);
 	let n = /^([a-z-]+)\((.*)\)$/.exec(e);
 	if (!n) return {
 		ok: !1,
@@ -426,7 +435,7 @@ function I(e) {
 			ok: !1,
 			erreur: `cubic-bezier() attend quatre nombres, ${a.length} reçu(s)`
 		};
-		let e = a.map(j);
+		let e = a.map(k);
 		if (e.some((e) => e === null || !Number.isFinite(e))) return {
 			ok: !1,
 			erreur: "cubic-bezier() : un des nombres est illisible"
@@ -434,7 +443,7 @@ function I(e) {
 		let [t, n, r, i] = e;
 		if (t < 0 || t > 1 || r < 0 || r > 1) return {
 			ok: !1,
-			erreur: `cubic-bezier() : x1 et x2 doivent être entre 0 et 1 (reçu ${M(t)} et ${M(r)})`
+			erreur: `cubic-bezier() : x1 et x2 doivent être entre 0 et 1 (reçu ${A(t)} et ${A(r)})`
 		};
 		let o = [
 			t,
@@ -445,7 +454,7 @@ function I(e) {
 		return {
 			ok: !0,
 			genre: "cubic-bezier",
-			css: L(o),
+			css: N(o),
 			f: g(...o),
 			bezier: o
 		};
@@ -455,7 +464,7 @@ function I(e) {
 			ok: !1,
 			erreur: "steps() attend un nombre de marches et, au choix, une position"
 		};
-		let e = j(a[0]);
+		let e = k(a[0]);
 		if (e === null || !Number.isInteger(e) || e < 1) return {
 			ok: !1,
 			erreur: `steps() : « ${a[0]} » n'est pas un entier ≥ 1`
@@ -489,7 +498,7 @@ function I(e) {
 			for (let e of n) {
 				let n = de.exec(e);
 				if (n) i.push(Number(n[1]) / 100);
-				else if (r === null && j(e) !== null) r = j(e);
+				else if (r === null && k(e) !== null) r = k(e);
 				else return {
 					ok: !1,
 					erreur: `linear() : « ${t} » illisible (un nombre et jusqu'à deux pourcentages)`
@@ -508,7 +517,7 @@ function I(e) {
 		return {
 			ok: !0,
 			genre: "linear",
-			css: fe(e),
+			css: me(e),
 			f: ie(t),
 			points: t
 		};
@@ -518,47 +527,47 @@ function I(e) {
 		erreur: `« ${r}() » : seulement cubic-bezier(), steps() et linear()`
 	};
 }
-var L = (e) => `cubic-bezier(${e.map(M).join(", ")})`, fe = (e) => `linear(${e.map((e) => [M(e.sortie), ...e.entrees.map((e) => `${_(e * 100, 4)}%`)].join(" ")).join(", ")})`;
-function pe(e, t = k.out) {
+var N = (e) => `cubic-bezier(${e.map(A).join(", ")})`, me = (e) => `linear(${e.map((e) => [A(e.sortie), ...e.entrees.map((e) => `${_(e * 100, 4)}%`)].join(" ")).join(", ")})`;
+function he(e, t = O.out) {
 	if (!e) return t;
-	let n = F(e);
+	let n = M(e);
 	return n.ok ? n.f : t;
 }
-function me(e) {
+function ge(e) {
 	if (!e) return null;
-	let t = F(e);
+	let t = M(e);
 	return t.ok ? t.css : null;
 }
 // src/presse/timeline.ts
-var R = { ...k }, he = (e) => typeof e == "function" ? e : e ? R[e] ?? pe(e, R.out) : R.out, z = /* @__PURE__ */ new Set(), B = 0, V = 0;
-function ge(e) {
-	B = 0, e !== void 0 && f(e);
-	let t = h(), n = (t - V) / 1e3;
-	V = t, n > 1 && (n = 1 / 60), _e(n), z.size && (B = requestAnimationFrame(ge));
+var P = { ...O }, F = (e) => typeof e == "function" ? e : e ? P[e] ?? he(e, P.out) : P.out, I = /* @__PURE__ */ new Set(), L = 0, R = 0;
+function z(e) {
+	L = 0, e !== void 0 && f(e);
+	let t = h(), n = (t - R) / 1e3;
+	R = t, n > 1 && (n = 1 / 60), _e(n), I.size && (L = requestAnimationFrame(z));
 }
 function _e(e) {
-	for (let t of [...z]) t.step(e) || z.delete(t);
+	for (let t of [...I]) t.step(e) || I.delete(t);
 	for (let e of ve) e();
-	Te();
+	J();
 }
 var ve = /* @__PURE__ */ new Set();
-function H(e) {
-	z.add(e), B || typeof requestAnimationFrame > "u" || (V = h(), B = requestAnimationFrame(ge));
+function B(e) {
+	I.add(e), L || typeof requestAnimationFrame > "u" || (R = h(), L = requestAnimationFrame(z));
 }
 function ye(e) {
 	let t = !0, n = { step: (n) => t && e(n) !== !1 };
-	return H(n), {
+	return B(n), {
 		stop: () => void (t = !1),
 		wake: () => {
-			t && !z.has(n) && H(n);
+			t && !I.has(n) && B(n);
 		}
 	};
 }
 var be = null, xe = null;
-function U() {
+function V() {
 	return xe === null ? typeof matchMedia > "u" ? !1 : (be ??= matchMedia("(prefers-reduced-motion: reduce)"), be.matches) : xe;
 }
-var W = /* @__PURE__ */ new WeakMap(), G = /* @__PURE__ */ new Set(), K = {
+var H = /* @__PURE__ */ new WeakMap(), U = /* @__PURE__ */ new Set(), W = {
 	x: "px",
 	y: "px",
 	rotate: "deg",
@@ -580,46 +589,46 @@ var W = /* @__PURE__ */ new WeakMap(), G = /* @__PURE__ */ new Set(), K = {
 	"clip-x",
 	"clip-top"
 ];
-function q(e, t) {
+function G(e, t) {
 	if (typeof e == "number") return {
 		n: e,
-		unit: K[t] ?? ""
+		unit: W[t] ?? ""
 	};
 	let n = /^(-?[\d.]+(?:e-?\d+)?)([a-z%]*)$/i.exec(e.trim());
 	if (!n) throw Error(`[presse:anim] valeur illisible pour ${t} : « ${e} »`);
 	return {
 		n: Number(n[1]),
-		unit: n[2] || K[t] || ""
+		unit: n[2] || W[t] || ""
 	};
 }
-function J(e, t) {
-	return W.get(e)?.get(t) ?? {
+function K(e, t) {
+	return H.get(e)?.get(t) ?? {
 		n: Se[t] ?? 0,
-		unit: K[t] ?? ""
+		unit: W[t] ?? ""
 	};
 }
 function we(e, t, n) {
-	let r = W.get(e);
-	r || W.set(e, r = /* @__PURE__ */ new Map()), r.set(t, n), G.add(e);
+	let r = H.get(e);
+	r || H.set(e, r = /* @__PURE__ */ new Map()), r.set(t, n), U.add(e);
 }
-var Y = (e, t) => e ? `${+e.n.toFixed(4)}${e.unit}` : t;
-function Te() {
+var q = (e, t) => e ? `${+e.n.toFixed(4)}${e.unit}` : t;
+function J() {
 	if (t()) {
 		let t = h();
-		for (let n of G) for (let [r, i] of W.get(n)) e(n, r, i.n, t);
+		for (let n of U) for (let [r, i] of H.get(n)) e(n, r, i.n, t);
 	}
-	for (let e of G) {
-		let t = W.get(e), n = e.style;
-		if ((t.has("x") || t.has("y")) && n.setProperty("translate", `${Y(t.get("x"), "0px")} ${Y(t.get("y"), "0px")}`), t.has("scale") && n.setProperty("scale", Y(t.get("scale"), "1")), t.has("rotate") && n.setProperty("rotate", Y(t.get("rotate"), "0deg")), t.has("opacity") && n.setProperty("opacity", String(+Math.min(1, Math.max(0, t.get("opacity").n)).toFixed(4))), t.has("blur")) {
+	for (let e of U) {
+		let t = H.get(e), n = e.style;
+		if ((t.has("x") || t.has("y")) && n.setProperty("translate", `${q(t.get("x"), "0px")} ${q(t.get("y"), "0px")}`), t.has("scale") && n.setProperty("scale", q(t.get("scale"), "1")), t.has("rotate") && n.setProperty("rotate", q(t.get("rotate"), "0deg")), t.has("opacity") && n.setProperty("opacity", String(+Math.min(1, Math.max(0, t.get("opacity").n)).toFixed(4))), t.has("blur")) {
 			let e = t.get("blur");
-			n.setProperty("filter", e.n > .01 ? `blur(${Y(e, "0px")})` : "");
+			n.setProperty("filter", e.n > .01 ? `blur(${q(e, "0px")})` : "");
 		}
-		(t.has("clip") || t.has("clip-x") || t.has("clip-top")) && n.setProperty("clip-path", `inset(${Y(t.get("clip-top"), "0%")} ${Y(t.get("clip-x"), "0%")} ${Y(t.get("clip"), "0%")} 0%)`);
-		for (let [e, r] of t) e.startsWith("--") && n.setProperty(e, Y(r, "0"));
+		(t.has("clip") || t.has("clip-x") || t.has("clip-top")) && n.setProperty("clip-path", `inset(${q(t.get("clip-top"), "0%")} ${q(t.get("clip-x"), "0%")} ${q(t.get("clip"), "0%")} 0%)`);
+		for (let [e, r] of t) e.startsWith("--") && n.setProperty(e, q(r, "0"));
 	}
-	G.clear();
+	U.clear();
 }
-var Ee = class {
+var Te = class {
 	tracks = [];
 	calls = [];
 	labels = /* @__PURE__ */ new Map();
@@ -650,11 +659,11 @@ var Ee = class {
 		return this.labels.set(e, this.at(t)), this;
 	}
 	add(e, t, n, i, a) {
-		let o = Array.isArray(e) ? e : [e], s = this.at(i.at), c = Math.max(0, i.dur ?? r[3] / 1e3), l = he(i.ease), u = i.stagger ?? 0;
+		let o = Array.isArray(e) ? e : [e], s = this.at(i.at), c = Math.max(0, i.dur ?? r[3] / 1e3), l = F(i.ease), u = i.stagger ?? 0;
 		return o.forEach((e, r) => {
 			for (let [i, o] of Object.entries(n)) {
 				if (o === void 0) continue;
-				let n = q(o, i), d = t && t[i] !== void 0 ? q(t[i], i) : null;
+				let n = G(o, i), d = t && t[i] !== void 0 ? G(t[i], i) : null;
 				if (d && d.unit !== n.unit && d.n !== 0 && n.n !== 0) throw Error(`[presse:anim] ${i} : unités différentes (${d.unit} → ${n.unit})`);
 				d && d.unit !== n.unit && (d.n === 0 ? d.unit = n.unit : n.unit = d.unit), this.tracks.push({
 					t: e,
@@ -675,8 +684,8 @@ var Ee = class {
 	from(e, t, n = {}) {
 		let r = Array.isArray(e) ? e : [e], i = {};
 		for (let e of Object.keys(t)) {
-			let n = J(r[0], e);
-			i[e] = `${n.n}${q(t[e], e).unit || n.unit}`;
+			let n = K(r[0], e);
+			i[e] = `${n.n}${G(t[e], e).unit || n.unit}`;
 		}
 		return this.add(e, t, i, n, !1);
 	}
@@ -714,7 +723,7 @@ var Ee = class {
 		return this.playing ? new Promise((e) => this.resolveDone = e) : Promise.resolve();
 	}
 	go(e) {
-		return this.rate = e, U() ? (this.playing = !1, this.seek(e > 0 ? this.duration : 0), this) : e > 0 && this.time >= this.duration || e < 0 && this.time <= 0 ? (this.playing = !1, this.render(this.time), this) : (this.playing = !0, H(this), this);
+		return this.rate = e, V() ? (this.playing = !1, this.seek(e > 0 ? this.duration : 0), this) : e > 0 && this.time >= this.duration || e < 0 && this.time <= 0 ? (this.playing = !1, this.render(this.time), this) : (this.playing = !0, B(this), this);
 	}
 	step(e) {
 		if (!this.playing) return !1;
@@ -730,8 +739,8 @@ var Ee = class {
 			r || n.set(e.t, r = /* @__PURE__ */ new Map());
 			let i = !r.has(e.prop);
 			if (t < e.start && !i) continue;
-			e.lazy && !e.from && t >= e.start && (e.from = { ...J(e.t, e.prop) }, e.from.unit !== e.to.unit && e.from.n === 0 && (e.from.unit = e.to.unit));
-			let a = e.from ?? J(e.t, e.prop), o = e.dur === 0 ? +(t >= e.start) : Math.min(1, Math.max(0, (t - e.start) / e.dur)), s = e.ease(o);
+			e.lazy && !e.from && t >= e.start && (e.from = { ...K(e.t, e.prop) }, e.from.unit !== e.to.unit && e.from.n === 0 && (e.from.unit = e.to.unit));
+			let a = e.from ?? K(e.t, e.prop), o = e.dur === 0 ? +(t >= e.start) : Math.min(1, Math.max(0, (t - e.start) / e.dur)), s = e.ease(o);
 			r.set(e.prop, {
 				n: a.n + (e.to.n - a.n) * s,
 				unit: e.to.unit || a.unit
@@ -740,9 +749,9 @@ var Ee = class {
 		for (let [e, t] of n) for (let [n, r] of t) we(e, n, r);
 		if (t > e) for (let n of this.calls) !n.done && n.at > e && n.at <= t && (n.done = !0, n.fn());
 		if (t < e) for (let e of this.calls) e.at > t && (e.done = !1);
-		this.onUpdate?.(this), z.has(this) || Te();
+		this.onUpdate?.(this), I.has(this) || J();
 	}
-}, De = {
+}, Ee = {
 	monte: "y 1.1em 0em; opacity 0 1",
 	fondu: "opacity 0 1",
 	glisse: "x -1.5em 0em; opacity 0 1",
@@ -751,15 +760,15 @@ var Ee = class {
 	rideau: "clip-x 100 0",
 	flou: "blur 14 0; opacity 0 1",
 	bascule: "rotate -5 0; y 0.8em 0em; opacity 0 1"
-}, Oe = [
+}, De = [
 	"entree",
 	"defilement",
 	"survol",
 	"appui",
 	"chargement"
 ];
-function ke(e) {
-	let t = De[e.trim()] ?? e, n = {}, r = {};
+function Oe(e) {
+	let t = Ee[e.trim()] ?? e, n = {}, r = {};
 	for (let e of t.split(";")) {
 		let t = e.trim().split(/\s+/).filter(Boolean);
 		if (!t.length) continue;
@@ -770,25 +779,25 @@ function ke(e) {
 	}
 	return [n, r];
 }
-var X = /* @__PURE__ */ new WeakMap(), Z = /* @__PURE__ */ new Set(), Q = null, Ae = null, $ = { step(e) {
+var Y = /* @__PURE__ */ new WeakMap(), X = /* @__PURE__ */ new Set(), Z = null, ke = null, Q = { step(e) {
 	let t = !1;
-	for (let n of Z) {
+	for (let n of X) {
 		if (!n.visible) continue;
-		let r = n.el.getBoundingClientRect(), i = innerHeight, a = Math.min(1, Math.max(0, (i - r.top) / (i + r.height))), o = U() || n.smooth <= 0 ? 1 : 1 - Math.exp(-e / n.smooth);
+		let r = n.el.getBoundingClientRect(), i = innerHeight, a = Math.min(1, Math.max(0, (i - r.top) / (i + r.height))), o = V() || n.smooth <= 0 ? 1 : 1 - Math.exp(-e / n.smooth);
 		n.p += (a - n.p) * o, Math.abs(a - n.p) < 1e-4 ? n.p = a : t = !0, n.tl.progress(n.p);
 	}
 	return t;
-} }, je = !1;
-function Me(e) {
-	if (X.has(e)) return;
+} }, Ae = !1;
+function $(e) {
+	if (Y.has(e)) return;
 	let t = e.dataset, n, i;
 	try {
-		[n, i] = ke(t.anim ?? "");
+		[n, i] = Oe(t.anim ?? "");
 	} catch (t) {
 		console.warn(t, e), e.dataset.animReady = "";
 		return;
 	}
-	let a = Oe.includes(t.animTrigger ?? "") ? t.animTrigger : "entree", o = Number(t.animStagger ?? 0), s = o > 0 ? [...e.children] : [e], c = new Ee().fromTo(s, n, i, {
+	let a = De.includes(t.animTrigger ?? "") ? t.animTrigger : "entree", o = Number(t.animStagger ?? 0), s = o > 0 ? [...e.children] : [e], c = new Te().fromTo(s, n, i, {
 		dur: t.animDur ? Number(t.animDur) : a === "survol" || a === "appui" ? r[2] / 1e3 : r[3] / 1e3,
 		ease: t.animEase ?? (a === "defilement" ? "lineaire" : "out"),
 		stagger: o,
@@ -802,19 +811,19 @@ function Me(e) {
 		p: 0,
 		visible: !1
 	};
-	if (X.set(e, l), c.seek(0), e.dataset.animReady = "", a === "entree") Q ??= new IntersectionObserver((e) => {
+	if (Y.set(e, l), c.seek(0), e.dataset.animReady = "", a === "entree") Z ??= new IntersectionObserver((e) => {
 		for (let t of e) {
-			let e = X.get(t.target);
-			e && (t.isIntersecting ? (e.tl.play(), e.repeat || Q.unobserve(e.el)) : e.repeat && t.boundingClientRect.top > 0 && e.tl.reverse());
+			let e = Y.get(t.target);
+			e && (t.isIntersecting ? (e.tl.play(), e.repeat || Z.unobserve(e.el)) : e.repeat && t.boundingClientRect.top > 0 && e.tl.reverse());
 		}
-	}, { rootMargin: "0px 0px -15% 0px" }), Q.observe(e);
-	else if (a === "defilement") Z.add(l), Ae ??= new IntersectionObserver((e) => {
+	}, { rootMargin: "0px 0px -15% 0px" }), Z.observe(e);
+	else if (a === "defilement") X.add(l), ke ??= new IntersectionObserver((e) => {
 		for (let t of e) {
-			let e = [...Z].find((e) => e.el === t.target);
+			let e = [...X].find((e) => e.el === t.target);
 			e && (e.visible = t.isIntersecting);
 		}
-		H($);
-	}, { rootMargin: "20% 0px" }), Ae.observe(e), je || (je = !0, addEventListener("scroll", () => H($), { passive: !0 }), addEventListener("resize", () => H($)));
+		B(Q);
+	}, { rootMargin: "20% 0px" }), ke.observe(e), Ae || (Ae = !0, addEventListener("scroll", () => B(Q), { passive: !0 }), addEventListener("resize", () => B(Q)));
 	else if (a === "survol") e.addEventListener("pointerenter", (e) => e.pointerType !== "touch" && c.play()), e.addEventListener("pointerleave", () => c.reverse()), e.addEventListener("focusin", () => c.play()), e.addEventListener("focusout", () => c.reverse());
 	else if (a === "appui") {
 		e.addEventListener("pointerdown", () => c.play());
@@ -837,15 +846,15 @@ function Me(e) {
 		}
 	}
 }
-function Ne(e = document) {
+function je(e = document) {
 	if (typeof document > "u") return;
 	window.__presseAnim = !0;
-	let t = (e) => e.querySelectorAll("[data-anim]").forEach(Me);
+	let t = (e) => e.querySelectorAll("[data-anim]").forEach($);
 	t(e), e === document && new MutationObserver((e) => {
-		for (let n of e) for (let e of n.addedNodes) e instanceof HTMLElement && (e.matches("[data-anim]") && Me(e), t(e));
+		for (let n of e) for (let e of n.addedNodes) e instanceof HTMLElement && (e.matches("[data-anim]") && $(e), t(e));
 	}).observe(document.body, {
 		childList: !0,
 		subtree: !0
 	});
 }
-export { U as a, h as c, Ne as i, he as n, me as o, ye as r, F as s, R as t };
+export { V as a, h as c, je as i, F as n, ge as o, ye as r, M as s, P as t };

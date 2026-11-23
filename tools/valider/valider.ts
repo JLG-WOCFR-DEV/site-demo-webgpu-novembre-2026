@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parse, type HTMLElement, type Node } from "node-html-parser";
 import { SCHEMAS, validate as validerComposant } from "../../presse/build/validate.ts";
+import { lireCourbe } from "../../src/registre/mouvement/courbes.ts";
 import { COLLISIONS, COMPLEMENTS, proche, toutesValeurs, type Attribut, type Catalogue, type Contexte, type Sur } from "./catalogue.ts";
 
 export type Gravite = "erreur" | "avertissement";
@@ -190,6 +191,12 @@ export function validerHtml(html: string, cat: Catalogue, opts: Options = {}): C
     if (!v) {
       if (at.valeurRequise) dire("erreur", "valeur", el, `${at.nom} : valeur obligatoire (PRESSE.md:${at.lignesMd[0]})`);
       if (comp?.texteOuValeur && !el.text.trim()) dire("erreur", "valeur", el, `${at.nom} : ni valeur ni texte — le mot est obligatoire`);
+      return;
+    }
+    if (comp?.courbe) {
+      // Une courbe : un nom (liste documentée ou bibliothèque) ou cubic-bezier(), steps(), linear().
+      const l = lireCourbe(v);
+      if (!l.ok) dire("erreur", "valeur", el, `${at.nom}="${v}" : ${l.erreur} (un nom comme out, in-out, out-rebond, ou cubic-bezier(), steps(), linear())`);
       return;
     }
     if (at.libre.some((c) => contexteVrai(c, el) !== false)) return;

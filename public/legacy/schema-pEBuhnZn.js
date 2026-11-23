@@ -1,4 +1,4 @@
-import "./timeline-BqaHbjJE.js";
+import "./timeline-DUX9XWeC.js";
 // src/registre/schema/index.ts
 var e = /^[+-]?(\d+[.,]?\d*|[.,]\d+)(e[+-]?\d+)?$/i;
 function t(t) {

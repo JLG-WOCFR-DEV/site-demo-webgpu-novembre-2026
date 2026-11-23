@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Courbes · éditeur de mouvement · Presse</title>
+    <meta name="description" content="L'éditeur de courbe de Presse : poignées cubic-bezier au pointeur et au clavier, ressort réel, marches, trente-cinq préréglages, et quatre courbes comparées côte à côte en Web Animations API. La même chaîne CSS sert au moteur de temps et aux effets." />
+    <meta name="theme-color" content="#f2f2f4" />
+    <script type="module" src="/src/courbes/main.ts"></script>
+  </head>
+  <body>
+    <a class="evitement" href="#contenu">Aller au contenu</a>
+    <main id="contenu" tabindex="-1">
+      <header class="tete">
+        <p class="sur">Presse · registre du mouvement</p>
+        <h1>Courbes</h1>
+        <p class="chapo">Une courbe dit comment le temps traverse un mouvement : vite puis lentement, avec un dépassement, par à-coups. Ici, une seule écriture — celle de CSS — pour le navigateur, le moteur de temps de Presse et les effets : <code>data-anim-ease</code>, <code>data-cinetique-courbe</code>, <code>data-goo-courbe</code>, <code>data-couloir-courbe</code>.</p>
+      </header>
+
+      <section class="bloc" aria-labelledby="t-editeur">
+        <div class="bloc-tete">
+          <h2 id="t-editeur">Éditeur</h2>
+          <p>Tirez une poignée, ou prenez-la au clavier : flèches pour un centième, <kbd>Maj</kbd> pour un millième. La balle est animée avec la valeur produite ; la pastille sur le graphe, par la fonction JavaScript. Elles doivent dire la même chose.</p>
+        </div>
+        <div id="editeur" class="editeur-hote">
+          <noscript><p>L'éditeur demande JavaScript. Les courbes s'écrivent comme en CSS : <code>cubic-bezier(0.2, 0, 0, 1)</code>, <code>steps(4, jump-end)</code>, <code>linear(0, 0.6 40%, 1)</code>.</p></noscript>
+        </div>
+      </section>
+
+      <section class="bloc" aria-labelledby="t-comparer">
+        <div class="bloc-tete">
+          <h2 id="t-comparer">Comparer</h2>
+          <p>Quatre courbes, même durée, même départ, animées par la Web Animations API. La première suit l'éditeur.</p>
+        </div>
+        <div class="cmp-commandes">
+          <label class="cmp-duree"><span>Durée</span><input id="cmp-duree" type="range" min="200" max="3000" step="50" value="1400" /><output for="cmp-duree" id="cmp-duree-sortie">1 400 ms</output></label>
+          <button type="button" class="icone" id="cmp-rejouer" aria-label="Rejouer les quatre courbes" title="Rejouer les quatre courbes"></button>
+        </div>
+        <ol class="cmp" id="comparer"></ol>
+      </section>
+
+      <section class="bloc" aria-labelledby="t-page">
+        <div class="bloc-tete">
+          <h2 id="t-page">Dans une page</h2>
+          <p>La valeur de l'éditeur, posée sur les effets qui l'acceptent (les durées suivent le ressort quand il y en a un).</p>
+        </div>
+        <div class="extrait">
+          <pre><code id="extrait">&lt;h2 data-anim="monte" data-anim-ease="out"&gt;…&lt;/h2&gt;</code></pre>
+          <button type="button" class="icone" id="extrait-copier" aria-label="Copier les attributs" title="Copier les attributs"></button>
+        </div>
+        <p class="note" id="extrait-message" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+  </body>
+</html>

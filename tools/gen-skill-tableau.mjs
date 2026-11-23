@@ -93,7 +93,7 @@ for (const L of cat.lignes) {
 }
 const entete = "| Intention | Attribut(s) | Valeurs documentées | Rendu | Armement | Exemple |\n|---|---|---|---|---|---|";
 const bloc = [
-  "<!-- tableau:debut — généré par tools/gen-skill-tableau.mjs depuis PRESSE.md et src/pages-nav.ts ; ne pas éditer à la main -->",
+  "<!-- tableau:debut — généré par tools/gen-skill-tableau.mjs depuis PRESSE.md et src/registre/effets.ts ; ne pas éditer à la main -->",
   "",
   "### Modules",
   "",

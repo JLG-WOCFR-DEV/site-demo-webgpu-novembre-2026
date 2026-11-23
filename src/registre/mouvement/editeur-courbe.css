@@ -1,0 +1,183 @@
+/* Registre — l'éditeur de courbe (src/registre/mouvement/editeur-courbe.ts). Jetons --ec-* à surcharger. */
+.ec {
+  --ec-papier: #fbfbfc;
+  --ec-fond: #ffffff;
+  --ec-encre: #15151a;
+  --ec-doux: #62626e;
+  --ec-filet: rgba(21, 21, 26, 0.12);
+  --ec-grille: rgba(21, 21, 26, 0.07);
+  --ec-accent: #3b3bf0;
+  --ec-accent-doux: rgba(59, 59, 240, 0.12);
+  --ec-erreur: #b42318;
+  --ec-rayon: 10px;
+  --ec-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  container-type: inline-size;
+  color: var(--ec-encre);
+  font: 400 14px/1.4 "Archivo Variable", "Archivo", "Helvetica Neue", Arial, sans-serif;
+}
+.ec *, .ec *::before, .ec *::after { box-sizing: border-box; }
+.ec-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.ec-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "barre" "graphe" "apercu" "reglages" "valeur" "message" "pre";
+  gap: 12px;
+  background: var(--ec-papier);
+  border: 1px solid var(--ec-filet);
+  border-radius: calc(var(--ec-rayon) + 4px);
+  padding: 12px;
+}
+@container (min-width: 700px) {
+  .ec-corps {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    grid-template-areas: "barre barre" "graphe reglages" "graphe valeur" "graphe message" "graphe pre" "apercu pre";
+    grid-template-rows: auto auto auto auto 1fr auto;
+    column-gap: 20px;
+    padding: 16px;
+  }
+}
+
+/* ── Barre : modes et actions ── */
+.ec-barre { grid-area: barre; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ec-modes, .ec-actions, .ec-positions { display: flex; gap: 2px; padding: 2px; background: var(--ec-fond); border: 1px solid var(--ec-filet); border-radius: var(--ec-rayon); }
+.ec-actions { background: none; border-color: transparent; }
+.ec-bouton {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  color: var(--ec-encre);
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--ec-rayon) - 2px);
+  cursor: pointer;
+  font: inherit;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ec-bouton:hover { background: var(--ec-grille); }
+.ec-bouton:focus-visible, .ec-bouton:has(input:focus-visible) { outline: 2px solid var(--ec-accent); outline-offset: 1px; }
+.ec-bouton input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: inherit; }
+.ec-bouton:has(input:checked), .ec-bouton[aria-pressed="true"] { background: var(--ec-encre); color: var(--ec-fond); }
+.ec-bouton:has(input:disabled) { opacity: 0.32; cursor: default; }
+.ec-bouton:has(input:disabled):hover { background: transparent; }
+.ec-actions .ec-bouton[aria-pressed="true"] { background: var(--ec-accent-doux); color: var(--ec-accent); }
+
+/* ── Graphe ── */
+.ec-graphe {
+  grid-area: graphe;
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+  aspect-ratio: 100 / 140;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--ec-fond);
+  border: 1px solid var(--ec-filet);
+  border-radius: var(--ec-rayon);
+  overflow: visible;
+  cursor: crosshair;
+}
+.ec:not([data-mode="bezier"]) .ec-graphe { cursor: default; }
+.ec-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ec-grille { stroke: var(--ec-grille); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.ec-grille-mi { stroke: rgba(21, 21, 26, 0.12); }
+.ec-grille-forte { stroke: rgba(21, 21, 26, 0.28); }
+.ec-grille-hors { stroke-dasharray: 2 4; }
+.ec-diagonale { stroke: rgba(21, 21, 26, 0.22); stroke-width: 1; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+.ec-bras { stroke: var(--ec-accent); stroke-width: 1.25; vector-effect: non-scaling-stroke; opacity: 0.7; }
+.ec-trace { fill: none; stroke: var(--ec-encre); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.ec-tete { fill: var(--ec-accent); stroke: var(--ec-fond); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.ec-tete-ligne { stroke: var(--ec-accent); stroke-width: 1; opacity: 0.25; vector-effect: non-scaling-stroke; }
+.ec-reduit .ec-tete, .ec-reduit .ec-tete-ligne { display: none; }
+
+.ec-poignee {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: var(--ec-fond);
+  border: 2.5px solid var(--ec-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  cursor: grab;
+  touch-action: none;
+  z-index: 1;
+}
+.ec-poignee::before { content: ""; position: absolute; inset: -14px; border-radius: 50%; }
+.ec-poignee[data-p="2"] { background: var(--ec-accent); }
+.ec-poignee:focus-visible { outline: 2px solid var(--ec-accent); outline-offset: 4px; }
+.ec-tire .ec-poignee:focus { transform: scale(1.15); cursor: grabbing; }
+.ec:not([data-mode="bezier"]) .ec-poignee, .ec:not([data-mode="bezier"]) .ec-bras { display: none; }
+
+/* ── Aperçu : la balle ── */
+.ec-apercu { grid-area: apercu; padding: 6px 14px; background: var(--ec-fond); border: 1px solid var(--ec-filet); border-radius: var(--ec-rayon); }
+.ec-piste { position: relative; height: 32px; margin: 0 6px; }
+.ec-piste::before { content: ""; position: absolute; left: 10px; right: 10px; top: 50%; border-top: 1px solid var(--ec-filet); }
+.ec-piste::after { content: ""; position: absolute; right: 10px; top: 8px; bottom: 8px; border-right: 1px solid rgba(21, 21, 26, 0.28); }
+.ec-rail { position: absolute; left: 0; top: 0; bottom: 0; width: calc(100% - 20px); will-change: transform; }
+.ec-balle { position: absolute; left: 0; top: 50%; width: 20px; height: 20px; margin-top: -10px; border-radius: 50%; background: var(--ec-accent); }
+.ec-fantomes { position: absolute; left: 0; top: 0; bottom: 0; width: calc(100% - 20px); pointer-events: none; }
+.ec-fantome { position: absolute; left: calc(var(--p) * 100%); top: 50%; width: 20px; height: 20px; margin-top: -10px; border-radius: 50%; background: var(--ec-accent); opacity: var(--o); }
+.ec-reduit .ec-balle { opacity: 0; }
+
+/* ── Réglages ── */
+.ec-reglages { grid-area: reglages; }
+.ec-groupe { margin: 0; padding: 0; border: 0; min-width: 0; }
+.ec-groupe[data-pour] { display: none; }
+.ec[data-mode="bezier"] .ec-groupe[data-pour="bezier"] { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.ec[data-mode="ressort"] .ec-groupe[data-pour="ressort"],
+.ec[data-mode="marches"] .ec-groupe[data-pour="marches"] { display: grid; gap: 10px; }
+.ec[data-mode="libre"] .ec-groupe[data-pour="libre"] { display: block; }
+.ec-num { display: grid; gap: 3px; font: 500 11px/1 var(--ec-mono); color: var(--ec-doux); text-transform: lowercase; }
+.ec-num input, .ec-css {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 9px;
+  color: var(--ec-encre);
+  font: 500 13px/1.2 var(--ec-mono);
+  background: var(--ec-fond);
+  border: 1px solid var(--ec-filet);
+  border-radius: calc(var(--ec-rayon) - 3px);
+  font-variant-numeric: tabular-nums;
+}
+.ec-num input:focus-visible, .ec-css:focus-visible { outline: 2px solid var(--ec-accent); outline-offset: -1px; border-color: transparent; }
+.ec-curseur { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) 3.4em; align-items: center; gap: 10px; font-size: 13px; }
+.ec-curseur input { width: 100%; min-height: 32px; accent-color: var(--ec-accent); margin: 0; }
+.ec-curseur output { font: 500 13px/1 var(--ec-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.ec-mesure { margin: 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; font-size: 13px; color: var(--ec-doux); }
+.ec-mesure output { font: 600 13px/1 var(--ec-mono); color: var(--ec-encre); }
+.ec-zeta { font: 500 12px/1 var(--ec-mono); }
+.ec-positions { justify-self: start; }
+.ec-note { margin: 0; font-size: 13px; color: var(--ec-doux); }
+
+/* ── Valeur CSS ── */
+.ec-valeur { grid-area: valeur; display: flex; gap: 6px; align-items: center; }
+.ec-css { flex: 1; min-width: 0; font-size: 12.5px; text-overflow: ellipsis; }
+.ec-css[aria-invalid="true"] { border-color: var(--ec-erreur); outline-color: var(--ec-erreur); }
+.ec-valeur .ec-bouton { border: 1px solid var(--ec-filet); background: var(--ec-fond); }
+.ec-message { grid-area: message; margin: -4px 0 0; min-height: 1.4em; font-size: 12.5px; color: var(--ec-doux); }
+.ec-message.ec-erreur { color: var(--ec-erreur); }
+
+/* ── Préréglages ── */
+.ec-prereglages { grid-area: pre; display: grid; gap: 8px; align-content: start; }
+.ec-famille { display: grid; grid-template-columns: 6.6em minmax(0, 1fr); align-items: center; gap: 6px; }
+.ec-famille-nom { font: 500 10.5px/1.1 var(--ec-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ec-doux); }
+.ec-famille-liste { display: flex; flex-wrap: wrap; gap: 2px; }
+.ec-pre { min-width: 40px; min-height: 40px; }
+.ec-vignette-cadre { fill: none; stroke: currentColor; stroke-width: 0.6; opacity: 0.25; }
+@media (pointer: coarse) { .ec-pre { min-width: 44px; min-height: 44px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-bouton { transition: none; }
+}
+@media (forced-colors: active) {
+  .ec-poignee { forced-color-adjust: none; border-color: Highlight; background: Canvas; }
+  .ec-trace { stroke: CanvasText; }
+  .ec-balle, .ec-fantome { background: Highlight; }
+}

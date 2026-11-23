@@ -32,6 +32,7 @@ export const PAGES = [
   { href: "atelier.html", name: "Atelier", text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide" },
   { href: "presse.html", name: "Presse", text: "Le framework : un Webflow WebGPU, en attributs HTML" },
   { href: "createur.html", name: "Créateur", text: "Composer un site Presse par blocs, aperçu WebGPU en direct, export" },
+  { href: "courbes.html", name: "Courbes", text: "Éditeur de courbe : poignées, ressort, marches, comparaison de quatre courbes" },
   { href: "variations.html", name: "Variations", text: "Des directions artistiques tirées en quelques secondes sur la même page : jetons, verrous, instantanés, export" },
   { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
   { href: "kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },

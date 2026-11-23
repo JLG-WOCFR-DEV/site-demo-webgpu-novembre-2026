@@ -15,7 +15,7 @@ erreur.
 | Quoi | Où | Comment la lire |
 |---|---|---|
 | Attributs, valeurs, contexte | `PRESSE.md` (tableau « Attributs » et lignes de fin de fichier) | `npm run valider -- --catalogue` : le catalogue dérivé, en JSON |
-| Armement des modules | `src/pages-nav.ts` (`mountPagesNav`) | tableau ci-dessous, colonne « Armement » |
+| Armement des modules | `src/registre/effets.ts` (lu par `mountPagesNav`) | tableau ci-dessous, colonne « Armement » |
 | Balises `<x-…>` | `presse/build/validate.ts` (`SCHEMAS`) | `PRESSE.md`, section « Composants » |
 | Pour un agent externe | `llms.txt`, `presse-catalog.json` | écrits par `vite build` (`presse/build/catalog.ts`) |
 | Options fines d'un module | l'en-tête de `src/presse/<module>.ts` | souvent plus complet que PRESSE.md (voir « Pièges ») |
@@ -162,10 +162,10 @@ pas : le contenu rendu par script, le mouvement, le contraste, la mise en page (
 
 ## Intention → module
 
-Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `npm run skill:tableau`
+Régénérer après toute modification de PRESSE.md ou de `src/registre/effets.ts` : `npm run skill:tableau`
 (`tools/gen-skill-tableau.mjs`). Ne pas éditer à la main entre les marqueurs.
 
-<!-- tableau:debut — généré par tools/gen-skill-tableau.mjs depuis PRESSE.md et src/pages-nav.ts ; ne pas éditer à la main -->
+<!-- tableau:debut — généré par tools/gen-skill-tableau.mjs depuis PRESSE.md et src/registre/effets.ts ; ne pas éditer à la main -->
 
 ### Modules
 
@@ -175,6 +175,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | **Visionneuse** — chaque img du groupe s'ouvre en grand | `data-lightbox` | — | WebGPU | pages-nav | presse.html |
 | **La vague entre deux vues** — des [data-vague-vue] superposées | `data-vague` | — | WebGPU | pages-nav | presse.html |
 | **Goo** — ses [data-goo-item] sont réunis en une seule pâte par un champ de distance et un minimum lissé, dessinés par un… | `data-goo` | — | WebGPU | pages-nav | goo.html |
+| Trajet minuté au lieu du ressort : durée en ms, courbe comme data-anim-ease | `data-goo-duree`, `data-goo-courbe` | — | DOM | à importer : `src/presse/goo.ts` | — |
 | **Métal** — chrome liquide en WebGPU — bandes de reflets qui coulent, franges de couleur, halo qui fait le tour, le pointeur… | `data-metal`, `data-metal-texte`, `data-metal-badge` | chromatique, argent, or, cuivre, noir | WebGPU | pages-nav | metal.html |
 | **La voix** — une lueur colorée monte du bas d'un champ avec le niveau du micro, puis balaie pendant la réponse | `data-voix` | — | WebGPU | pages-nav | voix.html |
 | **Ruban** — une bande d'images dessinée en WebGPU, qu'on fait défiler au glisser, à la molette ou aux flèches, avec inertie, en… | `data-ruban` | torsade, accordeon, barillet, lentille, roue | WebGPU | pages-nav | ruban.html |
@@ -223,7 +224,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/pages-nav.ts` : `
 | La page arme elle-même ses modules : src/pages-nav.ts n'arme plus la typographie cinétique en DOM et ses composants,… | `data-presse-manuel` | — | WebGPU (moteur) | moteur (`src/presse/auto.ts` ou `site.ts`) | boutique.html |
 | Cadran d'angle façon Photoshop / InDesign / Illustrator : une aiguille dans un cercle, on la tourne au pointeur,… | `data-angle` | — | DOM | à importer : `src/presse/angle.ts` | fluide.html |
 | Panneau de débogage : fil de fer, grille, capture vidéo, image PNG | `data-presse-debug` | — | WebGPU (moteur) | moteur (`src/presse/auto.ts` ou `site.ts`) | presse.html |
-| Moteur de temps, sans script : un motif ou des pistes « propriété de vers » séparées par;, ex | `data-anim` | monte, fondu, glisse, zoom, masque, rideau, flou, bascule… | DOM | pages-nav (toujours) | presse.html |
+| Moteur de temps, sans script : un motif ou des pistes « propriété de vers » séparées par;, ex | `data-anim` | monte, fondu, glisse, zoom, masque, rideau, flou, bascule… | DOM | pages-nav (toujours) | courbes.html |
 | Élément partagé entre deux mises en page : il vole de l'ancienne place à la nouvelle, mis à l'échelle sans remise en… | `data-presse-match` | — | DOM | à importer : `src/presse/match.ts` | presse.html |
 
 <!-- tableau:fin -->

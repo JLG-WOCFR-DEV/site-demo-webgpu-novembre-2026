@@ -110,7 +110,7 @@ export type Catalogue = {
  * Ce que PRESSE.md dit en prose et que la lecture mécanique ne peut pas tirer d'une liste. Chaque entrée cite la
  * phrase qui la justifie ; ajouter ici, c'est reconnaître que le tableau devrait le dire.
  */
-export const COMPLEMENTS: Record<string, { valeurs?: string[]; valeursDe?: string; pistes?: boolean; ouvertId?: boolean; parentsSelecteurs?: string[]; texteOuValeur?: boolean; pourquoi: string }> = {
+export const COMPLEMENTS: Record<string, { valeurs?: string[]; valeursDe?: string; pistes?: boolean; ouvertId?: boolean; parentsSelecteurs?: string[]; texteOuValeur?: boolean; courbe?: boolean; pourquoi: string }> = {
   "data-transition": {
     valeursDe: "data-presse-transition",
     valeurs: ["deplacement"],
@@ -120,6 +120,10 @@ export const COMPLEMENTS: Record<string, { valeurs?: string[]; valeursDe?: strin
   "data-forme": { ouvertId: true, pourquoi: "« (`eclair`, `goutte`, `cercle`, `etoile` ou l'id d'un path SVG) »." },
   "data-vague-type": { parentsSelecteurs: ['[data-transition="vague"]'], pourquoi: "« Dans un diaporama : data-transition=\"vague\" sur la diapo (avec data-vague-type, data-vague-palette) »." },
   "data-vague-palette": { parentsSelecteurs: ['[data-transition="vague"]'], pourquoi: "idem data-vague-type." },
+  "data-anim-ease": { courbe: true, pourquoi: "« courbe (`out`, `in-out`…) » : un nom ou une écriture CSS, lue par src/registre/mouvement/courbes.ts (lireCourbe)." },
+  "data-cinetique-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
+  "data-goo-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
+  "data-couloir-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
   "data-graffiti": { texteOuValeur: true, pourquoi: "« bloc (p, div) avec le mot » : le mot en valeur, ou le texte de l'élément." },
 };
 
