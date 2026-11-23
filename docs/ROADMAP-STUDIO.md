@@ -151,7 +151,21 @@ Décisions :
     mouvement réduit, clavier.
   - Reste : fiches des autres effets (lot E7) ; aperçu WebGPU jugé sur machine réelle ; palette Ctrl+K (E6) sur le
     registre de raccourcis.
-- **E5 PPTX niveau 1, PDF, HTML autonome.**
+- **E5 PPTX niveau 1, PDF, HTML autonome.** **Fait (2026-11-24).**
+  - Modèle neutre `src/diapo-export/modele.ts` (diapos, états selon `diapo-etapes`, notes, transition, durée, section,
+    texte alternatif, `data-diapo-alt`) ; table des transitions `transitions.ts` (33 noms : fidèle / proche / repli) ;
+    réglages `options.ts` sur le schéma partagé (CLI et Créateur) ; mode `?export` du diaporama (`page.ts`,
+    `diapo:etat` dans `diapo.ts` : un état figé, sans animation).
+  - Chemin A : `npm run export:diapo` (`tools/export-diapo.mjs`, Playwright, aperçu Vite) → PPTX (OOXML direct, sans
+    pptxgenjs : il n'écrit pas les transitions), PDF à signets, HTML autonome ; `--verifier` (LibreOffice).
+    Mesuré : diapo-demos 15 diapos / 22 états en 9 s (PPTX 2,7 Mo, PDF 2,5 Mo, HTML 8,3 Mo dont 117 ko de polices),
+    conference 26 / 81 en 26 s (PPTX 8,0 Mo, PDF 6,8 Mo, HTML 3,6 Mo) ; relus par python-pptx et LibreOffice.
+  - Chemin B : menu Exporter du Créateur (HTML autonome, PDF `?impression&etapes`, PPTX rastérisé par SVG
+    `foreignObject` : diapo-demos en 8 s, 2,7 Mo).
+  - **Limites** : niveau 1 = des images, aucun objet éditable (texte, formes) ; rendu de repli DOM (pas d'effets du
+    moteur WebGPU : impression, trame, bloom) ; Magic Move et 5 transitions sans équivalent → Fondu ; pages vivantes et
+    vidéos figées en image (cartouche dans le HTML) ; HTML-in-Canvas pas encore employé pour la rastérisation (essai
+    d'origine Chrome 155+, non disponible ici) ; PPTX niveau 2 (textes éditables, Morphose) à décider.
 - **E6 Navigation unifiée** (taxonomie, palette Ctrl+K en combobox ARIA, registre de raccourcis, redirections des 37 URL, migration des clés `localStorage`), puis coque commune des trois éditeurs.
 - **E7 Veille** : Paper (écart de couverture), HTML-in-Canvas (module unique à partir de `src/html-in-canvas.ts`).
 - Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre, budget JS par page, a11y (priorité mouvement réduit vs `data-diapo-motion`).

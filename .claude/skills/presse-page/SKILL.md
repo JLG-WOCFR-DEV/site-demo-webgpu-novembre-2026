@@ -131,6 +131,10 @@ Le moteur GPU des `data-gl-*` se charge par `src/presse/auto.ts` (ou `src/presse
   - Les composants de `cinetique.ts` ont des noms génériques — `data-roule`, `data-marque`, `data-defile`,
     `data-reflet`, `data-cercle`, `data-coupe`, `data-brouille`, `data-frappe` — : les poser **arme cinetique.ts**.
   - `data-transition` : sur un lien, seulement `none` ; sur une diapo, les transitions de page et de diapo.
+- **Diaporama exporté** (`npm run export:diapo -- page.html`, PRESSE.md « Export des diaporamas ») : l'export montre le
+  repli DOM (pas d'effets WebGPU) ; une diapo surtout visuelle mérite un `data-diapo-alt` ; une diapo sans `aria-label`
+  ni h1/h2/h3 n'a pas de titre dans le PPTX ; `quadri`, `pli`, `parasite`, `bascule`, `marbrure` et `deplacement`
+  deviennent un Fondu dans PowerPoint.
   - `data-gl-reveal` : `rideau`… avec `data-gl-img`, `lignes` / `erosion` avec `data-gl-text`.
   - Deux modules sur le même texte (`data-cinetique` + `data-typo`, ou + `data-gl-text`) : erreur.
   - `data-presse-manuel` est lu par `pages-nav.ts` (il n'arme plus cinétique, déchirure…) **et** par `site.ts` (il ne

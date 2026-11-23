@@ -14,7 +14,8 @@
  * Aussi : trieuse de diapositives (grille), sections (`data-section` sur la première diapo d'une section), répétition
  * minutée (`data-duree` par diapo, `data-duree-visee` sur le diaporama), ordre des apparitions (`data-step-ordre`,
  * `data-step-depart`), mise en forme directe (styles en ligne), zones de texte et images libres (`data-libre`, placées
- * en % de la diapo, déplacées à la souris dans l'aperçu), export PDF (conference.html?impression), notes sous l'aperçu.
+ * en % de la diapo, déplacées à la souris dans l'aperçu), notes sous l'aperçu, menu Exporter (exporter.ts : HTML
+ * autonome, PDF par `?impression`, PowerPoint niveau 1 rastérisé dans le navigateur).
  */
 import "./style.css";
 import { docKey, listFiles, notesParas, putFile, readDoc, tagIds, type SavedDoc } from "../presse/diapo-doc.ts";
@@ -24,6 +25,7 @@ import { COLORS, STYLES, STYLE_CLASSES, bakeSavedEdits, saveRunning, savedSettin
 import { SLIDE_TRANSITIONS } from "../gpu/slide-transition.ts";
 import { TRANSITIONS } from "../state.ts";
 import { PRESETS } from "../presse/timeline.ts";
+import { monterExport } from "./exporter.ts";
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector<T>(s)!;
 const esc = (s: unknown) =>
@@ -88,6 +90,13 @@ const ICONS: Record<string, string> = {
   move: "M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3",
   width: "M3 12h18M6 9l-3 3 3 3M18 9l3 3-3 3M3 5v14M21 5v14",
   more: "M5 12h.01M12 12h.01M19 12h.01",
+  export: "M12 15V3M7 8l5-5 5 5M5 13v7h14v-7",
+  html: "M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16",
+  pptx: "M3 4h18v12H3zM8 21h8M12 16v5M10 7.5v5l4-2.5z",
+  etapes: "M4 18h4v-4H4zM10 18h4v-8h-4zM16 18h4V6h-4z",
+  diapo: "M3 5h18v13H3zM7 9h7M7 13h10",
+  notes: "M5 4h14v12l-4 4H5zM15 20v-4h4M8 9h8M8 13h5",
+  masquee: "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.5 6.6C3.7 8.5 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2",
 };
 const icon = (name: string) => `<svg class="dc-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name] ?? ""}"/></svg>`;
 for (const el of document.querySelectorAll<HTMLElement>("[data-ic]")) el.insertAdjacentHTML("afterbegin", icon(el.dataset.ic!));
@@ -1500,11 +1509,7 @@ document.addEventListener("click", (e) => {
   } else if (b.hasAttribute("data-dc-sorter")) setSorter(!sorter);
   else if (b.hasAttribute("data-dc-more")) toggleMore();
   else if (b.hasAttribute("data-dc-rehearse")) rehearse();
-  else if (b.hasAttribute("data-dc-pdf")) {
-    // Le diaporama à imprimer, dans un nouvel onglet (il reprend le document gardé) ; Maj : avec les notes.
-    const u = `${deckUrl.pathname}?impression${e.shiftKey ? "&notes" : ""}`;
-    if (!window.open(u, "_blank")) hint(`Onglet bloqué : ouvrez ${u}`);
-  } else if (b.dataset.dcInsert === "text") addTextBox();
+  else if (b.dataset.dcInsert === "text") addTextBox();
   else if (b.dataset.dcInsert === "image") {
     fileFor = "libre";
     $<HTMLInputElement>("[data-dc-file]").click();
@@ -1621,6 +1626,9 @@ new ResizeObserver(() => fitBar()).observe(bar);
 document.addEventListener("pointerdown", (e) => {
   if (!moreMenu.hidden && !(e.target as Element).closest(".dc-more")) toggleMore(false);
 });
+
+/* ── Le menu Exporter (HTML autonome, PDF, PowerPoint) ── */
+monterExport({ bouton: $<HTMLButtonElement>("[data-dc-exporter]"), chemin: PATH, fichier: file, icone: icon });
 
 /* ───────────────────────── Démarrage ───────────────────────── */
 

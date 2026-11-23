@@ -8,6 +8,7 @@ import { mountDiapo } from "../presse/diapo.ts";
 import { applySavedEdits, mountEditor } from "../presse/diapo-editeur.ts";
 import { initAnim } from "../presse/timeline.ts";
 import { applySavedDoc, applySavedFiles, notesParas, tagIds } from "../presse/diapo-doc.ts";
+import { planSteps } from "../presse/diapo-etapes.ts";
 
 const root = document.querySelector<HTMLElement>("[data-diapo]");
 const params = new URLSearchParams(location.search);
@@ -18,6 +19,9 @@ const vignette = params.has("vignette");
 // L'impression (?impression, &notes : les notes de l'orateur sous chaque diapo) : ni moteur ni clavier, les diapos
 // l'une sous l'autre, une par page — « Enregistrer en PDF » dans la fenêtre d'impression.
 const impression = params.has("impression");
+// L'export (?export, src/diapo-export/) : ni moteur ni clavier, la diapo en HTML, figée à l'état que l'outil demande
+// (window.__presseExport) — capturée par la ligne de commande (tools/export-diapo.mjs) ou par le Créateur.
+const exporter = params.has("export");
 void (async () => {
   if (!root) return;
   // D'abord le document gardé par le Créateur de diaporama (diapo-createur.html), s'il y en a un, et ses images
@@ -28,6 +32,16 @@ void (async () => {
   // Les corrections gardées par l'éditeur (E) : le diaporama découpe ensuite les textes tels quels.
   applySavedEdits(root);
   if (impression) return void (await printDeck(root, params.has("notes")));
+  if (exporter) {
+    document.documentElement.classList.add("diapo-export");
+    await captures();
+    // Le modèle lit les diapos telles qu'écrites (avant que le diaporama ne découpe les textes).
+    const source = root.cloneNode(true) as HTMLElement;
+    mountDiapo(root, Promise.resolve(null));
+    const { monterExport } = await import("../diapo-export/page.ts");
+    monterExport(root, source);
+    return;
+  }
   if (presenter || vignette) {
     if (vignette) document.documentElement.classList.add("diapo-vignette");
     mountDiapo(root, Promise.resolve(null));
@@ -83,8 +97,9 @@ return Promise.all(found);
 
 /**
  * Le diaporama à imprimer (?impression) : les diapos non masquées l'une sous l'autre, toutes leurs étapes visibles, une
- * par page 16:9 (13,333 × 7,5 pouces) ; avec &notes, une page A4 par diapo, ses notes dessous. La fenêtre d'impression
- * s'ouvre quand fontes, captures et images sont là (&sansdialogue : non, pour les tests).
+ * par page 16:9 (13,333 × 7,5 pouces) ; avec &notes, une page A4 par diapo, ses notes dessous ; avec &etapes, une page
+ * par appui (les étapes pas encore parues sont gardées en place, invisibles). La fenêtre d'impression s'ouvre quand
+ * fontes, captures et images sont là (&sansdialogue : non, pour les tests).
  */
 async function printDeck(root: HTMLElement, withNotes: boolean) {
   const html = document.documentElement;
@@ -114,6 +129,19 @@ async function printDeck(root: HTMLElement, withNotes: boolean) {
       const paras = [...s.querySelectorAll("[data-notes]")].flatMap(notesParas);
       box.replaceChildren(...(paras.length ? paras : ["—"]).map((p) => Object.assign(document.createElement("p"), { textContent: p })));
       sheet.append(box);
+    }
+    if (params.has("etapes")) {
+      // Une page par appui avant la diapo finie : l'ordre des apparitions du diaporama (diapo-etapes.ts).
+      const els = [...s.querySelectorAll<HTMLElement>("[data-step]")];
+      const plan = planSteps(els.map((e) => ({ ordre: e.dataset.stepOrdre, depart: e.dataset.stepDepart })));
+      const appuis = plan.reduce((m, p) => Math.max(m, p.click), 0);
+      for (let a = 0; a < appuis; a++) {
+        const copie = sheet.cloneNode(true) as HTMLElement;
+        const steps = [...copie.querySelectorAll<HTMLElement>("[data-step]")];
+        for (const p of plan) if (p.click > a) steps[p.index]!.style.visibility = "hidden";
+        copie.querySelector("[data-diapo-slide]")?.setAttribute("aria-label", `${s.getAttribute("aria-label")} (${a + 1} / ${appuis + 1})`);
+        sheet.before(copie);
+      }
     }
   }
   // Les barres à leur valeur (en conférence, elles montent à l'arrivée de la diapo).

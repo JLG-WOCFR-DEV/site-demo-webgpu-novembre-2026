@@ -399,6 +399,28 @@ html.diapo-vignette .diapo-toast {
   display: none !important;
 }
 
+/* Export (?export, src/diapo-export/) : la diapo seule, figée — ni barre, ni bulle, ni laser, ni pointeur, ni fondu. */
+html.diapo-export .diapo-progress,
+html.diapo-export .diapo-toast,
+html.diapo-export .diapo-laser,
+html.diapo-export .diapo-menu {
+  display: none !important;
+}
+html.diapo-export,
+html.diapo-export * {
+  cursor: none !important;
+  caret-color: transparent !important;
+}
+/* Les fondus CSS des pages (cadres, listes) : à leur fin tout de suite, la capture voit l'état final. */
+html.diapo-export *,
+html.diapo-export *::before,
+html.diapo-export *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
 /* Diapo masquée : jamais affichée hors du Créateur (elle n'est pas dans la liste du diaporama). */
 [data-diapo-slide][data-masquee]:not(.is-active) {
   display: none !important;

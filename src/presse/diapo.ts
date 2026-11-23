@@ -151,7 +151,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   const channel = typeof BroadcastChannel === "function" && !params.has("vignette") ? new BroadcastChannel(`presse-diapo:${location.pathname}`) : null;
   // Une diapo masquée (`data-masquee`, réglée dans le Créateur) reste dans la page mais n'est pas présentée ; le
   // Créateur (?createur) et ses vignettes (?vignette) les gardent toutes, pour pouvoir les modifier.
-  const all = params.has("createur") || params.has("vignette");
+  const all = params.has("createur") || params.has("vignette") || params.has("export");
   const slides: Slide[] = [...root.querySelectorAll<HTMLElement>(all ? "[data-diapo-slide]" : "[data-diapo-slide]:not([data-masquee])")].map((el, k, list) => {
     el.dataset.glPrint = "page";
     // Le numéro, pour l'habillage (CSS attr(data-num)) : un compteur CSS ne compte pas les diapos masquées.
@@ -319,12 +319,13 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
 
   const publish = () => channel?.postMessage({ type: "etat", i: cur, step, n } satisfies Msg);
 
-  const render = (i: number, atEnd: boolean) => {
+  /** `fige` (export) : la diapo à son état final, sans rien jouer (ni arrivée, ni Magic Move, ni data-anim). */
+  const render = (i: number, atEnd: boolean, fige = false) => {
     const prev = slides[cur];
     const s = slides[i]!;
     // Magic Move : où étaient les éléments partagés, avant de changer de diapo.
     const from = new Map<string, DOMRect>();
-    if (prev && prev !== s && s.move) for (const m of prev.el.querySelectorAll<HTMLElement>("[data-move]")) from.set(m.dataset.move!, m.getBoundingClientRect());
+    if (!fige && prev && prev !== s && s.move) for (const m of prev.el.querySelectorAll<HTMLElement>("[data-move]")) from.set(m.dataset.move!, m.getBoundingClientRect());
     zoomOff();
     if (prev && prev !== s) {
       prev.el.classList.remove("is-active");
@@ -338,8 +339,13 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
     s.el.classList.add("is-active");
     s.el.removeAttribute("aria-hidden");
     s.el.inert = false;
-    for (const a of s.el.querySelectorAll<HTMLElement>("[data-anim]")) animOf(a)?.restart();
-    if (s.enter.duration > 0) s.enter.restart();
+    for (const a of s.el.querySelectorAll<HTMLElement>("[data-anim]")) {
+      const tl = animOf(a);
+      if (fige) tl?.pause().seek(tl.duration);
+      else tl?.restart();
+    }
+    if (fige) s.enter.pause().seek(s.enter.duration);
+    else if (s.enter.duration > 0) s.enter.restart();
     if (from.size) magicMove(s, from);
     settings.transition.style = s.transition;
     api?.replay();
@@ -580,7 +586,7 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   // Le menu de sortie : un diaporama occupe tout l'écran, il faut pouvoir en revenir. Trois liens discrets en haut à
   // gauche, qui paraissent quand le pointeur bouge et s'effacent avec lui ; Échap les fait paraître et les garde.
   // Pas dans le Créateur (aperçu, essai, vignettes) ni dans la vue présentateur : ils ont leurs propres sorties.
-  const embedded = ["createur", "essai", "vignette", "presentateur", "impression"].some((k) => params.has(k));
+  const embedded = ["createur", "essai", "vignette", "presentateur", "impression", "export"].some((k) => params.has(k));
   const menu = document.createElement("nav");
   menu.className = "diapo-menu";
   menu.setAttribute("aria-label", "Sortir du diaporama");
@@ -617,6 +623,16 @@ export function mountDiapo(root: HTMLElement, ready: Promise<Api>) {
   }
   const start = Number(location.hash.slice(1));
   go(start >= 1 ? start - 1 : 0);
+  // L'export (src/diapo-export/page.ts) demande un état précis, figé : la diapo `i` après `step` appuis.
+  addEventListener("diapo:etat", (e) => {
+    const { i, step: k } = (e as CustomEvent<{ i: number; step: number }>).detail;
+    if (!slides[i]) return;
+    render(i, false, true);
+    const s = slides[i]!;
+    step = Math.max(0, Math.min(s.steps.length, k));
+    s.steps.forEach((st, j) => st.tl.pause().seek(j < step ? st.tl.duration : 0));
+    publish();
+  });
   // L'éditeur (diapo-editeur.ts) demande la diapo en entier : toutes ses étapes visibles.
   addEventListener("diapo:reveal", () => {
     const s = slides[cur];
