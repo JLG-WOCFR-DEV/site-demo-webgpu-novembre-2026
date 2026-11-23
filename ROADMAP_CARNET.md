@@ -435,6 +435,13 @@ L8 fonds et encres, L9 écriture manuscrite et couverture.
       Réglages ; exemple décoré ; jours vides allégés ; douze thèmes du mois (accent lisible vérifié, page de garde
       dessinée à la plume, intention du mois, bordure de marge). e2e 25 étapes ; JS gzip 57,3 Ko.
 
+#### P8–P14 — « qualité Notion » (à faire, 23 novembre)
+
+Feuille de route : [`docs/carnet/ROADMAP_NOTION.md`](docs/carnet/ROADMAP_NOTION.md). Manuel de Carnet (design system
+inspiré du NHS), éditeur de blocs (texte riche, imbrication, `/`, annuler), pages et liens, bases de données et vues
+(moteur de requêtes Rust), WebGPU étendu (traits, autocollants, page qui tourne), GPUI pour une app bureau et essai
+web à portes, synchro chiffrée, import Notion/Markdown. Le reste de P7 s'y intercale (§ 11).
+
 #### Sauvegardes locales (D10) — avancement
 
 - [x] Versions sur l'appareil (`versions.ts`, OPFS) : toutes les deux heures quand le carnet change, jamais
