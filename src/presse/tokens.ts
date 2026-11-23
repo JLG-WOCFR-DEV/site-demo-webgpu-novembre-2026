@@ -5,7 +5,8 @@
  *
  * En CSS : --ease-out, --ease-in-out, --ease-spring (une courbe linear()
  * échantillonnée sur un ressort amorti), --dur-1 … --dur-4, posés sur :root.
- * En JavaScript : EASE (les mêmes chaînes), DUR (ms), spring(t) et ease(t).
+ * En JavaScript : EASE (les mêmes chaînes), DUR (ms), spring(t) et ease(t) — une quartique, PAS EASE.out (voir
+ * `easeQuartique`). Les fonctions JS des courbes nommées : src/registre/mouvement/courbes.ts.
  */
 
 export const EASE = {
@@ -45,8 +46,18 @@ export function spring(t: number, zeta = 0.62, omega = 11) {
   const wd = omega * Math.sqrt(1 - zeta * zeta);
   return 1 - Math.exp(-zeta * omega * t) * (Math.cos(wd * t) + ((zeta * omega) / wd) * Math.sin(wd * t));
 }
-/** La courbe « out » évaluée (pour le GPU, qui n'a pas de cubic-bezier). */
-export const ease = (t: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4);
+/**
+ * Une sortie évaluée en JS : la QUARTIQUE 1 − (1 − t)⁴ (Penner « easeOutQuart »).
+ *
+ * Attention, ce n'est PAS `EASE.out` : cubic-bezier(0.16, 1, 0.3, 1) est une sortie exponentielle, nettement plus
+ * franche (0,88 à t = 0,3, contre 0,76 ici). L'ancien commentaire (« la courbe out évaluée ») était faux. On ne les
+ * harmonise pas : le seul appelant, l'ouverture de l'orbite (src/components/orbite/orbite.ts), changerait de rendu.
+ * D'où le vrai nom `easeQuartique` ; `ease` reste son alias historique, inchangé. Pour la courbe out en JS :
+ * `EASES.out` (src/presse/timeline.ts) ou `courbeDe("out")` (src/registre/mouvement/courbes.ts).
+ */
+export const easeQuartique = (t: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4);
+/** Alias historique de `easeQuartique` (voir plus haut : ≠ EASE.out). */
+export const ease = easeQuartique;
 
 EASE.spring = `linear(${Array.from({ length: 33 }, (_, i) => +spring(i / 32).toFixed(4)).join(", ")})`;
 

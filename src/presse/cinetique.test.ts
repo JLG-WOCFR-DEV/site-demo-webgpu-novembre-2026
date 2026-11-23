@@ -375,3 +375,12 @@ test("cinétique : tracés à la main — déterministes, finis, autour de la ci
   }
   assert.ok(Math.abs(tour) > 2 * Math.PI * 1.2, `plus d'un tour (${(tour / (2 * Math.PI)).toFixed(2)})`);
 });
+
+test("cinétique : data-cinetique-courbe — un nom ou une écriture CSS, illisible = celle du préréglage", () => {
+  assert.equal(lireReglages({ cinetique: "monte" }).courbe, null, "par défaut, rien ne change");
+  assert.equal(lireReglages({ cinetique: "monte", cinetiqueCourbe: "cubic-bezier(.2,0,0,1)" }).courbe, "cubic-bezier(0.2, 0, 0, 1)");
+  assert.equal(lireReglages({ cinetique: "monte", cinetiqueCourbe: "out" }).courbe, "cubic-bezier(0.16, 1, 0.3, 1)");
+  assert.match(lireReglages({ cinetique: "monte", cinetiqueCourbe: "out-rebond" }).courbe!, /^linear\(/);
+  assert.equal(lireReglages({ cinetique: "monte", cinetiqueCourbe: "steps(3)" }).courbe, "steps(3, jump-end)");
+  assert.equal(lireReglages({ cinetique: "monte", cinetiqueCourbe: "cubic-bezier(2,0,0,1)" }).courbe, null);
+});

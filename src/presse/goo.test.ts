@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { lireOmbre, smin, sdRect, delaiEffectif, rayonCss, avancer, RESSORTS, OMBRE_DEFAUT } from "./goo.ts";
+import { lireOmbre, smin, sdRect, delaiEffectif, rayonCss, avancer, RESSORTS, OMBRE_DEFAUT, lireTrajet, surTrajet, DUREE_TRAJET } from "./goo.ts";
 
 test("goo : l'ombre se lit comme un box-shadow simple", () => {
   assert.deepEqual(lireOmbre("0 2px 6px rgba(0,0,0,.08)"), { x: 0, y: 2, flou: 6, couleur: "rgba(0,0,0,.08)" });
@@ -71,4 +71,22 @@ test("goo : les ressorts arrivent ; « rebond » dépasse, « doux » non", () =
   // Une image très lente (50 ms) ne fait pas exploser un ressort raide (pas fractionnés).
   const [x] = avancer(0, 0, 100, 0.05, RESSORTS.rebond);
   assert.ok(Number.isFinite(x) && x < 200);
+});
+
+test("goo : data-goo-duree / -courbe — trajet minuté, sinon le ressort", () => {
+  assert.equal(lireTrajet({}), null, "par défaut : le ressort, inchangé");
+  const t = lireTrajet({ gooDuree: "400" })!;
+  assert.equal(t.duree, 400);
+  assert.equal(lireTrajet({ gooDuree: "0,4s" })!.duree, 400);
+  assert.equal(lireTrajet({ gooCourbe: "lineaire" })!.duree, DUREE_TRAJET, "seule la courbe : durée par défaut");
+  assert.equal(lireTrajet({}, { gooDuree: "300ms" })!.duree, 300, "le conteneur vaut pour toutes les pièces");
+  assert.equal(lireTrajet({ gooDuree: "200" }, { gooDuree: "300" })!.duree, 200, "la pièce l'emporte");
+  assert.equal(lireTrajet({ gooDuree: "vite" })!.duree, DUREE_TRAJET);
+  const l = lireTrajet({ gooDuree: "1000", gooCourbe: "lineaire" })!;
+  assert.deepEqual(surTrajet(0, 100, 250, l), [25, false]);
+  assert.deepEqual(surTrajet(0, 100, 1000, l), [100, true]);
+  const m = lireTrajet({ gooDuree: "1000", gooCourbe: "steps(4)" })!;
+  assert.deepEqual(surTrajet(0, 100, 600, m), [50, false]);
+  const c = lireTrajet({ gooDuree: "1000", gooCourbe: "cubic-bezier(.2,0,0,1)" })!;
+  assert.ok(Math.abs(surTrajet(0, 1, 500, c)[0] - 0.877834) < 1e-3);
 });

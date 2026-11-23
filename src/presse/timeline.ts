@@ -23,61 +23,38 @@
  *   <a data-anim="x 0 6; --fleche 0 1" data-anim-trigger="survol">…</a>
  * Déclencheurs : entree (par défaut, une fois, à 85 % de l'écran), defilement (piloté par la traversée de l'écran),
  * survol, appui, chargement (après le rideau d'entrée). Options : data-anim-dur, -delay, -ease, -stagger, -repeat.
+ * `-ease` : un nom (`out`, `in-out`, `in`, `expo`, `ressort`, `lineaire`, un préréglage) ou une courbe CSS :
+ *   <h2 data-anim="monte" data-anim-ease="cubic-bezier(.2,0,0,1)">…</h2>      (aussi steps(…), linear(…))
  */
 import { beginFrame, clockNow } from "../gpu/clock.ts";
 import { lintOn, lintSample } from "./motion-lint.ts";
-import { DUR, spring as springCurve, springStep, SPRINGS, type Spring } from "./tokens.ts";
+import { DUR, springStep, SPRINGS, type Spring } from "./tokens.ts";
+import { bezier, courbeDe, COURBES_MAISON, type Courbe } from "../registre/mouvement/courbes.ts";
 
 /* ───────────────────────── Courbes ───────────────────────── */
 
-export type Ease = (t: number) => number;
+export type Ease = Courbe;
 
-/** Une courbe de Bézier cubique, comme en CSS (résolue par Newton, puis dichotomie). */
-export function bezier(x1: number, y1: number, x2: number, y2: number): Ease {
-  const cx = 3 * x1;
-  const bx = 3 * (x2 - x1) - cx;
-  const ax = 1 - cx - bx;
-  const cy = 3 * y1;
-  const by = 3 * (y2 - y1) - cy;
-  const ay = 1 - cy - by;
-  const sx = (t: number) => ((ax * t + bx) * t + cx) * t;
-  const sy = (t: number) => ((ay * t + by) * t + cy) * t;
-  const dx = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
-  return (x) => {
-    if (x <= 0) return 0;
-    if (x >= 1) return 1;
-    let t = x;
-    for (let i = 0; i < 6; i++) {
-      const e = sx(t) - x;
-      if (Math.abs(e) < 1e-6) return sy(t);
-      const d = dx(t);
-      if (Math.abs(d) < 1e-6) break;
-      t -= e / d;
-    }
-    let lo = 0;
-    let hi = 1;
-    t = x;
-    for (let i = 0; i < 30; i++) {
-      const v = sx(t);
-      if (Math.abs(v - x) < 1e-6) break;
-      if (v < x) lo = t;
-      else hi = t;
-      t = (lo + hi) / 2;
-    }
-    return sy(t);
-  };
-}
+/** Une courbe de Bézier cubique, comme en CSS : le solveur vit dans la bibliothèque de courbes, réexporté ici. */
+export { bezier };
 
-/** Les courbes de la maison, mêmes noms qu'en CSS (jetons de mouvement). */
-export const EASES: Record<string, Ease> = {
-  lineaire: (t) => t,
-  out: bezier(0.16, 1, 0.3, 1),
-  "in-out": bezier(0.65, 0, 0.35, 1),
-  in: bezier(0.55, 0, 1, 0.45),
-  expo: (t) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t)),
-  ressort: (t) => springCurve(t),
+/**
+ * Les courbes de la maison, mêmes noms qu'en CSS (jetons de mouvement) : `lineaire`, `out`, `in-out`, `in`, `expo`,
+ * `ressort`. Définies une fois dans src/registre/mouvement/courbes.ts (`COURBES_MAISON`), mêmes fonctions qu'avant.
+ */
+export const EASES: Record<string, Ease> = { ...COURBES_MAISON };
+
+/**
+ * Une courbe, d'où qu'elle vienne : une fonction (rendue telle quelle), un nom de la maison (`EASES`), un préréglage
+ * de la bibliothèque (`out-cubic`, `out-rebond`, `ressort-souple`…), un mot-clé CSS (`ease-in-out`…), ou une écriture
+ * CSS : `cubic-bezier(x1, y1, x2, y2)`, `steps(n, position)`, `linear(…)`. Illisible ou absente : `out`.
+ * C'est ce que lit `data-anim-ease`, et ce que les effets (`-courbe`) réutilisent.
+ */
+export const easeOf = (e: string | Ease | undefined | null): Ease => {
+  if (typeof e === "function") return e;
+  if (!e) return EASES.out!;
+  return EASES[e] ?? courbeDe(e, EASES.out!);
 };
-const easeOf = (e: string | Ease | undefined): Ease => (typeof e === "function" ? e : EASES[e ?? "out"] ?? EASES.out!);
 
 /* ───────────────────────── L'horloge ───────────────────────── */
 

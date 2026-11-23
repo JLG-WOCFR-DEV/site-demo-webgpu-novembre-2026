@@ -18,6 +18,12 @@
  *                            manuel (rien d'automatique : `cinetique(el).jouer()`) ;
  *   data-cinetique-rejoue    rejoue à chaque entrée (le texte se voile de nouveau quand il ressort par le bas) ;
  *   data-cinetique-duree     durée d'un morceau, en secondes (défaut selon l'unité et le préréglage, ex. 0,75 s par mot) ;
+ *   data-cinetique-courbe    la courbe d'ensemble de l'entrée d'un morceau, à la place de celle du préréglage : un nom
+ *                            (`out`, `in-out`, `expo`, `ressort`, `out-recul`…) ou une écriture CSS (`cubic-bezier(.2,0,0,1)`,
+ *                            `steps(4)`, `linear(…)`), lue par la bibliothèque de courbes (src/registre/mouvement/courbes.ts,
+ *                            la même que `easeOf`) ; illisible : celle du préréglage (avertissement en console). Les
+ *                            préréglages à plusieurs étapes (tombe, etire…) gardent leurs courbes par étape : celle-ci
+ *                            règle le temps qui les traverse. La sortie garde sa courbe ;
  *   data-cinetique-delai     secondes avant le départ ;
  *   data-cinetique-cascade   secondes entre deux morceaux (défaut 0,12 par ligne, 0,06 par mot, 0,03 par lettre) ;
  *   data-cinetique-ordre     debut (défaut) | fin | centre | bords | hasard : l'ordre de la cascade ;
@@ -61,6 +67,7 @@
  * Mouvement réduit : un fondu court, sans découpe ; les composants en boucle restent immobiles.
  */
 import { reducedMotion } from "./timeline.ts";
+import { courbeCss } from "../registre/mouvement/courbes.ts";
 
 /* ───────────────────────── Fonctions pures (testées sous Node) ───────────────────────── */
 
@@ -147,6 +154,8 @@ export type Reglages = {
   sortie: number | null;
   dureeSortie: number;
   cascadeSortie: number;
+  /** `data-cinetique-courbe`, en chaîne CSS ; `null` : la courbe du préréglage. */
+  courbe: string | null;
 };
 /** Les réglages d'un élément, d'après son dataset (ou tout objet de même forme). */
 export function lireReglages(d: Record<string, string | undefined>): Reglages {
@@ -168,6 +177,7 @@ export function lireReglages(d: Record<string, string | undefined>): Reglages {
     sortie: sortie !== null && Number.isFinite(sortie) ? sortie : null,
     dureeSortie: ts.duree,
     cascadeSortie: ts.cascade,
+    courbe: courbeCss(d.cinetiqueCourbe),
   };
 }
 
@@ -1276,6 +1286,7 @@ class Texte extends Piece {
   constructor(el: HTMLElement) {
     super(el);
     this.r = lireReglages(el.dataset as Record<string, string | undefined>);
+    if (el.dataset.cinetiqueCourbe !== undefined && !this.r.courbe) console.warn(`[presse:cinetique] data-cinetique-courbe="${el.dataset.cinetiqueCourbe}" illisible : courbe du préréglage`, el);
     this.preset = PRESETS[this.r.preset!];
     this.graine = graineDe(el.textContent ?? "", CINETIQUES.indexOf(this.r.preset!));
     if (this.attend) this.cacher();
@@ -1382,7 +1393,7 @@ class Texte extends Piece {
         delay: ms(this.r.delai + debut),
         endDelay: ms(cal.total - debut - this.r.duree),
         fill: "both",
-        easing,
+        easing: this.r.courbe ?? easing,
       });
       an.pause();
       an.currentTime = t;

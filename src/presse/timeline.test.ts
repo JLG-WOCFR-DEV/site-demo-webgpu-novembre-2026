@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { advance, bezier, EASES, manualClock, parseAnim, PRESETS, ressort, setReduced, Timeline } from "./timeline.ts";
+import { advance, bezier, EASES, easeOf, manualClock, parseAnim, PRESETS, ressort, setReduced, Timeline } from "./timeline.ts";
 
 manualClock(true);
 
@@ -133,4 +133,18 @@ test("masques et variables : clip-path et --var écrits ensemble", () => {
   new Timeline().fromTo(a, { clip: 100, "--k": 0 }, { clip: 0, "--k": 1 }, { dur: 1, ease: "lineaire" }).seek(0.25);
   assert.equal(a.props["clip-path"], "inset(0% 0% 75% 0%)");
   assert.equal(num(a.props["--k"]), 0.25);
+});
+
+test("easeOf : noms, préréglages et écritures CSS (data-anim-ease)", () => {
+  assert.equal(easeOf("out"), EASES.out);
+  assert.equal(easeOf(undefined), EASES.out);
+  assert.equal(easeOf("illisible("), EASES.out, "illisible : la courbe par défaut");
+  assert.ok(Math.abs(easeOf("cubic-bezier(.2,0,0,1)")(0.5) - 0.877834) < 1e-3, "valeur de Chromium");
+  assert.equal(easeOf("steps(4, jump-end)")(0.3), 0.25);
+  assert.ok(Math.abs(easeOf("linear(0, 0.25 75%, 1)")(0.9) - 0.7) < 1e-9);
+  assert.ok(easeOf("out-rebond")(0.5) > 0.7);
+  // Une piste pilotée par une courbe CSS.
+  const a = el();
+  new Timeline().fromTo(a, { x: 0 }, { x: 100 }, { dur: 1, ease: "steps(4, jump-end)" }).seek(0.6);
+  assert.equal(num(a.props.translate), 50);
 });

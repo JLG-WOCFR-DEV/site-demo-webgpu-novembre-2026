@@ -20,6 +20,13 @@
  *   data-goo-item            une pièce (16 au plus) : sa boîte et son border-radius sont lus sur le DOM ;
  *   data-goo-x, data-goo-y   décalage à l'état ouvert, px (modifiables à chaud : la pièce y va par son ressort) ;
  *   data-goo-ressort         rebond (défaut) | vif | doux ;
+ *   data-goo-duree           (pièce, ou conteneur pour toutes) un trajet minuté au lieu du ressort : durée en ms
+ *                            (« 400 », « 400ms », « 0,4s » ; défaut 520 si seule la courbe est donnée) ;
+ *   data-goo-courbe          (pièce ou conteneur) la courbe de ce trajet : un nom (`out` par défaut, `out-recul`,
+ *                            `out-rebond`…) ou une écriture CSS (`cubic-bezier(.2,0,0,1)`, `steps(4)`, `linear(…)`),
+ *                            lue par `easeOf` (src/presse/timeline.ts). Sans l'un ni l'autre : le ressort, inchangé.
+ *                            Un trajet interrompu repart de la position courante. La pièce qui suit le pointeur garde
+ *                            son ressort ;
  *   data-goo-delai           retard du départ, ms (à la fermeture, l'ordre s'inverse : la dernière sortie rentre d'abord) ;
  *   data-goo-suit            la pièce suit le pointeur dans le conteneur (une goutte qu'on promène) ;
  *   data-goo-bascule         (n'importe quel élément du conteneur) la bascule, à la place de la première pièce.
@@ -39,7 +46,9 @@
  * redimensionnement, à l'arrivée des polices et quand une pièce change.
  */
 import { getDevice, onDeviceLost } from "../components/device.ts";
-import { springStep, SPRINGS, type Spring } from "./tokens.ts";
+import { DUR, springStep, SPRINGS, type Spring } from "./tokens.ts";
+import { easeOf, type Ease } from "./timeline.ts";
+import { lireTemps } from "../registre/schema/index.ts";
 import { lintOn, lintSample } from "./motion-lint.ts";
 
 /* ───────────────────────── Fonctions pures (testées sous Node) ───────────────────────── */
@@ -117,6 +126,25 @@ export function avancer(x: number, v: number, cible: number, dt: number, s: Spri
   const h = dt / n;
   for (let i = 0; i < n; i++) [x, v] = springStep(x, v, cible, h, s);
   return [x, v];
+}
+
+/** Un trajet minuté (`data-goo-duree` / `-courbe`) : durée (ms) et courbe. */
+export type Trajet = { duree: number; f: Ease };
+export const DUREE_TRAJET = DUR[2];
+type DatasetGoo = { gooDuree?: string; gooCourbe?: string };
+/** Le trajet d'une pièce (ses attributs, sinon ceux du conteneur) ; `null` : le ressort, comme avant. */
+export function lireTrajet(piece: DatasetGoo, conteneur: DatasetGoo = {}): Trajet | null {
+  const d = piece.gooDuree ?? conteneur.gooDuree;
+  const c = piece.gooCourbe ?? conteneur.gooCourbe;
+  if (d === undefined && c === undefined) return null;
+  const ms = d === undefined ? null : lireTemps(d, "ms");
+  return { duree: ms === null || ms <= 0 ? DUREE_TRAJET : Math.min(10000, Math.max(16, ms)), f: easeOf(c ?? "out") };
+}
+/** La position sur un trajet de `de` à `vers`, `ecoule` ms après son départ ; vrai s'il est fini. */
+export function surTrajet(de: number, vers: number, ecoule: number, t: Trajet): [number, boolean] {
+  const p = ecoule / t.duree;
+  if (p >= 1 || de === vers) return [vers, true];
+  return [de + (vers - de) * t.f(Math.max(0, p)), false];
 }
 
 /* ───────────────────────── CSS ───────────────────────── */
@@ -364,6 +392,14 @@ type Piece = {
   oy: number;
   delai: number;
   ressort: Spring;
+  /** Trajet minuté (data-goo-duree / -courbe) ; null : le ressort. */
+  trajet: Trajet | null;
+  /** Le trajet en cours : départ (position, horloge) et cible. */
+  t0: number;
+  x0: number;
+  y0: number;
+  cx: number;
+  cy: number;
   suit: boolean;
   satellite: boolean;
   x: number;
@@ -445,6 +481,7 @@ class Goo {
           } else {
             this.lireReglages();
             this.lireCouleur();
+            if (m.attributeName === "data-goo-duree" || m.attributeName === "data-goo-courbe") this.lireCibles();
             this.aMesurer = true;
             this.reveiller();
           }
@@ -453,7 +490,7 @@ class Goo {
       if (recolle) (this.collecter(), this.ombreRepli(), (this.aMesurer = true), this.poserEtat(false), this.reveiller());
       else if (recible) (this.lireCibles(), this.poserEtat(this.reduit, this.horloge, !this.reduit), (this.aMesurer = true), this.reveiller());
     });
-    this.mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-goo-ouvert", "data-goo-fill", "data-goo-fusion", "data-goo-ombre", "data-goo-relief", "data-goo-x", "data-goo-y", "data-goo-delai", "data-goo-ressort"] });
+    this.mo.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-goo-ouvert", "data-goo-fill", "data-goo-fusion", "data-goo-ombre", "data-goo-relief", "data-goo-x", "data-goo-y", "data-goo-delai", "data-goo-ressort", "data-goo-duree", "data-goo-courbe"] });
     if (typeof ResizeObserver === "function") {
       this.ro = new ResizeObserver(() => ((this.aMesurer = true), this.reveiller()));
       this.ro.observe(el);
@@ -489,6 +526,12 @@ class Goo {
           oy: 0,
           delai: 0,
           ressort: RESSORTS.rebond,
+          trajet: null,
+          t0: 0,
+          x0: 0,
+          y0: 0,
+          cx: Number.NaN,
+          cy: Number.NaN,
           suit: false,
           satellite: false,
           x: 0,
@@ -523,6 +566,7 @@ class Goo {
       p.oy = num(d.gooY);
       p.delai = Math.max(0, num(d.gooDelai));
       p.ressort = RESSORTS[(d.gooRessort ?? "rebond") as keyof typeof RESSORTS] ?? RESSORTS.rebond;
+      p.trajet = lireTrajet(d, this.el.dataset);
       p.suit = d.gooSuit !== undefined;
       p.satellite = !p.suit && (d.gooX !== undefined || d.gooY !== undefined) && p.el !== this.bascule;
     }
@@ -740,7 +784,19 @@ class Goo {
       if (this.horloge >= p.depart) ((p.tx = p.px), (p.ty = p.py));
       else bouge = true;
       if (this.reduit) ((p.x = p.tx), (p.y = p.ty), (p.vx = p.vy = 0));
-      else {
+      else if (p.trajet && !p.suit) {
+        // Trajet minuté : une nouvelle cible repart de la position courante.
+        if (p.tx !== p.cx || p.ty !== p.cy) ((p.x0 = p.x), (p.y0 = p.y), (p.t0 = this.horloge - dt * 1000), (p.cx = p.tx), (p.cy = p.ty));
+        const ecoule = this.horloge - p.t0;
+        const [x, finiX] = surTrajet(p.x0, p.cx, ecoule, p.trajet);
+        const [y, finiY] = surTrajet(p.y0, p.cy, ecoule, p.trajet);
+        p.vx = dt > 0 ? (x - p.x) / dt : 0;
+        p.vy = dt > 0 ? (y - p.y) / dt : 0;
+        p.x = x;
+        p.y = y;
+        if (finiX && finiY) p.vx = p.vy = 0;
+        else bouge = true;
+      } else {
         [p.x, p.vx] = avancer(p.x, p.vx, p.tx, dt, p.ressort);
         [p.y, p.vy] = avancer(p.y, p.vy, p.ty, dt, p.ressort);
         if (Math.abs(p.x - p.tx) < 0.02 && Math.abs(p.vx) < 0.3) ((p.x = p.tx), (p.vx = 0));

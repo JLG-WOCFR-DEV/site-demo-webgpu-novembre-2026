@@ -274,3 +274,23 @@ test("couloir : mouvement — vitesse au pointeur, amortissement, franges et flo
   assert.equal(fonduFond(0, 40), 1);
   assert.equal(fonduFond(40, 40), 0);
 });
+
+test("couloir : data-couloir-duree / -courbe — trajet minuté vers un panneau, sinon l'amorti", () => {
+  const r0 = lireReglages({});
+  assert.equal(r0.duree, null);
+  assert.equal(r0.courbe, null);
+  const r = lireReglages({ couloirDuree: "0,8", couloirCourbe: "cubic-bezier(.2,0,0,1)" });
+  assert.equal(r.duree, 0.8);
+  assert.equal(r.courbe, "cubic-bezier(0.2, 0, 0, 1)");
+  assert.equal(lireReglages({ couloirDuree: "450ms" }).duree, 0.45);
+  assert.equal(lireReglages({ couloirDuree: "99" }).duree, 10, "borné");
+  assert.equal(lireReglages({ couloirDuree: "jamais" }).duree, null);
+  assert.equal(lireReglages({ couloirCourbe: "in-out" }).courbe, "in-out", "un nom reste un nom");
+  assert.equal(lireReglages({ couloirCourbe: "cubic-bezier(3,0,0,1)" }).courbe, null, "illisible : l'amorti");
+  // Aller-retour par les attributs.
+  const html = attributsDe(r);
+  assert.match(html, /data-couloir-duree="0.8" data-couloir-courbe="cubic-bezier\(0.2, 0, 0, 1\)"/);
+  const relu: Record<string, string> = {};
+  for (const [, k, v] of html.matchAll(/data-couloir-([a-z]+)="([^"]*)"/g)) relu["couloir" + k![0]!.toUpperCase() + k!.slice(1)] = v!;
+  assert.deepEqual(lireReglages(relu), r);
+});

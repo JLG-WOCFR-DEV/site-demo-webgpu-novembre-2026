@@ -27,6 +27,11 @@
  *   -filet        couleur du filet (#ffffff).
  *   -vitesse      vitesse de croisière, en panneaux par seconde, au pointeur tout à droite (0.8 ; × 0.35 en auto).
  *   -inertie      0 (sec) à 1 (glisse longtemps) (0.6).
+ *   -duree        aller à un panneau (flèches, boutons, `.aller(i)`) en un trajet minuté, en secondes (« 0,8 »,
+ *                 « 800ms ») au lieu de l'amorti par défaut ; 0.6 si seule la courbe est donnée.
+ *   -courbe       la courbe de ce trajet : un nom (`out` par défaut, `in-out`, `out-recul`…) ou une écriture CSS
+ *                 (`cubic-bezier(.2,0,0,1)`, `steps(4)`, `linear(…)`), lue par `easeOf` (src/presse/timeline.ts).
+ *                 Sans l'un ni l'autre : l'amorti, inchangé. Le défilement libre (pointeur, glisser) garde l'inertie.
  *   -pilotage     `pointeur`, `defilement`, `glisser`, `auto`, `molette`, combinables : "pointeur auto"
  *                 (défaut "pointeur glisser").
  *   -sens         `avant` (défaut : les images viennent vers soi) ou `arriere`.
@@ -59,6 +64,10 @@
 
 /* ================================================================ pur (testé sous Node) */
 
+import { easeOf, type Ease } from "./timeline.ts";
+import { lireCourbe } from "../registre/mouvement/courbes.ts";
+import { lireTemps } from "../registre/schema/index.ts";
+
 export type Cote = "droite" | "gauche";
 export type Pilotage = "pointeur" | "defilement" | "glisser" | "auto" | "molette";
 export type Mur = "un" | "deux" | "trois";
@@ -67,6 +76,9 @@ export type Ouvre = "non" | "visionneuse";
 export type Preset = "micro" | "tunnel" | "lookbook" | "doux" | "rapide";
 
 export interface Reglages {
+  /** Trajet vers un panneau : durée (s) et courbe (`null` : l'amorti par défaut). */
+  duree: number | null;
+  courbe: string | null;
   profondeur: number;
   angle: number;
   horizon: number;
@@ -97,6 +109,8 @@ export const PILOTAGES: readonly Pilotage[] = ["pointeur", "defilement", "glisse
 export const PRESETS_NOMS: readonly Preset[] = ["micro", "tunnel", "lookbook", "doux", "rapide"];
 
 export const DEFAUTS: Readonly<Reglages> = Object.freeze({
+  duree: null,
+  courbe: null,
   profondeur: 1.6,
   angle: 0,
   horizon: 50,
@@ -213,8 +227,19 @@ export function lireReglages(ds: Record<string, string | undefined>): Reglages {
   if (filet) r.filet = filet;
   const fond = couleurSure(ds.couloirFond);
   if (fond != null) r.fond = fond;
+  if (ds.couloirDuree != null) {
+    const d = lireTemps(ds.couloirDuree, "s");
+    if (d !== null && d > 0) r.duree = borner(d, 0.05, 10);
+  }
+  if (ds.couloirCourbe != null) {
+    const l = lireCourbe(ds.couloirCourbe);
+    if (l.ok) r.courbe = l.genre === "nom" ? l.nom! : l.css;
+  }
   return r;
 }
+
+/** Durée d'un trajet vers un panneau quand seule `-courbe` est donnée (s). */
+export const DUREE_TRAJET = 0.6;
 
 const fmt = (n: number) => String(Math.round(n * 1000) / 1000);
 
@@ -235,6 +260,8 @@ export function attributsDe(r: Reglages): string {
   if (r.ouvre !== base.ouvre) pose("ouvre", r.ouvre);
   if (r.filet !== base.filet) pose("filet", r.filet);
   if (r.fond !== base.fond) pose("fond", r.fond);
+  if (r.duree !== base.duree && r.duree !== null) pose("duree", fmt(r.duree));
+  if (r.courbe !== base.courbe && r.courbe !== null) pose("courbe", r.courbe);
   return out.join(" ");
 }
 
@@ -722,6 +749,8 @@ export function couloir(root: HTMLElement): ControleCouloir | null {
   let M = 0;
   let dFin = Infinity;
   let decalage = 0, v = 0, glisse: number | null = null;
+  /** Le trajet minuté vers `glisse` (data-couloir-duree / -courbe) ; t0 posé à la première image. */
+  let trajet: { de: number; vers: number; t0: number | null; dur: number; f: Ease } | null = null;
   let pointeurP: number | null = null;
   let enPause = false;
   let visible = true;
@@ -908,7 +937,16 @@ export function couloir(root: HTMLElement): ControleCouloir | null {
     raf = 0;
     const dt = dernier ? Math.min(0.05, (t - dernier) / 1000) : 1 / 60;
     dernier = t;
-    if (glisse != null) {
+    if (glisse != null && trajet && trajet.vers === glisse) {
+      trajet.t0 ??= t - dt * 1000;
+      const p = (t - trajet.t0) / trajet.dur;
+      v = 0;
+      if (p >= 1) {
+        decalage = glisse;
+        glisse = null;
+        trajet = null;
+      } else decalage = trajet.de + (trajet.vers - trajet.de) * trajet.f(Math.max(0, p));
+    } else if (glisse != null) {
       decalage = amortir(decalage, glisse, dt, reduit ? 0.001 : 0.16);
       v = 0;
       if (Math.abs(decalage - glisse) < 0.0015) {
@@ -975,6 +1013,7 @@ export function couloir(root: HTMLElement): ControleCouloir | null {
       peindre();
     } else {
       glisse = best;
+      trajet = r.duree !== null || r.courbe !== null ? { de: decalage, vers: best, t0: null, dur: (r.duree ?? DUREE_TRAJET) * 1000, f: easeOf(r.courbe ?? "out") } : null;
       reveiller();
     }
   };
