@@ -155,3 +155,15 @@ Décisions :
 - **E6 Navigation unifiée** (taxonomie, palette Ctrl+K en combobox ARIA, registre de raccourcis, redirections des 37 URL, migration des clés `localStorage`), puis coque commune des trois éditeurs.
 - **E7 Veille** : Paper (écart de couverture), HTML-in-Canvas (module unique à partir de `src/html-in-canvas.ts`).
 - Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre, budget JS par page, a11y (priorité mouvement réduit vs `data-diapo-motion`).
+
+## 9. Enseignements de référence (GPUI Kit / gpui-component, skills Longbridge — 2026-11-23)
+
+Retenu, par priorité :
+1. **Comportement sans style / peau** : un seul moteur de rendu de schéma (headless), des peaux Studio, Vitrine, Créateur en CSS. Prolonge E4 (`inspecteur-plan.ts` pur → `inspecteur.ts`) ; à étendre aux knobs et à l'inspecteur Vitrine (E6).
+2. **Galerie de stories = Sampler Presse** (fait, E4) + **mode inspecteur** activable : surligner les éléments armés, lire leurs `data-*` en direct (lot E7).
+3. **Coque à panneaux sérialisable** : mise en page (splits, onglets, tailles) en JSON versionné, comme `#v=` ; base de la coque commune des trois éditeurs (E6).
+4. **Tests UI headless clavier/souris + a11y dans la couche comportement** : Playwright sur le moteur de schéma (Tab, flèches, Échap, focus visible), en plus de `node:test` (E4/E6).
+5. **Distribution agent** : serveur MCP + CLI `presse` branchés sur le registre (`effets`, `valider`, `ajouter`, `parametres`), skill installable, écritures confirmées en deux temps (lot E8, faible coût : le registre s'importe depuis Node).
+6. **Recettes exécutables** (site éditorial, diaporama, boutique) vérifiées par `npm run valider` en CI pour ne pas dériver de PRESSE.md.
+
+Écarté : runtime d'extensions JS à capacités accordées, perf 200 K lignes, i18n (site en français).
