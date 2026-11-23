@@ -1,4 +1,4 @@
-# Presse Studio — roadmap (v1, à relire)
+# Presse Studio — roadmap (v2, relue)
 
 Objectif : passer d'un dépôt de pages de démonstration à un **logiciel de création** proche de Webflow : un Studio qui fait des sites, des boutiques et des diaporamas (PowerPoint), où **chaque effet et chaque brique d'interface a sa propre interface de réglage**, avec une courbe d'accélération (ease-in, ease-out…) réglable, des menus unifiés, et des échantillons (samplers) mieux séparés.
 
@@ -10,7 +10,7 @@ Objectif : passer d'un dépôt de pages de démonstration à un **logiciel de cr
 - Source de vérité éclatée : PRESSE.md (433 lignes) est **parsé** par `tools/valider/catalogue.ts`, `llms.txt`, le skill `presse-page` ; chaque nouvel effet impose de toucher 6 endroits (module, `pages-nav.ts`, `vite.config.ts`, PRESSE.md, skill, validateur).
 - Mouvement : `tokens.ts` (EASE out/in-out/spring en `linear()`, DUR) et `timeline.ts` (600 lignes) existent, mais **aucun effet n'expose sa courbe** à l'utilisateur ; pas d'éditeur de courbe.
 - Sampler : `sampler.html` + `src/sampler.ts` (563 lignes) = un effet à la fois par catégories, mais les effets des autres pages (Couloir, Logos, Variations…) ne s'y retrouvent pas ; chaque page a sa propre mise en page de réglages.
-- Dépendances : `@paper-design/shaders` 0.0.82 (dernière version, publiée le 2026-11-23), vite 8.3.4 → 8.3.8, playwright 1.62.1 → 1.65.1, pixelmatch 7 → 8, meshoptimizer 0.22 → 1.3, node-html-parser 6 → 9, @types/node 26.6.5 → 26.6.6.
+- Dépendances : `@paper-design/shaders` 0.0.82 (stable du 2026-10-21 ; le npm n'a depuis qu'un canary), déjà montés : vite 8.3.8, pixelmatch 8, node-html-parser 9, @types/node 26.6.6. Reste : meshoptimizer 1.3 (casse l'import `meshopt_decoder.module.js`), playwright 1.65 (références visuelles à régénérer).
 - HTML-in-Canvas : le code utilise déjà `drawElementImageToTexture` et `content="drawable"` (renommages de Chrome 155). Les billets de Chrome divergent : une page dit « essai d'origine prolongé jusqu'à Chrome 160 », une autre « stable dans Chrome 157 » (article du 26 octobre 2026). À vérifier sur Chrome réel avant de promettre quoi que ce soit ; la détection de fonctionnalité reste obligatoire.
 - Limite d'environnement : le WebGPU à l'écran ne se teste pas ici (appareil perdu) ; le DOM/canvas 2D et le WebGPU hors écran, oui.
 
@@ -113,3 +113,28 @@ Chaque étape est livrable seule, avec `tsc`, tests, `valider` (0 erreur), build
 3. Génération de PRESSE.md depuis le registre : risque de perdre la prose ; quelle frontière entre prose et données ?
 4. Risques de la migration de `src/presse` vers `src/noyau` (imports, build legacy) : vaut-il mieux ne pas déplacer ?
 5. Niveau de fidélité attendu de l'export PPTX.
+
+
+## 8. Révision après relecture (verdict de l'agent relecteur, intégré)
+
+Corrections de fait : `menu.ts` n'est pas un menu de navigation mais le **sommaire 3D en feuilles de PLI** (lu par `gpu/engine.ts` et `sampler.ts`) — on n'y touche pas ; `pages-nav.ts` est le **bootstrap de Presse** (arme ~20 modules par `querySelector`), pas un simple menu ; il y a **quatre** éditeurs (Créateur, Vitrine, `src/diapo-createur/main.ts`, éditeur en place `src/presse/diapo-editeur.ts`) et **cinq** schémas (Vitrine, Créateur `model.ts:46`, composants `presse/build/validate.ts`, knobs, validateur) ; **deux analyseurs de PRESSE.md** divergents (`presse/build/catalog.ts`, `tools/valider/catalogue.ts`) ; `data-anim-ease` existe déjà (6 courbes, solveur `bezier()` dans `timeline.ts`) ; `src/html-in-canvas.ts` existe (partir de lui, détection dupliquée dans `tissu/print.ts`) ; `sampler.html` est **généré** par `tools/build-sampler.py` et échantillonne le moteur PLI, pas les modules `data-*`.
+
+Décisions :
+1. **Pas de `src/noyau`** : on ne déplace pas `src/presse` (47 importeurs, chemins en dur dans le validateur, le skill et PRESSE.md, `node --experimental-strip-types` sans alias). Frontières d'imports contrôlées par un script.
+2. **Registre = données TypeScript écrites à la main** (`src/registre/effets.ts`), pas généré depuis PRESSE.md. Les **tableaux** d'attributs de PRESSE.md et du skill sont générés entre marqueurs ; la prose reste à la main ; un attribut absent du registre est une faute du validateur. Test d'équivalence du catalogue avant/après.
+3. **L'armement des modules est piloté par le registre** (chargeurs à chemins littéraux ou `import.meta.glob`), avant toute refonte du menu ; `lireArmement`/`gen-skill-tableau` lisent le registre, plus de regex sur `pages-nav.ts`. Le validateur échoue s'il trouve 0 page (`vite.config.ts` `input`).
+4. **Courbes** : étendre `timeline.ts` (`easeOf` accepte `cubic-bezier()`, `steps()`, `linear()`) et corriger l'incohérence `tokens.ease()` / `EASE.out` ; pas de seconde bibliothèque. L'éditeur de courbe est un composant du gabarit de page d'effet.
+5. **Trois applications, une bibliothèque commune** (coque, inspecteur, pile annuler/rétablir, palette, schéma) ; on ne fusionne pas les trois modèles de document. Knobs et inspecteur Vitrine deviennent **un seul moteur de rendu de schéma**.
+6. **PPTX avancé** (juste après le gabarit d'effet) : niveau 1 = une image par état de diapo, notes, transitions natives mappées, texte alternatif ; PDF et HTML autonome d'abord.
+7. **Deux samplers** : celui de PLI (inchangé) et un **Sampler Presse** alimenté par le registre.
+8. Raccourcis : un registre de raccourcis avant la palette (Ctrl+K ≠ ⌘⇧K des knobs, E/F/P/B/L/Z/? du diaporama).
+
+### Étapes révisées (critères d'acceptation vérifiables)
+- **E1 Hygiène** : `npm ci` sur copie propre ; `package.json` synchronisé ; `public/legacy` ne grossit plus à chaque build (même nombre de `.js` sur deux builds) ; meshoptimizer 1.3 et playwright 1.65 chacun dans un commit, références visuelles justifiées.
+- **E2 Registre et armement** : `src/registre/effets.ts` pilote `mountPagesNav` ; `npm run valider -- --catalogue` : diff vide avant/après ; `npm run skill:tableau` : diff vide ; même liste de chunks dans `dist` ; plus de `querySelector("[data-` dans `pages-nav.ts` ; validateur en échec si 0 page.
+- **E3 Schéma, courbes, inspecteur** : schéma partagé extrait (Vitrine le ré-exporte, `vitrine.test.ts` inchangé) avec `courbe` et `temps` ; courbes testées contre les valeurs CSS (1e-3) ; `data-anim-ease="cubic-bezier(.2,0,0,1)"` accepté ; éditeur de courbe au clavier (`aria-valuetext`) + test Playwright ; trois effets pilotes (cinétique, goo, couloir) exposent `-dur` et `-ease`.
+- **E4 Gabarit page d'effet + Sampler Presse** (données du registre, lots d'effets DOM).
+- **E5 PPTX niveau 1, PDF, HTML autonome.**
+- **E6 Navigation unifiée** (taxonomie, palette Ctrl+K en combobox ARIA, registre de raccourcis, redirections des 37 URL, migration des clés `localStorage`), puis coque commune des trois éditeurs.
+- **E7 Veille** : Paper (écart de couverture), HTML-in-Canvas (module unique à partir de `src/html-in-canvas.ts`).
+- Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre, budget JS par page, a11y (priorité mouvement réduit vs `data-diapo-motion`).
