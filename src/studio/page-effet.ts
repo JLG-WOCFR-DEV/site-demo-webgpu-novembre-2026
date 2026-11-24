@@ -8,7 +8,8 @@
  *   centre      l'aperçu : la démo de la fiche dans un cadre (studio-apercu.html, document à part), et en mode
  *               comparaison un second cadre aux réglages par défaut ; dessous, le code (HTML, JSON) ;
  *   droite      l'inspecteur GÉNÉRÉ depuis le schéma de la fiche (src/studio/inspecteur.ts), puis la liste des
- *               attributs `data-*` écrits, en direct.
+ *               attributs `data-*` écrits, en direct ; sa largeur se règle à la poignée (coque commune,
+ *               src/studio/coque.ts : largeur, repli, onglet du code gardés en JSON versionné).
  *
  * L'état vit dans le fragment de l'adresse (format v1, src/studio/etat.ts) : un lien copié rouvre la même page, et le
  * cadre d'aperçu lit le même fragment. Raccourcis : src/studio/raccourcis.ts (liste dans la fenêtre d'aide, « ? »).
@@ -24,6 +25,9 @@ import { monterInspecteur, type Inspecteur } from "./inspecteur.ts";
 import { creerRaccourcis, type Registre } from "./raccourcis.ts";
 import { ic } from "./icones.ts";
 import { majPucesRendu, puceRendu } from "./rendu.ts";
+import { monterCoque } from "./coque.ts";
+import { SCHEMA_STUDIO_EFFET } from "./coque-plan.ts";
+import { CLES } from "../registre/stockage.ts";
 
 const NOMS_CATEGORIES: Record<string, string> = { texte: "Texte", image: "Image", matiere: "Matière", interface: "Interface", transition: "Transition", forme: "Forme", dessin: "Dessin", page: "Page" };
 const APPAREILS = [
@@ -163,6 +167,12 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   const code = q("#st-code code");
   const compte = q(".st-ins-compte");
   const aide = q<HTMLDialogElement>(".st-aide");
+  // La coque commune (src/studio/coque.ts) : largeur de l'inspecteur, repli, onglet du code — gardés en JSON versionné.
+  const coque = monterCoque(racine, {
+    schema: SCHEMA_STUDIO_EFFET,
+    cle: CLES.coqueStudioEffet,
+    poignees: [{ decoupe: "corps", index: 0, panneau: "inspecteur", libelle: "Largeur de l'inspecteur", zone: "ins", cible: q(".st-inspecteur") }],
+  });
 
   const srcApercu = (hash: string) => `studio-apercu.html?effet=${encodeURIComponent(id)}#${hash}`;
   let minuteurStatut = 0;
@@ -293,6 +303,7 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
       if (oui && focus) b.focus();
     }
     q("#st-code").setAttribute("aria-labelledby", `st-o-${o}`);
+    coque.choisirOnglet("code", o);
     majSorties();
   };
   for (const b of onglets) b.addEventListener("click", () => choisirOnglet(b.id === "st-o-html" ? "html" : "json"));
@@ -333,8 +344,8 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   /* ── Départ ── */
   if (m.rendu.includes("WebGPU")) void majPucesRendu(racine);
   choisirAppareil(appareil);
-  majSorties();
+  choisirOnglet(coque.onglet("code") === "json" ? "json" : "html");
   if (lu.corrections.length && location.hash.length > 1) dire(`Lien relu avec ${lu.corrections.length} correction${lu.corrections.length > 1 ? "s" : ""} : ${lu.corrections.join(" ; ")}`);
   // Pour les essais (Playwright).
-  (window as unknown as { __studio: object }).__studio = { etat: () => etat, fiche, raccourcis, hash: () => versHash(fiche, etat), attributs: () => ligneAttributs(monterDemo(document, m, fiche, etat).attributsRacine) };
+  (window as unknown as { __studio: object }).__studio = { etat: () => etat, fiche, raccourcis, coque, hash: () => versHash(fiche, etat), attributs: () => ligneAttributs(monterDemo(document, m, fiche, etat).attributsRacine) };
 }

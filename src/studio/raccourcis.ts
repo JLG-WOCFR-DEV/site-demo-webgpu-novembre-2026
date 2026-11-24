@@ -14,7 +14,7 @@
  *
  * Règles :
  *   - deux raccourcis ne partagent pas une combinaison dans la même portée (erreur à l'ajout, pas en silence) ;
- *   - RESERVES : les combinaisons tenues ailleurs dans le dépôt (Ctrl+K de la palette à venir, ⌘⇧K des réglages,
+ *   - RESERVES : les combinaisons tenues ailleurs dans le dépôt (Mod+K de la palette, ⌘⇧K des réglages,
  *     touches du diaporama) sont refusées hors de leur propriétaire ;
  *   - dans un champ de saisie (input, textarea, select, contenteditable), seuls les raccourcis `dansChamp` jouent ;
  *     sur un bouton ou un lien, Entrée et Espace restent au navigateur ;
@@ -48,10 +48,19 @@ export type EvenementClavier = {
   preventDefault?: () => void;
 };
 
-/** Les combinaisons tenues par d'autres parties du dépôt (roadmap §8, point 8). */
+/** Le propriétaire de Mod+K : src/nav/declencheur.ts crée son registre avec `{ proprietaire: PROPRIETAIRE_PALETTE }`. */
+export const PROPRIETAIRE_PALETTE = "palette de commandes (src/nav/declencheur.ts)";
+/** Le propriétaire de Mod+Maj+K (knobs.ts écoute lui-même, hors registre : la réservation empêche qu'on la reprenne). */
+export const PROPRIETAIRE_REGLAGES = "réglages Presse (knobs.ts)";
+
+/**
+ * Les combinaisons tenues par d'autres parties du dépôt (roadmap §8, point 8). Mod+K et Mod+Maj+K ne se gênent pas :
+ * la forme canonique distingue Maj (« ctrl+k » ≠ « ctrl+maj+k »). Sur Mac, Mod = ⌘ : Ctrl+K y reste au système
+ * (effacer jusqu'à la fin de la ligne dans un champ).
+ */
 export const RESERVES: readonly { touches: string; par: string }[] = [
-  { touches: "Mod+K", par: "palette de commandes (E6)" },
-  { touches: "Mod+Maj+K", par: "réglages Presse (knobs.ts)" },
+  { touches: "Mod+K", par: PROPRIETAIRE_PALETTE },
+  { touches: "Mod+Maj+K", par: PROPRIETAIRE_REGLAGES },
 ];
 
 const NOMS: Record<string, string> = {

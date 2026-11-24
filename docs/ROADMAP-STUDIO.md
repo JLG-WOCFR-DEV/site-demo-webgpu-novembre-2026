@@ -166,7 +166,53 @@ Décisions :
     moteur WebGPU : impression, trame, bloom) ; Magic Move et 5 transitions sans équivalent → Fondu ; pages vivantes et
     vidéos figées en image (cartouche dans le HTML) ; HTML-in-Canvas pas encore employé pour la rastérisation (essai
     d'origine Chrome 155+, non disponible ici) ; PPTX niveau 2 (textes éditables, Morphose) à décider.
-- **E6 Navigation unifiée** (taxonomie, palette Ctrl+K en combobox ARIA, registre de raccourcis, redirections des 37 URL, migration des clés `localStorage`), puis coque commune des trois éditeurs.
+- **E6 Navigation unifiée.** **Fait (2026-11-24).**
+  - Taxonomie unique `src/nav/taxonomie.ts` (données pures) : `PAGES` (ré-exporté par `pages-nav.ts`, ordre des démos
+    inchangé) porte un `groupe` — Studio, Effets, Interfaces, Sites & boutiques, Outils, Docs, Labs ; Effets et
+    Interfaces dérivés du registre par catégorie ; 4 cadres d'aperçu dans `EXCLUES`. Test : toute page de
+    `vite.config.ts` rangée ou exclue, aucune entrée vers une page absente, chaque manifeste une fois.
+  - Menu unifié `src/nav/menu.ts` : méga-menu (onglets de groupes, sections en colonnes, lien Studio par effet
+    réglable), popover, focus piégé, flèches, Échap, `aria-current`, téléphone (onglets en ligne, panneau qui défile),
+    mouvement réduit, clair / sombre ; pied inchangé (Débogage, `mountSettings`). API `PAGES` / `mountPagesNav`,
+    `[data-pages-trigger]`, `legacy/pages-nav.js` et `data-presse-manuel` conservés.
+  - Palette Ctrl+K / ⌘K `src/nav/palette.ts` (morceau chargé à la demande) : combobox ARIA, recherche floue sans
+    accents (`recherche.ts`), pages + effets + attributs `data-*` + commandes (`commandes.ts` : thème, mouvement
+    réduit, copier le lien, ouvrir dans le Studio, page précédente / suivante, menu, présentation, débogage), récents.
+    Aussi sur Créateur, Créateur de diaporama, diaporamas (hors cadre d'aperçu). Conflit résolu dans le registre de
+    raccourcis : `Mod+K` réservé à `PROPRIETAIRE_PALETTE` (joue dans un champ), `Mod+Maj+K` aux knobs ; Maj distingue
+    les deux ; sur Mac, Ctrl+K reste au système. Le script en tête de page gagne `__presseMotion.reduire()`
+    (« réduites ») pour la commande « Réduire les animations ».
+  - **Politique d'URL** : on ne déplace pas une page publiée. Si un déplacement devient nécessaire, l'ancienne adresse
+    est déclarée dans `src/nav/redirections.ts` et une page de redirection est écrite au build
+    (`presse/build/redirections.ts` : `<meta refresh>`, `<link rel="canonical">`, lien visible, requête et fragment
+    gardés, `noindex`). `docs/urls-publiees.json` (42 adresses, `npm run urls:publiees` ajoute sans retirer) ;
+    `src/nav/urls.test.ts` échoue si une adresse publiée n'est plus servie. E6 n'a rien déplacé : liste vide.
+  - Stockage `src/registre/stockage.ts` : clés `presse:<domaine>.<nom>@<version>`, accès protégé, migration paresseuse
+    et sans perte (recopie puis retrait, jamais par-dessus une neuve, ancienne relue si l'écriture échoue) ; 8 clés
+    migrées (couloir, logos, diapo-createur ×4, orbite ×2), 3 neuves (récents, thème, coque) ; 26 clés gardées et
+    inventoriées avec leur raison (`stockage-inventaire.ts`), test qui refuse une clé littérale non inventoriée.
+  - Coque commune : plan pur `src/studio/coque-plan.ts` (découpes ligne / colonne, tailles px + un enfant souple,
+    onglets, replis, JSON `v: 1` + migrations, bornes par l'application, lien base64url) et DOM `src/studio/coque.ts`
+    (poignées `role="separator"` pointeur + clavier, persistance). **studio-effet migré** : largeur de l'inspecteur
+    (260–560 px), repli, onglet HTML / JSON gardés.
+  - Adoption par les trois éditeurs (à faire, E8) : **diapo-createur** remplace `--dc-left` et sa poignée maison par
+    un plan `ligne [diapos 200, aperçu souple, inspecteur 300]` (la clé `presse:diapo-createur.largeur@1` devient la
+    taille du panneau, migration par `conversion`) ; **Vitrine** : `ligne [sections, aperçu, inspecteur]` + onglets
+    d'inspecteur ; **Créateur** : `ligne [calques/pages en colonne, aperçu, inspecteur]`. Chacun garde son modèle de
+    document ; la coque ne porte que la mise en page.
+  - Tests : `taxonomie.test.ts`, `urls.test.ts`, `recherche.test.ts` (recherche, commandes, récents),
+    `stockage.test.ts`, `coque.test.ts`, `raccourcis.test.ts` (+1) — 369 → 396 tests. Playwright (48 vérifications,
+    1440 × 900 et 390 × 844, clair / sombre) : menu et palette au clavier, arbre d'accessibilité, 0 erreur console sur
+    16 pages × 2 tailles, pas de débordement (sauf diapo-createur à 390 px, déjà là avant E6 : éditeur de bureau à
+    trois colonnes).
+  - Poids : pages-nav et ses imports statiques (dist, gzip -9) 40,7 → 49,5 ko (+8,8 ko ; brut 101,8 → 124,4 ko) —
+    morceaux neufs : registre de raccourcis 1,8, stockage 1,0, déclencheur 0,6 ; le reste : menu (logique + CSS) et
+    taxonomie dérivée. `legacy/pages-nav.js` + imports : 39,0 → 47,7 ko gzip. La palette (7,7 ko gzip seule)
+    n'est chargée qu'à Ctrl+K ou au survol du bouton Rechercher.
+  - **Limites** : le thème clair / sombre ne s'applique qu'à l'interface (menu, palette, Studio, Sampler Presse), pas
+    aux démos ; « Réduire les animations » agit sur ce qui lit `matchMedia` (composants JS), pas sur les `@media` CSS
+    (classe `presse-anim-reduite` disponible) ; Ctrl+K pris à Chrome / Firefox (recherche) ; le menu se construit
+    encore en JS (sans JS : pas de menu, comme avant) ; coque adoptée par studio-effet seulement.
 - **E7 Veille** : Paper (écart de couverture), HTML-in-Canvas (module unique à partir de `src/html-in-canvas.ts`).
 - Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre, budget JS par page, a11y (priorité mouvement réduit vs `data-diapo-motion`).
 

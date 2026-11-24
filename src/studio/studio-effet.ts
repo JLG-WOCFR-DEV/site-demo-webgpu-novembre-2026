@@ -4,6 +4,10 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import { mountPagesNav } from "../pages-nav.ts";
 import { monterPageEffet } from "./page-effet.ts";
+import { appliquerTheme } from "../nav/theme.ts";
+
+// Le thème choisi dans la palette, avant le premier dessin (pages-nav est monté après le gabarit).
+appliquerTheme();
 
 const hote = document.getElementById("studio")!;
 const id = new URLSearchParams(location.search).get("effet") ?? "goo";

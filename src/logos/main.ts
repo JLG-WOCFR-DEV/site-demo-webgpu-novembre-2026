@@ -10,6 +10,7 @@ import "@fontsource-variable/archivo/wdth.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./style.css";
 import { mountPagesNav } from "../pages-nav.ts";
+import { CLES, ecrireJson, lireJson } from "../registre/stockage.ts";
 import { enhanceAngle } from "../presse/angle.ts";
 import { creerFocusItinerant } from "../presse/comportements/focus-itinerant.ts";
 import { zipBytes } from "../createur/zip.ts";
@@ -488,24 +489,17 @@ function horloge() {
 
 /* ───────────────────────── Instantanés ───────────────────────── */
 
-const CLE_INST = "logos:instantanes";
 type Instantane = { config: ConfigLogo; image: string };
 let instantanes: Instantane[] = [];
-try {
-  const o = JSON.parse(localStorage.getItem(CLE_INST) ?? "[]") as Instantane[];
-  if (Array.isArray(o)) instantanes = o.filter((x) => x && x.config && typeof x.image === "string").slice(0, 12);
-} catch {
-  /* stockage indisponible */
+{
+  const o = lireJson<unknown>(CLES.logosInstantanes, []);
+  if (Array.isArray(o)) instantanes = (o as Instantane[]).filter((x) => x && x.config && typeof x.image === "string").slice(0, 12);
 }
 function majInstantanes() {
   $("#instantanes").innerHTML = instantanes
     .map((s, i) => `<li><button type="button" class="instantane" data-inst="${i}" aria-label="Instantané ${i + 1} : ${echap(MATIERES[s.config.matiere].nom)}" title="${echap(MATIERES[s.config.matiere].nom)}"><img alt="" src="${s.image}" /></button></li>`)
     .join("");
-  try {
-    localStorage.setItem(CLE_INST, JSON.stringify(instantanes.filter((s) => !s.config.src.startsWith("blob:"))));
-  } catch {
-    /* rien */
-  }
+  ecrireJson(CLES.logosInstantanes, instantanes.filter((s) => !s.config.src.startsWith("blob:")));
 }
 $("#instantane").addEventListener("click", async () => {
   const cv = await ctl.rendreImage(ctl.temps(), 1, { largeur: 96, hauteur: 64 });

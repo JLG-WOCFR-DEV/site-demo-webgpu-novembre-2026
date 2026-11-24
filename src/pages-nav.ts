@@ -1,7 +1,8 @@
 /**
- * Menu des pages, commun à toutes les pages du dépôt. Sur PLI et le sampler,
- * il s'ouvre depuis le logo de la barre ; ailleurs, depuis une pastille
- * « Pages » en haut à gauche. API popover : Échap et clic extérieur ferment.
+ * Bootstrap de Presse, commun à toutes les pages du dépôt : armement des effets du registre, puis le menu des pages
+ * (méga-menu groupé par la taxonomie, src/nav/menu.ts) et la palette de commandes Ctrl+K / ⌘K (src/nav/palette.ts,
+ * chargée à la demande). Sur PLI et le sampler, le menu s'ouvre depuis le logo de la barre ; ailleurs, depuis une
+ * pastille « Pages » en haut à gauche. API popover : Échap et clic extérieur ferment.
  */
 
 import { CSS as SETTINGS_CSS, mountSettings } from "./presse/presentation.ts";
@@ -16,47 +17,13 @@ import { initTokens } from "./presse/tokens.ts";
 import { initSweep } from "./presse/sweep.ts";
 import { mountScript } from "./presse/script.ts";
 import { EFFETS } from "./registre/effets.ts";
+import { PAGES as PAGES_TAXONOMIE } from "./nav/taxonomie.ts";
+import { CSS_MENU, monterMenu } from "./nav/menu.ts";
+import { ecouterPalette, ouvrirPalette, prechargerPalette, touchesPalette } from "./nav/declencheur.ts";
+import { appliquerTheme } from "./nav/theme.ts";
 
-export const PAGES = [
-  { href: "index.html", name: "WebGPU-demo-UBS", text: "La presse WebGPU : le guide et la démo" },
-  { href: "sampler.html", name: "Sampler", text: "Un effet à la fois, par catégories" },
-  { href: "sampler-presse.html", name: "Sampler Presse", text: "Les effets du registre : filtres par catégorie, rendu et statut, recherche, lien vers le Studio" },
-  { href: "studio-effet.html", name: "Studio · effet", text: "Régler un effet en direct : inspecteur généré, courbes, attributs, HTML, JSON, lien de partage" },
-  { href: "liquide.html", name: "Liquide", text: "Glisser, mélanger, filtrer : des photos en verre qui fusionne" },
-  { href: "grille.html", name: "Grille infinie", text: "Un mur sans fin ; chaque photo ouvre sa page, l'image vole" },
-  { href: "galerie.html", name: "Galerie", text: "Dix arrangements 3D : tonneau, cartes, film, ruban, fond dégradé…" },
-  { href: "orbite.html", name: "Orbite", text: "Un lanceur : quatre applications en anneau, des particules, la mise au point" },
-  { href: "matieres.html", name: "Matières", text: "Paillettes qu'on brosse, lettres en eau, éclair et feu, diagramme de phase" },
-  { href: "tissu.html", name: "Tissu", text: "Le HTML de la page imprimé sur une étoffe simulée en WebGPU : on la tire, on la décroche" },
-  { href: "lave.html", name: "Lave", text: "Une liste de tâches qu'on range au glisser ; jetée dans la lave, la tâche brûle dans un feu simulé" },
-  { href: "defilement.html", name: "Défilement", text: "Roue de projets, mots qui roulent, liste qui s'ouvre, images au bruit, bento" },
-  { href: "fluide.html", name: "Fluide", text: "Un fluide SPH qu'on remue : champ de particules, bassin, marbrure d'encres" },
-  { href: "atelier.html", name: "Atelier", text: "Un objet 3D en ASCII, tramé, à l'encre, en verre, en particules, en liquide" },
-  { href: "presse.html", name: "Presse", text: "Le framework : un Webflow WebGPU, en attributs HTML" },
-  { href: "createur.html", name: "Créateur", text: "Composer un site Presse par blocs, aperçu WebGPU en direct, export" },
-  { href: "courbes.html", name: "Courbes", text: "Éditeur de courbe : poignées, ressort, marches, comparaison de quatre courbes" },
-  { href: "variations.html", name: "Variations", text: "Des directions artistiques tirées en quelques secondes sur la même page : jetons, verrous, instantanés, export" },
-  { href: "kerguehennec.html", name: "Kerguéhennec, 1910", text: "Théâtre de papier, menu de cinq tableaux" },
-  { href: "kerguehennec-styles.html", name: "Huit regards", text: "Le domaine en 3D, rendu de huit façons" },
-  { href: "conference.html", name: "Conférence", text: "Un diaporama Presse : la 3D et l'IA, au clavier (F plein écran, P présentateur)" },
-  { href: "diapo-demos.html", name: "Diaporama · démos", text: "Transitions à deux images, Magic Move, mot à mot, chiffres, laser et loupe" },
-  { href: "goo.html", name: "Goo", text: "Des pièces d'interface qui fusionnent comme une pâte : menu en gouttes, onglets, goutte suiveuse" },
-  { href: "metal.html", name: "Métal", text: "Boutons, lettres et badges en chrome liquide, cinq métaux, reflet sur le voisin" },
-  { href: "voix.html", name: "La voix", text: "Une lueur qui monte avec la voix sous un champ de saisie, puis balaie pendant la réponse" },
-  { href: "ruban.html", name: "Ruban", text: "Une bande d'images qui se vrille, se comprime, se bombe ; une lentille qui passe ; une roue de vignettes" },
-  { href: "typo.html", name: "Typographie", text: "Six entrées de texte : étirement, sphère, encre, tracé, éclats, fragments" },
-  { href: "cinetique.html", name: "Cinétique", text: "Texte animé en DOM : 18 entrées par ligne, mot ou lettre, et huit composants (roule, marque, défilé, reflet, cercle, coupe, brouille, frappe)" },
-  { href: "rouleau.html", name: "Rouleau", text: "Menu roulant : les titres défilent, l'image ondule derrière comme une étoffe" },
-  { href: "couloir.html", name: "Couloir", text: "Un mur d'images vu en fuite : il défile au pointeur, frange de couleur à la vitesse, réglable en direct" },
-  { href: "logos.html", name: "Logos", text: "Une matière animée pour un logo : métal liquide, fumée, chaleur, eau, verre, trames ; PNG, séquence, WebM" },
-  { href: "boutique.html", name: "Boutique", text: "Éclaircie, boutique de vêtements d'essai : déchirure, forme-masque, autocollant, rails, panier" },
-  { href: "vitrine.html", name: "Vitrine", text: "Éditeur de boutique par sections : 50 variantes réglables, quatre préréglages, aperçu bureau et téléphone, export" },
-  { href: "vitrine-maison.html", name: "Boutiques · Maison", text: "Luxe sobre : hero vidéo, bouton Menu, huit univers, grille compacte détourée" },
-  { href: "vitrine-district.html", name: "Boutiques · District", text: "Mode contemporaine : mega-menus, diaporama, badges, stock, achat rapide, avis" },
-  { href: "vitrine-tribus.html", name: "Boutiques · Tribus", text: "Artisanal : deux visuels, acheter par tissu, histoire, lookbook, lettre −10 %" },
-  { href: "diapo-createur.html", name: "Créateur de diaporama", text: "Ordre des diapos, transitions, apparitions, textes et notes, avec l'aperçu WebGPU" },
-  { href: "legacy/index.html", name: "WebGPU-demo-UBS v0", text: "La toute première version, générée par Grok" },
-];
+/** Les pages du menu (API publique, historique) : la taxonomie (src/nav/taxonomie.ts) les range par groupe. */
+export const PAGES = PAGES_TAXONOMIE;
 
 const CSS = `
 /* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles
@@ -69,42 +36,6 @@ const CSS = `
   input[type="range"] { min-height: 24px; }
   table { max-width: 100%; }
 }
-.pages-pop {
-  inset: auto;
-  margin: 0;
-  padding: 8px;
-  min-width: min(340px, calc(100vw - 32px));
-  border: 1px solid currentColor;
-  border-radius: 6px;
-  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair et le menu devenait
-     illisible (texte crème sur fond crème). */
-  background: #f6f1e4;
-  color: #16110d;
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);
-  font-family: inherit;
-  /* Plus haut que l'écran (17 pages et les réglages) : il défile, lui, sans faire défiler la page. */
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.pages-pop ul { list-style: none; margin: 0; padding: 0; }
-.pages-pop a {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: 4px;
-  color: inherit;
-  text-decoration: none;
-}
-.pages-pop a:hover, .pages-pop a:focus-visible { background: rgba(127, 127, 127, 0.14); }
-.pages-pop a[aria-current="page"] { box-shadow: inset 3px 0 0 #c8321c; }
-.pages-pop .pages-name { font-weight: 700; font-size: 16px; }
-.pages-pop .pages-debug {
-  display: grid; gap: 2px; width: 100%; margin-top: 6px; padding: 10px 12px;
-  border: 0; border-top: 1px dashed rgba(127, 127, 127, 0.5); border-radius: 0 0 4px 4px;
-  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
-}
-.pages-pop .pages-debug:hover, .pages-pop .pages-debug:focus-visible { background: rgba(127, 127, 127, 0.14); }
-.pages-pop .pages-text { font-size: 13px; opacity: 0.75; }
 .pages-pill {
   position: fixed;
   z-index: 50;
@@ -158,6 +89,8 @@ export function mountPagesNav(base = "./") {
   // Un système de design (variations.html) demandé par l'adresse (?systeme=) ou par la page (data-systeme) : il passe
   // par-dessus les couleurs, fontes, look et mouvement de la page.
   armerEffets(document, true);
+  // Le thème choisi de l'interface (menu, palette, Studio), avant le premier dessin du menu.
+  appliquerTheme();
   initIntro();
   initFlights();
   initSweep();
@@ -168,7 +101,7 @@ export function mountPagesNav(base = "./") {
   // déchirure, forme, autocollant, rail, tracé) : chacun chargé seulement si la page s'en sert.
   armerEffets(document, false);
   const style = document.createElement("style");
-  style.textContent = CSS + SETTINGS_CSS;
+  style.textContent = CSS + CSS_MENU + SETTINGS_CSS;
   document.head.append(style);
 
   let trigger = document.querySelector<HTMLButtonElement>(DECLENCHEUR);
@@ -184,20 +117,8 @@ export function mountPagesNav(base = "./") {
   pop.className = "pages-pop";
   pop.setAttribute("popover", "");
   pop.setAttribute("aria-label", "Pages");
-  const here = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0]!.split("?")[0];
-  const ul = document.createElement("ul");
-  for (const p of PAGES) {
-    const li = document.createElement("li");
-    const a = document.createElement("a");
-    a.href = base + p.href;
-    if (a.href === here) a.setAttribute("aria-current", "page");
-    a.innerHTML = '<span class="pages-name"></span><span class="pages-text"></span>';
-    a.querySelector(".pages-name")!.textContent = p.name;
-    a.querySelector(".pages-text")!.textContent = p.text;
-    li.append(a);
-    ul.append(li);
-  }
-  pop.append(ul);
+  const { pied } = monterMenu({ pop, trigger, base, raccourci: touchesPalette(), ouvrirPalette: (d) => ouvrirPalette(d) });
+  pop.querySelector(".pn-chercher")!.addEventListener("pointerenter", prechargerPalette, { once: true });
   // Débogage : la même fenêtre que l'icône de la barre, utile sur téléphone où l'icône n'a pas la place.
   const dbg = document.createElement("button");
   dbg.type = "button";
@@ -207,19 +128,16 @@ export function mountPagesNav(base = "./") {
     pop.hidePopover();
     openDebugPanel(trigger!);
   });
-  pop.append(dbg);
+  pied.append(dbg);
   // Animations (rallumer malgré le système) et mode présentation : des réglages de visite, pour tout le site.
-  mountSettings(pop, PAGES, base);
+  mountSettings(pied, PAGES, base);
+  // mountSettings écoute « toggle » sur son hôte : le pied le relaie depuis le panneau.
+  pop.addEventListener("toggle", () => pied.dispatchEvent(new Event("toggle")));
   document.body.append(pop);
   trigger.setAttribute("popovertarget", "pages-pop");
   trigger.setAttribute("aria-haspopup", "true");
   trigger.setAttribute("aria-controls", "pages-pop");
-  // Le panneau s'ouvre sous son bouton.
-  pop.addEventListener("toggle", (e) => {
-    if ((e as ToggleEvent).newState !== "open") return;
-    const r = trigger!.getBoundingClientRect();
-    pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8))}px`;
-    pop.style.top = `${r.bottom + 8}px`;
-    pop.style.maxHeight = `${Math.max(200, innerHeight - r.bottom - 24)}px`;
-  });
+  trigger.setAttribute("aria-expanded", "false");
+  // Ctrl+K / ⌘K : la palette (chargée à la première ouverture).
+  ecouterPalette({ base, ouvrirMenu: () => pop.showPopover() });
 }

@@ -9,6 +9,10 @@ import { applySavedEdits, mountEditor } from "../presse/diapo-editeur.ts";
 import { initAnim } from "../presse/timeline.ts";
 import { applySavedDoc, applySavedFiles, notesParas, tagIds } from "../presse/diapo-doc.ts";
 import { planSteps } from "../presse/diapo-etapes.ts";
+import { ecouterPalette } from "../nav/declencheur.ts";
+
+// Ctrl+K / ⌘K : la palette de commandes (src/nav/), chargée à la demande — pas dans un cadre d'aperçu.
+if (window.top === window) ecouterPalette({ base: "./" });
 
 const root = document.querySelector<HTMLElement>("[data-diapo]");
 const params = new URLSearchParams(location.search);

@@ -92,7 +92,7 @@ function toggleFullscreen() {
 }
 
 /** Les réglages du menu, et le clavier du mode présentation. `pages` : l'ordre des démos. */
-export function mountSettings(pop: HTMLElement, pages: { href: string }[], base: string) {
+export function mountSettings(pop: HTMLElement, pages: readonly { href: string }[], base: string) {
   const box = document.createElement("div");
   box.className = "pages-settings";
   const mk = (name: string) => {

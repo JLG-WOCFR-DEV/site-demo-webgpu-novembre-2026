@@ -32,7 +32,10 @@ erreur.
    - `tools/exemples-pages/boutique.html` — boutique (`data-presse-manuel`, rail, panier, favoris, autocollant, forme).
 3. **Brancher la page** (trois endroits, toujours) :
    - `vite.config.ts` → `build.rollupOptions.input` : `mapage: "mapage.html"` ;
-   - `src/pages-nav.ts` → tableau `PAGES` : `{ href: "mapage.html", name: "Ma page", text: "Ce qu'on y voit, en une ligne" }` ;
+   - `src/nav/taxonomie.ts` → tableau `PAGES` (ré-exporté par `src/pages-nav.ts`) : `{ href: "mapage.html", name: "Ma
+     page", text: "Ce qu'on y voit, en une ligne", groupe: "effets" }` — `groupe` parmi studio, effets, interfaces,
+     sites, outils, docs, labs (un cadre d'aperçu interne va dans `EXCLUES`, avec sa raison) ; puis
+     `npm run urls:publiees` (une adresse publiée ne disparaît plus : `src/nav/urls.test.ts`) ;
    - `PRESSE.md` → une ligne du tableau « Attributs » si la page introduit un module ou un attribut (format plus bas),
      puis `npm run skill:tableau`.
 4. **Armer les modules** : voir « Armement ». Sans `data-presse-manuel`, `mountPagesNav()` suffit pour les modules
@@ -42,6 +45,10 @@ erreur.
    courbe et les attributs à coller ; le lien `#v=1;…` garde les réglages. Nouvel effet réglable : une fiche dans
    `src/registre/parametres/<id>.ts` + `parametres: () => import("./parametres/<id>.ts")` dans son manifeste, puis
    `npm test` (`parametres.test.ts` : attributs documentés, démo aux défauts, démo validée).
+7. **Navigation et mémoire** : la page apparaît d'elle-même dans le menu Pages et la palette Ctrl+K (⌘K) par son
+   `groupe` ; ne pas prendre Ctrl+K / ⌘K ni ⌘⇧K dans un script de page (réservés, `src/studio/raccourcis.ts`). Une
+   préférence gardée dans le navigateur passe par `src/registre/stockage.ts` (une clé `cle({ domaine, nom })` dans
+   `CLES`, son rôle dans `stockage-inventaire.ts`) : pas de `localStorage` direct (`stockage.test.ts` le refuse).
 
 ## Gabarit minimal
 

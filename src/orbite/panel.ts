@@ -9,26 +9,16 @@
  *   les écarts aux défauts y figurent).
  */
 import { type OrbiteApi } from "../components/orbite/orbite.ts";
+import { CLES, lireJson, ecrireJson, type Cle } from "../registre/stockage.ts";
 import { GROUPS, LAYOUT_DEFAULTS, type OrbiteConfig, PARAMS, type ParamDef, defaults, toAttributes } from "../components/orbite/params.ts";
 
-const CURRENT = "presse:orbite:courant";
-const SAVED = "presse:orbite:reglages";
+// Clés du registre du stockage (src/registre/stockage.ts) : anciennes « presse:orbite:… » migrées à la lecture.
+const CURRENT = CLES.orbiteCourant;
+const SAVED = CLES.orbiteReglages;
 
-const read = <T>(k: string, d: T): T => {
-  try {
-    const v = localStorage.getItem(k);
-    return v ? (JSON.parse(v) as T) : d;
-  } catch {
-    return d;
-  }
-};
-const write = (k: string, v: unknown) => {
-  try {
-    localStorage.setItem(k, JSON.stringify(v));
-  } catch {
-    /* stockage indisponible : le panneau marche quand même, sans mémoire */
-  }
-};
+const read = <T>(k: Cle, d: T): T => lireJson<T>(k, d);
+// Stockage indisponible : le panneau marche quand même, sans mémoire.
+const write = (k: Cle, v: unknown) => void ecrireJson(k, v);
 /** Seulement les écarts aux défauts (ce qu'on garde et ce qu'on exporte). */
 const diff = (c: OrbiteConfig) => {
   const d = defaults();

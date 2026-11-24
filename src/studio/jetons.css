@@ -1,5 +1,5 @@
 /* Studio — jetons et base communs (page d'effet, Sampler Presse). Sombre par défaut (un logiciel), clair si le
-   système le demande. */
+   système le demande ; le thème choisi dans la palette (Ctrl+K) passe devant. */
 :root {
   --st-fond: #18181b;
   --st-panneau: #222226;
@@ -23,8 +23,10 @@
   --st-largeur: 100%;
   color-scheme: dark;
 }
+/* Clair si le système le demande, sauf choix « sombre » de la palette (data-presse-theme, src/nav/theme.ts) ;
+   clair aussi sur choix « clair ». */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-presse-theme="sombre"]) {
     --st-fond: #f3f3f5;
     --st-panneau: #ffffff;
     --st-surface: #f0f0f3;
@@ -43,6 +45,25 @@
     --st-focus: #2f5fd8;
     color-scheme: light;
   }
+}
+:root[data-presse-theme="clair"] {
+  --st-fond: #f3f3f5;
+  --st-panneau: #ffffff;
+  --st-surface: #f0f0f3;
+  --st-surface-2: #e4e4e9;
+  --st-filet: #dcdce2;
+  --st-texte: #17171b;
+  --st-doux: #5b5b66;
+  --st-accent: #2f5fd8;
+  --st-accent-texte: #2449b0;
+  --st-accent-doux: rgba(47, 95, 216, 0.12);
+  --st-accent-plein: #2f5fd8;
+  --st-regle: #b26a00;
+  --st-attention: #a0410f;
+  --st-scene: #e6e6ea;
+  --st-point: rgba(0, 0, 0, 0.08);
+  --st-focus: #2f5fd8;
+  color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

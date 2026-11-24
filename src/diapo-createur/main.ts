@@ -26,6 +26,11 @@ import { SLIDE_TRANSITIONS } from "../gpu/slide-transition.ts";
 import { TRANSITIONS } from "../state.ts";
 import { PRESETS } from "../presse/timeline.ts";
 import { monterExport } from "./exporter.ts";
+import { CLES, ecrire as ecrireStock, lire as lireStock, retirer as retirerStock } from "../registre/stockage.ts";
+import { ecouterPalette } from "../nav/declencheur.ts";
+
+// Ctrl+K / ⌘K : la palette de commandes (src/nav/), chargée à la demande — pas dans un cadre d'aperçu.
+if (window.top === window) ecouterPalette({ base: "./" });
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector<T>(s)!;
 const esc = (s: unknown) =>
@@ -1237,21 +1242,12 @@ notesBox.addEventListener("change", (e) => {
   onField(e, true);
   lastKey = "";
 });
-const NOTES_KEY = "presse-diapo-createur:notes";
 function setNotesOpen(open: boolean) {
   notesBox.classList.toggle("is-closed", !open);
   $("[data-dc-notes-toggle]").setAttribute("aria-expanded", String(open));
-  try {
-    localStorage.setItem(NOTES_KEY, open ? "1" : "0");
-  } catch {
-    /* préférence non gardée */
-  }
+  ecrireStock(CLES.diapoNotes, open ? "1" : "0");
 }
-try {
-  setNotesOpen(localStorage.getItem(NOTES_KEY) !== "0");
-} catch {
-  /* ouvertes */
-}
+setNotesOpen(lireStock(CLES.diapoNotes) !== "0");
 $("[data-dc-notes-toggle]").addEventListener("click", () => {
   const open = notesBox.classList.contains("is-closed");
   setNotesOpen(open);
@@ -1442,23 +1438,15 @@ document.addEventListener("fullscreenchange", () => {
   grip.setAttribute("aria-label", "Largeur de la liste des diapos");
   grip.title = "Tirer pour élargir la liste (double-clic : largeur d'origine)";
   $(".dc-left").append(grip);
-  const KEYW = "presse-diapo-createur:largeur";
   const set = (w: number | null, keep = true) => {
     if (w === null) document.body.style.removeProperty("--dc-left");
     else document.body.style.setProperty("--dc-left", `${Math.round(Math.max(130, Math.min(innerWidth * 0.5, w)))}px`);
     if (!keep) return;
-    try {
-      w === null ? localStorage.removeItem(KEYW) : localStorage.setItem(KEYW, document.body.style.getPropertyValue("--dc-left"));
-    } catch {
-      /* préférence non gardée */
-    }
+    if (w === null) retirerStock(CLES.diapoLargeur);
+    else ecrireStock(CLES.diapoLargeur, document.body.style.getPropertyValue("--dc-left"));
   };
-  try {
-    const w = Number.parseFloat(localStorage.getItem(KEYW) ?? "");
-    if (w) set(w, false);
-  } catch {
-    /* largeur d'origine */
-  }
+  const w = Number.parseFloat(lireStock(CLES.diapoLargeur) ?? "");
+  if (w) set(w, false);
   grip.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     grip.setPointerCapture(e.pointerId);
@@ -1486,18 +1474,10 @@ document.addEventListener("fullscreenchange", () => {
 function setStrip(on: boolean) {
   document.body.classList.toggle("dc--strip", on);
   $("[data-dc-strip]").setAttribute("aria-pressed", String(on));
-  try {
-    localStorage.setItem("presse-diapo-createur:bande", on ? "1" : "");
-  } catch {
-    /* préférence non gardée */
-  }
+  ecrireStock(CLES.diapoBande, on ? "1" : "");
   $('[data-dc-slides] [aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
 }
-try {
-  setStrip(localStorage.getItem("presse-diapo-createur:bande") === "1");
-} catch {
-  /* colonne */
-}
+setStrip(lireStock(CLES.diapoBande) === "1");
 
 /* ── Barre ── */
 document.addEventListener("click", (e) => {

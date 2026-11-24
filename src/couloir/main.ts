@@ -11,8 +11,8 @@ import "./style.css";
 import { mountPagesNav } from "../pages-nav.ts";
 import { attributsDe, controleCouloir, initCouloir, lireReglages, type Reglages } from "../presse/couloir.ts";
 import { creerPopup } from "../presse/comportements/popup.ts";
+import { CLES, ecrireJson, lireJson } from "../registre/stockage.ts";
 
-const CLE = "couloir:attributs";
 const mur = document.querySelector<HTMLElement>("#mur")!;
 const form = document.querySelector<HTMLFormElement>("#reglages")!;
 const declencheur = document.querySelector<HTMLButtonElement>("#ouvrir-reglages")!;
@@ -21,23 +21,15 @@ const etat = document.querySelector<HTMLElement>("#copie-etat")!;
 const FIXES = new Set(["couloir", "couloirOuvre", "couloirCommandes"]);
 
 const lireStock = (): Record<string, string> | null => {
-  try {
-    if (/[?&]neuf(=|&|$)/.test(location.search)) return null;
-    const brut = localStorage.getItem(CLE);
-    const o = brut ? (JSON.parse(brut) as unknown) : null;
-    return o && typeof o === "object" ? (o as Record<string, string>) : null;
-  } catch {
-    return null;
-  }
+  if (/[?&]neuf(=|&|$)/.test(location.search)) return null;
+  const o = lireJson<unknown>(CLES.couloirAttributs, null);
+  return o && typeof o === "object" ? (o as Record<string, string>) : null;
 };
 const ecrireStock = () => {
-  try {
-    const o: Record<string, string> = {};
-    for (const [k, v] of Object.entries(mur.dataset)) if (k.startsWith("couloir") && !FIXES.has(k) && v != null) o[k] = v;
-    localStorage.setItem(CLE, JSON.stringify(o));
-  } catch {
-    /* stockage indisponible : les réglages durent le temps de la visite */
-  }
+  const o: Record<string, string> = {};
+  for (const [k, v] of Object.entries(mur.dataset)) if (k.startsWith("couloir") && !FIXES.has(k) && v != null) o[k] = v;
+  // Stockage indisponible : les réglages durent le temps de la visite.
+  ecrireJson(CLES.couloirAttributs, o);
 };
 
 // Les réglages gardés, posés avant d'armer le module (il les lit dès la première image).

@@ -91,7 +91,7 @@ p.replay();                  // rejouer l'impression des sections
 | `data-presse-look` | `html` | Direction artistique de toute la page (texte, images, canvas) : `neutre`, `papier`, `argentique`, `nuit`, `presse`. Réglages fins : `data-presse-grain`, `data-presse-vignette`. À chaud : `applyLook(nom)`. |
 | `data-systeme` | `html` | **Système de design** (`src/presse/systeme.ts`, modèle `src/presse/variations.ts`, fait dans `variations.html`) : `data-systeme="…"` porte un système (base64url, ou le JSON de presse-systeme.json) ; armé par `src/pages-nav.ts`. Il pose les variables `--presse-*` (papier, encre, encre douce, accents et leur version texte, surfaces, filet, polices, échelle `--presse-t-0` à `-6`, espacements, rayon, ombre, `--dur-1` à `-4`, courbe) et les branche sur les noms des pages (kit : `--paper`, `--ink`, `--spot`, `--ps-f-display`… ; boutique : `--papier`, `--encre`, `--rouge`…), puis `data-presse-look` (grain, vignette, à chaud), `data-presse-effects`, `data-presse-transition`, `data-presse-motion`, `data-ps-type`, `data-ps-dark` ; charge ses fontes. Contraste AA garanti à la génération (encre et accent 1 ≥ 4,5:1, autres accents ≥ 3:1, sur papier et surfaces, étalonnage du look compris). État posé : `data-systeme-actif` (ne pas l'écrire). Sans moteur : tout s'applique (variables CSS, look en filtre SVG), seuls les effets de chaîne l'attendent ; mouvement réduit : rien de plus, chaque module garde son repli. Exemples : `variations.html`. |
 | `data-presse-manuel` | `html` | La page arme elle-même ses modules : `src/pages-nav.ts` n'arme plus la typographie cinétique en DOM et ses composants, la déchirure, la forme, l'autocollant, le rail ni le tracé (la page les importe et appelle leurs `init…`), et le kit de sections (`site.ts`) ne démarre pas seul (le Créateur appelle `startSite()`). Exemples : `boutique.html`, `cinetique.html`, `createur-apercu.html`. |
-| `data-pages-trigger` | `button` | Le bouton qui ouvre le menu Pages (`mountPagesNav`, `src/pages-nav.ts`) ; sans lui, une pastille « Pages » est posée en haut à gauche de la page. |
+| `data-pages-trigger` | `button` | Le bouton qui ouvre le menu Pages (`mountPagesNav`, `src/pages-nav.ts` : méga-menu groupé par la taxonomie, voir « Navigation ») ; sans lui, une pastille « Pages » est posée en haut à gauche de la page. |
 | `data-angle` | `input type="number"` | Cadran d'angle façon Photoshop / InDesign / Illustrator (`enhanceAngles()`, `src/presse/angle.ts`) : une aiguille dans un cercle, on la tourne au pointeur (Maj : crans de 15°), molette et flèches ±1° (Maj ±15°), Origine : 0°, double-clic : valeur par défaut ; 0° à droite, sens inverse des aiguilles. L'input reste la vérité (valeur, événements `input` et `change`). Utilisé par Matières (sens du tissu des paillettes, orientation et lumière du diagramme de phase). |
 | `data-presse-debug` | `html` | Panneau de débogage : fil de fer, grille, capture vidéo, image PNG. |
 | `data-anim` | tout élément | Moteur de temps (`src/presse/timeline.ts`), sans script : un motif (`monte`, `fondu`, `glisse`, `zoom`, `masque`, `rideau`, `flou`, `bascule`) ou des pistes « propriété de vers » séparées par `;` (`x`, `y`, `scale`, `rotate`, `opacity`, `blur`, `clip`, `clip-x`, `clip-top`, ou une variable `--nom`), ex. `data-anim="y 1em 0em; opacity 0 1"`. Le GPU suit : les plans et les lettres lisent la boîte et l'opacité de leur élément. |
@@ -101,7 +101,7 @@ p.replay();                  // rejouer l'impression des sections
 | `--paper` | `:root` (CSS) | Couleur du papier, lue par le GPU. |
 | `data-presse-match` | tout élément | Élément partagé entre deux mises en page (`match(() => …)`, `src/presse/match.ts`) : il vole de l'ancienne place à la nouvelle, mis à l'échelle sans remise en page, découpé à son cadre, interrompable, vitesse gardée. |
 | `?presentation` (`=0` pour sortir) | adresse | Mode présentation (`src/presse/presentation.ts`) : animations rallumées, débogage et ligne d'état masqués, Maj + → / ← d'une démo à l'autre ; gardé pour la session. Aussi dans le menu Pages. |
-| Animations « toujours » | menu Pages | Quand le système demande moins d'animations, les rallumer pour tout le site (gardé dans le navigateur, `localStorage` `presse-animations`). Un script en tête de page interpose `matchMedia("(prefers-reduced-motion: reduce)")` : les composants reçoivent un changement de préférence, sans rien savoir de plus. |
+| Animations « toujours » / « réduites » | menu Pages, palette | Quand le système demande moins d'animations, les rallumer pour tout le site ; à l'inverse, les réduire alors que le système n'en demande pas (palette Ctrl+K, « Réduire les animations »). Gardé dans le navigateur (`localStorage` `presse-animations` : `toujours` ou `reduites`). Un script en tête de page interpose `matchMedia("(prefers-reduced-motion: reduce)")` : les composants reçoivent un changement de préférence, sans rien savoir de plus ; « réduites » pose aussi la classe `presse-anim-reduite` sur `<html>` (les règles CSS `@media` restent celles du système). |
 | `?presse-lint` | adresse | Linter de mouvement (`src/presse/motion-lint.ts`) : saut, apparition ou disparition sèche, arrêt net, saut de vitesse, tremblement ; constats dans la console et `window.__presse.lint`. Les composants qui animent eux-mêmes lui passent leurs valeurs (`lintSample`) : galerie (décalage en px), orbite (arc de la carte de devant), grille (caméra et vols de photos) ; le geste direct (la valeur suit la main) n'est pas jugé ; le seuil de saut suit la durée de l'image (48 px par image à 60 Hz). |
 | `?presse-knobs` | adresse | Réglages live (`src/presse/knobs.ts`), aussi ⌘⇧K : groupes liés à un élément, Hasard, Réinitialiser, Annuler, Copier, préréglages. |
 | `?presse-script=…` | adresse | Rejoue un script de gestes horodatés (JSON en ligne ou chemin) sur l'horloge de la page (`src/presse/script.ts`) ; `window.__presse.tree()` relève l'arbre présenté. |
@@ -167,6 +167,69 @@ nombres en notation JS, durées dans l'unité du paramètre sans suffixe, interr
 `#rrggbb`, courbes en écriture CSS ou par nom. À la lecture, chaque valeur repasse par la validation du schéma ; une
 clé inconnue, une valeur illisible ou une autre version sont dites, jamais bloquantes. JSON de réglages :
 `{ "effet": "goo", "v": 1, "reglages": { "<cle>": valeur | null } }` (`null` : auto).
+
+## Navigation : menu, palette, raccourcis, stockage
+
+**Taxonomie** (`src/nav/taxonomie.ts`, données pures) : chaque page de `PAGES` a un `groupe` — **Studio** (Site =
+`createur.html`, Boutique = `vitrine.html`, Diaporama = `diapo-createur.html`, Courbes, Studio d'effet), **Effets**
+(une section par catégorie du registre, dérivées de `src/registre/effets.ts`, puis « Démos »), **Interfaces**
+(catégorie « interface » du registre + démos d'interface), **Sites & boutiques**, **Outils** (Logos, Variations,
+Sampler Presse, Sampler PLI), **Docs**, **Labs** (Tissu, Lave, Fluide). `PAGES` reste exporté par `src/pages-nav.ts`
+(API publique) et garde l'ordre des démos du mode présentation. Les cadres d'aperçu internes (`createur-apercu`,
+`createur-site`, `vitrine-apercu`, `studio-apercu`) sont dans `EXCLUES`, avec leur raison. `src/nav/taxonomie.test.ts`
+échoue si une page de `vite.config.ts` n'est ni rangée ni exclue, ou si une entrée pointe vers une page absente.
+
+**Menu Pages** (`src/nav/menu.ts`) : un panneau `popover` (Échap, clic extérieur) ; les sept groupes en onglets à
+gauche (en ligne sur téléphone), leurs sections à droite ; un lien « Ouvrir dans le Studio » (icône) à côté de chaque
+effet réglable ; en pied, Débogage et les réglages de visite (Animations, Mode présentation). Clavier : le focus va à
+l'onglet du groupe de la page ouverte ; ↑ ↓ (← → sur téléphone), Début, Fin entre les groupes ; → entre dans le
+groupe, ↑ ↓ d'un lien à l'autre, ← revient ; Tab tourne dans le panneau ; Échap rend le focus au bouton. Le contenu
+n'est construit qu'à la première ouverture. Couleurs propres (crème / encre), sombres si le système ou la palette le
+demande ; mouvement réduit : pas d'animation d'ouverture.
+
+**Palette de commandes** : **Ctrl+K** (⌘K sur Mac), ou le bouton « Rechercher » du menu ; sur toutes les pages qui
+montent `mountPagesNav()`, et aussi sur le Créateur, le Créateur de diaporama et les diaporamas (pas dans un cadre
+d'aperçu). Le module (`src/nav/palette.ts`) n'est chargé qu'à la première ouverture ; pages-nav ne porte que le
+déclencheur (`src/nav/declencheur.ts`). Une boîte modale avec une combobox ARIA (`role="combobox"`,
+`aria-activedescendant`, `aria-expanded`, liste `role="listbox"` en groupes, nombre de résultats annoncé). Elle
+cherche, sans accents ni casse et avec une faute tolérée (`src/nav/recherche.ts`), dans : les pages, les effets du
+registre, leurs attributs `data-*`, et des commandes (`src/nav/commandes.ts`) — basculer le thème clair / sombre de
+l'interface, réduire ou rallumer les animations, copier le lien, ouvrir dans le Studio (les effets réglables de la
+page), page précédente / suivante (ordre de `PAGES`), menu des pages, mode présentation, débogage. Requête vide :
+récents (8), commandes, pages, effets. ↑ ↓ (Pg préc. / Pg suiv. par cinq) choisissent, Entrée ouvre (Ctrl / ⌘ +
+Entrée : nouvel onglet), Échap vide le champ puis ferme ; le focus revient à l'élément d'origine.
+
+**Raccourcis** (registre `src/studio/raccourcis.ts`, `RESERVES`) : `Mod+K` (Ctrl+K, ⌘K) appartient à la palette — il
+joue aussi dans un champ de saisie (raccourci explicite, il n'écrit rien), aucune lettre seule n'ouvre la palette ;
+`Mod+Maj+K` (⌘⇧K, Ctrl+Maj+K) reste aux réglages Presse (`knobs.ts`) ; la forme canonique distingue Maj, les deux ne
+se gênent pas. Sur Mac, Ctrl+K reste au système (effacer jusqu'à la fin de la ligne). Ctrl+K est aussi « rechercher »
+dans Chrome et Firefox : la page le prend (la barre d'adresse garde Ctrl+L / Ctrl+E). Les touches tapées dans la
+palette ne vont pas aux raccourcis de la page (diaporama : E, F, P, B, L, Z, ?).
+
+**Thème de l'interface** : la palette pose `data-presse-theme="clair"` ou `"sombre"` sur `<html>` (`src/nav/theme.ts`,
+gardé) ; le menu, la palette, le Studio et le Sampler Presse le suivent (`src/studio/jetons.css`), sinon le système.
+Les pages de démonstration gardent leurs couleurs.
+
+**Stockage du navigateur** (`src/registre/stockage.ts`) : les clés passent par `lire` / `ecrire` / `lireJson` /
+`ecrireJson` (try/catch : navigation privée, stockage plein ou bloqué), au format `presse:<domaine>.<nom>@<version>`.
+Une clé renommée déclare ses `anciennes` : à la première lecture, l'ancienne valeur est recopiée dans la neuve, puis
+retirée — seulement si l'écriture a réussi, jamais par-dessus une neuve. Migrées en E6 : `couloir:attributs`,
+`logos:instantanes`, `presse-diapo-createur:{notes,bande,largeur,export}`, `presse:orbite:{courant,reglages}` ;
+nouvelles : `presse:nav.recents@1`, `presse:nav.theme@1`, `presse:coque.studio-effet@1`. Les clés lues par un script
+en tête de page, par l'export autonome des boutiques ou partagées par plusieurs modules sont gardées telles quelles et
+inventoriées (`src/registre/stockage-inventaire.ts`, avec la raison) ; `stockage.test.ts` échoue si une clé littérale
+du dépôt n'est pas inventoriée.
+
+**Adresses** : aucune page n'a été déplacée. `docs/urls-publiees.json` (`npm run urls:publiees`, qui ajoute sans
+jamais retirer) liste les adresses publiées ; `src/nav/urls.test.ts` échoue si l'une n'est plus servie (ni page, ni
+redirection déclarée dans `src/nav/redirections.ts`, écrite au build par `presse/build/redirections.ts` :
+`<meta http-equiv="refresh">`, `<link rel="canonical">`, lien visible, requête et fragment gardés).
+
+**Coque commune** (`src/studio/coque.ts`, plan pur `src/studio/coque-plan.ts`) : une mise en page à panneaux
+(découpes, tailles en px avec un enfant souple, onglets, panneaux repliés) en JSON versionné `{ "v": 1, … }`, bornée
+par l'application, gardée dans le navigateur ; poignées `role="separator"` au pointeur et au clavier (← → 16 px, Maj
+64 px, Début / Fin, Entrée replie, double-clic : défaut). Le Studio d'effet s'en sert (largeur de l'inspecteur, onglet
+HTML / JSON).
 
 ## Composants
 

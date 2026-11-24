@@ -13,6 +13,10 @@ import { creerFocusItinerant } from "../presse/comportements/focus-itinerant.ts"
 import { creerReordonner } from "../presse/comportements/reordonner.ts";
 import { creerPopup } from "../presse/comportements/popup.ts";
 import { creerPanoramiqueZoom, facteurMolette } from "../presse/comportements/panoramique-zoom.ts";
+import { ecouterPalette } from "../nav/declencheur.ts";
+
+// Ctrl+K / ⌘K : la palette de commandes (src/nav/), chargée à la demande — pas dans un cadre d'aperçu.
+if (window.top === window) ecouterPalette({ base: "./" });
 
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector<T>(s)!;
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => [...r.querySelectorAll<T>(s)];

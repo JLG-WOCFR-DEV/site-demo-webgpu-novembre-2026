@@ -1,7 +1,7 @@
 /** Studio — le registre des raccourcis (src/studio/raccourcis.ts). */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { afficher, canon, combinaisonDe, creerRaccourcis, estChamp, lireTouches, type EvenementClavier } from "./raccourcis.ts";
+import { afficher, canon, combinaisonDe, creerRaccourcis, estChamp, lireTouches, PROPRIETAIRE_PALETTE, type EvenementClavier } from "./raccourcis.ts";
 
 const ev = (key: string, o: Partial<EvenementClavier> = {}): EvenementClavier & { arrete: boolean } => {
   const e = { key, arrete: false, ...o } as EvenementClavier & { arrete: boolean };
@@ -51,7 +51,7 @@ test("raccourcis : conflits et combinaisons réservées refusés à l'ajout", ()
   assert.throws(() => r.ajouter({ id: "palette", touches: "Mod+K", libelle: "Palette", action: () => {} }), /réservée à palette de commandes/);
   assert.throws(() => r.ajouter({ id: "knobs", touches: "Mod+Maj+K", libelle: "Réglages", action: () => {} }), /réservée/);
   // Le propriétaire déclaré peut la prendre ; une autre portée peut réutiliser une combinaison.
-  creerRaccourcis({ mac: false, proprietaire: "palette de commandes (E6)" }).ajouter({ id: "palette", touches: "Mod+K", libelle: "Palette", action: () => {} });
+  creerRaccourcis({ mac: false, proprietaire: PROPRIETAIRE_PALETTE }).ajouter({ id: "palette", touches: "Mod+K", libelle: "Palette", action: () => {} });
   r.ajouter({ id: "a-dialogue", touches: "Maj+A", libelle: "A dans la fenêtre", portee: "dialogue", action: () => {} });
   r.retirer("a");
   r.ajouter({ id: "c", touches: "Maj+A", libelle: "C", action: () => {} });
@@ -91,4 +91,18 @@ test("raccourcis : écoute d'une cible et arrêt", () => {
   assert.equal(n, 1);
   fin();
   assert.equal(f, null);
+});
+
+test("raccourcis : palette Mod+K et réglages Mod+Maj+K ne se gênent pas ; Mod+K joue dans un champ", () => {
+  for (const mac of [false, true]) {
+    let p = 0;
+    const r = creerRaccourcis({ mac, proprietaire: PROPRIETAIRE_PALETTE });
+    r.ajouter({ id: "palette", touches: "Mod+K", libelle: "Palette", dansChamp: true, action: () => void p++ });
+    const mod = mac ? { metaKey: true } : { ctrlKey: true };
+    assert.equal(r.traiter(ev("k", { ...mod, target: CHAMP })), true, "Mod+K dans un champ");
+    assert.equal(r.traiter(ev("K", { ...mod, shiftKey: true })), false, "Mod+Maj+K reste aux réglages");
+    assert.equal(r.traiter(ev("k", { target: CHAMP })), false, "k seul s'écrit");
+    if (mac) assert.equal(r.traiter(ev("k", { ctrlKey: true, target: CHAMP })), false, "Ctrl+K sur Mac reste au système");
+    assert.equal(p, 1);
+  }
 });

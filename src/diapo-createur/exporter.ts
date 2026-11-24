@@ -14,6 +14,7 @@
 import { CHAMPS_EXPORT, lireOptions, type OptionsExport } from "../diapo-export/options.ts";
 import type { ApiExport } from "../diapo-export/page.ts";
 import { creerPopup } from "../presse/comportements/popup.ts";
+import { CLES, ecrireJson, lireJson } from "../registre/stockage.ts";
 
 type Contexte = {
   bouton: HTMLButtonElement;
@@ -23,15 +24,10 @@ type Contexte = {
   icone: (nom: string) => string;
 };
 
-const CLE = "presse-diapo-createur:export";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
 function lireReglages(): OptionsExport {
-  try {
-    return lireOptions(JSON.parse(localStorage.getItem(CLE) ?? "{}")).options;
-  } catch {
-    return lireOptions({}).options;
-  }
+  return lireOptions(lireJson<unknown>(CLES.diapoExport, {})).options;
 }
 
 export function monterExport(c: Contexte) {
@@ -79,11 +75,8 @@ export function monterExport(c: Contexte) {
       const k = b.dataset.reglage;
       const brut = { ...reglages, [k]: b.dataset.valeur ?? !reglages[k as keyof OptionsExport] };
       reglages = lireOptions(brut).options;
-      try {
-        localStorage.setItem(CLE, JSON.stringify(reglages));
-      } catch {
-        /* gardé pour cette session seulement */
-      }
+      // Refusé par le stockage : gardé pour cette visite seulement.
+      ecrireJson(CLES.diapoExport, reglages);
       const garde = panneau.querySelector(".dc-export-etat")?.textContent ?? "";
       dessiner();
       etat(garde);

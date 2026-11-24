@@ -1,9 +1,9 @@
 /* Studio — la page d'effet (src/studio/page-effet.ts) et son inspecteur (src/studio/inspecteur-plan.ts). Jetons :
    jetons.css. */
-/* ───────── Coque ───────── */
+/* ───────── Coque (src/studio/coque.ts : --coque-inspecteur, data-coque-replie, poignée) ───────── */
 .st {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 328px;
+  grid-template-columns: minmax(0, 1fr) var(--coque-inspecteur, 328px);
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "barre barre" "centre ins";
   height: 100vh;
@@ -188,10 +188,14 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 6px; border-radius: 5
 .st-vide { max-width: 680px; margin: 0 auto; padding: 64px 20px; font-size: 15px; line-height: 1.55; }
 .st-vide h1 { font: 650 28px/1.2 var(--st-texte-police); }
 .st-vide li { margin: 6px 0; }
+.st[data-coque-replie~="inspecteur"] { grid-template-columns: minmax(0, 1fr) 0; }
+.st[data-coque-replie~="inspecteur"] .st-inspecteur { display: none; }
 
 /* ───────── Étroit : une colonne, la page défile ───────── */
 @media (max-width: 960px) {
   .st { display: block; height: auto; overflow: visible; }
+  .st .coque-poignee { display: none; }
+  .st[data-coque-replie~="inspecteur"] .st-inspecteur { display: flex; }
   .st-barre { position: sticky; top: 0; z-index: 10; flex-wrap: wrap; padding: 6px 8px; }
   .st-barre-g { flex: 1 1 100%; flex-wrap: wrap; }
   .st-barre-c, .st-barre-d { flex: 0 1 auto; overflow-x: auto; scrollbar-width: none; }
