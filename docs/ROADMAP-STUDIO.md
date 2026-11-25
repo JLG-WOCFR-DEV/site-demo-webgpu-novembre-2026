@@ -245,7 +245,32 @@ Décisions :
     pas comptés ; puce et chemin HTML-in-Canvas jamais vus à « oui » (Chromium 141), statut Chrome 157 / 160 non
     tranché (chromestatus non lu) ; logo : seuls les 3 réglages « principaux » par matière (le reste dans logos.html) ;
     déchirure : la forme « coupe » (deux images) n'a pas de démo ; aperçu sans moteur Presse : la vague n'y est qu'un
-    fondu. Reste E7b : serveur MCP + CLI `presse`.
+    fondu. E7b (serveur MCP + CLI `presse`) : fait, ci-dessous.
+- **E7b CLI `presse` et serveur MCP.** **Fait (2026-11-25).**
+  - Cœur commun `tools/presse/coeur.ts` (pur : lecture du dépôt seulement) : `listerEffets`, `decrireEffet`,
+    `chercher` (la recherche floue de la palette), `parametresEffet`, `valider` (tools/valider), `courbes` /
+    `evaluerCourbe`, `budget`, `auditMouvement` (collecte de l'audit déplacée dans `mouvement-statique.ts` :
+    `auditerMouvement`, `PRIORITES_MOUVEMENT` ; `npm run mouvement:audit` rend un rapport identique octet pour octet),
+    `ajouterEffetAPage` (démo de la fiche réglée par `src/studio/etat.ts`, insérée dans `main`, ou attributs posés
+    `--sur` un élément ; seules les balises touchées changent ; diff unifié relu par `patch(1)` ; constats introduits),
+    `confiner`, `verifierAvantEcriture` (empreinte SHA-256). Aucune documentation recopiée.
+  - CLI `tools/presse/cli.mjs` (bin `presse`, `npm run -s presse -- …`) : `effets`, `effet`, `chercher`, `parametres`,
+    `valider`, `courbes`, `budget`, `audit`, `ajouter` (aperçu ; `--ecrire` ; refus si erreur introduite, `--forcer`),
+    `installer-skill` ; `--json` partout ; codes 0 / 1 / 2 / 3 / 4.
+  - Serveur MCP `tools/presse/mcp.mjs` : JSON-RPC 2.0 sur stdio écrit à la main (182 lignes, outils compris, zéro
+    dépendance), protocoles 2025-06-18 / 2025-03-26 / 2024-11-05 ; 8 outils en lecture + `ajouter_preparer` (diff +
+    jeton à usage unique, 5 min) / `ajouter_confirmer` ; schémas stricts contrôlés côté serveur (-32602) ;
+    ressources : skill, catalogue (calculé par `presse/build/catalog.ts`), registre. Mesuré : `valider` des 41 pages
+    en 2,1 s, audit complet 0,6 s.
+  - Skill installable : `presse installer-skill [--cible d]` (copie + `.mcp.json` complété, autres serveurs gardés) ;
+    `claude mcp add presse -- node tools/presse/mcp.mjs` documenté (PRESSE.md « CLI et MCP », skill presse-page).
+  - Tests (`tools/presse/*.test.ts`, ajoutés à `npm test`) : cœur 16, CLI 7 (lancée), MCP 10 (serveur lancé : poignée
+    de main, liste, chaque outil en lecture, ressources, préparer → confirmer sur une copie temporaire, jeton rejoué /
+    expiré / page changée, chemins hors dépôt, arguments invalides). Aucune écriture dans le dépôt.
+  - **Limites** : `ajouter` insère la démo de la fiche telle quelle (structure et images d'exemple, à adapter) ou pose
+    les attributs principaux ; il n'ajoute pas l'`import` d'un effet `manuel` sur une page `data-presse-manuel` (il le
+    signale et refuse d'écrire) ; pas de retrait d'effet ; budget lu sur le dernier build (pas de build à la demande) ;
+    le serveur ne gère ni annulation ni notifications de progression ; un lot JSON-RPC reçoit des réponses séparées.
 - **M1 Mouvement : jetons et lint.** **Fait (2026-11-25).** Trois courbes `ui-sortie`, `ui-ecran`, `tiroir` (famille
   « interface » de `courbes.ts`, éditeur de courbe, validateur) et `src/presse/jetons-mouvement.css`
   (`--presse-ease-sortie|ecran|tiroir`) ; lint statique `tools/valider/mouvement-statique.ts` branché à `npm run valider`
@@ -273,7 +298,7 @@ Retenu, par priorité :
 2. **Galerie de stories = Sampler Presse** (fait, E4) + **mode inspecteur** activable : surligner les éléments armés, lire leurs `data-*` en direct (fait, E7a).
 3. **Coque à panneaux sérialisable** : mise en page (splits, onglets, tailles) en JSON versionné, comme `#v=` ; base de la coque commune des trois éditeurs (E6).
 4. **Tests UI headless clavier/souris + a11y dans la couche comportement** : Playwright sur le moteur de schéma (Tab, flèches, Échap, focus visible), en plus de `node:test` (E4/E6).
-5. **Distribution agent** : serveur MCP + CLI `presse` branchés sur le registre (`effets`, `valider`, `ajouter`, `parametres`), skill installable, écritures confirmées en deux temps (lot E8, faible coût : le registre s'importe depuis Node).
+5. **Distribution agent** : serveur MCP + CLI `presse` branchés sur le registre (`effets`, `valider`, `ajouter`, `parametres`), skill installable, écritures confirmées en deux temps (fait en E7b, §8).
 6. **Recettes exécutables** (site éditorial, diaporama, boutique) vérifiées par `npm run valider` en CI pour ne pas dériver de PRESSE.md.
 
 Écarté : runtime d'extensions JS à capacités accordées, perf 200 K lignes, i18n (site en français).

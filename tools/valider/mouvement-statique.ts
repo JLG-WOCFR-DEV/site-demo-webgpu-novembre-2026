@@ -706,3 +706,50 @@ export function lintPage(fichier: string, racine: string, html = fs.readFileSync
 
 /** Un constat, en une ligne lisible (validateur). */
 export const texteConstat = (c: ConstatMouvement) => `[${c.regle}] ${c.fichier}:${c.ligne} ${c.ou} — ${c.extrait} : ${c.message}`;
+
+/* ───────────────────────── L'audit du dépôt (npm run mouvement:audit, CLI et MCP presse) ───────────────────────── */
+
+/** Ordre de priorité : ce qui coûte (mise en page, tout animer) ou se sent (lenteur, clavier) d'abord. */
+export const PRIORITES_MOUVEMENT: Readonly<Record<RegleMouvement, 1 | 2 | 3>> = {
+  "propriete-animee": 1,
+  "transition-all": 1,
+  "clavier-anime": 1,
+  "ease-in": 2,
+  "scale-zero": 2,
+  "origine-centre": 2,
+  "keyframes-rapide": 2,
+  "duree-longue": 3,
+  "survol-sans-hover": 3,
+  "ignore-sans-raison": 2,
+  "ignore-inconnue": 2,
+};
+
+export type ConstatAudit = ConstatMouvement & { pages: Set<string> };
+
+/**
+ * Les constats du lint sur `pages` (chemins relatifs à la racine) : les sources propres de chaque page, puis, une fois
+ * chacun, les feuilles et modules partagés qu'elles chargent ; chaque constat compté une fois, avec les pages qui le
+ * chargent ; triés par priorité, fichier, ligne. Lecture seule.
+ */
+export function auditerMouvement(racine: string, pages: readonly string[]): ConstatAudit[] {
+  const constats = new Map<string, ConstatAudit>();
+  const parFichier = new Map<string, Set<string>>();
+  const ajouter = (c: ConstatMouvement, page: string) => {
+    const k = `${c.regle}|${c.fichier}|${c.ligne}|${c.ou}|${c.extrait}`;
+    const v = constats.get(k) ?? { ...c, pages: new Set<string>() };
+    v.pages.add(page);
+    constats.set(k, v);
+  };
+  for (const p of pages) {
+    const abs = path.join(racine, p);
+    if (!fs.existsSync(abs)) continue;
+    const r = lintPage(abs, racine);
+    for (const c of r.constats) ajouter(c, p);
+    for (const f of [...r.sources.feuilles, ...r.sources.scripts]) if (!r.sources.propres.includes(f)) parFichier.set(f, new Set([...(parFichier.get(f) ?? []), p]));
+  }
+  for (const [f, ps] of parFichier) {
+    const t = fs.readFileSync(path.join(racine, f), "utf8");
+    for (const c of /\.css$/.test(f) ? lintCss(t, f) : lintJs(t, f)) for (const p of ps) ajouter(c, p);
+  }
+  return [...constats.values()].sort((a, b) => (PRIORITES_MOUVEMENT[a.regle] ?? 9) - (PRIORITES_MOUVEMENT[b.regle] ?? 9) || a.fichier.localeCompare(b.fichier) || a.ligne - b.ligne);
+}

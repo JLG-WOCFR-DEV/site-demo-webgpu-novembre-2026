@@ -11,27 +11,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { lintCss, lintJs, lintPage, REGLES_MOUVEMENT } from "./valider/mouvement-statique.ts";
+import { auditerMouvement, PRIORITES_MOUVEMENT, REGLES_MOUVEMENT } from "./valider/mouvement-statique.ts";
 import { lirePagesVite } from "./valider/pages-vite.ts";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = new Set(process.argv.slice(2));
 const pages = lirePagesVite(fs.readFileSync(path.join(racine, "vite.config.ts"), "utf8"));
 
-/** Ordre de priorité : ce qui coûte (mise en page, tout animer) ou se sent (lenteur, clavier) d'abord. */
-const PRIORITE = {
-  "propriete-animee": 1,
-  "transition-all": 1,
-  "clavier-anime": 1,
-  "ease-in": 2,
-  "scale-zero": 2,
-  "origine-centre": 2,
-  "keyframes-rapide": 2,
-  "duree-longue": 3,
-  "survol-sans-hover": 3,
-  "ignore-sans-raison": 2,
-  "ignore-inconnue": 2,
-};
+/** Ordre de priorité : tools/valider/mouvement-statique.ts (`PRIORITES_MOUVEMENT`), partagé avec la CLI et le MCP presse. */
+const PRIORITE = PRIORITES_MOUVEMENT;
 
 /** Le plan de chaque règle : autosuffisant (un agent ou une personne peut l'appliquer sans lire le reste). */
 const PLANS = {
@@ -107,28 +95,8 @@ const PLANS = {
   "ignore-inconnue": { titre: "Corriger le nom de la règle ignorée", pourquoi: "Une faute de frappe n'ignore rien.", comment: [`Règles : ${Object.keys(REGLES_MOUVEMENT).filter((r) => !r.startsWith("ignore-")).join(", ")}.`], avant: "", apres: "" },
 };
 
-/* ── 1. Les pages : constats propres, et qui charge quoi ── */
-const constats = new Map(); // clé → constat + pages
-const parFichier = new Map(); // fichier partagé → pages
-const ajouter = (c, page) => {
-  const k = `${c.regle}|${c.fichier}|${c.ligne}|${c.ou}|${c.extrait}`;
-  const v = constats.get(k) ?? { ...c, pages: new Set() };
-  v.pages.add(page);
-  constats.set(k, v);
-};
-for (const p of pages) {
-  const abs = path.join(racine, p);
-  if (!fs.existsSync(abs)) continue;
-  const r = lintPage(abs, racine);
-  for (const c of r.constats) ajouter(c, p);
-  for (const f of [...r.sources.feuilles, ...r.sources.scripts]) if (!r.sources.propres.includes(f)) parFichier.set(f, new Set([...(parFichier.get(f) ?? []), p]));
-}
-/* ── 2. Les fichiers partagés, une fois chacun ── */
-for (const [f, ps] of parFichier) {
-  const t = fs.readFileSync(path.join(racine, f), "utf8");
-  for (const c of /\.css$/.test(f) ? lintCss(t, f) : lintJs(t, f)) for (const p of ps) ajouter(c, p);
-}
-const tous = [...constats.values()].sort((a, b) => (PRIORITE[a.regle] ?? 9) - (PRIORITE[b.regle] ?? 9) || a.fichier.localeCompare(b.fichier) || a.ligne - b.ligne);
+/* ── 1 et 2. Les pages, puis les fichiers partagés une fois chacun (tools/valider/mouvement-statique.ts) ── */
+const tous = auditerMouvement(racine, pages);
 
 if (args.has("--json")) {
   console.log(JSON.stringify(tous.map((c) => ({ ...c, pages: [...c.pages] })), null, 2));

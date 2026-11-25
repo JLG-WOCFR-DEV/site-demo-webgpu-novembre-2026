@@ -22,6 +22,7 @@ erreur.
 | Réglages d'un effet (Studio) | `src/registre/parametres/<id>.ts` (fiche : paramètres typés + démo), champ `parametres` du manifeste | `studio-effet.html?effet=<id>` : régler à l'œil, puis « copier les attributs » (Maj+A) ; tous les effets du registre (I : inspecteur d'éléments) |
 | Coût d'un effet, budget d'une page | `src/registre/couts.json` (`npm run mesurer:effets` après build), `tools/valider/budgets.json` | `npm run budgets` ; avertissement `budget` de `npm run valider` (250 ko gzip par défaut) |
 | HTML-in-Canvas | `src/html-in-canvas.ts` (seul module qui touche à l'API) | `detecter()` : oui / repli / non ; jamais de test à la main |
+| Tout cela, sans lire la doc | CLI `presse` et serveur MCP (`tools/presse/`, cœur `coeur.ts` sur le registre ; PRESSE.md, « CLI et MCP ») | `npm run -s presse -- effet <id>` / `parametres <id>` / `chercher <texte>` / `valider <page>` (`--json`) ; ajouter un effet : `presse ajouter <page> <effet> --option cle=valeur` montre le diff, `--ecrire` écrit (refusé si l'ajout introduit une erreur) ; en MCP : `ajouter_preparer` → montrer le diff → `ajouter_confirmer(jeton)` |
 
 ## Procédure
 
@@ -48,7 +49,10 @@ erreur.
    `src/registre/parametres/<id>.ts` + `parametres: () => import("./parametres/<id>.ts")` et `gpu: "aucun"|"léger"|"moyen"|"lourd"`
    dans son manifeste, `npm run build && npm run mesurer:effets`, puis `npm test` (`parametres.test.ts` : attributs
    documentés, démo aux défauts, démo validée, `rendu` pour un effet GPU, `minimale` si moins de quatre réglages).
-7. **Navigation et mémoire** : la page apparaît d'elle-même dans le menu Pages et la palette Ctrl+K (⌘K) par son
+7. **Agent sans contexte** : `presse installer-skill --cible <projet>` copie ce skill et écrit un `.mcp.json` (serveur
+   `presse`) ; ou `claude mcp add presse -- node tools/presse/mcp.mjs`. Les outils MCP lisent le registre ; une écriture
+   se fait toujours en deux temps (préparer → diff montré → confirmer avec le jeton, valable 5 min, une fois).
+8. **Navigation et mémoire** : la page apparaît d'elle-même dans le menu Pages et la palette Ctrl+K (⌘K) par son
    `groupe` ; ne pas prendre Ctrl+K / ⌘K ni ⌘⇧K dans un script de page (réservés, `src/studio/raccourcis.ts`). Une
    préférence gardée dans le navigateur passe par `src/registre/stockage.ts` (une clé `cle({ domaine, nom })` dans
    `CLES`, son rôle dans `stockage-inventaire.ts`) : pas de `localStorage` direct (`stockage.test.ts` le refuse).
@@ -206,6 +210,7 @@ ralenti » → `?presse-ralenti=4`.
 
 ```sh
 npm run valider -- mapage.html          # 0 erreur ; lire chaque avertissement (--json pour une sortie machine)
+npm run -s presse -- ajouter mapage.html forme --option quand=entree   # aperçu (diff + constats introduits) ; --ecrire
 npx tsc --noEmit -p .                   # types
 npm test                                # tests node:test (dont tools/valider : parseur, fixtures, accord doc ⇄ code)
 npx vite build                          # la construction (balises <x-…> validées, images, llms.txt)

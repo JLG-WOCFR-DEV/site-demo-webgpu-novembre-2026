@@ -191,6 +191,51 @@ nombres en notation JS, durées dans l'unité du paramètre sans suffixe, interr
 clé inconnue, une valeur illisible ou une autre version sont dites, jamais bloquantes. JSON de réglages :
 `{ "effet": "goo", "v": 1, "reglages": { "<cle>": valeur | null } }` (`null` : auto).
 
+## CLI et MCP : piloter Presse sans lire la doc
+
+Une CLI `presse` et un serveur MCP (stdio) lisent le registre et les outils du dépôt par un cœur commun,
+`tools/presse/coeur.ts` (pur : il ne fait que lire ; aucune documentation recopiée — registre, fiches, catalogue dérivé
+de ce fichier, validateur, budget, lint du mouvement, courbes). Node ≥ 22.18 (types effacés sans drapeau).
+
+**CLI** (`tools/presse/cli.mjs`, bin `presse` ; `npm run -s presse -- <commande>`, `-s` pour un `--json` sans
+l'en-tête de npm) — `--json` sur toutes les commandes, `--aide` pour l'aide :
+
+| Commande | Ce qu'elle rend |
+|---|---|
+| `effets [--categorie c]` | les effets du registre : id, nom, catégorie, rendu, statut, coût GPU / JS |
+| `effet <id>` | armement, sélecteur, module, attributs documentés et leurs valeurs, paramètres, démo |
+| `chercher <texte…>` | recherche floue (celle de la palette Ctrl+K) : effets, attributs, courbes |
+| `parametres <id>` | la fiche Studio : clé, attribut écrit, genre, défaut, bornes, options |
+| `valider [page]` | le validateur (toutes les pages de `vite.config.ts` sans page) ; `--strict`, `--sans-mouvement`, `--sans-budget` |
+| `courbes [<courbe> [t…]]` | les préréglages ; une courbe (nom, `cubic-bezier()`, `steps()`, `linear()`) évaluée en t |
+| `budget [page]` | le budget JS gzip (dernier build) ; `--strict` |
+| `audit [page]` | le lint statique du mouvement (une page, ou tout le dépôt comme `npm run mouvement:audit`) |
+| `ajouter <page> <effet>` | **aperçu** (diff unifié) de l'ajout ; `--option cle=valeur` (clé de la fiche ou attribut), `--sur <sélecteur>` (poser sur un élément existant ; sinon la démo de la fiche est insérée à la fin de `--dans`, défaut `main`), `--css` (la feuille de la démo dans `<head>`), **`--ecrire`** pour écrire |
+| `installer-skill [--cible d]` | copie `.claude/skills/presse-page/` dans `d` et y écrit (ou complète) `.mcp.json` |
+
+`ajouter` passe chaque réglage par le schéma (valeur bornée, arrondie : dit dans « Corrections »), valide la page avant
+et après, et liste les constats que l'ajout fait naître ; il **refuse d'écrire** si l'ajout introduit une erreur
+(typiquement : effet `manuel` sur une page `data-presse-manuel` qui ne l'importe pas) — `--forcer` pour passer outre,
+en terminal seulement. Juste avant d'écrire, la page doit être identique à celle de l'aperçu (empreinte SHA-256).
+Codes de sortie : 0 succès · 1 constat (erreur de validation, dépassement avec `--strict`, ajout fautif) · 2 refus
+(commande, option, effet ou réglage inconnu, chemin) · 3 introuvable (page, build) · 4 erreur interne.
+
+**Chemins** (les deux faces) : relatifs à la racine sans segment `..`, ou absolus dans le dépôt ; une page HTML (ou une
+feuille CSS) à la racine ou sous `src/` ; ni dossier caché, ni `node_modules`, `dist`, `public`, ni lien symbolique qui
+sort du dépôt.
+
+**MCP** (`tools/presse/mcp.mjs`, JSON-RPC 2.0 écrit à la main, aucune dépendance) :
+`claude mcp add presse -- node tools/presse/mcp.mjs` (ou `presse installer-skill`, qui écrit le `.mcp.json`).
+Outils en lecture : `effets`, `effet`, `chercher`, `parametres`, `valider`, `courbes`, `budget`, `audit_mouvement`.
+Écriture en **deux étapes** : `ajouter_preparer` (mêmes options qu'`ajouter`, `reglages` en objet) rend le diff, les
+constats introduits et un **jeton à usage unique valable 5 minutes** (aucun jeton si l'ajout introduit une erreur) ;
+`ajouter_confirmer(jeton)` écrit — refusé si le jeton est inconnu, déjà employé, expiré, ou si la page a changé depuis.
+Schémas d'entrée stricts (`additionalProperties: false`, identifiants d'effets en énumération tirée du registre) ;
+arguments invalides : erreur JSON-RPC -32602. Ressources : `presse://skill/presse-page` (le skill),
+`presse://catalogue` (`presse-catalog.json`, calculé comme au build par `presse/build/catalog.ts`), `presse://registre`.
+`--racine <dossier>` (les deux faces) : une autre copie du dépôt (tests) ; `PRESSE_MCP_JETON_MS` : durée d'un jeton
+(tests). Tests : `tools/presse/*.test.ts` (cœur, CLI lancée, serveur lancé sur une copie temporaire du dépôt).
+
 ## Mouvement : le Gate, les valeurs, le vocabulaire
 
 D'après les skills d'Emil Kowalski (relevé : `docs/REFERENCES-MOUVEMENT.md`). Ce sont des **défauts d'auteur, pas des

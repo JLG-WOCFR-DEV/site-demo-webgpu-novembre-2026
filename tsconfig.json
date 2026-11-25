@@ -13,5 +13,5 @@
     "resolveJsonModule": true,
     "types": ["vite/client", "@webgpu/types", "node"]
   },
-  "include": ["src", "presse", "vite.config.ts"]
+  "include": ["src", "presse", "tools/presse", "vite.config.ts"]
 }
