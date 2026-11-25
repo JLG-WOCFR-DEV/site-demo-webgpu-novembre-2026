@@ -246,6 +246,24 @@ Décisions :
     tranché (chromestatus non lu) ; logo : seuls les 3 réglages « principaux » par matière (le reste dans logos.html) ;
     déchirure : la forme « coupe » (deux images) n'a pas de démo ; aperçu sans moteur Presse : la vague n'y est qu'un
     fondu. Reste E7b : serveur MCP + CLI `presse`.
+- **M1 Mouvement : jetons et lint.** **Fait (2026-11-25).** Trois courbes `ui-sortie`, `ui-ecran`, `tiroir` (famille
+  « interface » de `courbes.ts`, éditeur de courbe, validateur) et `src/presse/jetons-mouvement.css`
+  (`--presse-ease-sortie|ecran|tiroir`) ; lint statique `tools/valider/mouvement-statique.ts` branché à `npm run valider`
+  (avertissements « mouvement », `--sans-mouvement`, `presse-lint-ignore: <regle> — <raison>`) ; `npm run
+  mouvement:audit` → `docs/audit-mouvement.md` (lecture seule) ; politique mouvement réduit relevée dans PRESSE.md et
+  corrigée au plus étroit (entrées `data-anim` : fondu d'opacité 0,2 s au lieu d'un saut) ; Gate, durées / courbes et
+  glossaire dans PRESSE.md et le skill `presse-page` ; écarts de cascade notés (cinétique 120 ms par ligne, tracé
+  90 ms, diaporama 22 ms par lettre). Limites : durée écrite en `var()` non jugée ; `clavier-anime` heuristique ; CSS
+  écrit dans des chaînes TS (menu, palette) non lu ; aucune correction de masse (226 constats dans l'audit).
+- **M2 Module `douceur`.** **Fait, statut « essai » (2026-11-25).** `src/presse/douceur.ts` + `douceur.css` (chargés à
+  la demande, 5,0 ko gzip de JS mesurés, 1,6 ko gzip de CSS), registre (Interface, DOM, GPU aucun, `manuel`), fiche
+  Studio, commande de palette « Douceur : aucune / subtile / expressive » (`presse:douceur.niveau@1`, posé sans flash
+  par le script de tête), puce dans le Studio d'effet, essai sur `vitrine-maison.html`. Mesuré dans Chromium : appui
+  160 ms, entrée 220 ms / sortie 154 ms, survol 150 ms, cascade +50 ms par rang, maintien 2 000 ms linear, onglets 250 ms,
+  flou 200 ms, révélation 640 ms ; mouvement réduit : opacité seule. Limites : un élément déjà animé par la page est
+  laissé (`data-douceur-cede` : 19 sur la Vitrine) ; la copie des onglets double le texte pour la recherche dans la
+  page ; démo du Studio avec trois `onclick` ; pas encore d'adoption au-delà de la page d'essai ; M3 (opportunités dans
+  le Studio) et M4 (lectures complémentaires) restent.
 - Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre (fait, E7a), budget JS par page (fait, E7a), a11y (priorité mouvement réduit vs `data-diapo-motion`).
 
 ## 9. Enseignements de référence (GPUI Kit / gpui-component, skills Longbridge — 2026-11-23)

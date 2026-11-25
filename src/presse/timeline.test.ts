@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { advance, bezier, EASES, easeOf, manualClock, parseAnim, PRESETS, ressort, setReduced, Timeline } from "./timeline.ts";
+import { advance, bezier, DUREE_REDUITE, EASES, easeOf, manualClock, parseAnim, pistesReduites, PRESETS, ressort, setReduced, Timeline } from "./timeline.ts";
 
 manualClock(true);
 
@@ -147,4 +147,31 @@ test("easeOf : noms, préréglages et écritures CSS (data-anim-ease)", () => {
   const a = el();
   new Timeline().fromTo(a, { x: 0 }, { x: 100 }, { dur: 1, ease: "steps(4, jump-end)" }).seek(0.6);
   assert.equal(num(a.props.translate), 50);
+});
+
+test("mouvement réduit : une entrée data-anim garde son fondu (opacité), perd déplacements, échelles et flous", () => {
+  // Les motifs nommés : ceux qui ont une opacité la gardent, seule.
+  const [f, t] = parseAnim(PRESETS.monte!);
+  assert.deepEqual(pistesReduites(f, t), [{ opacity: "0" }, { opacity: "1" }]);
+  assert.deepEqual(pistesReduites(...parseAnim(PRESETS.zoom!)), [{ opacity: "0" }, { opacity: "1" }]);
+  assert.deepEqual(pistesReduites(...parseAnim(PRESETS.flou!)), [{ opacity: "0" }, { opacity: "1" }]);
+  // Sans opacité (rideau, masque) : rien à garder, l'entrée saute à son état final comme avant.
+  assert.equal(pistesReduites(...parseAnim(PRESETS.rideau!)), null);
+  assert.equal(pistesReduites(...parseAnim(PRESETS.masque!)), null);
+  // Une timeline marquée fonduReduit se joue sous mouvement réduit ; les autres sautent toujours à la fin.
+  setReduced(true);
+  const a = el();
+  const tl = new Timeline().fromTo(a, { opacity: 0 }, { opacity: 1 }, { dur: DUREE_REDUITE, ease: "lineaire" });
+  tl.fonduReduit = true;
+  tl.seek(0).play();
+  advance(DUREE_REDUITE / 2);
+  const mi = num(a.props.opacity);
+  assert.ok(mi > 0.3 && mi < 0.7, `à mi-course : ${mi}`);
+  assert.equal(a.props.translate, undefined, "aucun déplacement écrit");
+  advance(DUREE_REDUITE);
+  assert.equal(num(a.props.opacity), 1);
+  const b = el();
+  new Timeline().fromTo(b, { opacity: 0, y: "1em" }, { opacity: 1, y: "0em" }, { dur: 2 }).play();
+  assert.equal(num(b.props.opacity), 1, "sans marque : état final, d'un coup");
+  setReduced(null);
 });

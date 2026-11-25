@@ -206,6 +206,11 @@ export class Timeline implements Ticking {
   private resolveDone: (() => void) | null = null;
   /** Appelé à chaque image où le temps a bougé. */
   onUpdate: ((tl: Timeline) => void) | null = null;
+  /**
+   * Mouvement réduit : vrai, la timeline se joue quand même (elle ne porte plus que des pistes d'opacité, courtes :
+   * `pistesReduites`) ; faux (défaut), elle saute à son état final. Posé par `data-anim` pour les entrées.
+   */
+  fonduReduit = false;
 
   /** Où poser une piste : nombre (absolu), "<" (début de la précédente), ">" (sa fin, par défaut), "+=0.2", "-=0.1", "<0.1", une étiquette, "étiquette+=0.2". */
   private at(pos: number | string | undefined) {
@@ -310,7 +315,7 @@ export class Timeline implements Ticking {
   }
   private go(dir: 1 | -1) {
     this.rate = dir;
-    if (reducedMotion()) {
+    if (reducedMotion() && !this.fonduReduit) {
       this.playing = false;
       this.seek(dir > 0 ? this.duration : 0);
       return this;
@@ -437,6 +442,19 @@ export const PRESETS: Record<string, string> = {
 };
 export const TRIGGERS = ["entree", "defilement", "survol", "appui", "chargement"] as const;
 
+/** Durée (s) d'une entrée `data-anim` en mouvement réduit : un fondu court. */
+export const DUREE_REDUITE = 0.2;
+
+/**
+ * Mouvement réduit = réduire, pas supprimer (docs/REFERENCES-MOUVEMENT.md §3) : d'une entrée, on garde l'opacité
+ * (« apparaître » reste lisible) et on retire les déplacements, échelles, rotations, flous et découpes. `null` si
+ * l'entrée n'a pas de piste d'opacité : elle saute alors à son état final, comme avant.
+ */
+export function pistesReduites(from: Vars, to: Vars): [Vars, Vars] | null {
+  if (from.opacity === undefined || to.opacity === undefined) return null;
+  return [{ opacity: from.opacity }, { opacity: to.opacity }];
+}
+
 /** « y 1.1em 0; opacity 0 1 » → [de, vers]. */
 export function parseAnim(spec: string): [Vars, Vars] {
   const src = PRESETS[spec.trim()] ?? spec;
@@ -493,14 +511,24 @@ function bind(el: HTMLElement) {
     return;
   }
   const trigger = (TRIGGERS as readonly string[]).includes(d.animTrigger ?? "") ? d.animTrigger! : "entree";
-  const stagger = Number(d.animStagger ?? 0);
+  let stagger = Number(d.animStagger ?? 0);
   const targets = stagger > 0 ? ([...el.children] as HTMLElement[]) : [el];
+  let dur = d.animDur ? Number(d.animDur) : trigger === "survol" || trigger === "appui" ? DUR[2] / 1000 : DUR[3] / 1000;
+  // Mouvement réduit, à l'entrée et au chargement : un fondu court (l'opacité seule), plutôt qu'une apparition sèche.
+  // Survol, appui, défilement : inchangés (état final posé, ou suivi direct du défilement).
+  const reduites = reducedMotion() && (trigger === "entree" || trigger === "chargement") ? pistesReduites(from, to) : null;
+  if (reduites) {
+    [from, to] = reduites;
+    dur = Math.min(dur, DUREE_REDUITE);
+    stagger = Math.min(stagger, 0.03);
+  }
   const tl = new Timeline().fromTo(targets, from, to, {
-    dur: d.animDur ? Number(d.animDur) : trigger === "survol" || trigger === "appui" ? DUR[2] / 1000 : DUR[3] / 1000,
+    dur,
     ease: d.animEase ?? (trigger === "defilement" ? "lineaire" : "out"),
     stagger,
-    at: Number(d.animDelay ?? 0),
+    at: reduites ? 0 : Number(d.animDelay ?? 0),
   });
+  tl.fonduReduit = !!reduites;
   const b: Bound = { el, tl, trigger, repeat: d.animRepeat !== undefined, smooth: Number(d.animSmooth ?? 0.08), p: 0, visible: false };
   bound.set(el, b);
   tl.seek(0);

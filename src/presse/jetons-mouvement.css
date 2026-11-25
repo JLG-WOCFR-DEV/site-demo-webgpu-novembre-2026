@@ -1,0 +1,17 @@
+/* Presse — jetons de mouvement d'interface, en variables CSS (réutilisables par n'importe quelle feuille).
+ *
+ * Les trois courbes d'Emil Kowalski (docs/REFERENCES-MOUVEMENT.md §3), préréglages `ui-sortie`, `ui-ecran`, `tiroir`
+ * de src/registre/mouvement/courbes.ts (famille « interface ») : mêmes nombres, vérifiés par courbes.test.ts. Ce sont
+ * des défauts d'auteur, pas des normes. Les courbes maison (`--ease-out`, `--ease-in-out`, posées par
+ * src/presse/tokens.ts) ne changent pas : elles tiennent les références visuelles.
+ *
+ *   --presse-ease-sortie   entrées et sorties d'interface (appui, popover, toast) : la courbe par défaut ;
+ *   --presse-ease-ecran    un élément qui se déplace à l'écran (indicateur d'onglet, réordonnancement) ;
+ *   --presse-ease-tiroir   tiroir, feuille qui monte du bas (à la iOS).
+ *
+ * Importée par src/presse/douceur.css ; une page peut la lier seule. */
+:root {
+  --presse-ease-sortie: cubic-bezier(0.23, 1, 0.32, 1);
+  --presse-ease-ecran: cubic-bezier(0.77, 0, 0.175, 1);
+  --presse-ease-tiroir: cubic-bezier(0.32, 0.72, 0, 1);
+}

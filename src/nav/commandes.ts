@@ -8,7 +8,7 @@
  *   await c.executer("theme");
  */
 import { lireTouches } from "../studio/raccourcis.ts";
-import { CLES, ecrireJson, lireJson, type Magasin } from "../registre/stockage.ts";
+import { CLES, ecrire, ecrireJson, lire, lireJson, retirer, type Magasin } from "../registre/stockage.ts";
 
 export type Commande = {
   id: string;
@@ -76,4 +76,63 @@ export function noterRecent(id: string, m?: Magasin | null): string[] {
   const l = [id, ...lireRecents(m).filter((x) => x !== id)].slice(0, MAX_RECENTS);
   ecrireJson(CLES.navRecents, l, m);
   return l;
+}
+
+/* ───────────────────────── Douceur (réglage global) ───────────────────────── */
+
+/** Le niveau de douceur choisi par le visiteur (src/presse/douceur.ts, `CHOIX`) ; `null` : celui des pages. */
+export const NIVEAUX_DOUCEUR = ["aucune", "subtil", "expressif"] as const;
+export type NiveauDouceur = (typeof NIVEAUX_DOUCEUR)[number];
+export const LIBELLES_DOUCEUR: Readonly<Record<NiveauDouceur, string>> = { aucune: "aucune", subtil: "subtile", expressif: "expressive" };
+
+/** Ce qu'il faut de <html> (tests : un objet). */
+export type RacineDouceur = { setAttribute(n: string, v: string): void; removeAttribute(n: string): void };
+
+export function douceurChoisie(m?: Magasin | null): NiveauDouceur | null {
+  const v = lire(CLES.douceurNiveau, m);
+  return (NIVEAUX_DOUCEUR as readonly string[]).includes(v ?? "") ? (v as NiveauDouceur) : null;
+}
+
+/**
+ * Choisit le niveau (null : revenir à celui des pages) : gardé (`presse:douceur.niveau@1`, relu par le script de tête
+ * de chaque page), posé sur <html data-douceur-defaut>, annoncé au module déjà chargé (`douceur:niveau`). Rend vrai
+ * si le choix est gardé (faux : stockage refusé, il vaut pour cette page seulement).
+ */
+export function choisirDouceur(n: NiveauDouceur | null, racine: RacineDouceur | null = typeof document === "undefined" ? null : document.documentElement, m?: Magasin | null): boolean {
+  const garde = n === null ? (retirer(CLES.douceurNiveau, m), true) : ecrire(CLES.douceurNiveau, n, m);
+  if (racine) n === null ? racine.removeAttribute("data-douceur-defaut") : racine.setAttribute("data-douceur-defaut", n);
+  if (typeof dispatchEvent === "function" && typeof CustomEvent === "function") dispatchEvent(new CustomEvent("douceur:niveau", { detail: n }));
+  return garde;
+}
+
+/** Les commandes « Douceur : aucune / subtile / expressive » et « comme les pages », pour la palette. */
+export function commandesDouceur(o: { dire: (t: string) => void; racine?: RacineDouceur | null; m?: Magasin | null }): Commande[] {
+  const etat = () => {
+    const c = douceurChoisie(o.m);
+    return c ? `Choisie : ${LIBELLES_DOUCEUR[c]}` : "Comme les pages (aucun choix)";
+  };
+  const choisir = (n: NiveauDouceur | null) => () => {
+    const garde = choisirDouceur(n, o.racine, o.m);
+    o.dire(`Douceur ${n ? LIBELLES_DOUCEUR[n] : "comme les pages"}${garde ? "." : " (pour cette page : le navigateur refuse de garder le choix)."}`);
+  };
+  const TEXTE: Record<NiveauDouceur, string> = {
+    aucune: "Aucune micro-interaction, même sur les pages qui en demandent",
+    subtil: "Appui, entrée, survol",
+    expressif: "Appui, entrée, survol, cascade, révélation, onglets, flou",
+  };
+  return [
+    ...NIVEAUX_DOUCEUR.map(
+      (n): Commande => ({
+        id: `douceur:${n}`,
+        titre: `Douceur : ${LIBELLES_DOUCEUR[n]}`,
+        groupe: "Affichage",
+        texte: () => `${TEXTE[n]} · ${etat()}`,
+        mots: ["douceur", "micro-interactions", "animations", "subtil", "mouvement"],
+        icone: "douceur",
+        disponible: () => douceurChoisie(o.m) !== n,
+        executer: choisir(n),
+      }),
+    ),
+    { id: "douceur:pages", titre: "Douceur : comme les pages", groupe: "Affichage", texte: () => `Le niveau que chaque page demande · ${etat()}`, mots: ["douceur", "défaut", "réinitialiser"], icone: "douceur", disponible: () => douceurChoisie(o.m) !== null, executer: choisir(null) },
+  ];
 }

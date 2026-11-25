@@ -1,8 +1,8 @@
-import { C as e, b as t, c as n, h as r, l as i, m as a, t as o, u as s, v as c, w as l, y as u } from "./theme-Ch4F5iYH.js";
+import { C as e, D as t, E as n, S as r, _ as i, d as a, f as o, p as s, t as c, v as l, x as u } from "./theme-B6LyQ3tW.js";
 import { n as d, t as f } from "./motion-lint-EfEMk6cY.js";
 import { i as p, n as m, t as h } from "./tokens-Nj0c2PcI.js";
 import { r as g } from "./look-BnXlF57J.js";
-import { c as _, i as v } from "./timeline-DUX9XWeC.js";
+import { i as _, o as v } from "./timeline-69AkYDBz.js";
 import { t as y } from "./device-Bprp8tGr.js";
 // src/presse/flight.ts
 var b = "presse:flight", x = 15e3, S = () => matchMedia("(prefers-reduced-motion: reduce)").matches, C = () => {
@@ -828,10 +828,10 @@ var Xe = (e) => {
 	buttons: i
 })), Ze = () => new Promise((e) => requestAnimationFrame(e));
 async function Qe(e, t) {
-	for (; _() - e < t * 1e3;) await Ze();
+	for (; v() - e < t * 1e3;) await Ze();
 }
 async function $e(e) {
-	let t = _(), n = [];
+	let t = v(), n = [];
 	for (let r of [...e].sort((e, t) => e.at - t.at)) if (await Qe(t, r.at), r.type !== "wait") {
 		if (r.type === "scroll") scrollBy({
 			top: r.dy,
@@ -850,9 +850,9 @@ async function $e(e) {
 		} else {
 			let e = Xe(r);
 			if (Y(e.el, "pointerover", e.x, e.y, 0), Y(e.el, "pointerdown", e.x, e.y, 1), r.type === "drag") {
-				let t = (r.dur ?? .4) * 1e3, n = _(), i = 0;
+				let t = (r.dur ?? .4) * 1e3, n = v(), i = 0;
 				for (; i < 1;) {
-					await Ze(), i = Math.min(1, (_() - n) / t);
+					await Ze(), i = Math.min(1, (v() - n) / t);
 					let a = i * i * (3 - 2 * i);
 					Y(e.el, "pointermove", e.x + r.dx * a, e.y + r.dy * a, 1);
 				}
@@ -884,7 +884,7 @@ var X = (e, t = 18) => `<svg viewBox="0 0 24 24" width="${t}" height="${t}" fill
 	studio: "<rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1\"/>"
 }, tt = "\n.pages-pop {\n  --pn-fond: #f6f1e4; --pn-encre: #16110d; --pn-doux: #5a5047; --pn-filet: rgba(22, 17, 13, 0.16);\n  --pn-survol: rgba(127, 127, 127, 0.14); --pn-choisi: rgba(200, 50, 28, 0.1); --pn-accent: #c8321c; --pn-focus: #a12614;\n  --pn-ombre: 6px 6px 0 rgba(0, 0, 0, 0.18);\n  inset: auto; margin: 0; padding: 0;\n  width: min(920px, calc(100vw - 16px));\n  border: 1px solid currentColor; border-radius: 8px;\n  /* Ses propres couleurs, pas celles de la page : sur une page sombre (Lave), --ink est clair. */\n  background: var(--pn-fond); color: var(--pn-encre); box-shadow: var(--pn-ombre);\n  font: 15px/1.35 \"Archivo Variable\", \"Archivo\", system-ui, sans-serif;\n  overflow: hidden; overscroll-behavior: contain;\n}\n.pages-pop:popover-open { display: flex; flex-direction: column; }\n@media (prefers-color-scheme: dark) {\n  :root:not([data-presse-theme=\"clair\"]) .pages-pop { --pn-fond: #1d1915; --pn-encre: #efe6d2; --pn-doux: #b9ae9c; --pn-filet: rgba(239, 230, 210, 0.18); --pn-choisi: rgba(255, 122, 92, 0.14); --pn-accent: #ff7a5c; --pn-focus: #ff9a85; --pn-ombre: 0 18px 48px rgba(0, 0, 0, 0.5); color-scheme: dark; }\n}\n:root[data-presse-theme=\"sombre\"] .pages-pop { --pn-fond: #1d1915; --pn-encre: #efe6d2; --pn-doux: #b9ae9c; --pn-filet: rgba(239, 230, 210, 0.18); --pn-choisi: rgba(255, 122, 92, 0.14); --pn-accent: #ff7a5c; --pn-focus: #ff9a85; --pn-ombre: 0 18px 48px rgba(0, 0, 0, 0.5); color-scheme: dark; }\n@media (prefers-reduced-motion: no-preference) {\n  .pages-pop:popover-open { animation: pn-entre 0.16s cubic-bezier(0.2, 0, 0, 1); }\n  @keyframes pn-entre { from { opacity: 0; translate: 0 -6px; } }\n}\nhtml.presse-anim-reduite .pages-pop:popover-open { animation: none; }\n.pages-pop :focus-visible { outline: 2px solid var(--pn-focus); outline-offset: 2px; }\n.pages-pop ul { list-style: none; margin: 0; padding: 0; }\n.pn-tete { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--pn-filet); }\n.pn-titre { margin: 0 auto 0 0; font-weight: 800; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }\n.pn-chercher, .pn-fermer {\n  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid var(--pn-filet);\n  border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer;\n}\n.pn-chercher { min-width: min(260px, 52vw); justify-content: flex-start; color: var(--pn-doux); }\n.pn-chercher kbd { margin-left: auto; font: 500 11px/1 \"IBM Plex Mono\", ui-monospace, monospace; padding: 4px 6px; border: 1px solid var(--pn-filet); border-radius: 4px; color: var(--pn-encre); }\n.pn-fermer { width: 40px; padding: 0; justify-content: center; }\n.pn-chercher:hover, .pn-fermer:hover { background: var(--pn-survol); }\n.pn-corps { display: grid; grid-template-columns: 196px minmax(0, 1fr); min-height: 0; flex: 1 1 auto; }\n.pn-groupes { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-right: 1px solid var(--pn-filet); overflow: auto; }\n.pn-groupe {\n  display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px; border: 0; border-radius: 6px;\n  background: transparent; color: inherit; font: 600 15px/1.2 inherit; text-align: left; cursor: pointer;\n}\n.pn-groupe:hover { background: var(--pn-survol); }\n.pn-groupe[aria-selected=\"true\"] { background: var(--pn-choisi); box-shadow: inset 3px 0 0 var(--pn-accent); }\n.pn-groupe-n { margin-left: auto; font: 500 11px/1 \"IBM Plex Mono\", ui-monospace, monospace; color: var(--pn-doux); }\n.pn-panneau { padding: 12px 16px 16px; overflow: auto; overscroll-behavior: contain; min-height: 0; }\n.pn-panneau[hidden] { display: none; }\n.pn-resume { margin: 0 0 10px; color: var(--pn-doux); font-size: 13px; }\n.pn-sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 20px; align-items: start; }\n/* Un groupe d'une seule section (Studio, Outils…) : ses entrées en colonnes. */\n.pn-sections-seul { grid-template-columns: minmax(0, 1fr); }\n.pn-sections-seul ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px 20px; }\n.pn-section h3 { margin: 4px 0 4px 10px; font: 700 11px/1.2 \"IBM Plex Mono\", ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pn-doux); }\n.pn-entree { display: flex; align-items: stretch; gap: 2px; }\n.pages-pop a.pn-lien { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; padding: 7px 10px; border-radius: 6px; color: inherit; text-decoration: none; }\n.pages-pop a.pn-lien:hover { background: var(--pn-survol); }\n.pages-pop a.pn-lien[aria-current=\"page\"] { box-shadow: inset 3px 0 0 var(--pn-accent); background: var(--pn-choisi); }\n.pages-pop .pages-name { font-weight: 700; font-size: 15px; }\n.pages-pop .pages-text { font-size: 13px; color: var(--pn-doux); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }\n.pages-pop a.pn-studio { display: inline-grid; place-items: center; flex: 0 0 36px; border-radius: 6px; color: var(--pn-doux); }\n.pages-pop a.pn-studio:hover { background: var(--pn-survol); color: var(--pn-encre); }\n.pn-pied { display: flex; flex-wrap: wrap; align-items: stretch; gap: 4px 8px; padding: 6px 8px; border-top: 1px solid var(--pn-filet); }\n.pages-pop .pages-debug {\n  display: grid; gap: 2px; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; color: inherit;\n  font: inherit; text-align: left; cursor: pointer; flex: 0 1 220px; min-height: 44px;\n}\n.pages-pop .pages-debug:hover { background: var(--pn-survol); }\n.pages-pop .pn-pied .pages-settings { margin: 0; padding: 0; border: 0; flex: 1 1 360px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }\n.pages-pop .pages-switch .pages-text { -webkit-line-clamp: 2; }\n@media (max-width: 719px) {\n  .pages-pop { width: calc(100vw - 16px); }\n  .pn-corps { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }\n  .pn-groupes { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--pn-filet); scrollbar-width: thin; }\n  .pn-groupe { flex: 0 0 auto; white-space: nowrap; }\n  .pn-groupe[aria-selected=\"true\"] { box-shadow: inset 0 -3px 0 var(--pn-accent); }\n  .pn-groupe-n { display: none; }\n  .pn-chercher { min-width: 0; flex: 1 1 auto; }\n  .pn-titre { display: none; }\n  .pn-sections, .pn-sections-seul ul { grid-template-columns: minmax(0, 1fr); }\n  /* Sur téléphone, tout le panneau défile (en-tête et groupes collés en haut) : la liste garde la hauteur. */\n  .pages-pop:popover-open { display: block; overflow: auto; }\n  .pn-tete { position: sticky; top: 0; z-index: 2; background: var(--pn-fond); }\n  .pn-corps { display: block; }\n  .pn-groupes { position: sticky; top: 57px; z-index: 1; background: var(--pn-fond); }\n  .pn-panneau { overflow: visible; }\n}\n", Q = (e) => e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 function nt(e) {
-	let { pop: t, trigger: n, base: i } = e;
+	let { pop: t, trigger: n, base: r } = e;
 	t.innerHTML = `<div class="pn-tete">
   <p class="pn-titre" id="pn-titre">Pages</p>
   <button type="button" class="pn-chercher" aria-keyshortcuts="${e.raccourci.startsWith("⌘") ? "Meta+K" : "Control+K"}">${X(Z.chercher)}<span>Rechercher</span><kbd>${Q(e.raccourci)}</kbd></button>
@@ -892,57 +892,57 @@ function nt(e) {
 </div>
 <div class="pn-corps"></div>
 <div class="pn-pied"></div>`;
-	let a = t.querySelector(".pn-corps"), o = t.querySelector(".pn-pied");
+	let i = t.querySelector(".pn-corps"), a = t.querySelector(".pn-pied");
 	t.querySelector(".pn-fermer").addEventListener("click", () => t.hidePopover()), t.querySelector(".pn-chercher").addEventListener("click", () => {
 		t.hidePopover(), e.ouvrirPalette(n);
 	});
-	let s = matchMedia("(max-width: 719px)"), c = !1, l = [], u = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0].split("?")[0], d = !1, f = "", p = (e) => {
+	let o = matchMedia("(max-width: 719px)"), s = !1, c = [], u = new URL(location.pathname.endsWith("/") ? "index.html" : "", location.href).href.split("#")[0].split("?")[0], d = !1, f = "", p = (e) => {
 		let t = document.createElement("a");
-		return t.className = "pn-lien", t.href = i + e.href, d || t.href !== u || f && e.id !== f || (t.setAttribute("aria-current", "page"), d = !0), t.innerHTML = `<span class="pages-name">${Q(e.nom)}</span><span class="pages-text">${Q(e.texte)}</span>`, t;
+		return t.className = "pn-lien", t.href = r + e.href, d || t.href !== u || f && e.id !== f || (t.setAttribute("aria-current", "page"), d = !0), t.innerHTML = `<span class="pages-name">${Q(e.nom)}</span><span class="pages-text">${Q(e.texte)}</span>`, t;
 	};
 	function m() {
-		c = !0;
-		let e = r(), t = (e) => new URL(i + e.href, location.href).href === u, n = (e.find((e) => e.sections.some((e) => e.entrees.some((e) => e.id.startsWith("page:") && t(e)))) ?? e.find((e) => e.sections.some((e) => e.entrees.some(t))))?.id ?? "studio";
-		f = e.flatMap((e) => e.sections.flatMap((e) => e.entrees)).find((e) => e.id.startsWith("page:") && t(e))?.id ?? "", a.innerHTML = "<div class=\"pn-groupes\" role=\"tablist\" aria-label=\"Groupes de pages\"></div>";
-		let o = a.firstElementChild;
+		s = !0;
+		let e = l(), t = (e) => new URL(r + e.href, location.href).href === u, n = (e.find((e) => e.sections.some((e) => e.entrees.some((e) => e.id.startsWith("page:") && t(e)))) ?? e.find((e) => e.sections.some((e) => e.entrees.some(t))))?.id ?? "studio";
+		f = e.flatMap((e) => e.sections.flatMap((e) => e.entrees)).find((e) => e.id.startsWith("page:") && t(e))?.id ?? "", i.innerHTML = "<div class=\"pn-groupes\" role=\"tablist\" aria-label=\"Groupes de pages\"></div>";
+		let a = i.firstElementChild;
 		for (let t of e) {
 			let e = document.createElement("button");
 			e.type = "button", e.className = "pn-groupe", e.id = `pn-o-${t.id}`, e.setAttribute("role", "tab"), e.setAttribute("aria-controls", `pn-p-${t.id}`);
 			let n = t.sections.reduce((e, t) => e + t.entrees.length, 0);
-			e.innerHTML = `<span>${Q(t.nom)}</span><span class="pn-groupe-n" aria-hidden="true">${n}</span>`, e.dataset.groupe = t.id, o.append(e);
-			let r = document.createElement("div");
-			r.className = "pn-panneau", r.id = `pn-p-${t.id}`, r.setAttribute("role", "tabpanel"), r.setAttribute("aria-labelledby", e.id);
+			e.innerHTML = `<span>${Q(t.nom)}</span><span class="pn-groupe-n" aria-hidden="true">${n}</span>`, e.dataset.groupe = t.id, a.append(e);
+			let o = document.createElement("div");
+			o.className = "pn-panneau", o.id = `pn-p-${t.id}`, o.setAttribute("role", "tabpanel"), o.setAttribute("aria-labelledby", e.id);
 			let s = t.sections.filter((e) => e.entrees.length).length === 1;
-			r.innerHTML = `<p class="pn-resume">${Q(t.resume)}</p><div class="pn-sections${s ? " pn-sections-seul" : ""}"></div>`;
-			let c = r.querySelector(".pn-sections");
+			o.innerHTML = `<p class="pn-resume">${Q(t.resume)}</p><div class="pn-sections${s ? " pn-sections-seul" : ""}"></div>`;
+			let c = o.querySelector(".pn-sections");
 			for (let e of t.sections) {
 				if (!e.entrees.length) continue;
 				let n = document.createElement("section");
 				n.className = "pn-section";
-				let r = `pn-s-${e.id.replace(/[^a-z0-9-]/gi, "-")}`;
-				n.innerHTML = t.sections.length > 1 ? `<h3 id="${r}">${Q(e.nom)}</h3><ul aria-labelledby="${r}"></ul>` : `<ul aria-label="${Q(t.nom)}"></ul>`;
+				let i = `pn-s-${e.id.replace(/[^a-z0-9-]/gi, "-")}`;
+				n.innerHTML = t.sections.length > 1 ? `<h3 id="${i}">${Q(e.nom)}</h3><ul aria-labelledby="${i}"></ul>` : `<ul aria-label="${Q(t.nom)}"></ul>`;
 				let a = n.querySelector("ul");
 				for (let t of e.entrees) {
 					let e = document.createElement("li");
 					if (e.className = "pn-entree", e.append(p(t)), t.studio) {
 						let n = document.createElement("a");
-						n.className = "pn-studio", n.href = i + t.studio, n.setAttribute("aria-label", `Ouvrir ${t.nom} dans le Studio`), n.title = `Ouvrir ${t.nom} dans le Studio`, n.tabIndex = -1, n.innerHTML = X(Z.studio), e.append(n);
+						n.className = "pn-studio", n.href = r + t.studio, n.setAttribute("aria-label", `Ouvrir ${t.nom} dans le Studio`), n.title = `Ouvrir ${t.nom} dans le Studio`, n.tabIndex = -1, n.innerHTML = X(Z.studio), e.append(n);
 					}
 					a.append(e);
 				}
 				c.append(n);
 			}
-			a.append(r);
+			i.append(o);
 		}
-		l = [...o.querySelectorAll(".pn-groupe")], g(n, !1), h(), o.addEventListener("click", (e) => {
+		c = [...a.querySelectorAll(".pn-groupe")], g(n, !1), h(), a.addEventListener("click", (e) => {
 			let t = e.target.closest(".pn-groupe");
 			t && g(t.dataset.groupe, !0);
 		});
 	}
-	let h = () => a.querySelector(".pn-groupes")?.setAttribute("aria-orientation", s.matches ? "horizontal" : "vertical");
-	s.addEventListener("change", h);
+	let h = () => i.querySelector(".pn-groupes")?.setAttribute("aria-orientation", o.matches ? "horizontal" : "vertical");
+	o.addEventListener("change", h);
 	function g(e, n) {
-		for (let r of l) {
+		for (let r of c) {
 			let i = r.dataset.groupe === e;
 			r.setAttribute("aria-selected", String(i)), r.tabIndex = i ? 0 : -1, t.querySelector(`#pn-p-${r.dataset.groupe}`).hidden = !i, i && n && (r.focus(), r.scrollIntoView({
 				block: "nearest",
@@ -950,7 +950,7 @@ function nt(e) {
 			}));
 		}
 	}
-	let _ = () => l.find((e) => e.getAttribute("aria-selected") === "true") ?? l[0], v = () => t.querySelector(`#pn-p-${_().dataset.groupe}`), y = (e) => [...e.querySelectorAll("a.pn-lien")];
+	let _ = () => c.find((e) => e.getAttribute("aria-selected") === "true") ?? c[0], v = () => t.querySelector(`#pn-p-${_().dataset.groupe}`), y = (e) => [...e.querySelectorAll("a.pn-lien")];
 	t.addEventListener("keydown", (e) => {
 		let n = e.target;
 		if (e.key === "Tab") {
@@ -960,18 +960,18 @@ function nt(e) {
 			e.shiftKey && r <= 0 ? (e.preventDefault(), n[n.length - 1].focus()) : !e.shiftKey && r === n.length - 1 && (e.preventDefault(), n[0].focus());
 			return;
 		}
-		let r = s.matches;
+		let r = o.matches;
 		if (n.classList.contains("pn-groupe")) {
-			let t = l.indexOf(n), i = r ? "ArrowLeft" : "ArrowUp", a = r ? "ArrowRight" : "ArrowDown", o = -1;
-			if (e.key === a) o = (t + 1) % l.length;
-			else if (e.key === i) o = (t - 1 + l.length) % l.length;
+			let t = c.indexOf(n), i = r ? "ArrowLeft" : "ArrowUp", a = r ? "ArrowRight" : "ArrowDown", o = -1;
+			if (e.key === a) o = (t + 1) % c.length;
+			else if (e.key === i) o = (t - 1 + c.length) % c.length;
 			else if (e.key === "Home") o = 0;
-			else if (e.key === "End") o = l.length - 1;
+			else if (e.key === "End") o = c.length - 1;
 			else if (e.key === "ArrowRight" && !r || e.key === "ArrowDown" && r) {
 				e.preventDefault(), y(v())[0]?.focus();
 				return;
 			}
-			o >= 0 && (e.preventDefault(), g(l[o].dataset.groupe, !0));
+			o >= 0 && (e.preventDefault(), g(c[o].dataset.groupe, !0));
 		} else if (n.classList.contains("pn-lien")) {
 			let t = y(v()), i = t.indexOf(n), a = -1;
 			if (e.key === "ArrowDown") a = Math.min(t.length - 1, i + 1);
@@ -989,26 +989,26 @@ function nt(e) {
 		t.style.left = `${Math.max(8, Math.min(e.left, innerWidth - r - 8))}px`, t.style.top = `${e.bottom + 8}px`, t.style.maxHeight = `${Math.max(240, innerHeight - e.bottom - 20)}px`;
 	};
 	return t.addEventListener("beforetoggle", (e) => {
-		e.newState === "open" && (c || m(), b());
+		e.newState === "open" && (s || m(), b());
 	}), t.addEventListener("toggle", (e) => {
 		let t = e.newState === "open";
-		n.setAttribute("aria-expanded", String(t)), t && (c || m(), b(), _()?.focus());
-	}), { pied: o };
+		n.setAttribute("aria-expanded", String(t)), t && (s || m(), b(), _()?.focus());
+	}), { pied: a };
 }
 // src/nav/declencheur.ts
-var rt = null, it = () => rt ??= import("./palette-CtL1P5Lv.js"), $ = { base: "./" }, at = !1;
+var rt = null, it = () => rt ??= import("./palette-CjcqIcsA.js"), $ = { base: "./" }, at = !1;
 function ot(e) {
 	let t = e ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 	it().then((e) => e.basculerPalette($, t));
 }
-var st = () => void it(), ct = (e = lt()) => i("Mod+K", e).join(" ");
+var st = () => void it(), ct = (e = lt()) => o("Mod+K", e).join(" ");
 function lt() {
 	return typeof navigator < "u" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 }
 function ut(e) {
 	if ($ = e, at) return;
 	at = !0;
-	let t = s({ proprietaire: n });
+	let t = s({ proprietaire: a });
 	t.ajouter({
 		id: "palette",
 		touches: "Mod+K",
@@ -1019,33 +1019,33 @@ function ut(e) {
 	}), t.ecouter(document);
 }
 // src/pages-nav.ts
-var dt = a, ft = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n/* « Ouvrir dans le Studio » (src/studio/) : un lien dans l'en-tête d'une page d'effet, ou une pastille flottante\n   (.presse-studio-flottant, à côté de « Pages ») sur une page plein écran. */\n.presse-studio { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: inherit; font-weight: 600; text-underline-offset: 3px; }\n.presse-studio::before { content: \"\"; width: 16px; height: 16px; flex: 0 0 auto; background: currentColor; -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E\") center / contain no-repeat; mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E\") center / contain no-repeat; }\n.presse-studio-flottant { position: fixed; top: max(10px, env(safe-area-inset-top)); left: calc(max(10px, env(safe-area-inset-left)) + 92px); z-index: 50; min-height: 36px; padding: 0 14px; border: 1px solid currentColor; border-radius: 999px; background: #f6f1e4; color: #16110d; font: 600 13px/1 \"Archivo Variable\", \"Archivo\", system-ui, sans-serif; text-decoration: none; }\n.presse-studio:focus-visible { outline: 2px solid #d9472b; outline-offset: 3px; }\n", pt = "[data-pages-trigger]";
+var dt = i, ft = "\n/* Base commune (presse check : mise en page à 320 px, texte agrandi, mots longs) — en couche basse : les feuilles\n   des pages gardent la main. Un titre peut couper un mot trop long ; le code en ligne aussi ; un bloc de code ne\n   déborde pas de sa colonne ; un curseur offre une cible de 24 px de haut (WCAG 2.2). */\n@layer presse-base {\n  h1, h2, h3, h4 { overflow-wrap: break-word; }\n  code, kbd, samp, .code-inline { overflow-wrap: break-word; }\n  pre { max-width: 100%; min-width: 0; }\n  input[type=\"range\"] { min-height: 24px; }\n  table { max-width: 100%; }\n}\n.pages-pill {\n  position: fixed;\n  z-index: 50;\n  top: max(10px, env(safe-area-inset-top));\n  left: max(10px, env(safe-area-inset-left));\n  min-height: 36px;\n  padding: 0 14px;\n  border: 1px solid currentColor;\n  border-radius: 999px;\n  background: rgba(22, 17, 13, 0.9);\n  color: #efe6d2;\n  font: 500 15px/1 inherit;\n  backdrop-filter: blur(6px);\n  cursor: pointer;\n}\n/* « Ouvrir dans le Studio » (src/studio/) : un lien dans l'en-tête d'une page d'effet, ou une pastille flottante\n   (.presse-studio-flottant, à côté de « Pages ») sur une page plein écran. */\n.presse-studio { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: inherit; font-weight: 600; text-underline-offset: 3px; }\n.presse-studio::before { content: \"\"; width: 16px; height: 16px; flex: 0 0 auto; background: currentColor; -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E\") center / contain no-repeat; mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Cpath d='M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1'/%3E%3C/svg%3E\") center / contain no-repeat; }\n.presse-studio-flottant { position: fixed; top: max(10px, env(safe-area-inset-top)); left: calc(max(10px, env(safe-area-inset-left)) + 92px); z-index: 50; min-height: 36px; padding: 0 14px; border: 1px solid currentColor; border-radius: 999px; background: #f6f1e4; color: #16110d; font: 600 13px/1 \"Archivo Variable\", \"Archivo\", system-ui, sans-serif; text-decoration: none; }\n.presse-studio:focus-visible { outline: 2px solid #d9472b; outline-offset: 3px; }\n", pt = "[data-pages-trigger]";
 function mt(e, t) {
 	let n = e.documentElement.hasAttribute("data-presse-manuel");
-	for (let r of c) !!r.tot !== t || r.manuel && n || (r.parametre && RegExp(`[?&]${r.parametre}=`).test(location.search) || e.querySelector(r.selecteur)) && r.charger().then((t) => r.armer(t, e));
+	for (let r of u) !!r.tot !== t || r.manuel && n || (r.parametre && RegExp(`[?&]${r.parametre}=`).test(location.search) || e.querySelector(r.selecteur)) && r.charger().then((t) => r.armer(t, e));
 }
-function ht(e = "./") {
-	et(), p(), g(), mt(document, !0), o(), xe(), pe(), Ue(), Ee(), v(), ve(), mt(document, !1);
-	let n = document.createElement("style");
-	n.textContent = ft + tt + u, document.head.append(n);
-	let r = document.querySelector(pt);
-	r || (r = document.createElement("button"), r.type = "button", r.className = "pages-pill", r.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(r));
-	let i = document.createElement("nav");
-	i.id = "pages-pop", i.className = "pages-pop", i.setAttribute("popover", ""), i.setAttribute("aria-label", "Pages");
-	let { pied: a } = nt({
-		pop: i,
-		trigger: r,
-		base: e,
+function ht(n = "./") {
+	et(), p(), g(), mt(document, !0), c(), xe(), pe(), Ue(), Ee(), _(), ve(), mt(document, !1);
+	let i = document.createElement("style");
+	i.textContent = ft + tt + r, document.head.append(i);
+	let a = document.querySelector(pt);
+	a || (a = document.createElement("button"), a.type = "button", a.className = "pages-pill", a.innerHTML = "Pages <span aria-hidden=\"true\">▾</span>", document.body.prepend(a));
+	let o = document.createElement("nav");
+	o.id = "pages-pop", o.className = "pages-pop", o.setAttribute("popover", ""), o.setAttribute("aria-label", "Pages");
+	let { pied: s } = nt({
+		pop: o,
+		trigger: a,
+		base: n,
 		raccourci: ct(),
 		ouvrirPalette: (e) => ot(e)
 	});
-	i.querySelector(".pn-chercher").addEventListener("pointerenter", st, { once: !0 });
-	let s = document.createElement("button");
-	s.type = "button", s.className = "pages-debug", s.innerHTML = "<span class=\"pages-name\">Débogage</span><span class=\"pages-text\">Fil de fer, grille, capture vidéo</span>", s.addEventListener("click", () => {
-		i.hidePopover(), l(r);
-	}), a.append(s), t(a, dt, e), i.addEventListener("toggle", () => a.dispatchEvent(new Event("toggle"))), document.body.append(i), r.setAttribute("popovertarget", "pages-pop"), r.setAttribute("aria-haspopup", "true"), r.setAttribute("aria-controls", "pages-pop"), r.setAttribute("aria-expanded", "false"), ut({
-		base: e,
-		ouvrirMenu: () => i.showPopover()
+	o.querySelector(".pn-chercher").addEventListener("pointerenter", st, { once: !0 });
+	let l = document.createElement("button");
+	l.type = "button", l.className = "pages-debug", l.innerHTML = "<span class=\"pages-name\">Débogage</span><span class=\"pages-text\">Fil de fer, grille, capture vidéo</span>", l.addEventListener("click", () => {
+		o.hidePopover(), t(a);
+	}), s.append(l), e(s, dt, n), o.addEventListener("toggle", () => s.dispatchEvent(new Event("toggle"))), document.body.append(o), a.setAttribute("popovertarget", "pages-pop"), a.setAttribute("aria-haspopup", "true"), a.setAttribute("aria-controls", "pages-pop"), a.setAttribute("aria-expanded", "false"), ut({
+		base: n,
+		ouvrirMenu: () => o.showPopover()
 	});
 }
-ht("../"), e();
+ht("../"), n();

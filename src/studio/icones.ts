@@ -31,6 +31,7 @@ const P: Record<string, string> = {
   dom: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>',
   inspecter: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M10 9l6 3-2.6 1L12 16z"/>',
   poids: '<path d="M7 9h10l2 11H5z"/><circle cx="12" cy="6" r="2.4"/>',
+  douceur: '<path d="M4 16c3-6 5-6 8 0s5 6 8 0"/><circle cx="12" cy="7" r="1.6"/>',
   hic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h6M7 12h10M7 15h4"/>',
   attention: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01" stroke-width="1.8"/>',
   // Paramètres.

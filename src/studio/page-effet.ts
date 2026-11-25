@@ -29,6 +29,16 @@ import { detecter, libelleEtat } from "../html-in-canvas.ts";
 import { monterCoque } from "./coque.ts";
 import { SCHEMA_STUDIO_EFFET } from "./coque-plan.ts";
 import { CLES } from "../registre/stockage.ts";
+import { douceurChoisie, LIBELLES_DOUCEUR } from "../nav/commandes.ts";
+
+/** La puce « Douceur » : le choix du visiteur (palette), pour un effet que ce choix règle (data-douceur). */
+function puceDouceur(): { texte: string; titre: string } {
+  const c = douceurChoisie();
+  return {
+    texte: c ? `Douceur : ${LIBELLES_DOUCEUR[c]}` : "Douceur : comme les pages",
+    titre: `${c ? `Choix du visiteur : ${LIBELLES_DOUCEUR[c]}` : "Aucun choix du visiteur"} (palette Ctrl+K, « Douceur »). Il passe devant le niveau des pages qui arment la douceur ; l'aperçu montre la fiche, sans lui.`,
+  };
+}
 
 const NOMS_CATEGORIES: Record<string, string> = { texte: "Texte", image: "Image", matiere: "Matière", interface: "Interface", transition: "Transition", forme: "Forme", dessin: "Dessin", page: "Page" };
 const APPAREILS = [
@@ -104,6 +114,7 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
     <span class="st-puce ${rendu.classe}" title="${e(rendu.titre)}" data-puce-rendu data-rendu="${e(m.rendu)}">${ic(m.rendu === "DOM" || m.rendu === "canvas 2D" ? "dom" : "gpu", 14)}<span>${e(rendu.texte)}</span></span>
     <span class="st-puce ${cout.classe}" title="${e(cout.titre)}" data-puce-cout>${ic("poids", 14)}<span>${e(cout.texte)}</span></span>
     <span class="st-puce st-puce-hic" title="${e(hic.titre)}" data-puce-hic>${ic("hic", 14)}<span>${e(hic.texte)}</span></span>
+    ${m.attributs.includes("data-douceur") ? `<span class="st-puce st-puce-douceur" title="${e(puceDouceur().titre)}" data-puce-douceur>${ic("douceur", 14)}<span>${e(puceDouceur().texte)}</span></span>` : ""}
   </div>
   <div class="st-barre-c" role="toolbar" aria-label="Aperçu">
     <div class="st-segments" role="radiogroup" aria-label="Appareil">${APPAREILS.map(
@@ -378,6 +389,14 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
 
   /* ── Départ ── */
   if (m.rendu.includes("WebGPU")) void majPucesRendu(racine);
+  // La puce « Douceur » suit la palette (commande « Douceur : … »).
+  addEventListener("douceur:niveau", () => {
+    const p = racine.querySelector<HTMLElement>("[data-puce-douceur]");
+    if (!p) return;
+    const d = puceDouceur();
+    p.title = d.titre;
+    p.querySelector("span")!.textContent = d.texte;
+  });
   choisirAppareil(appareil);
   choisirOnglet(coque.onglet("code") === "json" ? "json" : "html");
   if (lu.corrections.length && location.hash.length > 1) dire(`Lien relu avec ${lu.corrections.length} correction${lu.corrections.length > 1 ? "s" : ""} : ${lu.corrections.join(" ; ")}`);

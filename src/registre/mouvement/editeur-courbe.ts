@@ -113,6 +113,7 @@ let compte = 0;
 /** Les familles, dans l'ordre de la palette de préréglages. */
 const FAMILLES: { famille: Prereglage["famille"]; libelle: string }[] = [
   { famille: "maison", libelle: "Maison" },
+  { famille: "interface", libelle: "Interface" },
   { famille: "css", libelle: "CSS" },
   { famille: "quad", libelle: "Quadratique" },
   { famille: "cubic", libelle: "Cubique" },

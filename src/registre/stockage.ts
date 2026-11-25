@@ -62,6 +62,7 @@ export const CLES = {
   navRecents: cle({ domaine: "nav", nom: "recents" }),
   navTheme: cle({ domaine: "nav", nom: "theme" }),
   coqueStudioEffet: cle({ domaine: "coque", nom: "studio-effet" }),
+  douceurNiveau: cle({ domaine: "douceur", nom: "niveau" }),
   couloirAttributs: cle({ domaine: "couloir", nom: "attributs", anciennes: ["couloir:attributs"] }),
   logosInstantanes: cle({ domaine: "logos", nom: "instantanes", anciennes: ["logos:instantanes"] }),
   diapoNotes: cle({ domaine: "diapo-createur", nom: "notes", anciennes: ["presse-diapo-createur:notes"] }),

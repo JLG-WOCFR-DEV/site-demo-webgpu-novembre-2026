@@ -1,7 +1,7 @@
 import { n as e, t } from "./device-Bprp8tGr.js";
 import { o as n, r, t as i } from "./tokens-Nj0c2PcI.js";
-import { n as a } from "./timeline-DUX9XWeC.js";
-import { t as o } from "./schema-pEBuhnZn.js";
+import { n as a } from "./timeline-69AkYDBz.js";
+import { t as o } from "./schema-BDuHVhSz.js";
 import { n as s, t as c } from "./motion-lint-EfEMk6cY.js";
 // src/presse/goo.ts
 var l = {

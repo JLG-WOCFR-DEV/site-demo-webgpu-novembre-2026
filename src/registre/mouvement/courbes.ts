@@ -7,7 +7,7 @@
  *   - un nom de la maison : `lineaire`, `out`, `in-out`, `in`, `expo`, `ressort` (les six courbes historiques de
  *     `data-anim-ease`, inchangées) ;
  *   - un préréglage de la bibliothèque (`PREREGLAGES`) : `in-quad`, `out-cubic`, `in-out-expo`, `out-recul`,
- *     `out-elastique`, `out-rebond`… ;
+ *     `out-elastique`, `out-rebond`…, et les trois courbes d'interface `ui-sortie`, `ui-ecran`, `tiroir` ;
  *   - un mot-clé CSS : `linear`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `step-start`, `step-end` ;
  *   - `cubic-bezier(x1, y1, x2, y2)` (x1 et x2 dans [0, 1], comme en CSS) ;
  *   - `steps(n[, jump-start | jump-end | jump-none | jump-both | start | end])` ;
@@ -283,7 +283,7 @@ const FONCTIONS = {
 
 /* ───────────────────────── La bibliothèque de préréglages ───────────────────────── */
 
-export type Famille = "maison" | "css" | "quad" | "cubic" | "quart" | "expo" | "circ" | "recul" | "elastique" | "rebond" | "ressort";
+export type Famille = "maison" | "interface" | "css" | "quad" | "cubic" | "quart" | "expo" | "circ" | "recul" | "elastique" | "rebond" | "ressort";
 
 export type Prereglage = {
   nom: string;
@@ -318,6 +318,13 @@ export const PREREGLAGES: readonly Prereglage[] = [
   bz("out", "Sortie maison", "maison", [0.16, 1, 0.3, 1]),
   bz("in-out", "Aller-retour maison", "maison", [0.65, 0, 0.35, 1]),
   bz("in", "Départ maison", "maison", [0.55, 0, 1, 0.45]),
+  // Famille « interface » : les trois courbes d'Emil Kowalski (docs/REFERENCES-MOUVEMENT.md §3), des défauts d'auteur
+  // pour les micro-interactions (appui, entrée, tiroir). `out` et `in-out` restent les courbes maison (références
+  // visuelles) ; ces trois-là sont aussi des variables CSS : --presse-ease-sortie, -ecran, -tiroir
+  // (src/presse/jetons-mouvement.css).
+  bz("ui-sortie", "Interface : entrée et sortie", "interface", [0.23, 1, 0.32, 1]),
+  bz("ui-ecran", "Interface : déplacement à l'écran", "interface", [0.77, 0, 0.175, 1]),
+  bz("tiroir", "Tiroir (à la iOS)", "interface", [0.32, 0.72, 0, 1]),
   bz("ease", "CSS ease", "css", [0.25, 0.1, 0.25, 1]),
   bz("ease-in", "CSS ease-in", "css", [0.42, 0, 1, 1]),
   bz("ease-out", "CSS ease-out", "css", [0, 0, 0.58, 1]),

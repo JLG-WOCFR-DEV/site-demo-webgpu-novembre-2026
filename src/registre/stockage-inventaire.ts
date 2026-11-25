@@ -9,6 +9,7 @@ export const ROLES: Record<keyof typeof CLES, string> = {
   navRecents: "Palette de commandes : les dernières entrées choisies (identifiants, 8 au plus).",
   navTheme: "Thème de l'interface Presse (menu, palette, Studio) : « clair » ou « sombre » ; absent : celui du système.",
   coqueStudioEffet: "Mise en page de la page d'effet du Studio (JSON versionné, src/studio/coque-plan.ts).",
+  douceurNiveau: "Douceur choisie dans la palette (« aucune », « subtil », « expressif ») ; absent : celle des pages. Lue aussi par le script en tête de page (presse/build/head.ts, DOUCEUR_INLINE), qui la pose sur <html data-douceur-defaut>.",
   couloirAttributs: "Couloir (couloir.html) : les réglages data-couloir-* de la page.",
   logosInstantanes: "Logos (logos.html) : 12 instantanés au plus (réglages + vignette).",
   diapoNotes: "Créateur de diaporama : panneau des notes ouvert (« 1 ») ou fermé (« 0 »).",

@@ -31,9 +31,9 @@
       "js": 9.9,
       "differe": 0,
       "fichiers": [
-        "assets/goo-C5r3P4z6.js",
-        "assets/goo-elj2lMQY.js",
-        "assets/schema-CLVVF78T.js"
+        "assets/goo-BquMH6sv.js",
+        "assets/goo-CgCgnBwj.js",
+        "assets/schema-CGStE9UC.js"
       ]
     },
     "metal": {
@@ -65,8 +65,8 @@
       "js": 12.5,
       "differe": 0,
       "fichiers": [
-        "assets/typo-CXyut0DE.js",
-        "assets/typo-kAR89SM2.js"
+        "assets/typo-CQYMwLui.js",
+        "assets/typo-ChD7DiDg.js"
       ]
     },
     "rouleau": {
@@ -82,9 +82,9 @@
       "js": 13.1,
       "differe": 11.7,
       "fichiers": [
-        "assets/couloir-yQp-S2Bo.js",
-        "assets/couloir-zV9oWdrd.js",
-        "assets/schema-CLVVF78T.js"
+        "assets/couloir-CNAatuys.js",
+        "assets/couloir-DBbrB7gs.js",
+        "assets/schema-CGStE9UC.js"
       ]
     },
     "logo": {
@@ -99,8 +99,8 @@
       "js": 17,
       "differe": 0,
       "fichiers": [
-        "assets/cinetique-BkfHMhrZ.js",
-        "assets/cinetique-KC51N19c.js"
+        "assets/cinetique-8oQC2gv7.js",
+        "assets/cinetique-BmWqZtq1.js"
       ]
     },
     "dechirure": {
@@ -142,6 +142,13 @@
       "fichiers": [
         "assets/trace-C7M2e_sH.js",
         "assets/trace-DL3sufCt.js"
+      ]
+    },
+    "douceur": {
+      "js": 5,
+      "differe": 0,
+      "fichiers": [
+        "assets/douceur-W_MUKAA-.js"
       ]
     }
   }

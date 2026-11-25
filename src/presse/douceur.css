@@ -1,0 +1,303 @@
+/* Presse — Douceur : micro-interactions légères et optionnelles (src/presse/douceur.ts), CSS d'abord.
+ *
+ * Valeurs d'Emil Kowalski (docs/REFERENCES-MOUVEMENT.md §3), défauts d'auteur : appui scale(.97) 160 ms ui-sortie ;
+ * entrée scale(.95) + opacité 220 ms, sortie ≈ 0,7 × ; cascade 30–80 ms (8 enfants au plus) ; survol 150 ms `ease`,
+ * pointeur fin seulement ; maintien 2 s linear, relâché 200 ms ; flou 2 px + opacité .7.
+ *
+ * Le module ne pose que des ÉTATS ; tout le mouvement est ici :
+ *   [data-douceur-actif~="appui|survol|entree|cascade|revele|maintien|onglets|flou"]  ce que l'élément reçoit ;
+ *   [data-douceur-monte]   l'entrée, la cascade ou la révélation a eu lieu (repli de @starting-style) ;
+ *   [data-douceur-fini]    elle est finie : les délais de cascade tombent, l'appui reprend ses durées ;
+ *   html[data-douceur-clavier]  la dernière action vient du clavier : pas d'animation (le Gate, PRESSE.md) ;
+ *   html[data-douceur-reduit]   mouvement réduit (le système, ou « Réduire les animations » de la palette ; « toujours »
+ *                               le lève) : opacité et couleurs gardées, déplacements, échelles, flous et découpes retirés.
+ * Sélecteurs dans :where() : spécificité nulle, le CSS de la page l'emporte toujours. Aucune `transition: all` ;
+ * propriétés animées : scale, translate, opacity, filter, clip-path (et display / overlay, discrètes, pour popover et
+ * dialog). Passe le lint statique sans avertissement (src/presse/douceur.test.ts). */
+@import "./jetons-mouvement.css";
+
+:root {
+  --douceur-appui: 160ms;
+  --douceur-duree: 220ms;
+  --douceur-survol: 150ms;
+  --douceur-pas: 50ms;
+  --douceur-courbe: var(--presse-ease-sortie);
+  --douceur-courbe-sortie: var(--presse-ease-sortie);
+}
+
+/* ── Le socle : une seule liste de transitions, des durées par micro-interaction (0 s par défaut). ── */
+:where([data-douceur-actif], [data-douceur-actif~="cascade"] > *) {
+  transition-property: scale, translate, opacity, filter, clip-path;
+  transition-duration: var(--douceur-d-scale, 0s), var(--douceur-d-translate, 0s), var(--douceur-d-opacity, 0s), var(--douceur-d-filter, 0s), var(--douceur-d-clip, 0s);
+  transition-timing-function: var(--douceur-c-scale, ease), var(--douceur-c-translate, ease), var(--douceur-c-opacity, ease), var(--douceur-c-filter, ease), var(--douceur-c-clip, ease);
+}
+:where([data-douceur-actif]) {
+  --douceur-d-scale: 0s;
+  --douceur-d-translate: 0s;
+  --douceur-d-opacity: 0s;
+  --douceur-d-filter: 0s;
+  --douceur-d-clip: 0s;
+}
+
+/* ── Appui : scale(.97), 160 ms, ui-sortie. ── */
+:where([data-douceur-actif~="appui"]) {
+  --douceur-d-scale: var(--douceur-appui);
+  --douceur-c-scale: var(--presse-ease-sortie);
+}
+:where([data-douceur-actif~="appui"]:active:not(:disabled, [aria-disabled="true"])) {
+  scale: 0.97;
+}
+
+/* ── Survol : levée, ombre, 150 ms `ease`, pointeur fin seulement. ── */
+@media (hover: hover) and (pointer: fine) {
+  :where([data-douceur-actif~="survol"]) {
+    --douceur-d-translate: var(--douceur-survol);
+    --douceur-c-translate: ease;
+    --douceur-d-filter: var(--douceur-survol);
+    --douceur-c-filter: ease;
+  }
+  :where([data-douceur-actif~="survol"]:hover:not(:disabled, [aria-disabled="true"])) {
+    translate: 0 -2px;
+    filter: drop-shadow(0 6px 12px rgb(0 0 0 / 0.14));
+  }
+}
+
+/* ── Entrée d'un élément (inséré, ou qui arrive à l'écran) : scale(.95) + opacité. Repli de @starting-style :
+      l'état de départ tant que [data-douceur-monte] manque, posé par le module. ── */
+:where([data-douceur-actif~="entree"]:not([data-douceur-fini])) {
+  --douceur-d-scale: var(--douceur-duree);
+  --douceur-c-scale: var(--douceur-courbe);
+  --douceur-d-opacity: var(--douceur-duree);
+  --douceur-c-opacity: var(--douceur-courbe);
+}
+:where([data-douceur-actif~="entree"]:not([data-douceur-monte], [popover], dialog)) {
+  opacity: 0;
+  scale: 0.95;
+}
+@starting-style {
+  :where([data-douceur-actif~="entree"][data-douceur-monte]:not([data-douceur-fini], [popover], dialog)) {
+    opacity: 0;
+    scale: 0.95;
+  }
+}
+
+/* Popover et dialog : entrée par @starting-style, sortie plus courte (0,7 ×), origine du côté du déclencheur. */
+:where([popover][data-douceur-actif~="entree"], dialog[data-douceur-actif~="entree"]) {
+  transform-origin: var(--douceur-origine, top center);
+  transition-property: scale, opacity, display, overlay;
+  transition-duration: var(--douceur-d-pop, 0s);
+  transition-timing-function: var(--douceur-c-pop, ease);
+  transition-behavior: allow-discrete;
+}
+:where(dialog[data-douceur-actif~="entree"]) {
+  transform-origin: center;
+}
+:where([popover][data-douceur-actif~="entree"]:popover-open, dialog[data-douceur-actif~="entree"][open]) {
+  --douceur-d-pop: var(--douceur-duree);
+  --douceur-c-pop: var(--douceur-courbe);
+  opacity: 1;
+  scale: 1;
+}
+:where([popover][data-douceur-actif~="entree"]:not(:popover-open), dialog[data-douceur-actif~="entree"]:not([open])) {
+  --douceur-d-pop: calc(var(--douceur-duree) * 0.7);
+  --douceur-c-pop: var(--douceur-courbe-sortie);
+  opacity: 0;
+  scale: 0.95;
+}
+@starting-style {
+  :where([popover][data-douceur-actif~="entree"]:popover-open, dialog[data-douceur-actif~="entree"][open]) {
+    opacity: 0;
+    scale: 0.95;
+  }
+}
+
+/* ── Cascade : les enfants entrent l'un après l'autre (--douceur-pas, 30–80 ms), 8 au plus ; jamais bloquante
+      (rien n'est inerte pendant ce temps), les délais tombent à la fin. ── */
+:where([data-douceur-actif~="cascade"]) > * {
+  --douceur-d-opacity: var(--douceur-duree);
+  --douceur-c-opacity: var(--douceur-courbe);
+  --douceur-d-translate: var(--douceur-duree);
+  --douceur-c-translate: var(--douceur-courbe);
+}
+:where([data-douceur-actif~="cascade"]:not([data-douceur-monte])) > * {
+  opacity: 0;
+  translate: 0 6px;
+}
+:where([data-douceur-actif~="cascade"][data-douceur-monte]:not([data-douceur-fini])) > * {
+  transition-delay: calc(var(--douceur-i, 0) * var(--douceur-pas));
+}
+:where([data-douceur-actif~="cascade"]) > :nth-child(2) { --douceur-i: 1; }
+:where([data-douceur-actif~="cascade"]) > :nth-child(3) { --douceur-i: 2; }
+:where([data-douceur-actif~="cascade"]) > :nth-child(4) { --douceur-i: 3; }
+:where([data-douceur-actif~="cascade"]) > :nth-child(5) { --douceur-i: 4; }
+:where([data-douceur-actif~="cascade"]) > :nth-child(6) { --douceur-i: 5; }
+:where([data-douceur-actif~="cascade"]) > :nth-child(7) { --douceur-i: 6; }
+:where([data-douceur-actif~="cascade"]) > :nth-child(n + 8) { --douceur-i: 7; }
+
+/* ── Révélation d'image au défilement : clip-path inset, une seule fois. ── */
+/* presse-lint-ignore: duree-longue — révélation au défilement : explicative, pas une réponse d'interface (640 ms) */
+:where([data-douceur-actif~="revele"]) {
+  --douceur-d-clip: var(--douceur-revele, 640ms);
+  --douceur-c-clip: var(--presse-ease-sortie);
+}
+:where([data-douceur-actif~="revele"]:not([data-douceur-monte])) {
+  clip-path: inset(0 0 100% 0);
+}
+/* inset() → inset(0) s'interpole ; inset() → none ne s'interpolerait pas (saut). À la fin, plus de découpe. */
+:where([data-douceur-actif~="revele"][data-douceur-monte]:not([data-douceur-fini])) {
+  clip-path: inset(0);
+}
+
+/* ── Maintenir pour confirmer : un voile qui se remplit en 2 s linear à l'appui, se vide en 200 ms au relâchement. ── */
+:where([data-douceur-actif~="maintien"]) {
+  position: relative;
+  isolation: isolate;
+}
+:where([data-douceur-actif~="maintien"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--douceur-maintien-fond, currentColor);
+  opacity: 0.22;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 200ms var(--presse-ease-sortie), opacity 200ms var(--presse-ease-sortie);
+}
+/* presse-lint-ignore: duree-longue — maintien pour confirmer : la durée est le temps qu'il faut tenir (2 s) */
+:where([data-douceur-actif~="maintien"][data-douceur-maintien-etat="charge"])::before {
+  clip-path: inset(0);
+  transition: clip-path 2000ms linear, opacity 2000ms linear;
+}
+:where([data-douceur-actif~="maintien"][data-douceur-maintien-etat="charge"]) {
+  --douceur-d-scale: var(--douceur-appui);
+  --douceur-c-scale: var(--presse-ease-sortie);
+  scale: 0.97;
+}
+:where([data-douceur-actif~="maintien"][data-douceur-maintien-etat="confirme"])::before {
+  clip-path: inset(0);
+  opacity: 0.34;
+}
+:where([data-douceur-actif~="maintien"][data-douceur-maintien-etat="arme"]) {
+  outline: 2px dashed currentColor;
+  outline-offset: 2px;
+}
+
+/* ── Onglets : une copie « active » de la liste, rognée sur l'onglet choisi ; le rognage glisse. ── */
+:where([data-douceur-copie]) {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  pointer-events: none;
+  transition: clip-path var(--douceur-onglets, 250ms) var(--presse-ease-ecran);
+}
+/* La copie est un calque du module : ses couleurs passent devant celles que la page donne aux onglets. */
+[data-douceur-copie] > * {
+  background: var(--douceur-onglet-fond, CanvasText) !important;
+  color: var(--douceur-onglet-encre, Canvas) !important;
+}
+
+/* ── Flou : un changement de contenu passe sous 2 px de flou et une opacité de .7, puis se dégage. ── */
+:where([data-douceur-actif~="flou"]) {
+  --douceur-d-filter: 200ms;
+  --douceur-c-filter: var(--presse-ease-sortie);
+  --douceur-d-opacity: 200ms;
+  --douceur-c-opacity: var(--presse-ease-sortie);
+}
+:where([data-douceur-actif~="flou"][data-douceur-flou-etat]) {
+  filter: blur(2px);
+  opacity: 0.7;
+  transition-duration: 0s;
+}
+
+/* ── Le Gate : une action au clavier n'est jamais animée (révélation et entrées au chargement restent permises). ── */
+html[data-douceur-clavier] :where([data-douceur-actif~="appui"], [data-douceur-actif~="survol"], [data-douceur-actif~="flou"], [data-douceur-actif~="maintien"], [popover][data-douceur-actif~="entree"], dialog[data-douceur-actif~="entree"], [data-douceur-copie]) {
+  transition-duration: 0s !important;
+}
+html[data-douceur-clavier] :where([data-douceur-actif~="appui"]:active) {
+  scale: none;
+}
+html[data-douceur-clavier] :where([data-douceur-actif~="maintien"])::before {
+  transition-duration: 0s !important;
+}
+html[data-douceur-clavier] :where([data-douceur-actif~="maintien"][data-douceur-maintien-etat="charge"])::before {
+  clip-path: inset(0);
+  opacity: 0.12;
+}
+html[data-douceur-clavier] :where([data-douceur-actif~="flou"][data-douceur-flou-etat]) {
+  filter: none;
+  opacity: 1;
+}
+:where([data-douceur-sans], [data-douceur-sans] > *) {
+  transition: none !important;
+}
+
+/* ── Mouvement réduit : réduire, pas supprimer. Opacité et couleurs restent ; échelle, déplacement, flou, découpe
+      s'en vont. ── */
+html[data-douceur-reduit] :where([data-douceur-actif~="appui"]) {
+  --douceur-d-opacity: var(--douceur-appui);
+  --douceur-c-opacity: var(--presse-ease-sortie);
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="appui"]:active:not(:disabled, [aria-disabled="true"])) {
+  scale: none;
+  opacity: 0.8;
+}
+@media (hover: hover) and (pointer: fine) {
+  html[data-douceur-reduit] :where([data-douceur-actif~="survol"]:hover) {
+    translate: none;
+  }
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="entree"]:not([data-douceur-monte], [popover], dialog)) {
+  scale: none;
+}
+html[data-douceur-reduit] :where([popover][data-douceur-actif~="entree"], dialog[data-douceur-actif~="entree"]) {
+  scale: none;
+}
+@starting-style {
+  html[data-douceur-reduit] :where([data-douceur-actif~="entree"][data-douceur-monte]:not([data-douceur-fini], [popover], dialog)) {
+    scale: none;
+  }
+  html[data-douceur-reduit] :where([popover][data-douceur-actif~="entree"]:popover-open, dialog[data-douceur-actif~="entree"][open]) {
+    scale: none;
+  }
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="cascade"]:not([data-douceur-monte])) > * {
+  translate: none;
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="revele"]) {
+  --douceur-d-clip: 0s;
+  --douceur-d-opacity: var(--douceur-duree);
+  --douceur-c-opacity: var(--presse-ease-sortie);
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="revele"]:not([data-douceur-monte])) {
+  clip-path: none;
+  opacity: 0;
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="maintien"])::before {
+  clip-path: none;
+  opacity: 0;
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="maintien"][data-douceur-maintien-etat="charge"])::before {
+  clip-path: none;
+  opacity: 0.22;
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="maintien"][data-douceur-maintien-etat="charge"]) {
+  scale: none;
+}
+html[data-douceur-reduit] :where([data-douceur-actif~="flou"][data-douceur-flou-etat]) {
+  filter: none;
+}
+html[data-douceur-reduit] :where([data-douceur-copie]) {
+  transition: opacity 160ms var(--presse-ease-sortie);
+}
+
+/* L'annonce des états (maintien), pour les lecteurs d'écran seulement. */
+.douceur-annonce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

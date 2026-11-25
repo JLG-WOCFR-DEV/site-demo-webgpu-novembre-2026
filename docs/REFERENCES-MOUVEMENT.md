@@ -130,4 +130,8 @@ pour ce que CSS ne sait pas faire), activable page par page ou globalement, jama
 4. **M4 — Complément de lecture** : `choreograph`, `gestures`, `animation-performance`, `STANDARDS.md` (à coller par
    Jérôme) ; gestes à vitesse (0,11) pour le Créateur de diaporama et les tiroirs.
 
-Statut : référence consignée, aucun lot lancé (M1 attend la fin d'E7a, qui touche le registre et PRESSE.md).
+Statut (2026-11-25) : **M1 fait** (courbes `ui-sortie` / `ui-ecran` / `tiroir`, `jetons-mouvement.css`, lint statique
+dans `npm run valider`, `npm run mouvement:audit` → `docs/audit-mouvement.md`, politique mouvement réduit documentée et
+corrigée pour `data-anim`, Gate et glossaire dans PRESSE.md et le skill). **M2 fait, en essai** (module `douceur`,
+fiche Studio, palette, page d'essai `vitrine-maison.html`). L'audit de M3 existe déjà (rapport en lecture seule) ; restent
+la liste d'opportunités dans le Studio (M3) et M4. Voir docs/ROADMAP-STUDIO.md.

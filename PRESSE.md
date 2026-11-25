@@ -61,6 +61,8 @@ p.replay();                  // rejouer l'impression des sections
 | `data-derriere` | conteneur de couches | Empile `[data-derriere-fond]`, `[data-derriere-sujet]` (photo détourée) et `[data-derriere-devant]` : le mot passe derrière la silhouette. `"pile"` ou `"libre"` ; parallaxe pointeur + défilement par `translate` ; `-amplitude` (18), `-pointeur="0"`, `-defilement="0"`. |
 | `data-dechirure-detoure` | avec `data-dechirure-coupe`, images détourées | Liseré et ombre masqués par l'alpha de l'image du haut, image de gauche rognée après le bord. |
 | `data-trace` | `<svg>` en ligne, ou conteneur avec `-src` (fichier .svg) | Dessin technique qui se trace (`stroke-dashoffset`, longueurs par `getTotalLength`), une étape à la fois : `data-trace-role` (ou classe) : `construction`, `forme`, `cote`, `hachure`, dans cet ordre (construction en pointillés pâles, puis formes, cotes, hachures) ; `-ordre` dans un rôle, `-ignore`. `-quand` : `entree`, `defilement`, `manuel` (défaut : à l'entrée dans l'écran) ; `-duree` (700 ms par élément), `-delai` (0), `-cascade` (90 ms), `-rejoue`. Cotes automatiques : `data-trace-cote="8 u"` sur une `<line>`, un `<path>` ou un `<g>` → flèches aux bouts, texte mono au milieu qui s'écrit (`-cote-libelle`, `-cote-decalage` 6 px, `-cote-taille` 13 px d'écran, `-cote-fleche` 7 px) ; API `coter()` : le chiffre roule. `role="img"` + `<title>` reliés ; mouvement réduit : dessin complet immédiat. Démo : schéma de coupe de la fiche produit (boutique). |
+| `data-douceur` | tout élément (`html` ou un bloc) | **Douceur** (`src/presse/douceur.ts`, feuille `src/presse/douceur.css`, chargées à la demande ; d'après les règles d'Emil Kowalski) : des micro-interactions légères et optionnelles, CSS d'abord : `subtil` (appui, entrée, survol), `expressif` (en plus : cascade, révélation, onglets, flou) ou `non` (rien dans ce bloc, l'emporte sur tout) ; sans valeur : le niveau subtil. Le choix du visiteur (palette Ctrl+K, « Douceur : aucune / subtile / expressive ») passe devant le niveau du bloc, sauf non. Une micro-interaction se force par son attribut (ligne suivante) ; réglages du bloc : `-duree` (ms, entrée : 220), `-courbe` et `-courbe-sortie` (entrée et sortie, une courbe comme `data-anim-ease` ; défaut ui-sortie), `-pas` (ms, cascade, de 30 à 80 : 50). Jamais sur un champ, un kbd, un contenu éditable, ni après une action au clavier ; mouvement réduit : opacité et couleurs gardées, déplacements, échelles, flous et découpes retirés. États posés (ne pas les écrire) : `data-douceur-actif`, `data-douceur-monte`, `data-douceur-fini`, `data-douceur-cede`, `data-douceur-maintien-etat`, `data-douceur-copie`, `data-douceur-flou-etat`, `data-douceur-sans` ; sur html : `data-douceur-clavier`, `data-douceur-reduit`, `data-douceur-defaut` (le choix de la palette, posé par le script de tête). Voir la section « Douceur ». Exemples : `vitrine-maison.html`. |
+| `data-douceur-appui`, `data-douceur-entree`, `data-douceur-cascade`, `data-douceur-revele`, `data-douceur-survol`, `data-douceur-maintien`, `data-douceur-onglets`, `data-douceur-flou` | tout élément (un bloc, ou l'élément lui-même) | `oui` (ou sans valeur) : allume la micro-interaction, `non` : l'éteint — sur un bloc de douceur, pour ses cibles ; ailleurs, l'élément devient sa cible. Appui : scale .97, 160 ms ui-sortie. Entrée : scale .95 et opacité, 220 ms, par @starting-style (repli posé par le module). Cascade : les enfants à 30–80 ms d'écart, 8 au plus, jamais bloquante. Révélation : clip-path d'image au défilement, une fois. Survol : levée et ombre, 150 ms, pointeur fin seulement. Maintien : maintenir pour confirmer (2 s linear, 200 ms au relâchement, annulable ; Entrée ou Espace maintenus, ou deux activations ; événement `douceur:confirme`). Onglets : indicateur par clip-path sur une copie inerte de la liste. Flou : un changement de contenu passe sous 2 px de flou et une opacité de .7. Module `src/presse/douceur.ts`. |
 | `data-couloir` | liste (`ul`, ou conteneur dont chaque enfant `figure`, `img`, `a`, `button` est un panneau) | **Couloir** (`src/presse/couloir.ts`) : les panneaux vus en perspective fuyante, comme un mur très long vu de côté — immenses et coupés au premier plan, fines lamelles au coude, bande lointaine jusqu'au bord ; chaque trapèze est une matrice 3D CSS (transform seulement), séparé du suivant par un filet. Défile sans fin ; vite, franges RVB et flou de mouvement au premier plan (filtre SVG). `-presets` (`micro`, `tunnel`, `lookbook`, `doux`, `rapide`) donne la base ; `-profondeur` (1.6 panneau), `-angle` (0°), `-horizon` (50 %), `-cote` (`droite`, `gauche`), `-hauteur` (1.2), `-largeur` (0.8), `-bande` (0.06), `-ecart` (6 px), `-filet` (#ffffff), `-vitesse` (0.8 panneau/s), `-inertie` (0.6), `-pilotage` (`pointeur`, `defilement`, `glisser`, `auto`, `molette`, combinables : défaut « pointeur glisser »), `-sens` (`avant`, `arriere`), `-sansfin` (`oui`, `non`), `-aberration` (0.5 ; 0 = aucune, 10 px au plus), `-flou` (0.3), `-vide` (0 à 0.6 : panneaux vides gris pâle), `-survol` (0), `-ouvre` (`non`, `visionneuse` : la visionneuse Presse, sinon un dialogue), `-fond`, `-mur` (`un`, `deux`, `trois` : tunnel), `-ouverture` (0.35), `-mode` (`mur`, `plafond` : la rangée au sol), `data-couloir-commandes="#id"` (où poser les boutons ; « non » : aucun). Liste sémantique, focus itinérant (flèches, Début, Fin, Entrée), boutons précédent / suivant / pause de 44 px ; `couloir:change`, `controleCouloir(el).aller(i)`. Sans JavaScript : la liste ; mouvement réduit : ni défilement automatique ni pointeur, ni franges ni flou, un fondu aux flèches. Exemples : `couloir.html`, lookbook de `boutique.html`. |
 | `data-couloir-duree`, `data-couloir-courbe` | avec `data-couloir` | Aller à un panneau (flèches, boutons, `.aller(i)`) en trajet minuté : secondes (« 0,8 », « 800ms » ; 0.6 si seule la courbe), courbe comme `data-anim-ease` ; sinon l'amorti ; mouvement réduit : fondu, inchangé. |
 | `data-logo` | conteneur (`div`), un `img` enfant en repli | **Logo** (`src/presse/logo.ts`, d'après Form d'Amir Mushich ; rendu par Paper Shaders 0.0.82, © 2026 Paper, Apache-2.0, `licenses/paper-shaders/`, en WebGL2, tel quel) : une matière animée sur un logo. La valeur est la matière : `liquide-metal`, `gemme-fumee`, `chaleur`, `eau`, `verre-cannele`, `trame-cmjn`, `trame-points`, `tramage`, `lentille`, `papier`. `-src` (SVG, PNG ou WebP à fond transparent ; à défaut l'`img` enfant) ou `-texte` (rastérisé, `-police` : `archivo`, `bodoni`) ; SVG rastérisé à la taille affichée (dpr ≤ 2, 4 Mpx au plus), recadré sur le logo avec `-marge` (0.12), fond transparent garanti ; `-sans-fond` retire le fond uni d'une image non détourée. `-presets` : la base de la matière (`chrome`, `noir`, `or`, `cuivre`, `rayures` ; `fumee`, `feu`, `fluo`, `infrarouge` ; `thermique`, `sepia`, `braise`, `givre` ; `onde`, `courant`, `piscine`, `abstrait` ; `prisme`, `vagues`, `plis` ; `quadri`, `gouttes`, `ancien` ; `encre`, `led`, `mosaique`, `trous` ; `phosphore`, `retro`, `bruit`, `naturel` ; `fisheye`, `bichromie`, `fumee` ; `froisse`, `plie`, `calque`, `verge`). Réglages (noms de `MATIERES` dans le module, bornes de Paper) : `-teinte`, `-repetition`, `-adoucissement`, `-frange-rouge`, `-frange-bleue`, `-distorsion`, `-contour`, `-angle` (°), `-echelle` (0.2 à 1.6), `-couleurs` (liste « #a #b … », six pour la gemme, dix pour la chaleur, `transparent` permis), `-interieur`, `-distorsion-interieure`, `-distorsion-exterieure`, `-lueur-interieure`, `-lueur-exterieure`, `-decalage`, `-taille`, `-grain`, `-caustique`, `-vagues`, `-couches`, `-bords`, `-reflet`, `-reflets`, `-motif` (`lignes`, `irregulier`, `vague`, `zigzag`, `motif`), `-relief` (`prisme`, `lentille`, `contour`, `cascade`, `plat`), `-etirement`, `-flou`, `-ombre`, `-ombres`, `-contraste`, `-bruit`, `-type` (`points`, `encre`, `net`, `classique`, `gluant`, `trous`, `doux`, `aleatoire`, `2x2`, `4x4`, `8x8` : trois pour la trame CMJN, quatre pour la trame de points, quatre pour le tramage), `-cyan`, `-magenta`, `-jaune`, `-noir`, `-encre`, `-rayon`, `-grille` (`carre`, `hex`), `-inverse`, `-couleurs-image`, `-sombre`, `-pixel`, `-niveaux`, `-ecart`, `-dispersion`, `-tourbillon`, `-biais`, `-perspective`, `-nombre`, `-spectre`, `-centre`, `-bombement`, `-papier`, `-melange`, `-graine`, `-rugosite`, `-fibres`, `-plis`, `-froissage`, `-froisses`, `-gouttes`, `-feuille-coupee`. Communs : `-fond` (transparent), `-vitesse` (1 ; 0 à 4), `-pause`, `-instant` (ms), `-survol` (`aucun`, `vitesse`, `distorsion` : suit le pointeur), `-masque` (`oui`, `non` : découpe à la silhouette, défaut oui pour verre, trames et tramage), `-mouvement` (0 à 1 : le mouvement que Presse ajoute aux filtres fixes de Paper). Bouclent exactement : gemme (2π s), chaleur (10 s), verre (8 s), trames, tramage, lentille, papier ; métal liquide et eau n'ont pas de période (l'export boucle par fondu enchaîné). `role="img"` et `aria-label` posés s'ils manquent ; boucle arrêtée hors écran et onglet masqué ; `controleLogo(el)` : régler, temps, `rendreImage`, `rendreSequence`. Sans WebGL2 : le logo d'origine ; mouvement réduit : image fixe à l'« instant beau » de la matière. Exemples : `logos.html`. |
@@ -158,8 +160,8 @@ import("./parametres/<id>.ts")`, pour ne pas alourdir `pages-nav`), rend `{ para
 est écrite aux défauts. `prereglages` : un paramètre qui donne une base aux autres (`data-couloir-presets`) ; les
 défauts affichés suivent la base. `src/registre/parametres/parametres.test.ts` vérifie l'accord fiche ⇄ registre ⇄
 PRESSE.md ⇄ module, et passe la démo au validateur, aux défauts et chaque paramètre réglé. **Chaque effet du registre a
-sa fiche** (17 : goo, couloir, cinetique, typo, ruban, rouleau ; depuis E7a : systeme, lightbox, vague, metal, voix,
-logo, dechirure, forme, autocollant, rail, trace). Deux champs de plus : `minimale` (la raison d'une fiche de moins de
+sa fiche** (18 : goo, couloir, cinetique, typo, ruban, rouleau ; depuis E7a : systeme, lightbox, vague, metal, voix,
+logo, dechirure, forme, autocollant, rail, trace ; depuis M2 : douceur). Deux champs de plus : `minimale` (la raison d'une fiche de moins de
 quatre paramètres ou sans démo : lightbox n'a qu'un attribut sans valeur, vague trois, systeme se pose sur `<html>` et
 n'a pas d'aperçu) et `rendu` (obligatoire pour un rendu GPU : ce que l'aperçu montre sans carte graphique — le repli
 du module, jamais une simulation ; affiché sous l'aperçu). Aucune fiche n'expose un attribut que son module ne lit pas.
@@ -188,6 +190,166 @@ nombres en notation JS, durées dans l'unité du paramètre sans suffixe, interr
 `#rrggbb`, courbes en écriture CSS ou par nom. À la lecture, chaque valeur repasse par la validation du schéma ; une
 clé inconnue, une valeur illisible ou une autre version sont dites, jamais bloquantes. JSON de réglages :
 `{ "effet": "goo", "v": 1, "reglages": { "<cle>": valeur | null } }` (`null` : auto).
+
+## Mouvement : le Gate, les valeurs, le vocabulaire
+
+D'après les skills d'Emil Kowalski (relevé : `docs/REFERENCES-MOUVEMENT.md`). Ce sont des **défauts d'auteur, pas des
+normes** : une page éditoriale peut prendre plus de temps qu'une barre d'outils.
+
+**Le Gate** — quatre questions avant toute animation :
+
+1. **Fréquence** : 100 fois par jour et plus (raccourci, palette) → aucune animation ; des dizaines (survol, liste
+   parcourue) → presque imperceptible ; occasionnel (modale, tiroir, toast) → standard ; rare (accueil, état vide) →
+   « délice » permis.
+2. **But** (un seul, nommé) : retour d'action, cohérence spatiale, indication d'état, éviter un changement brusque,
+   expliquer, ravir (rare). « Que ce soit joli » sur une action fréquente : non.
+3. **Fonction** : ce qu'on lit ou manipule (un graphique de données, un champ) ne bouge pas pour le style.
+4. **Clavier** : **jamais d'animation sur une action déclenchée au clavier** (le module `douceur` l'applique :
+   `html[data-douceur-clavier]` ; le lint signale les gestionnaires `keydown` qui animent).
+
+**Durées et courbes** (courbes nommées de `src/registre/mouvement/courbes.ts`, famille « interface », et leurs variables
+CSS dans `src/presse/jetons-mouvement.css` : `--presse-ease-sortie` = `ui-sortie` cubic-bezier(0.23, 1, 0.32, 1),
+`--presse-ease-ecran` = `ui-ecran` (0.77, 0, 0.175, 1), `--presse-ease-tiroir` = `tiroir` (0.32, 0.72, 0, 1) ; les
+courbes maison `out` (0.16, 1, 0.3, 1) et `in-out` (0.65, 0, 0.35, 1) restent celles des références visuelles) :
+
+| Quoi | Durée | Courbe |
+|---|---|---|
+| Appui (bouton, carte pressable) | 100–160 ms (douceur : 160 ms, scale .97) | ui-sortie |
+| Infobulle, petite popover | 125–200 ms | ui-sortie |
+| Menu déroulant, liste de choix | 150–250 ms | ui-sortie |
+| Entrée d'un élément (douceur) | 220 ms, scale .95 et opacité ; sortie 0,7 × | ui-sortie |
+| Modale, tiroir | 200–500 ms | modale : ui-sortie ; tiroir : tiroir |
+| Toast | 400 ms | ease |
+| Survol, couleur | 150 ms | ease |
+| Déplacement à l'écran (indicateur d'onglet, réordonner) | 200–300 ms (douceur : 250 ms) | ui-ecran |
+| Mouvement constant (défilé, barre de progression) | — | linear |
+| Maintien pour confirmer | 2 s à l'appui, 200 ms au relâchement | linear, puis ui-sortie |
+| Cascade | 30–80 ms entre deux éléments, 8 au plus, jamais bloquante | — |
+| Marketing, explicatif, révélation au défilement | plus long permis | ui-sortie |
+
+Jamais `ease-in` pour une réponse d'interface (départ lent = impression de lenteur ; `ease-in-out` reste permis pour un
+déplacement). **Sortie plus courte que l'entrée** (lent quand on décide, rapide quand le système répond). Entrée depuis
+scale(0.95) et opacité 0, jamais scale(0). Transitions nommées, jamais `transition: all`. Ne pas animer largeur,
+hauteur, marges : transform, opacity, filter, clip-path et les couleurs. Survol sous `@media (hover: hover) and
+(pointer: fine)`. Transitions plutôt que keyframes pour ce qui se déclenche vite (une transition interrompue garde sa
+vitesse).
+
+**Vocabulaire : de la sensation au terme** (pour régler une animation avec une personne ou un agent ; `animation-vocabulary`
+d'Emil, et les mots déjà employés par Presse) :
+
+| On dit… | Le terme | Dans Presse |
+|---|---|---|
+| « ça répond tout de suite » | sortie franche (ease-out), 100–160 ms | ui-sortie, `--presse-ease-sortie`, appui de la douceur |
+| « c'est mou, en retard » | ease-in, durée trop longue | lint : ease-in, duree-longue |
+| « ça s'enfonce sous le doigt » | appui : scale(0.97) | douceur, appui |
+| « ça sort du bouton » | origine de la transformation au déclencheur | lint : origine-centre ; `--douceur-origine` |
+| « ça surgit de nulle part », « pop » | entrée depuis scale(0) | partir de scale(0.95) et opacité 0 |
+| « ça arrive l'un après l'autre » | cascade (stagger), 30–80 ms | `data-anim-stagger`, `-cascade` des modules, `--douceur-pas` |
+| « l'indicateur glisse d'un onglet à l'autre » | élément partagé, clip-path inset sur une copie | douceur, onglets ; `data-presse-match` |
+| « l'image se découvre » | révélation (clip-path, masque) | douceur, révélation ; `data-gl-reveal` ; `data-anim="masque"` |
+| « le changement est doux, un peu flou » | fondu enchaîné masqué par un flou de 2 px | douceur, flou |
+| « ça rebondit », « élastique » | ressort (raideur, amortissement), dépassement | `ressort-souple`, `out-rebond`, `data-goo-ressort` |
+| « ça garde son élan » | inertie, vitesse au lâcher, interruptible | `src/presse/gesture.ts`, `ressort()` de la timeline |
+| « ça freine au bord » | friction croissante au-delà de la borne (élastique) | rail, visionneuse |
+| « ça suit le doigt » | geste direct (la valeur suit la main) | non jugé par `?presse-lint` |
+| « ça saute », « saccade » | saut, apparition sèche, arrêt net, saut de vitesse | `?presse-lint` (motion-lint) |
+| « ça tremble » | tremblement (jitter) | `?presse-lint` |
+| « tout bouge ensemble, d'une seule main » | chorégraphie : une timeline, des recouvrements | `src/presse/timeline.ts`, jetons |
+| « pas pendant que je tape » | aucune animation sur action clavier | le Gate, question 4 |
+| « moins d'animations » | mouvement réduit : réduire (opacité), pas supprimer | ci-dessous |
+| « au ralenti, pour régler » | ralenti ×2–5, image par image | `?presse-ralenti=4` |
+
+**Lint statique** (`tools/valider/mouvement-statique.ts`) : lit les `<style>`, les `style=""`, les feuilles liées locales
+et les CSS / TS que les scripts propres de la page importent (le dossier de son script d'entrée), et signale en
+**avertissements** (règle « mouvement » de `npm run valider`, `--sans-mouvement` pour s'en passer) : `transition-all`,
+`ease-in`, `scale-zero`, `duree-longue` (plus de 300 ms hors modale, tiroir, dialog, toast, drawer), `survol-sans-hover`,
+`clavier-anime` (heuristique : à vérifier), `origine-centre` (popover, menu, infobulle), `propriete-animee`,
+`keyframes-rapide`. Désactiver une règle là où elle est écrite, **avec sa raison** : `/* presse-lint-ignore: duree-longue —
+révélation au défilement */` (CSS : juste avant la règle ou dans son bloc), `// presse-lint-ignore: clavier-anime — …`
+(JS : sur l'une des trois lignes avant le gestionnaire), `<!-- presse-lint-ignore: … -->` (HTML : juste avant
+l'élément) ; sans raison, il ne vaut rien et se signale. Limite : une durée écrite en `var()` n'est pas jugée.
+**Audit** : `npm run mouvement:audit` (`tools/mouvement-audit.mjs`) passe le lint sur toutes les pages de `vite.config.ts`,
+puis une fois sur chaque feuille partagée, et écrit `docs/audit-mouvement.md` (lecture seule : règle × nombre × pages,
+un plan par règle avec courbes, durées, avant / après).
+
+**Mouvement réduit : ce que fait le code** (relevé le 2026-11-25) :
+
+- Le script en tête de page interpose `matchMedia("(prefers-reduced-motion: reduce)")` : sa valeur est (système **ou**
+  « réduites ») **et non** « toujours » ; les modules JS suivent donc les deux choix de la palette. Les règles CSS
+  `@media (prefers-reduced-motion)` ne voient que le système (classes `presse-anim-reduite` et `presse-anim-forcee` sur
+  `<html>` pour qui veut les suivre).
+- **Moteur de temps** (`data-anim`) : il **coupait tout** — `play()` sautait à l'état final, d'où une apparition sèche.
+  **Corrigé au plus étroit** : une entrée (`entree`, `chargement`) qui a une piste d'opacité la garde seule, en fondu de
+  0,2 s (`pistesReduites`, `DUREE_REDUITE`, `Timeline.fonduReduit`) ; déplacements, échelles, rotations, flous et découpes
+  sont retirés (timeline.test.ts). Sans piste d'opacité (`rideau`, `masque`) : état final, comme avant. Survol et appui :
+  état final posé ; défilement : suivi direct ; une `Timeline` écrite en JS saute toujours à la fin (sauf `fonduReduit`) ;
+  `ressort()` se pose.
+- **Modules** : fondu court (cinétique, typo, vague, couloir aux flèches, Vitrine) ; image fixe ou état posé, le contenu
+  restant entier (visionneuse sans vol, goo, tracé complet, graffiti, logo, métal, ruban à plat, rouleau, curseur
+  retiré) ; le diaporama rallume ses animations, sauf `data-diapo-motion="systeme"`.
+- **Feuilles CSS** : 20 fichiers de `src/` ont un bloc `@media (prefers-reduced-motion: reduce)`, qui le plus souvent
+  coupe (`animation: none`, `transition: none`) au lieu de garder l'opacité : écart connu, laissé à l'audit (M3), pas
+  corrigé ici (risque visuel).
+- **Douceur** : `html[data-douceur-reduit]` suit le `matchMedia` interposé (les deux choix de la palette compris) ;
+  opacité et couleurs gardées, échelles, déplacements, flous et découpes retirés — jamais tout coupé (douceur.test.ts).
+
+**Cascades par défaut, comparées à 30–80 ms** : `data-anim-stagger` : aucune sans valeur (l'auteur la donne : 0,06 dans
+les exemples) ; cinétique : 120 ms par ligne (**au-dessus**), 60 par mot, 30 par lettre, sorties 60 / 30 / 20 ms
+(**20 en dessous**) ; tracé : 90 ms (**au-dessus**), 31,5 ms pour les hachures ; diaporama (`data-step` en `mots` /
+`lettres`) : 70 ms par mot, 22 ms par lettre (**en dessous**), 60 ms pour le reste d'une diapo Magic Move ; douceur :
+50 ms, bornée à 30–80. Les écarts sont notés, pas corrigés : ce sont des entrées éditoriales (le texte qui s'écrit),
+et les références visuelles en dépendent.
+
+## Douceur : des micro-interactions optionnelles
+
+`src/presse/douceur.ts` et sa feuille `src/presse/douceur.css` (chargée avec le module, à la demande) : des animations
+légères qui manquent parfois aux interfaces, **optionnelles**, CSS d'abord. Armée par le registre (`[data-douceur]` ou
+un attribut forcé ; les pages en `data-presse-manuel` appellent `initDouceur()`), catégorie « Interface », rendu DOM,
+aucun coût GPU.
+
+```html
+<div data-douceur="subtil">…</div>          <!-- appui, entrée, survol -->
+<div data-douceur="expressif" data-douceur-pas="40">…</div>   <!-- + cascade, révélation, onglets, flou -->
+<section data-douceur="non">…</section>     <!-- rien ici -->
+<button data-douceur-maintien>Vider le panier</button>        <!-- maintenir pour confirmer -->
+```
+
+| Micro-interaction | Niveau | Cibles automatiques | Mouvement | Mouvement réduit |
+|---|---|---|---|---|
+| appui | subtil | boutons, liens, rôle bouton, summary | scale .97, 160 ms ui-sortie, à l'appui | opacité .8 |
+| entrée | subtil | popover, dialog ; un élément inséré après coup ou qui arrive à l'écran (marqué) | scale .95 et opacité, 220 ms, sortie 0,7 × ; @starting-style, repli posé par le module | opacité seule |
+| survol | subtil | boutons, rôle bouton, liens qui ne sont pas en ligne | levée de 2 px, ombre, 150 ms ease ; pointeur fin seulement | ombre seule |
+| cascade | expressif | listes ul / ol hors navigation, en-tête, pied | enfants à 30–80 ms d'écart (50 ms), 8 au plus, translation de 6 px et opacité | opacité seule |
+| révélation | expressif | images d'une figure | clip-path de haut en bas, 640 ms, une fois, à 100 px du bas de l'écran | fondu |
+| onglets | expressif | liste d'onglets (rôle tablist) | copie inerte « active » rognée sur l'onglet choisi, 250 ms ui-ecran | fondu de 160 ms |
+| flou | expressif | output, région aria-live polite | le nouveau contenu sort de 2 px de flou et d'une opacité de .7, 200 ms | opacité seule |
+| maintien | aucun (à demander) | — | voile en clip-path, 2 s linear à l'appui, 200 ms au relâchement, scale .97 | voile en opacité |
+
+- **Résolution** : le `data-douceur` le plus proche donne le niveau (`non` l'emporte sur tout ; sans valeur : subtil) ;
+  le choix du visiteur (palette, ci-dessous) passe devant, sauf `non` ; l'attribut `data-douceur-<micro>` le plus proche
+  allume (`oui`, ou sans valeur) ou éteint (`non`). Sur un bloc, il vaut pour ses cibles ; ailleurs, l'élément devient
+  la cible. Réglages du bloc : `data-douceur-duree` (entrée, ms), `data-douceur-courbe`, `data-douceur-courbe-sortie`,
+  `data-douceur-pas` (30 à 80 ms), posés en variables CSS (`--douceur-duree`…).
+- **Le Gate** : jamais sur kbd, champs, contenu éditable, canvas ; rien après une action au clavier (la dernière
+  entrée est une touche → `html[data-douceur-clavier]`, levé au pointeur : transitions à 0 s, pas d'échelle à l'appui ;
+  révélation et cascade au défilement restent) ; un élément que la page anime déjà (transition ou animation écrite) lui
+  est laissé (`data-douceur-cede`) ; sélecteurs en `:where()` (spécificité nulle : le CSS de la page gagne toujours).
+- **Pas de flash** : ce qui est déjà peint et visible quand le module arrive n'entre pas ; entre ce qui arrive à l'écran
+  plus tard, ce qui est inséré après coup, ou tout, si l'armement précède le premier dessin.
+- **Maintenir pour confirmer** (`data-douceur-maintien`) : l'action se branche sur l'événement `douceur:confirme`
+  (annulable ; un bouton `submit` envoie alors son formulaire), `douceur:annule` au relâchement. Au clavier : Entrée ou
+  Espace maintenus deux secondes, sans animation ; **et toujours une alternative** : deux activations en 4 s (clic, Entrée,
+  lecteur d'écran) confirment — décrit par `aria-description` (posé s'il manque), annoncé par une région `status`.
+  Jamais obligatoire de maintenir, jamais l'animation seule pour dire l'état.
+- **Onglets** : la page tient `aria-selected` (ou `aria-current`, `aria-pressed`) ; la copie est `aria-hidden`, inerte,
+  sans id ; couleurs `--douceur-onglet-fond` et `--douceur-onglet-encre`. Limite : la recherche dans la page trouve deux
+  fois le texte des onglets.
+- **Réglage global** : palette Ctrl+K, « Douceur : aucune / subtile / expressive » (et « comme les pages »), gardé dans
+  `presse:douceur.niveau@1` (src/registre/stockage.ts) ; le script en tête de page le pose sur
+  `<html data-douceur-defaut>` avant le premier dessin ; il vaut pour les pages qui arment la douceur (une page sans
+  `data-douceur` n'en reçoit pas). Le Studio d'effet montre une puce « Douceur » ; son aperçu montre la fiche, sans le
+  choix du visiteur.
+- **Essai** : `vitrine-maison.html` (`data-douceur="subtil"` sur la boutique ; le reste du dépôt n'en a pas).
 
 ## HTML-in-Canvas : un module, des noms vérifiés
 
@@ -244,7 +406,8 @@ déclencheur (`src/nav/declencheur.ts`). Une boîte modale avec une combobox ARI
 `aria-activedescendant`, `aria-expanded`, liste `role="listbox"` en groupes, nombre de résultats annoncé). Elle
 cherche, sans accents ni casse et avec une faute tolérée (`src/nav/recherche.ts`), dans : les pages, les effets du
 registre, leurs attributs `data-*`, et des commandes (`src/nav/commandes.ts`) — basculer le thème clair / sombre de
-l'interface, réduire ou rallumer les animations, copier le lien, ouvrir dans le Studio (les effets réglables de la
+l'interface, réduire ou rallumer les animations, la douceur (« Douceur : aucune / subtile / expressive », « comme les
+pages » : voir « Douceur »), copier le lien, ouvrir dans le Studio (les effets réglables de la
 page), page précédente / suivante (ordre de `PAGES`), menu des pages, mode présentation, débogage. Requête vide :
 récents (8), commandes, pages, effets. ↑ ↓ (Pg préc. / Pg suiv. par cinq) choisissent, Entrée ouvre (Ctrl / ⌘ +
 Entrée : nouvel onglet), Échap vide le champ puis ferme ; le focus revient à l'élément d'origine.
@@ -265,7 +428,8 @@ Les pages de démonstration gardent leurs couleurs.
 Une clé renommée déclare ses `anciennes` : à la première lecture, l'ancienne valeur est recopiée dans la neuve, puis
 retirée — seulement si l'écriture a réussi, jamais par-dessus une neuve. Migrées en E6 : `couloir:attributs`,
 `logos:instantanes`, `presse-diapo-createur:{notes,bande,largeur,export}`, `presse:orbite:{courant,reglages}` ;
-nouvelles : `presse:nav.recents@1`, `presse:nav.theme@1`, `presse:coque.studio-effet@1`. Les clés lues par un script
+nouvelles : `presse:nav.recents@1`, `presse:nav.theme@1`, `presse:coque.studio-effet@1`, `presse:douceur.niveau@1`
+(M2, relue aussi par le script en tête de page). Les clés lues par un script
 en tête de page, par l'export autonome des boutiques ou partagées par plusieurs modules sont gardées telles quelles et
 inventoriées (`src/registre/stockage-inventaire.ts`, avec la raison) ; `stockage.test.ts` échoue si une clé littérale
 du dépôt n'est pas inventoriée.

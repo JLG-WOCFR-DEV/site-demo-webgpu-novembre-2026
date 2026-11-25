@@ -21,6 +21,13 @@ const ICON =
  */
 export const MOTION_INLINE = `(()=>{try{var Q="(prefers-reduced-motion: reduce)",K="presse-animations",o=window.matchMedia.bind(window),f=false,R=false;var P=document.documentElement.classList.contains("presse-presentation");try{var V=localStorage.getItem(K);f=P||V==="toujours";R=!P&&V==="reduites"}catch(e){f=P}var L=[];function mk(sys){var t=new EventTarget(),h=[];Object.defineProperty(t,"matches",{get:function(){return(sys.matches||R)&&!f}});t.media=Q;t.onchange=null;t.addListener=function(cb){t.addEventListener("change",cb)};t.removeListener=function(cb){t.removeEventListener("change",cb)};t.__fire=function(){var e;try{e=new MediaQueryListEvent("change",{matches:t.matches,media:Q})}catch(x){e=new Event("change");e.matches=t.matches;e.media=Q}t.dispatchEvent(e);if(typeof t.onchange==="function")t.onchange(e)};sys.addEventListener("change",function(){t.__fire()});L.push(t);return t}window.matchMedia=function(q){var m=o(q);return String(q).replace(/\\s+/g," ").trim()===Q?mk(m):m};var r=o(Q);function cls(){var c=document.documentElement.classList;c.toggle("presse-anim-forcee",f&&r.matches);c.toggle("presse-anim-reduite",R&&!f)}cls();function fire(){cls();L.forEach(function(t){t.__fire()})}window.__presseMotion={get force(){return f},get system(){return r.matches},get reduit(){return R},set:function(v,keep){v=!!v;if(v===f)return;f=v;if(v)R=false;if(keep!==false)try{v?localStorage.setItem(K,"toujours"):localStorage.removeItem(K)}catch(e){}fire()},reduire:function(v){v=!!v;if(v===R)return;R=v;if(v)f=false;try{v?localStorage.setItem(K,"reduites"):localStorage.removeItem(K)}catch(e){}fire()}}}catch(e){}})()`;
 
+/**
+ * Douceur (src/presse/douceur.ts) : le niveau choisi dans la palette (« Douceur : aucune / subtile / expressive »,
+ * clé `presse:douceur.niveau@1` de src/registre/stockage.ts), posé sur <html data-douceur-defaut> avant le premier
+ * dessin : pas de flash quand le module arrive. Une valeur inconnue est ignorée.
+ */
+export const DOUCEUR_INLINE = `(()=>{try{var v=localStorage.getItem("presse:douceur.niveau@1");if(v==="aucune"||v==="subtil"||v==="expressif")document.documentElement.setAttribute("data-douceur-defaut",v)}catch(e){}})()`;
+
 /** Mode présentation : posé avant le premier dessin (classe sur <html>), pour que le débogage ne clignote pas. */
 export const PRESENT_INLINE = `(()=>{try{var u=new URLSearchParams(location.search).get("presentation");if(u!==null)sessionStorage.setItem("presse-presentation",u==="0"?"":"1");if(sessionStorage.getItem("presse-presentation"))document.documentElement.classList.add("presse-presentation")}catch(e){}})()`;
 
@@ -28,8 +35,9 @@ export function presseHead(): Plugin {
   return {
     name: "presse-head",
     transformIndexHtml(html) {
-      // Un seul script, dans cet ordre : le mode présentation (qui rallume les animations) avant le choix d'animations.
-      const tags = [{ tag: "script", children: `${PRESENT_INLINE};${MOTION_INLINE}`, injectTo: "head-prepend" as const }];
+      // Un seul script, dans cet ordre : le mode présentation (qui rallume les animations) avant le choix d'animations,
+      // puis le niveau de douceur.
+      const tags = [{ tag: "script", children: `${PRESENT_INLINE};${MOTION_INLINE};${DOUCEUR_INLINE}`, injectTo: "head-prepend" as const }];
       if (/<link[^>]+rel=["']?(?:shortcut )?icon/i.test(html)) return { html, tags };
       return { html: html.replace(/<\/head>/i, `  <link rel="icon" href="${ICON}" />\n  </head>`), tags };
     },

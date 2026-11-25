@@ -106,14 +106,56 @@ Le moteur GPU des `data-gl-*` se charge par `src/presse/auto.ts` (ou `src/presse
   `` `[data-x-piste]` ``. Enfants requis dans l'effet : « ses `[data-x-item]` », « chaque `img` ».
 - Valeur obligatoire : `data-x="id"` ou `="nom"`. Une liste fermée dans une valeur : `="a|b|rang"`.
 
+## Mouvement : le Gate, les valeurs, le vocabulaire
+
+Avant d'animer quoi que ce soit (détail et sources : PRESSE.md, « Mouvement » ; `docs/REFERENCES-MOUVEMENT.md`). Ce
+sont des défauts d'auteur, pas des normes.
+
+**Le Gate** — répondre aux quatre questions, sinon ne pas animer :
+
+1. **Fréquence** : 100 fois par jour (raccourci, palette) → rien ; des dizaines (survol, liste) → presque
+   imperceptible ; occasionnel (modale, tiroir, toast) → standard ; rare (accueil, état vide) → « délice » permis.
+2. **But**, un seul et nommé : retour d'action, cohérence spatiale, état, éviter un saut, expliquer, ravir (rare).
+3. **Fonction** : ce qu'on lit ou manipule (données, champ) ne bouge pas pour le style.
+4. **Clavier** : **jamais d'animation sur une action au clavier**.
+
+| Quoi | Durée | Courbe |
+|---|---|---|
+| Appui | 100–160 ms, scale .97 | `ui-sortie` (`--presse-ease-sortie`) |
+| Infobulle, petite popover | 125–200 ms | `ui-sortie` |
+| Menu déroulant | 150–250 ms | `ui-sortie` |
+| Entrée d'un élément | 200–250 ms, depuis scale .95 + opacité (jamais scale 0) ; sortie ≈ 0,7 × | `ui-sortie` |
+| Modale / tiroir | 200–500 ms | `ui-sortie` / `tiroir` (`--presse-ease-tiroir`) |
+| Toast | 400 ms | `ease` |
+| Survol, couleur | 150 ms, sous `@media (hover: hover) and (pointer: fine)` | `ease` |
+| Déplacement à l'écran | 200–300 ms | `ui-ecran` (`--presse-ease-ecran`) |
+| Mouvement constant | — | `linear` |
+| Cascade | 30–80 ms entre éléments, 8 au plus, jamais bloquante | — |
+
+Règles : jamais `ease-in` pour l'interface, jamais `transition: all`, n'animer que transform, opacity, filter,
+clip-path et les couleurs, transitions plutôt que keyframes pour ce qui se relance vite, mouvement réduit = **réduire**
+(garder opacité et couleurs) et non tout couper. `npm run valider` le vérifie en avertissements (règle « mouvement ») ;
+`/* presse-lint-ignore: <regle> — <raison> */` pour un écart voulu ; `npm run mouvement:audit` pour tout le dépôt.
+Micro-interactions toutes faites : `data-douceur="subtil|expressif"` (PRESSE.md, « Douceur ») plutôt que du CSS à la
+main.
+
+**Vocabulaire (sensation → terme)** : « répond tout de suite » → sortie franche ease-out 100–160 ms · « mou, en retard »
+→ ease-in ou trop long · « s'enfonce sous le doigt » → appui scale .97 · « sort du bouton » → `transform-origin` au
+déclencheur · « surgit de nulle part » → entrée depuis scale(0) · « l'un après l'autre » → cascade (stagger) ·
+« l'indicateur glisse » → élément partagé, clip-path inset · « l'image se découvre » → révélation clip-path · « change
+en douceur, un peu flou » → crossfade + flou 2 px · « rebondit » → ressort (raideur, amortissement, dépassement) ·
+« garde son élan » → inertie, vitesse au lâcher, interruptible · « freine au bord » → friction aux bornes · « suit le
+doigt » → geste direct · « saute », « saccade » → saut, arrêt net (`?presse-lint`) · « tremble » → jitter · « au
+ralenti » → `?presse-ralenti=4`.
+
 ## Conventions
 
 - **Français partout** : `lang="fr"`, textes, `alt`, `aria-label`, `title`, `placeholder`, noms d'attributs, de modules,
   de variables CSS et de fonctions. Une citation étrangère porte son `lang`.
 - **Interfaces d'édition** (barres d'outils, inspecteurs, Créateur) : **des icônes plutôt que du texte**, chacune avec
   `aria-label` (et `title` pour l'infobulle), groupes secondaires repliés dans un menu « plus » quand la place manque.
-- **Mouvement réduit** : chaque effet a un repli (fondu court, image fixe, rien) ; ne jamais le contourner. Le linter
-  `?presse-lint` refuse saut, apparition sèche, arrêt net.
+- **Mouvement réduit** : chaque effet a un repli (fondu court, image fixe) ; réduire, pas supprimer ; ne jamais le
+  contourner. Le linter `?presse-lint` refuse saut, apparition sèche, arrêt net.
 - **Accessibilité** : HTML sémantique d'abord (titres, listes, `button` pour agir, `a` pour aller), `alt` partout
   (`alt=""` si décorative), `<label>` pour chaque champ, focus visible, rien d'atteignable seulement par l'effet
   (canvas `aria-hidden`, vrai texte dans le DOM). **Cibles de 44 px** (doigt) ; `npm run check` signale sous 24 px.
@@ -204,6 +246,8 @@ Régénérer après toute modification de PRESSE.md ou de `src/registre/effets.t
 | Mot peint à la bombe dans un canvas 2D : bord flou, brume, grain, éclaboussures à graine fixe, coulures | `data-graffiti` | — | canvas 2D | à importer : `src/presse/graffiti.ts` | boutique.html |
 | Empile [data-derriere-fond], [data-derriere-sujet] et [data-derriere-devant] : le mot passe derrière la silhouette | `data-derriere` | — | DOM | à importer : `src/presse/derriere.ts` | boutique.html |
 | Dessin technique qui se trace, une étape à la fois : data-trace-role : construction, forme, cote, hachure, dans cet… | `data-trace` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
+| **Douceur** — des micro-interactions légères et optionnelles, CSS d'abord : subtil, expressif ou non | `data-douceur` | subtil, expressif, non | DOM | pages-nav, sauf `data-presse-manuel` | vitrine-maison.html |
+| oui : allume la micro-interaction, non : l'éteint — sur un bloc de douceur, pour ses cibles | `data-douceur-appui`, `data-douceur-entree`, `data-douceur-cascade`, `data-douceur-revele`, `data-douceur-survol`, `data-douceur-maintien`, `data-douceur-onglets`, `data-douceur-flou` | oui, non | DOM | pages-nav, sauf `data-presse-manuel` | — |
 | **Couloir** — les panneaux vus en perspective fuyante, comme un mur très long vu de côté — immenses et coupés au premier plan,… | `data-couloir` | — | DOM | pages-nav | couloir.html |
 | **Logo** — une matière animée sur un logo | `data-logo` | liquide-metal, gemme-fumee, chaleur, eau, verre-cannele, trame-cmjn, trame-points, tramage… | WebGL2 | pages-nav | logos.html |
 | **Menu roulant à image-tissu** — les liens défilent à la verticale, aimantés sur un titre | `data-rouleau` | — | WebGPU | pages-nav | rouleau.html |

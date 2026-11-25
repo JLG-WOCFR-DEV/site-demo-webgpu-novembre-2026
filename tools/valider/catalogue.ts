@@ -125,6 +125,8 @@ export const COMPLEMENTS: Record<string, { valeurs?: string[]; valeursDe?: strin
   "data-cinetique-courbe-sortie": { courbe: true, pourquoi: "idem data-anim-ease." },
   "data-goo-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
   "data-couloir-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
+  "data-douceur-courbe": { courbe: true, pourquoi: "idem data-anim-ease." },
+  "data-douceur-courbe-sortie": { courbe: true, pourquoi: "idem data-anim-ease." },
   "data-graffiti": { texteOuValeur: true, pourquoi: "« bloc (p, div) avec le mot » : le mot en valeur, ou le texte de l'élément." },
 };
 

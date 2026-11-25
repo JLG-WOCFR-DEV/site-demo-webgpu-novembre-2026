@@ -453,4 +453,30 @@ export const EFFETS: readonly Manifeste<any>[] = [
     exemple: "boutique.html",
     parametres: () => import("./parametres/trace.ts"),
   }),
+  // Micro-interactions légères et optionnelles (d'après Emil Kowalski) : CSS d'abord, armées en dernier.
+  effet({
+    id: "douceur",
+    nom: "Douceur",
+    categorie: "interface",
+    selecteur:
+      "[data-douceur], [data-douceur-appui], [data-douceur-entree], [data-douceur-cascade], [data-douceur-revele], [data-douceur-survol], [data-douceur-maintien], [data-douceur-onglets], [data-douceur-flou]",
+    attributs: [
+      "data-douceur", "data-douceur-appui", "data-douceur-entree", "data-douceur-cascade", "data-douceur-revele",
+      "data-douceur-survol", "data-douceur-maintien", "data-douceur-onglets", "data-douceur-flou",
+      "data-douceur-duree", "data-douceur-courbe", "data-douceur-courbe-sortie", "data-douceur-pas",
+      "data-douceur-defaut", "data-douceur-actif", "data-douceur-monte", "data-douceur-fini", "data-douceur-cede",
+      "data-douceur-clavier", "data-douceur-reduit", "data-douceur-maintien-etat", "data-douceur-copie",
+      "data-douceur-flou-etat", "data-douceur-sans",
+    ],
+    charger: () => import("../presse/douceur.ts"),
+    armer: (m, racine) => m.initDouceur(racine),
+    manuel: true,
+    rendu: "DOM",
+    gpu: "aucun",
+    statut: "essai",
+    module: "src/presse/douceur.ts",
+    resume: "Micro-interactions légères et optionnelles : appui, entrée, survol, cascade, révélation, onglets, flou, maintien.",
+    exemple: "vitrine-maison.html",
+    parametres: () => import("./parametres/douceur.ts"),
+  }),
 ];

@@ -8,7 +8,7 @@
  * Entrée l'ouvre (Mod+Entrée : dans un nouvel onglet), Échap vide le champ puis ferme.
  *
  * On y trouve : les pages (taxonomie), les effets et leurs attributs `data-*` (registre), et des commandes — thème,
- * mouvement réduit, copier le lien, ouvrir dans le Studio, page précédente / suivante, menu des pages, mode
+ * mouvement réduit, douceur (aucune / subtile / expressive), copier le lien, ouvrir dans le Studio, page précédente / suivante, menu des pages, mode
  * présentation, débogage. Recherche floue sans accents (src/nav/recherche.ts) ; récents gardés (stockage protégé).
  */
 import { EFFETS, type Manifeste } from "../registre/effets.ts";
@@ -16,7 +16,7 @@ import { afficher } from "../studio/raccourcis.ts";
 import { presenting, setPresenting } from "../presse/presentation.ts";
 import { openDebugPanel } from "../debug-panel.ts";
 import { chercher, decouper } from "./recherche.ts";
-import { creerCommandes, lireRecents, noterRecent, texteDe, type Commande } from "./commandes.ts";
+import { commandesDouceur, creerCommandes, lireRecents, noterRecent, texteDe, type Commande } from "./commandes.ts";
 import { GROUPES, NOMS_CATEGORIES, entreesAPlat, voisine } from "./taxonomie.ts";
 import { appliquerTheme, basculerTheme, themeChoisi, themeEffectif } from "./theme.ts";
 import type { ContextePalette } from "./declencheur.ts";
@@ -45,6 +45,7 @@ const I: Record<string, string> = {
   attribut: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
   theme: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   mouvement: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  douceur: '<path d="M4 16c3-6 5-6 8 0s5 6 8 0"/><circle cx="12" cy="7" r="1.6"/>',
   lien: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   studio: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1"/>',
   precedente: '<path d="M15 6l-6 6 6 6"/>',
@@ -190,6 +191,8 @@ function commandes(c: ContextePalette) {
       dire(reduitMaintenant() ? "Mouvement réduit." : "Animations rallumées.");
     },
   });
+  // Douceur (src/presse/douceur.ts) : le niveau des micro-interactions, pour toutes les pages qui l'arment.
+  for (const k of commandesDouceur({ dire })) r.ajouter(k);
   r.ajouter({
     id: "lien",
     titre: "Copier le lien de cette page",

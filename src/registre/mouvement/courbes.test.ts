@@ -170,3 +170,54 @@ test("jetons : ease() est la quartique (out-quart exacte), pas EASE.out — éca
   const l = lireCourbe(EASE.spring);
   assert.ok(l.ok && Math.abs(l.f(0.25) - COURBES_MAISON.ressort(0.25)) < 0.02);
 });
+
+/** La formule CSS d'un cubic-bezier, écrite à part (dichotomie fine sur x(t), puis y(t)) : témoin indépendant du solveur. */
+function bezierCss(x1: number, y1: number, x2: number, y2: number): Courbe {
+  const B = (a: number, b: number, t: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
+  return (x) => {
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 60; i++) {
+      const m = (lo + hi) / 2;
+      if (B(x1, x2, m) < x) lo = m;
+      else hi = m;
+    }
+    return B(y1, y2, (lo + hi) / 2);
+  };
+}
+
+test("courbes : famille « interface » — ui-sortie, ui-ecran, tiroir (Emil Kowalski), CSS exact et jetons CSS", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const jetons = fs.readFileSync(path.join(import.meta.dirname, "../../presse/jetons-mouvement.css"), "utf8");
+  const ATTENDU: Record<string, { b: [number, number, number, number]; variable: string }> = {
+    "ui-sortie": { b: [0.23, 1, 0.32, 1], variable: "--presse-ease-sortie" },
+    "ui-ecran": { b: [0.77, 0, 0.175, 1], variable: "--presse-ease-ecran" },
+    tiroir: { b: [0.32, 0.72, 0, 1], variable: "--presse-ease-tiroir" },
+  };
+  for (const [nom, { b, variable }] of Object.entries(ATTENDU)) {
+    const p = PREREGLAGES.find((x) => x.nom === nom);
+    assert.ok(p, `${nom} : préréglage absent`);
+    assert.equal(p.famille, "interface");
+    assert.deepEqual(p.bezier, b);
+    const l = lireCourbe(nom);
+    assert.ok(l.ok);
+    assert.equal(l.css, `cubic-bezier(${b.join(", ")})`);
+    assert.equal(courbeCss(nom), l.css);
+    assert.ok(estCourbe(nom), `${nom} : lisible par le validateur de pages (data-anim-ease & co)`);
+    const temoin = bezierCss(...b);
+    for (let i = 0; i <= 100; i++) assert.ok(Math.abs(l.f(i / 100) - temoin(i / 100)) < 1e-3, `${nom} à ${i / 100}`);
+    // La variable CSS dit la même chose (src/presse/jetons-mouvement.css).
+    const m = new RegExp(`${variable}:\\s*(cubic-bezier\\([^)]*\\))`).exec(jetons);
+    assert.ok(m, `${variable} absente de jetons-mouvement.css`);
+    const relu = lireCourbe(m[1]!);
+    assert.ok(relu.ok && relu.bezier);
+    assert.deepEqual([...relu.bezier], b, `${variable} ≠ ${nom}`);
+  }
+  // Quelques valeurs à la main (formule CSS) : ui-sortie est franche au départ, ui-ecran part lentement.
+  assert.ok(courbeDe("ui-sortie")(0.25) > 0.7, "ui-sortie : franche au départ");
+  assert.ok(courbeDe("ui-ecran")(0.2) < 0.1 && courbeDe("ui-ecran")(0.5) > 0.4, "ui-ecran : départ lent, aller-retour");
+  // Les courbes maison ne bougent pas (références visuelles).
+  assert.deepEqual(PREREGLAGES.find((x) => x.nom === "out")!.bezier, [0.16, 1, 0.3, 1]);
+  assert.deepEqual(PREREGLAGES.find((x) => x.nom === "in-out")!.bezier, [0.65, 0, 0.35, 1]);
+});

@@ -260,9 +260,9 @@ var O = {
 			js: 9.9,
 			differe: 0,
 			fichiers: [
-				"assets/goo-C5r3P4z6.js",
-				"assets/goo-elj2lMQY.js",
-				"assets/schema-CLVVF78T.js"
+				"assets/goo-BquMH6sv.js",
+				"assets/goo-CgCgnBwj.js",
+				"assets/schema-CGStE9UC.js"
 			]
 		},
 		metal: {
@@ -287,7 +287,7 @@ var O = {
 		typo: {
 			js: 12.5,
 			differe: 0,
-			fichiers: ["assets/typo-CXyut0DE.js", "assets/typo-kAR89SM2.js"]
+			fichiers: ["assets/typo-CQYMwLui.js", "assets/typo-ChD7DiDg.js"]
 		},
 		rouleau: {
 			js: 12.6,
@@ -302,9 +302,9 @@ var O = {
 			js: 13.1,
 			differe: 11.7,
 			fichiers: [
-				"assets/couloir-yQp-S2Bo.js",
-				"assets/couloir-zV9oWdrd.js",
-				"assets/schema-CLVVF78T.js"
+				"assets/couloir-CNAatuys.js",
+				"assets/couloir-DBbrB7gs.js",
+				"assets/schema-CGStE9UC.js"
 			]
 		},
 		logo: {
@@ -315,7 +315,7 @@ var O = {
 		cinetique: {
 			js: 17,
 			differe: 0,
-			fichiers: ["assets/cinetique-BkfHMhrZ.js", "assets/cinetique-KC51N19c.js"]
+			fichiers: ["assets/cinetique-8oQC2gv7.js", "assets/cinetique-BmWqZtq1.js"]
 		},
 		dechirure: {
 			js: 4.2,
@@ -345,6 +345,11 @@ var O = {
 			js: 5.7,
 			differe: 0,
 			fichiers: ["assets/trace-C7M2e_sH.js", "assets/trace-DL3sufCt.js"]
+		},
+		douceur: {
+			js: 4.9,
+			differe: 0,
+			fichiers: ["assets/douceur-DR35TnLW.js"]
 		}
 	}
 }.effets, k = ({ gpu: e, ...t }) => ({
@@ -435,7 +440,7 @@ var O = {
 			"data-goo-duree",
 			"data-goo-courbe"
 		],
-		charger: () => import("./goo-B4xd1pEi.js"),
+		charger: () => import("./goo-DbRbNI_n.js"),
 		armer: (e, t) => e.initGoo(t),
 		rendu: "WebGPU",
 		gpu: "moyen",
@@ -535,7 +540,7 @@ var O = {
 			"data-typo-rejoue",
 			"data-typo-ligne"
 		],
-		charger: () => import("./typo-ywBhIt1n.js"),
+		charger: () => import("./typo-C_CHcI6C.js"),
 		armer: (e, t) => e.initTypo(t),
 		rendu: "DOM + WebGPU",
 		gpu: "léger",
@@ -577,7 +582,7 @@ var O = {
 		categorie: "image",
 		selecteur: "[data-couloir]",
 		attributs: /* @__PURE__ */ "data-couloir.data-couloir-presets.data-couloir-profondeur.data-couloir-angle.data-couloir-horizon.data-couloir-cote.data-couloir-hauteur.data-couloir-largeur.data-couloir-bande.data-couloir-ecart.data-couloir-filet.data-couloir-vitesse.data-couloir-inertie.data-couloir-pilotage.data-couloir-sens.data-couloir-sansfin.data-couloir-aberration.data-couloir-flou.data-couloir-vide.data-couloir-survol.data-couloir-ouvre.data-couloir-fond.data-couloir-mur.data-couloir-ouverture.data-couloir-mode.data-couloir-commandes.data-couloir-duree.data-couloir-courbe".split("."),
-		charger: () => import("./couloir-DaYODJEI.js"),
+		charger: () => import("./couloir-CzNE_ibs.js"),
 		armer: (e, t) => e.initCouloir(t),
 		rendu: "DOM",
 		gpu: "aucun",
@@ -585,7 +590,7 @@ var O = {
 		module: "src/presse/couloir.ts",
 		resume: "Un mur d'images vu en perspective fuyante, qui défile au pointeur, frangé par la vitesse.",
 		exemple: "couloir.html",
-		parametres: () => import("./couloir-CD2KgiQJ.js")
+		parametres: () => import("./couloir-CLGaTLx6.js")
 	}),
 	k({
 		id: "logo",
@@ -609,7 +614,7 @@ var O = {
 		categorie: "texte",
 		selecteur: "[data-cinetique], [data-roule], [data-marque], [data-defile], [data-reflet], [data-cercle], [data-coupe], [data-brouille], [data-frappe]",
 		attributs: /* @__PURE__ */ "data-cinetique.data-roule.data-marque.data-defile.data-reflet.data-cercle.data-coupe.data-brouille.data-frappe.data-cinetique-par.data-cinetique-quand.data-cinetique-duree.data-cinetique-delai.data-cinetique-cascade.data-cinetique-ordre.data-cinetique-sortie.data-cinetique-rejoue.data-cinetique-courbe.data-cinetique-courbe-sortie.data-roule-tempo.data-defile-rangs.data-defile-vitesse.data-defile-incline.data-defile-separateur.data-cercle-rayon.data-cercle-vitesse.data-frappe-vitesse".split("."),
-		charger: () => import("./cinetique-BaS7YQJ3.js"),
+		charger: () => import("./cinetique-BUmM4ra0.js"),
 		armer: (e, t) => e.initCinetique(t),
 		manuel: !0,
 		rendu: "DOM",
@@ -755,6 +760,48 @@ var O = {
 		resume: "Un dessin technique qui se trace : construction, formes, cotes, hachures.",
 		exemple: "boutique.html",
 		parametres: () => import("./trace-BHahsxl7.js")
+	}),
+	k({
+		id: "douceur",
+		nom: "Douceur",
+		categorie: "interface",
+		selecteur: "[data-douceur], [data-douceur-appui], [data-douceur-entree], [data-douceur-cascade], [data-douceur-revele], [data-douceur-survol], [data-douceur-maintien], [data-douceur-onglets], [data-douceur-flou]",
+		attributs: [
+			"data-douceur",
+			"data-douceur-appui",
+			"data-douceur-entree",
+			"data-douceur-cascade",
+			"data-douceur-revele",
+			"data-douceur-survol",
+			"data-douceur-maintien",
+			"data-douceur-onglets",
+			"data-douceur-flou",
+			"data-douceur-duree",
+			"data-douceur-courbe",
+			"data-douceur-courbe-sortie",
+			"data-douceur-pas",
+			"data-douceur-defaut",
+			"data-douceur-actif",
+			"data-douceur-monte",
+			"data-douceur-fini",
+			"data-douceur-cede",
+			"data-douceur-clavier",
+			"data-douceur-reduit",
+			"data-douceur-maintien-etat",
+			"data-douceur-copie",
+			"data-douceur-flou-etat",
+			"data-douceur-sans"
+		],
+		charger: () => import("./douceur-CTm1yS0s.js"),
+		armer: (e, t) => e.initDouceur(t),
+		manuel: !0,
+		rendu: "DOM",
+		gpu: "aucun",
+		statut: "essai",
+		module: "src/presse/douceur.ts",
+		resume: "Micro-interactions légères et optionnelles : appui, entrée, survol, cascade, révélation, onglets, flou, maintien.",
+		exemple: "vitrine-maison.html",
+		parametres: () => import("./douceur-DCcHFbRA.js")
 	})
 ], j = [
 	{
@@ -1380,6 +1427,10 @@ var U = {
 		domaine: "coque",
 		nom: "studio-effet"
 	}),
+	douceurNiveau: H({
+		domaine: "douceur",
+		nom: "niveau"
+	}),
 	couloirAttributs: H({
 		domaine: "couloir",
 		nom: "attributs",
@@ -1488,11 +1539,11 @@ function K(e, t = W(e.portee)) {
 function q(e, t, n = W(e.portee)) {
 	return G.ecrire(n, e.texte, t);
 }
-function ve(e, t = W(e.portee)) {
+function J(e, t = W(e.portee)) {
 	G.retirer(t, e.texte);
 	for (let n of e.anciennes) G.retirer(t, n);
 }
-function J(e, t, n, r) {
+function ve(e, t, n, r) {
 	let i = K(e, r === void 0 ? W(e.portee) : r);
 	if (i === null) return t;
 	try {
@@ -1532,6 +1583,6 @@ function $(e = X()) {
 }
 function be() {
 	let e = Q() === "sombre" ? "clair" : "sombre", t = e === Z() ? null : e;
-	return t === null && ve(U.navTheme), Y = t === null || q(U.navTheme, t) ? void 0 : t, $(t), e;
+	return t === null && J(U.navTheme), Y = t === null || q(U.navTheme, t) ? void 0 : t, $(t), e;
 }
-export { g as C, S, se as _, U as a, ne as b, I as c, R as d, j as f, oe as g, ae as h, Q as i, B as l, M as m, be as n, ye as o, N as p, X as r, J as s, $ as t, he as u, A as v, h as w, b as x, C as y };
+export { ne as C, h as D, g as E, C as S, S as T, M as _, U as a, se as b, K as c, I as d, B as f, N as g, j as h, Q as i, ve as l, R as m, be as n, q as o, he as p, X as r, ye as s, $ as t, J as u, ae as v, b as w, A as x, oe as y };

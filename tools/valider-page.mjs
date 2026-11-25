@@ -10,6 +10,8 @@
 //   npm run valider -- --vite=autre.ts   lire les pages dans une autre configuration (tests)
 //   npm run valider -- --sans-budget      sans le budget JS (avertissement « budget », lu dans dist/ s'il existe :
 //                                        tools/valider/budget.ts, seuils et dérogations dans tools/valider/budgets.json)
+//   npm run valider -- --sans-mouvement  sans le lint statique du mouvement (avertissements « mouvement » :
+//                                        tools/valider/mouvement-statique.ts ; rapport complet : npm run mouvement:audit)
 //
 // Code retour : 1 s'il y a une erreur (ou un avertissement avec --strict), ou si vite.config.ts ne donne aucune page
 // (`input` doit rester un littéral objet : tools/valider/pages-vite.ts), 0 sinon.
@@ -56,7 +58,7 @@ for (const f of fichiers) {
     erreurs++;
     continue;
   }
-  const constats = validerFichier(abs, cat);
+  const constats = validerFichier(abs, cat, { mouvement: !drapeaux.has("--sans-mouvement") });
   // Le budget JS de la page, mesuré sur le dernier build (rien si dist/ n'existe pas) : un avertissement, jamais une erreur.
   if (!drapeaux.has("--sans-budget")) {
     const b = constatBudget(racine, abs);

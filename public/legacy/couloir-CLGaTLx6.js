@@ -1,4 +1,4 @@
-import { BORNES as e, DEFAUTS as t, PILOTAGES as n, PRESETS as r, PRESETS_NOMS as i } from "./couloir-DaYODJEI.js";
+import { BORNES as e, DEFAUTS as t, PILOTAGES as n, PRESETS as r, PRESETS_NOMS as i } from "./couloir-CzNE_ibs.js";
 // src/registre/parametres/couloir.ts
 var a = (n, r, i, a, o = {}) => ({
 	cle: n,

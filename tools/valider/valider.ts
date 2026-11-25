@@ -12,13 +12,17 @@
  *   langue        `<html lang="fr">`, texte d'interface visiblement anglais ;
  *   image         `alt`, `width` / `height` ;
  *   libelle       cible interactive sans nom accessible ;
- *   id            identifiant en double (les références par id cassent).
+ *   id            identifiant en double (les références par id cassent) ;
+ *   mouvement     lint statique du mouvement (tools/valider/mouvement-statique.ts) : transition: all, ease-in,
+ *                 scale(0), durée > 300 ms, :hover sans @media (hover: hover)… — avertissements seulement, sur les
+ *                 sources propres de la page (désactivables par `presse-lint-ignore: <regle> — <raison>`).
  */
 import fs from "node:fs";
 import path from "node:path";
 import { parse, type HTMLElement, type Node } from "node-html-parser";
 import { SCHEMAS, validate as validerComposant } from "../../presse/build/validate.ts";
 import { lireCourbe } from "../../src/registre/mouvement/courbes.ts";
+import { lintPage, texteConstat } from "./mouvement-statique.ts";
 import { COLLISIONS, COMPLEMENTS, proche, toutesValeurs, type Attribut, type Catalogue, type Contexte, type Sur } from "./catalogue.ts";
 
 export type Gravite = "erreur" | "avertissement";
@@ -68,7 +72,7 @@ function texteAccessible(n: Node): string {
 
 /* ───────────────────────── Le contrôle ───────────────────────── */
 
-type Options = { fichier?: string };
+type Options = { fichier?: string; /** Faux : sans le lint statique du mouvement (`--sans-mouvement`). */ mouvement?: boolean };
 
 export function validerHtml(html: string, cat: Catalogue, opts: Options = {}): Constat[] {
   const fichier = opts.fichier ?? path.join(cat.racine, "page.html");
@@ -366,6 +370,13 @@ export function validerHtml(html: string, cat: Catalogue, opts: Options = {}): C
   /* ── identifiants ── */
   for (const [id, els] of ids) if (els.length > 1) dire("erreur", "id", els[1]!, `id="${id}" en double (${els.length} fois) : les références (#${id}, for, aria-*) visent le premier`);
 
+  /* ── mouvement (lint statique) ── */
+  if (opts.mouvement !== false) {
+    const pageRel = path.relative(cat.racine, fichier).split(path.sep).join("/");
+    for (const c of lintPage(fichier, cat.racine, html).constats)
+      out.push({ gravite: "avertissement", regle: "mouvement", ligne: c.fichier === pageRel ? c.ligne : 1, element: "", message: texteConstat(c) });
+  }
+
   return out.sort((x, y) => x.ligne - y.ligne);
 }
 
@@ -437,8 +448,8 @@ function lireManifeste(racine: string): Set<string> {
   }
 }
 
-export function validerFichier(fichier: string, cat: Catalogue): Constat[] {
-  return validerHtml(fs.readFileSync(fichier, "utf8"), cat, { fichier: path.resolve(fichier) });
+export function validerFichier(fichier: string, cat: Catalogue, opts: Omit<Options, "fichier"> = {}): Constat[] {
+  return validerHtml(fs.readFileSync(fichier, "utf8"), cat, { ...opts, fichier: path.resolve(fichier) });
 }
 
 /** Rapport lisible. */

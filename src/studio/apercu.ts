@@ -26,6 +26,9 @@ type Message = { type: "studio:etat"; hash: string } | { type: "studio:rejouer" 
 const REGISTRE = new Set(EFFETS.flatMap((x) => x.attributs));
 
 const scene = document.getElementById("scene")!;
+// L'aperçu montre la fiche : le niveau de douceur choisi par le visiteur (palette, posé par le script de tête) n'y
+// passe pas devant le réglage « Niveau » (src/presse/douceur.ts lit <html data-douceur-defaut>).
+document.documentElement.removeAttribute("data-douceur-defaut");
 const id = new URLSearchParams(location.search).get("effet") ?? "";
 const manifeste = EFFETS.find((e) => e.id === id);
 let montages = 0;
