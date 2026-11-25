@@ -19,6 +19,9 @@ import { rendreInspecteur } from "./inspecteur.ts";
 import { croquisSvg } from "./croquis.ts";
 import { icone } from "./icones.ts";
 import { e } from "./html.ts";
+import { monterCoque } from "../studio/coque.ts";
+import { SCHEMA_VITRINE } from "../studio/coque-plan.ts";
+import { CLES } from "../registre/stockage.ts";
 import { copier, htmlAutonome, jsonDocument, lienPartage, telecharger } from "./export.ts";
 import { NOMS_FAMILLES, type DocumentVitrine, type Famille, type Plan, type Section } from "./types.ts";
 import type { Valeur } from "./schema.ts";
@@ -52,7 +55,24 @@ function documentInitial(): DocumentVitrine {
 
 let doc = documentInitial();
 let selection: string | null = doc.plan.sections.find((s) => s.type === "hero")?.id ?? doc.plan.sections[0]?.id ?? null;
-let onglet: "section" | "style" = "section";
+/*
+ * La coque commune (src/studio/coque.ts) : sections | aperçu | inspecteur, deux poignées, l'onglet de l'inspecteur,
+ * gardés en JSON versionné ; sous le seuil étroit, des onglets Sections / Aperçu / Réglages, une vue à la fois. Le
+ * document (sections, jetons, historique) reste celui de Vitrine.
+ */
+const coque = monterCoque($(".ve-corps"), {
+  schema: SCHEMA_VITRINE,
+  cle: CLES.coqueVitrine,
+  poignees: [
+    { decoupe: "corps", index: 0, panneau: "sections", libelle: "Largeur de la liste des sections", zone: "apercu", cible: $(".ve-gauche") },
+    { decoupe: "corps", index: 1, panneau: "inspecteur", libelle: "Largeur de l'inspecteur", zone: "ins", cible: $("#ve-inspecteur") },
+  ],
+  vues: { sections: $(".ve-gauche"), apercu: $("#ve-centre"), inspecteur: $("#ve-inspecteur") },
+  libelleVues: "Panneaux de l'éditeur",
+});
+// Le lien d'évitement mène à l'inspecteur, même quand le mode étroit montre une autre vue.
+$(".ve-evitement").addEventListener("click", () => coque.mode() === "etroit" && coque.choisirVue("inspecteur"));
+let onglet: "section" | "style" = coque.onglet("inspecteur") === "style" ? "style" : "section";
 const pile: DocumentVitrine[] = [doc];
 let rang = 0;
 let derniereFusion = { cle: "", t: 0 };
@@ -167,6 +187,8 @@ let appareil: keyof typeof LARGEURS = "bureau";
 const cadre = $("#ve-cadre");
 const centre = $("#ve-centre");
 function cadrer() {
+  // Aperçu caché (mode étroit, autre onglet) : rien à mesurer ; le ResizeObserver rappelle à son retour.
+  if (!centre.clientWidth) return;
   const l = LARGEURS[appareil];
   const dispo = centre.clientWidth - 32;
   const haut = centre.clientHeight - 32;
@@ -428,6 +450,7 @@ onglets.addEventListener("click", (ev) => {
   const b = (ev.target as Element).closest<HTMLElement>("[data-onglet]");
   if (!b) return;
   onglet = b.dataset.onglet as typeof onglet;
+  coque.choisirOnglet("inspecteur", onglet);
   peindreInspecteur();
 });
 creerFocusItinerant(onglets, { elements: "[role=tab]", orientation: "horizontal", activation: "auto" });

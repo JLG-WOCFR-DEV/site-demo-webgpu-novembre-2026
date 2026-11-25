@@ -55,8 +55,26 @@
 .ve-menu [role="menuitem"]:hover, .ve-menu [role="menuitem"]:focus-visible { background: var(--e-survol); }
 
 /* Corps */
-.ve-corps { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; min-height: 0; }
-.ve-gauche, .ve-droite { background: var(--e-panneau); overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+/* La coque commune (src/studio/coque.ts) : --coque-sections, --coque-inspecteur, data-coque-mode / -replie. */
+.ve-corps {
+  --coque-accent: var(--e-accent);
+  --coque-filet: var(--e-filet);
+  --coque-panneau: var(--e-panneau);
+  --coque-actif: var(--e-fond);
+  display: grid;
+  grid-template-columns: var(--coque-sections, 300px) minmax(0, 1fr) var(--coque-inspecteur, 340px);
+  grid-template-areas: "sections apercu ins";
+  min-height: 0;
+}
+.ve-gauche, .ve-droite { background: var(--e-panneau); overflow-y: auto; overscroll-behavior: contain; min-width: 0; min-height: 0; }
+.ve-gauche { grid-area: sections; }
+.ve-droite { grid-area: ins; }
+.ve-centre { grid-area: apercu; }
+.ve-corps[data-coque-mode="large"][data-coque-replie~="sections"] .ve-gauche,
+.ve-corps[data-coque-mode="large"][data-coque-replie~="inspecteur"] .ve-droite { display: none; }
+.ve-corps .coque-vues { grid-area: vues; }
+.ve-corps[data-coque-mode="etroit"] { grid-template: auto minmax(0, 1fr) / minmax(0, 1fr); grid-template-areas: "vues" "vue"; }
+.ve-corps[data-coque-mode="etroit"] > .ve-gauche, .ve-corps[data-coque-mode="etroit"] > .ve-centre, .ve-corps[data-coque-mode="etroit"] > .ve-droite { grid-area: vue; border: 0; }
 .ve-gauche { border-right: 1px solid var(--e-filet); padding: 14px 10px 24px; display: grid; align-content: start; gap: 10px; }
 .ve-droite { border-left: 1px solid var(--e-filet); }
 .ve-droite:focus { outline: none; }
@@ -194,12 +212,8 @@
 
 .ve-bulle { position: fixed; z-index: 60; left: 50%; bottom: 18px; translate: -50% 0; margin: 0; padding: 10px 16px; border-radius: 10px; background: var(--e-encre); color: #fff; box-shadow: 0 10px 30px rgb(0 0 0 / 0.3); max-width: calc(100vw - 32px); }
 
-/* Écrans étroits : la liste et l'inspecteur passent sous l'aperçu. */
+/* Écrans étroits : la barre passe sur deux lignes (les panneaux, eux, passent en onglets : la coque). */
 @media (max-width: 1100px) {
-  .ve { height: auto; overflow: auto; }
-  .ve-corps { grid-template-columns: 1fr; }
-  .ve-centre { order: -1; height: 70vh; }
-  .ve-gauche, .ve-droite { border: 0; border-top: 1px solid var(--e-filet); overflow: visible; }
   .ve-barre { flex-wrap: wrap; }
   .ve-outils { margin-left: 0; }
   .ve-prereglages { order: 3; width: 100%; }
