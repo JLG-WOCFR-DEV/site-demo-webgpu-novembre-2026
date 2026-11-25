@@ -24,7 +24,7 @@ import { SCHEMA_VITRINE } from "../studio/coque-plan.ts";
 import { CLES } from "../registre/stockage.ts";
 import { copier, htmlAutonome, jsonDocument, lienPartage, telecharger } from "./export.ts";
 import { NOMS_FAMILLES, type DocumentVitrine, type Famille, type Plan, type Section } from "./types.ts";
-import type { Valeur } from "./schema.ts";
+import type { Champ, Valeur } from "./schema.ts";
 
 mountPagesNav();
 
@@ -460,8 +460,10 @@ function peindreInspecteur() {
     const sel = b.dataset.onglet === onglet;
     b.setAttribute("aria-selected", String(sel));
   }
-  const focusCle = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("#ve-inspecteur-corps [data-cle]")?.dataset.cle;
-  if (onglet === "style") return peindreStyle(focusCle);
+  // Le champ qui a le focus le retrouve après le redessin (ids stables : préfixe + clé).
+  const actif = document.activeElement;
+  const focusId = actif instanceof HTMLElement && insp.contains(actif) && actif.id ? actif.id : "";
+  if (onglet === "style") return peindreStyle(focusId);
   const s = sectionDe(selection);
   if (!s) {
     insp.innerHTML = `<p class="ve-vide">Choisissez une section à gauche, ou dans l'aperçu.</p>`;
@@ -491,19 +493,27 @@ function peindreInspecteur() {
     },
   });
   void r;
-  if (focusCle) insp.querySelector<HTMLElement>(`[data-cle="${CSS.escape(focusCle)}"]`)?.focus();
+  if (focusId) document.getElementById(focusId)?.focus();
 }
 
-function peindreStyle(focusCle?: string) {
+/** Le nom de la marque : un champ de texte du schéma, comme les autres. */
+const CHAMP_MARQUE: Champ = { type: "texte", cle: "marque", libelle: "Nom de la marque", icone: "titre", defaut: "Boutique", max: 40, groupe: "Marque" };
+
+function peindreStyle(focusId?: string) {
   const { retouches } = systemeDe(doc.jetons);
   insp.innerHTML = `<div class="ve-insp-tete">${icone("pinceau", 22)}<div><h2>Style de la boutique</h2><p>Les jetons : couleurs, typographie, forme, mouvement. Branchés sur les systèmes de Variations.</p></div></div>
-<div class="vi-champ"><span class="vi-tete">${icone("titre", 16)}<label for="ve-marque">Nom de la marque</label></span><input type="text" id="ve-marque" value="${e(doc.plan.marque)}" maxlength="40"></div>
+<div id="ve-marque-champ"></div>
 <div class="ve-tirage"><button type="button" class="ve-btn" id="ve-tirer">${icone("de", 18)} Tirer une direction</button><span>couleurs et polices d'un système Variations au hasard ; densité, boutons et largeur gardés</span></div>
 ${retouches.length ? `<p class="ve-note">${icone("info", 16)} Contraste : ${e(retouches.join(", "))} ajusté${retouches.length > 1 ? "s" : ""} pour tenir 4,5:1.</p>` : ""}
 <div id="ve-jetons"></div>`;
-  $("#ve-marque", insp).addEventListener("input", (ev) => {
-    const v = (ev.target as HTMLInputElement).value.trim() || "Boutique";
-    appliquer(avecPlan({ ...doc.plan, marque: v }), "plan", { fusion: "marque", inspecteur: false });
+  rendreInspecteur($("#ve-marque-champ", insp), {
+    champs: [CHAMP_MARQUE],
+    valeurs: { marque: doc.plan.marque },
+    prefixe: "ve",
+    surChange(_cle, valeur) {
+      const v = String(valeur).trim() || "Boutique";
+      appliquer(avecPlan({ ...doc.plan, marque: v }), "plan", { fusion: "marque", inspecteur: false });
+    },
   });
   $("#ve-tirer", insp).addEventListener("click", () => {
     appliquer(avecJetons(tirerJetons((Math.random() * 2 ** 32) >>> 0, doc.jetons)), "jetons");
@@ -518,7 +528,7 @@ ${retouches.length ? `<p class="ve-note">${icone("info", 16)} Contraste : ${e(re
       appliquer(avecJetons(j), "jetons", { fusion: o.fusion ? `jetons:${o.fusion}` : undefined, inspecteur: !!o.structure || cle === "papier" || cle === "encre" || cle === "accent" ? !o.fusion : false });
     },
   });
-  if (focusCle) insp.querySelector<HTMLElement>(`[data-cle="${CSS.escape(focusCle)}"]`)?.focus();
+  if (focusId) document.getElementById(focusId)?.focus();
 }
 
 /* ═════════════════════════ Départ ═════════════════════════ */

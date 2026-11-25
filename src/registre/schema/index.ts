@@ -8,7 +8,8 @@
  *     ce qu'il a corrigé ;
  *   - la sérialisation en texte (`versTexte`, `versAttributs`) : ce qu'on écrit dans un attribut `data-*`, relu par
  *     la même validation ;
- *   - l'inspecteur (src/vitrine/inspecteur.ts, puis l'inspecteur d'effet), qui en déduit curseurs, segments… ;
+ *   - le rendu de schéma unique (src/studio/inspecteur-plan.ts → inspecteur.ts) : inspecteur des effets, inspecteur
+ *     de Vitrine, réglages live (knobs), qui en déduit curseurs, segments, listes… ;
  *   - le rendu, qui lit des réglages déjà valides (jamais `undefined`).
  *
  * Onze genres de champs :

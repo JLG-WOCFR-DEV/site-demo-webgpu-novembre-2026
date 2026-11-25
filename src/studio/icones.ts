@@ -33,6 +33,13 @@ const P: Record<string, string> = {
   poids: '<path d="M7 9h10l2 11H5z"/><circle cx="12" cy="6" r="2.4"/>',
   douceur: '<path d="M4 16c3-6 5-6 8 0s5 6 8 0"/><circle cx="12" cy="7" r="1.6"/>',
   hic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h6M7 12h10M7 15h4"/>',
+  // Listes et photothèque du rendu de schéma (src/studio/inspecteur-plan.ts).
+  haut: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  bas: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  dupliquer: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  supprimer: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  ajouter: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
+  image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 8"/>',
   // Vues de la coque, en étroit (src/studio/coque.ts).
   reglages: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   calques: '<path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/>',

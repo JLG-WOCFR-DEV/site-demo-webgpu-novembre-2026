@@ -1,5 +1,6 @@
 /* Studio — jetons et base communs (page d'effet, Sampler Presse). Sombre par défaut (un logiciel), clair si le
    système le demande ; le thème choisi dans la palette (Ctrl+K) passe devant. */
+@import "./bascule.css";
 :root {
   --st-fond: #18181b;
   --st-panneau: #222226;
@@ -115,10 +116,6 @@ a { color: var(--st-accent-texte); }
 .st-cout-moyen { color: var(--st-accent-texte); }
 .st-cout-lourd { color: var(--st-attention); background: color-mix(in srgb, var(--st-attention) 14%, transparent); }
 .st-puce-repli { color: var(--st-attention); background: color-mix(in srgb, var(--st-attention) 14%, transparent); }
-.ins-bascule { appearance: none; position: relative; width: 36px; height: 22px; margin: 0; border-radius: 999px; background: var(--st-surface-2); cursor: pointer; transition: background-color 0.15s; }
-.ins-bascule::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--st-texte); transition: translate 0.15s; }
-.ins-bascule:checked { background: var(--st-accent); }
-.ins-bascule:checked::after { translate: 14px 0; background: #fff; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }

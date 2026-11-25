@@ -3,7 +3,8 @@
  * lié à l'élément qu'il règle ; ⌘⇧K (Ctrl+Maj+K) ou `?presse-knobs` ouvre un panneau qui les règle pendant que la
  * page tourne.
  *
- * - Un curseur par nombre (min, max, pas, unité), un choix segmenté par liste.
+ * - Un curseur par nombre (min, max, pas, unité), un choix segmenté par liste : le rendu de schéma commun
+ *   (src/studio/inspecteur-plan.ts, habillage compact) — chaque réglage devient un champ du schéma partagé.
  * - Par groupe : Hasard, Réinitialiser, Annuler, Copier (lignes « nom = valeur »), et des préréglages — déclarés
  *   dans le code ou enregistrés depuis le panneau (gardés dans ce navigateur).
  * - Survoler l'en-tête d'un groupe entoure la partie de la page qu'il règle ; un champ filtre les réglages.
@@ -13,6 +14,15 @@
  *   const montee = g.num("Montée", { min: 20, max: 200, value: 70, unit: "px/s" });
  *   montee.value;            // lu à chaque image ; g.onChange(() => …) pour réagir
  */
+
+import type { Champ } from "../registre/schema/index.ts";
+
+/** Le rendu de schéma commun, chargé à la première ouverture du panneau (la page n'en paie rien tant qu'il est fermé). */
+type Moteur = { monterChamps: typeof import("../studio/inspecteur.ts").monterChamps; planChamps: typeof import("../studio/inspecteur-plan.ts").planChamps };
+let moteur: Moteur | null = null;
+let chargement: Promise<Moteur> | null = null;
+const chargerMoteur = () =>
+  (chargement ??= Promise.all([import("../studio/inspecteur.ts"), import("../studio/inspecteur-plan.ts")]).then(([a, b]) => (moteur = { monterChamps: a.monterChamps, planChamps: b.planChamps })));
 
 type NumKnob = { kind: "num"; name: string; min: number; max: number; step: number; def: number; value: number; unit: string };
 type ChoiceKnob = { kind: "choice"; name: string; options: string[]; def: string; value: string };
@@ -96,6 +106,12 @@ export const knobs = {
 
 /* ───────────────────────── Le panneau ───────────────────────── */
 
+/** Un réglage, champ du schéma partagé (curseur ou sélecteur). */
+function champDe(k: Knob, cle: string): Champ {
+  if (k.kind === "num") return { type: "curseur", cle, libelle: k.name, min: k.min, max: k.max, pas: k.step, defaut: k.def, unite: k.unit || undefined };
+  return { type: "selecteur", cle, libelle: k.name, options: k.options.map((o) => ({ valeur: o, libelle: o })), defaut: k.def, affichage: k.options.length <= 5 ? "segments" : "liste" };
+}
+
 const CSS = `
 .pk { position: fixed; z-index: 2147483000; top: 0; right: 0; bottom: 0; width: var(--pk-w, 320px); display: flex; flex-direction: column;
   background: #111014ee; color: #e9e6e1; font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; box-shadow: -12px 0 40px #0006; backdrop-filter: blur(12px); }
@@ -112,13 +128,9 @@ const CSS = `
 .pk-g[open] summary::before { content: "▾"; }
 .pk-acts { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 12px 8px; }
 .pk-acts button, .pk-acts select { padding: 3px 7px; border: 1px solid #ffffff22; border-radius: 999px; background: none; color: inherit; font: 11px/1.2 ui-monospace, monospace; cursor: pointer; }
-.pk-row { display: grid; grid-template-columns: 124px 1fr 70px; gap: 8px; align-items: center; padding: 3px 12px; }
-.pk-row label { color: #b9b4bd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pk-row input[type=range] { width: 100%; accent-color: #ff7a2a; }
-.pk-row output { font: 11px/1 ui-monospace, monospace; text-align: right; color: #d8d3cc; }
-.pk-seg { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 4px; }
-.pk-seg button { padding: 3px 8px; border: 1px solid #ffffff22; border-radius: 999px; background: none; color: inherit; font: inherit; cursor: pointer; }
-.pk-seg button[aria-pressed=true] { background: #e9e6e1; color: #111; }
+.pk-champs { padding: 0 12px 8px; display: grid; gap: 4px; }
+/* La peau du rendu de schéma (src/studio/inspecteur.css, habillage compact). */
+.pk { --st-panneau: #16151a; --st-surface: #0007; --st-surface-2: #2b2930; --st-filet: #ffffff22; --st-texte: #e9e6e1; --st-doux: #b9b4bd; --st-accent: #ff7a2a; --st-accent-texte: #ffb38a; --st-accent-doux: #ff7a2a2e; --st-regle: #ffb38a; --st-focus: #ff7a2a; --st-mono: ui-monospace, monospace; --st-texte-police: ui-sans-serif, system-ui, sans-serif; }
 .pk :focus-visible { outline: 2px solid #ff7a2a; outline-offset: 1px; }
 .pk-outline { position: fixed; z-index: 2147482999; pointer-events: none; border: 2px solid #ff7a2a; border-radius: 6px; box-shadow: 0 0 0 9999px #0003; transition: all .15s; }
 `;
@@ -129,6 +141,7 @@ const closedState = new Set<string>();
 
 function open() {
   if (panel) return;
+  if (!moteur) return void chargerMoteur().then(open);
   if (!document.querySelector("style[data-pk]")) {
     const st = document.createElement("style");
     st.dataset.pk = "";
@@ -225,60 +238,45 @@ function render() {
       render();
     });
     d.append(acts);
-    for (const k of shown) d.append(row(g, k));
+    const corps = document.createElement("div");
+    corps.className = "pk-champs";
+    d.append(corps);
+    brancherGroupe(g, corps, shown);
     body.append(d);
   }
 }
 
-function row(g: Group, k: Knob) {
-  const r = document.createElement("div");
-  r.className = "pk-row";
-  const id = `pk-${g.name}-${k.name}`.replace(/\W+/g, "-");
-  const label = document.createElement("label");
-  label.textContent = k.name;
-  label.htmlFor = id;
-  r.append(label);
-  if (k.kind === "num") {
-    const input = document.createElement("input");
-    input.type = "range";
-    input.id = id;
-    input.min = String(k.min);
-    input.max = String(k.max);
-    input.step = String(k.step);
-    input.value = String(k.value);
-    const out = document.createElement("output");
-    const fmt = () => `${+k.value.toFixed(3)}${k.unit ? ` ${k.unit}` : ""}`;
-    out.textContent = fmt();
-    let recorded = false;
-    input.addEventListener("pointerdown", () => {
-      g.history.push(snapshot(g));
-      recorded = true;
-    });
-    input.addEventListener("input", () => {
-      if (!recorded) g.history.push(snapshot(g));
-      recorded = true;
-      k.value = Number(input.value);
-      out.textContent = fmt();
+/** Les réglages d'un groupe : le rendu de schéma commun, habillage compact ; l'historique suit les gestes. */
+function brancherGroupe(g: Group, corps: HTMLElement, shown: Knob[]) {
+  const gi = groups.indexOf(g);
+  const cles = new Map(shown.map((k) => [`pk${gi}-${g.knobs.indexOf(k)}`, k]));
+  const champs = [...cles].map(([c, k]) => champDe(k, c));
+  let enGeste = false;
+  const { monterChamps, planChamps } = moteur!;
+  monterChamps(corps, {
+    plan: () => planChamps(champs, Object.fromEntries([...cles].map(([c, k]) => [c, k.value])), { prefixe: `pk${gi}` }),
+    habillage: "compact",
+    groupes: false,
+    changer(cle, brut, final) {
+      const k = cles.get(cle);
+      if (!k) return;
+      if (!enGeste) g.history.push(snapshot(g));
+      enGeste = !final;
+      if (k.kind === "num") {
+        const n = Number(brut);
+        if (!Number.isFinite(n)) return;
+        k.value = Math.min(k.max, Math.max(k.min, n));
+      } else if (k.options.includes(String(brut))) k.value = String(brut);
       for (const f of g.listeners) f();
-    });
-    input.addEventListener("change", () => (recorded = false));
-    r.append(input, out);
-  } else {
-    const seg = document.createElement("div");
-    seg.className = "pk-seg";
-    seg.setAttribute("role", "group");
-    seg.setAttribute("aria-label", k.name);
-    for (const o of k.options) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = o;
-      b.setAttribute("aria-pressed", String(o === k.value));
-      b.addEventListener("click", () => apply(g, { [k.name]: o }));
-      seg.append(b);
-    }
-    r.append(seg);
-  }
-  return r;
+    },
+    action(cle) {
+      const k = cles.get(cle);
+      if (!k) return;
+      g.history.push(snapshot(g));
+      k.value = k.def as never;
+      for (const f of g.listeners) f();
+    },
+  });
 }
 
 function showOutline(g: Group) {

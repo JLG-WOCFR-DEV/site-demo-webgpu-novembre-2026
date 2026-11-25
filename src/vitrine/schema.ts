@@ -5,8 +5,8 @@
  * Studio) ; ce module le réexporte tel quel, sans changement de comportement (vitrine.test.ts).
  *
  * Vitrine n'emploie que les sept genres d'origine — curseur, selecteur, interrupteur, couleur, texte, image, liste — :
- * son type `Champ` reste restreint à eux (l'inspecteur de Vitrine ne sait pas dessiner une courbe ou une plage). Le
- * registre ajoute courbe, temps, angle et plage pour les effets.
+ * son type `Champ` reste restreint à eux (ses sections n'en ont pas d'autres). Le registre ajoute courbe, temps, angle
+ * et plage pour les effets ; le rendu de schéma commun (src/studio/inspecteur-plan.ts, E8) les dessine tous.
  */
 import type { ChampCouleur, ChampCurseur, ChampImage, ChampInterrupteur, ChampSelecteur, ChampTexte, Champ as ChampRegistre } from "../registre/schema/index.ts";
 

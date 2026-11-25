@@ -1,0 +1,15 @@
+/* Studio — la bascule (case à cocher role="switch", classe .ins-bascule) : rendu de schéma (inspecteur.css) et Sampler
+   Presse (jetons.css). Jetons --st-* ; mouvement : 150 ms --presse-ease-sortie au pointeur, rien au clavier ni sous
+   mouvement réduit. */
+@import "../presse/jetons-mouvement.css";
+
+.ins-bascule { appearance: none; position: relative; flex: 0 0 auto; width: 36px; height: 22px; margin: 0; border-radius: 999px; background: var(--st-surface-2); cursor: pointer; transition: background-color 150ms var(--presse-ease-sortie); }
+.ins-bascule::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--st-texte); transition: translate 150ms var(--presse-ease-sortie); }
+.ins-bascule:checked { background: var(--st-accent); }
+.ins-bascule:checked::after { translate: 14px 0; background: #fff; }
+/* Au clavier (focus visible), rien ne s'anime : la bascule saute à son état. */
+.ins-bascule:focus-visible, .ins-bascule:focus-visible::after { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ins-bascule, .ins-bascule::after { transition: none; }
+}
