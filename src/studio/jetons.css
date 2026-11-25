@@ -93,6 +93,7 @@ a { color: var(--st-accent-texte); }
   text-decoration: none;
 }
 .st-bouton:hover { background: var(--st-surface); }
+.st-bouton:disabled { opacity: 0.4; cursor: not-allowed; }
 .st-bouton[aria-pressed="true"] { background: var(--st-accent-doux); color: var(--st-accent-texte); }
 .st-puce {
   display: inline-flex;
@@ -109,6 +110,10 @@ a { color: var(--st-accent-texte); }
 }
 .st-puce-dom { color: var(--st-texte); }
 .st-puce-gpu { color: var(--st-accent-texte); background: var(--st-accent-doux); }
+/* Coût d'un effet (src/studio/rendu.ts, puceCout) : GPU estimé, JS mesuré. */
+.st-puce-cout { font-variant-numeric: tabular-nums; }
+.st-cout-moyen { color: var(--st-accent-texte); }
+.st-cout-lourd { color: var(--st-attention); background: color-mix(in srgb, var(--st-attention) 14%, transparent); }
 .st-puce-repli { color: var(--st-attention); background: color-mix(in srgb, var(--st-attention) 14%, transparent); }
 .ins-bascule { appearance: none; position: relative; width: 36px; height: 22px; margin: 0; border-radius: 999px; background: var(--st-surface-2); cursor: pointer; transition: background-color 0.15s; }
 .ins-bascule::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--st-texte); transition: translate 0.15s; }

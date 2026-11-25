@@ -5,6 +5,7 @@
  *   { type: "studio:etat", hash }   nouveaux réglages : le fragment est remplacé (sans entrée d'historique) et la
  *                                   démo remontée ;
  *   { type: "studio:rejouer" }      la démo est remontée telle quelle (l'entrée se rejoue).
+ *   { type: "studio:inspecter", actif }  le mode inspecteur d'éléments (src/studio/inspecteur-elements.ts) ;
  * Il répond { type: "studio:pret", effet, montages } après chaque montage. Ouvert seul, il marche aussi : le fragment
  * de l'adresse fait foi, `hashchange` remonte la démo.
  *
@@ -18,8 +19,11 @@ import "./apercu.css";
 import { EFFETS } from "../registre/effets.ts";
 import { depuisHash } from "./etat.ts";
 import { monterDemo } from "./demo.ts";
+import { monterInspecteurElements, type InspecteurElements } from "./inspecteur-elements.ts";
 
-type Message = { type: "studio:etat"; hash: string } | { type: "studio:rejouer" };
+type Message = { type: "studio:etat"; hash: string } | { type: "studio:rejouer" } | { type: "studio:inspecter"; actif: boolean };
+/** Tous les attributs du registre : un élément qui en porte un est « armé » (mode inspecteur). */
+const REGISTRE = new Set(EFFETS.flatMap((x) => x.attributs));
 
 const scene = document.getElementById("scene")!;
 const id = new URLSearchParams(location.search).get("effet") ?? "";
@@ -40,6 +44,11 @@ async function demarrer() {
   }
   const fiche = (await manifeste.parametres()).default;
   const { demo } = fiche;
+  if (!demo) {
+    message(fiche.minimale ?? "Pas de démonstration pour cet effet.");
+    if (parent !== window) parent.postMessage({ type: "studio:pret", effet: id, montages }, location.origin);
+    return;
+  }
   if (demo.css) {
     const s = document.createElement("style");
     s.dataset.studio = "demo";
@@ -49,6 +58,7 @@ async function demarrer() {
   if (demo.fond) document.body.style.setProperty("--apercu-fond", demo.fond);
   document.body.toggleAttribute("data-sombre", !!demo.sombre);
   let module: unknown = null;
+  const inspecteur: InspecteurElements = monterInspecteurElements(document, scene, REGISTRE, parent !== window ? parent : null);
 
   const monter = async () => {
     const { etat } = depuisHash(fiche, location.hash);
@@ -57,6 +67,8 @@ async function demarrer() {
     module ??= await manifeste.charger();
     manifeste.armer(module, document);
     montages++;
+    // Les modules posent leurs attributs d'état à l'armement : l'inspecteur relit la démo neuve.
+    if (inspecteur.actif()) requestAnimationFrame(() => inspecteur.rafraichir());
     if (parent !== window) parent.postMessage({ type: "studio:pret", effet: id, montages }, location.origin);
   };
 
@@ -68,6 +80,7 @@ async function demarrer() {
       history.replaceState(null, "", `${location.pathname}${location.search}#${m.hash}`);
       void monter();
     } else if (m?.type === "studio:rejouer") void monter();
+    else if (m?.type === "studio:inspecter") inspecteur.activer(!!m.actif);
   });
   await monter();
 }

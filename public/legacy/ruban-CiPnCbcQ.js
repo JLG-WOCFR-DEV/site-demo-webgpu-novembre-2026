@@ -81,6 +81,7 @@ var e = [
 	},
 	...s ? { aide: s } : {}
 }), r = {
+	rendu: "La bande est dessinée en WebGPU ; sans carte graphique (l'aperçu ici), le repli du module : une bande CSS à scroll-snap, mêmes gestes, sans figure 3D.",
 	parametres: [
 		{
 			cle: "figure",

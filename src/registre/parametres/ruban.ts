@@ -35,6 +35,7 @@ const px = (cle: string, libelle: string, min: number, max: number, defaut: numb
 });
 
 export default {
+  rendu: "La bande est dessinée en WebGPU ; sans carte graphique (l'aperçu ici), le repli du module : une bande CSS à scroll-snap, mêmes gestes, sans figure 3D.",
   parametres: [
     {
       cle: "figure",

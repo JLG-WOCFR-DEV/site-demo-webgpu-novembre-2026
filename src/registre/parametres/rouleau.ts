@@ -17,6 +17,7 @@ const LIEUX: [string, string, string][] = [
 ];
 
 export default {
+  rendu: "Le bandeau-tissu est dessiné en WebGPU ; sans carte graphique (l'aperçu ici), chaque bandeau est une image fixe en object-fit: cover, même défilement des titres.",
   parametres: [
     { cle: "hauteur", type: "curseur", libelle: "Hauteur", groupe: "Composant", min: 40, max: 100, pas: 1, defaut: 100, unite: "vh", attribut: "data-rouleau-hauteur", ecriture: { suffixe: "vh" }, aide: "Hauteur du composant (défaut : tout l'écran)." },
     { cle: "depart", type: "curseur", libelle: "Départ", groupe: "Composant", min: 0, max: LIEUX.length - 1, pas: 1, defaut: 0, attribut: "data-rouleau-depart", aide: "Le titre centré au départ (à partir de 0)." },

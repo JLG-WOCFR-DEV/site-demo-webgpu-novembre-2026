@@ -191,8 +191,20 @@ kbd { display: inline-block; min-width: 22px; padding: 3px 6px; border-radius: 5
 .st[data-coque-replie~="inspecteur"] { grid-template-columns: minmax(0, 1fr) 0; }
 .st[data-coque-replie~="inspecteur"] .st-inspecteur { display: none; }
 
+/* ───────── E7a : puces de coût et d'HTML-in-Canvas, fiches minimales, note de rendu, inspection ───────── */
+.st-minimale { margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--st-filet); color: var(--st-doux); font-size: 12px; line-height: 1.5; }
+.st-minimale a { color: var(--st-accent-texte); }
+.st-note-rendu { display: flex; gap: 8px; align-items: flex-start; }
+.st-note-rendu svg { flex: 0 0 auto; margin-top: 1px; }
+.st-inspection .st-cadre[data-role="apres"] iframe { box-shadow: 0 0 0 2px var(--st-accent), 0 18px 48px rgba(0, 0, 0, 0.28); }
+@media (max-width: 1280px) {
+  .st-puce-hic > span, .st-puce-cout > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .st-puce-hic, .st-puce-cout { padding: 0 6px; }
+}
+
 /* ───────── Étroit : une colonne, la page défile ───────── */
 @media (max-width: 960px) {
+  .st-puce-hic > span, .st-puce-cout > span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
   .st { display: block; height: auto; overflow: visible; }
   .st .coque-poignee { display: none; }
   .st[data-coque-replie~="inspecteur"] .st-inspecteur { display: flex; }

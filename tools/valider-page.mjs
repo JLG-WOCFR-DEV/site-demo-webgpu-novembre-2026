@@ -8,6 +8,8 @@
 //   npm run valider -- --json x.html     sortie JSON (pour un agent)
 //   npm run valider -- --catalogue       le catalogue dérivé, en JSON (noms, valeurs, parents, modules)
 //   npm run valider -- --vite=autre.ts   lire les pages dans une autre configuration (tests)
+//   npm run valider -- --sans-budget      sans le budget JS (avertissement « budget », lu dans dist/ s'il existe :
+//                                        tools/valider/budget.ts, seuils et dérogations dans tools/valider/budgets.json)
 //
 // Code retour : 1 s'il y a une erreur (ou un avertissement avec --strict), ou si vite.config.ts ne donne aucune page
 // (`input` doit rester un littéral objet : tools/valider/pages-vite.ts), 0 sinon.
@@ -17,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { lireCatalogue } from "./valider/catalogue.ts";
 import { lirePagesVite } from "./valider/pages-vite.ts";
 import { rapport, validerFichier } from "./valider/valider.ts";
+import { constatBudget } from "./valider/budget.ts";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -54,6 +57,11 @@ for (const f of fichiers) {
     continue;
   }
   const constats = validerFichier(abs, cat);
+  // Le budget JS de la page, mesuré sur le dernier build (rien si dist/ n'existe pas) : un avertissement, jamais une erreur.
+  if (!drapeaux.has("--sans-budget")) {
+    const b = constatBudget(racine, abs);
+    if (b) constats.push(b);
+  }
   erreurs += constats.filter((c) => c.gravite === "erreur").length;
   avert += constats.filter((c) => c.gravite === "avertissement").length;
   if (drapeaux.has("--json")) tout[path.relative(racine, abs)] = constats;

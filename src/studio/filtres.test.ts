@@ -14,7 +14,8 @@ test("filtres : catégorie, rendu (WebGPU réunit DOM + WebGPU), statut, Studio,
   assert.ok(ids({ categorie: "texte" }).includes("cinetique"));
   assert.ok(ids({ rendu: "WebGPU" }).includes("typo"), "typo est DOM + WebGPU");
   assert.ok(!ids({ rendu: "DOM" }).includes("typo"));
-  assert.deepEqual(ids({ studio: true }).sort(), ["cinetique", "couloir", "goo", "rouleau", "ruban", "typo"]);
+  // E7a : chaque effet du registre a sa fiche (le filtre « Studio » les garde tous).
+  assert.deepEqual(ids({ studio: true }).sort(), EFFETS.map((e) => e.id).sort());
   assert.ok(ids({ q: "MÉTAL" }).includes("metal"), "Métal trouvé par « MÉTAL » comme par « metal »");
   assert.deepEqual(ids({ q: "chrome liquide" }), ["metal"]);
   assert.ok(ids({ q: "data-couloir-fuite" }).length === 0);

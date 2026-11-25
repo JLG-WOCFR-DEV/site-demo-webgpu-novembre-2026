@@ -42,3 +42,18 @@ export async function majPucesRendu(racine: ParentNode): Promise<void> {
     if (t) t.textContent = r.texte;
   }
 }
+
+/** Un nombre de ko à la française (« 18,4 ko »). */
+export const ko = (n: number) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 1, minimumFractionDigits: n < 10 ? 1 : 0 })} ko`;
+
+/** La puce de coût d'un effet : GPU estimé, JS mesuré (gzip), et ce qui vient plus tard. */
+export function puceCout(m: Pick<Manifeste, "cout">): { texte: string; titre: string; classe: string } {
+  const { gpu, js, differe } = m.cout;
+  const poids = js === null ? "non mesuré" : ko(js);
+  const plus = differe ? ` (+ ${ko(differe)} chargés à la demande)` : "";
+  return {
+    texte: `GPU ${gpu} · ${poids}`,
+    titre: `Coût GPU estimé : ${gpu}. JavaScript de l'effet : ${js === null ? "pas encore mesuré (node tools/mesurer-effets.mjs après le build)" : `${ko(js)} gzip`}${plus}.`,
+    classe: `st-puce-cout st-cout-${gpu === "léger" ? "leger" : gpu}`,
+  };
+}

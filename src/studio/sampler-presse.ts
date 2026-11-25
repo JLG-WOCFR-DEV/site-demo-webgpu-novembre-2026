@@ -2,7 +2,7 @@
  * Le Sampler Presse (sampler-presse.html) : une grille alimentée par le registre (src/registre/effets.ts), filtrée
  * par catégorie, rendu, statut et « réglable dans le Studio », avec une recherche. Chaque carte : une vignette
  * dessinée (src/studio/vignettes.ts), le nom, le résumé, le rendu (« DOM », « WebGPU requis », et le repli si
- * WebGPU manque ici), les liens vers la page d'effet du Studio et la page d'exemple. Les filtres vivent dans la
+ * WebGPU manque ici), le coût (GPU estimé, JS mesuré en ko gzip : src/registre/couts.json), les liens vers la page d'effet du Studio et la page d'exemple. Les filtres vivent dans la
  * requête de l'adresse. Le Sampler PLI (sampler.html, généré par tools/build-sampler.py) reste à part.
  */
 import "@fontsource-variable/archivo/standard.css";
@@ -12,7 +12,7 @@ import "./sampler-presse.css";
 import { mountPagesNav } from "../pages-nav.ts";
 import { EFFETS, type Categorie, type Manifeste } from "../registre/effets.ts";
 import { ecrireFiltres, FAMILLES_RENDU, familleDe, filtrer, lireFiltres, type Filtres } from "./filtres.ts";
-import { majPucesRendu, puceRendu } from "./rendu.ts";
+import { majPucesRendu, puceCout, puceRendu } from "./rendu.ts";
 import { ic } from "./icones.ts";
 import { vignette } from "./vignettes.ts";
 
@@ -47,6 +47,7 @@ function dessinerFiltres() {
 
 function carte(m: Manifeste): string {
   const r = puceRendu(m, true);
+  const c = puceCout(m);
   const studio = m.parametres ? `<a class="sp-action sp-action-studio" href="studio-effet.html?effet=${m.id}">${ic("studio", 18)}<span>Ouvrir dans le Studio</span></a>` : "";
   const exemple = m.exemple ? `<a class="sp-action" href="${e(m.exemple)}" aria-label="Page d'exemple de ${e(m.nom)} : ${e(m.exemple)}" title="Page d'exemple : ${e(m.exemple)}">${ic("page", 18)}<span>${e(m.exemple.replace(/\.html$/, ""))}</span></a>` : "";
   return `<li class="sp-carte" data-effet="${m.id}" data-rendu="${e(familleDe(m.rendu))}">
@@ -58,6 +59,7 @@ function carte(m: Manifeste): string {
       <ul class="sp-etiquettes" aria-label="Caractéristiques">
         <li class="st-puce">${e(NOMS[m.categorie])}</li>
         <li class="st-puce ${r.classe}" title="${e(r.titre)}" data-puce-rendu data-rendu="${e(m.rendu)}">${ic(familleDe(m.rendu) === "DOM" || m.rendu === "canvas 2D" ? "dom" : "gpu", 14)}<span>${e(r.texte)}</span></li>
+        <li class="st-puce ${c.classe}" title="${e(c.titre)}" data-puce-cout>${ic("poids", 14)}<span>${e(c.texte)}</span></li>
         ${m.statut === "essai" ? '<li class="st-puce">Essai</li>' : ""}
         <li class="sp-attr"><code>${e(m.attributs[0]!)}</code></li>
       </ul>

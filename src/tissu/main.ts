@@ -3,7 +3,8 @@ import { getDevice } from "../components/device.ts";
 import { mountDebugPanel } from "../debug-panel.ts";
 import { mountPagesNav } from "../pages-nav.ts";
 import { createCloth, type Cloth, type ClothMode, type Fabric } from "./cloth.ts";
-import { drawWithBrowser, printDom, supportsHtmlInCanvas, type DrawableCanvas } from "./print.ts";
+import { printDom } from "./print.ts";
+import { capabilites, dessinerElement, majGeometrie, peutTexturer, preparerCanvas, relacherCanvas } from "../html-in-canvas.ts";
 
 /**
  * Page « Tissu » : le héros est du HTML imprimé sur une étoffe simulée en WebGPU (src/tissu/cloth.ts). L'image du HTML
@@ -58,7 +59,7 @@ async function start() {
   }
   await document.fonts.ready;
   const device = await getDevice();
-  const canvas = document.createElement("canvas") as DrawableCanvas;
+  const canvas = document.createElement("canvas");
   canvas.className = "ts-gl";
   canvas.style.left = `${-MARGIN}px`;
   canvas.style.top = `${-MARGIN}px`;
@@ -69,14 +70,14 @@ async function start() {
 
   // HTML-in-Canvas : la section devient l'enfant du canvas, le navigateur la dessine lui-même.
   let browser = false;
-  if (supportsHtmlInCanvas()) {
+  const caps = capabilites();
+  if (peutTexturer(caps)) {
     try {
-      if ("content" in HTMLCanvasElement.prototype) canvas.content = "drawable";
-      else canvas.setAttribute("layoutsubtree", "");
+      preparerCanvas(canvas, caps);
       canvas.append(content);
       Object.assign(content.style, { left: `${MARGIN}px`, top: `${MARGIN}px`, right: "auto", bottom: "auto", width: `${box().width}px`, height: `${box().height}px` });
-      drawWithBrowser(device, content, cloth.htmlTexture());
-      canvas.updateElementGeometry?.(content, { canvasTransform: new DOMMatrix() });
+      dessinerElement({ queue: device.queue, texture: cloth.htmlTexture() }, content);
+      majGeometrie(canvas, content);
       canvas.addEventListener("paint", () => paint());
       browser = true;
       hero.classList.add("is-hic");
@@ -84,8 +85,7 @@ async function start() {
       console.warn("[tissu] HTML-in-Canvas indisponible", e);
       hero.prepend(content);
       content.removeAttribute("style");
-      if ("content" in canvas) canvas.content = "";
-      canvas.removeAttribute("layoutsubtree");
+      relacherCanvas(canvas);
     }
   }
   if (!browser) canvas.setAttribute("aria-hidden", "true");
@@ -96,7 +96,7 @@ async function start() {
     if (!cloth) return;
     const tex = cloth.htmlTexture();
     if (browser) {
-      drawWithBrowser(device, content, tex);
+      dessinerElement({ queue: device.queue, texture: tex }, content);
       return;
     }
     off.width = tex.width;
@@ -126,7 +126,7 @@ async function start() {
 
   status.textContent = browser
     ? "HTML-in-Canvas actif : le navigateur dessine lui-même la section dans la texture de l'étoffe."
-    : "Impression du DOM : ce navigateur n'expose pas HTML-in-Canvas (Chrome 155 à 160 avec l'essai d'origine, ou les fonctions expérimentales de la plateforme web activées) ; Presse relit la mise en page et la réimprime.";
+    : "Impression du DOM : ce navigateur n'expose pas HTML-in-Canvas (Chrome : essai d'origine jusqu'à la version 160, sortie stable annoncée pour la 157, ou les fonctions expérimentales de la plateforme web activées) ; Presse relit la mise en page et la réimprime.";
 
   /* La main */
   const local = (e: PointerEvent) => {

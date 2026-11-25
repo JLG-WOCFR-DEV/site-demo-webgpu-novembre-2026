@@ -232,8 +232,130 @@ function ne(e, t, n) {
 	b() && E();
 }
 // src/registre/effets.ts
-var O = (e) => e, k = [
-	O({
+var O = {
+	source: "dist/.vite/manifest.json — node tools/mesurer-effets.mjs (gzip -9, ko)",
+	effets: {
+		systeme: {
+			js: 16.9,
+			differe: .3,
+			fichiers: [
+				"assets/slide-transition-B2fjF7Mh.js",
+				"assets/state-CqJ8_sSg.js",
+				"assets/systeme-BFKKt_9G.js",
+				"assets/systeme-DZ0LSws_.js",
+				"assets/variations-CvFEfNNV.js"
+			]
+		},
+		lightbox: {
+			js: 9.6,
+			differe: 0,
+			fichiers: ["assets/hold-BzG9ibAy.js", "assets/lightbox-D6cWmmNw.js"]
+		},
+		vague: {
+			js: 1.3,
+			differe: 0,
+			fichiers: ["assets/vague-COdR6WZo.js"]
+		},
+		goo: {
+			js: 9.9,
+			differe: 0,
+			fichiers: [
+				"assets/goo-C5r3P4z6.js",
+				"assets/goo-elj2lMQY.js",
+				"assets/schema-CLVVF78T.js"
+			]
+		},
+		metal: {
+			js: 8.8,
+			differe: 0,
+			fichiers: ["assets/metal-CRMFllAd.js", "assets/metal-D-8LwNnf.js"]
+		},
+		voix: {
+			js: 10.4,
+			differe: 0,
+			fichiers: ["assets/voix-C7XMXiMq.js", "assets/voix-LlBbLSnY.js"]
+		},
+		ruban: {
+			js: 15.1,
+			differe: 0,
+			fichiers: [
+				"assets/gesture-bpaOsbMa.js",
+				"assets/ruban-CHwboKeT.js",
+				"assets/ruban-J26crN0I.js"
+			]
+		},
+		typo: {
+			js: 12.5,
+			differe: 0,
+			fichiers: ["assets/typo-CXyut0DE.js", "assets/typo-kAR89SM2.js"]
+		},
+		rouleau: {
+			js: 12.6,
+			differe: 0,
+			fichiers: [
+				"assets/gesture-bpaOsbMa.js",
+				"assets/rouleau-BHxfIzvE.js",
+				"assets/rouleau-Coqhf6oB.js"
+			]
+		},
+		couloir: {
+			js: 13.1,
+			differe: 11.7,
+			fichiers: [
+				"assets/couloir-yQp-S2Bo.js",
+				"assets/couloir-zV9oWdrd.js",
+				"assets/schema-CLVVF78T.js"
+			]
+		},
+		logo: {
+			js: 12.5,
+			differe: 68.3,
+			fichiers: ["assets/logo-BQ6Nm_H_.js", "assets/logo-ycKoFZK8.js"]
+		},
+		cinetique: {
+			js: 17,
+			differe: 0,
+			fichiers: ["assets/cinetique-BkfHMhrZ.js", "assets/cinetique-KC51N19c.js"]
+		},
+		dechirure: {
+			js: 4.2,
+			differe: 0,
+			fichiers: ["assets/dechirure-5x420fNm.js", "assets/dechirure-BGQoxuXX.js"]
+		},
+		forme: {
+			js: 2.6,
+			differe: 0,
+			fichiers: ["assets/forme-CtUVprzS.js", "assets/forme-DNXVEplq.js"]
+		},
+		autocollant: {
+			js: 4.3,
+			differe: 0,
+			fichiers: [
+				"assets/autocollant-B7UX8xjT.js",
+				"assets/autocollant-DOlSP2GO.js",
+				"assets/forme-CtUVprzS.js"
+			]
+		},
+		rail: {
+			js: 3.5,
+			differe: 0,
+			fichiers: ["assets/rail-B78HP3Sd.js", "assets/rail-BDDMi0hD.js"]
+		},
+		trace: {
+			js: 5.7,
+			differe: 0,
+			fichiers: ["assets/trace-C7M2e_sH.js", "assets/trace-DL3sufCt.js"]
+		}
+	}
+}.effets, k = ({ gpu: e, ...t }) => ({
+	...t,
+	cout: {
+		gpu: e,
+		js: O[t.id]?.js ?? null,
+		differe: O[t.id]?.differe ?? null
+	}
+}), A = [
+	k({
 		id: "systeme",
 		nom: "Système de design",
 		categorie: "page",
@@ -244,12 +366,14 @@ var O = (e) => e, k = [
 		parametre: "systeme",
 		tot: !0,
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/systeme.ts",
 		resume: "Un système de design (couleurs, fontes, look, mouvement) posé sur toute la page, par l'adresse ou un attribut.",
-		exemple: "variations.html"
+		exemple: "variations.html",
+		parametres: () => import("./systeme-DUtpKdXb.js")
 	}),
-	O({
+	k({
 		id: "lightbox",
 		nom: "Visionneuse",
 		categorie: "image",
@@ -258,12 +382,14 @@ var O = (e) => e, k = [
 		charger: () => import("./lightbox-z8H1tizc.js"),
 		armer: (e, t) => e.initLightbox(t),
 		rendu: "WebGPU",
+		gpu: "moyen",
 		statut: "stable",
 		module: "src/presse/lightbox.ts",
 		resume: "Chaque image du groupe s'ouvre en grand, en vol depuis sa place.",
-		exemple: "presse.html"
+		exemple: "presse.html",
+		parametres: () => import("./lightbox-CpPxR6ia.js")
 	}),
-	O({
+	k({
 		id: "vague",
 		nom: "La vague entre deux vues",
 		categorie: "transition",
@@ -279,12 +405,14 @@ var O = (e) => e, k = [
 		charger: () => import("./vague-CN70MyWd.js"),
 		armer: (e, t) => e.initVague(t),
 		rendu: "WebGPU",
+		gpu: "moyen",
 		statut: "stable",
 		module: "src/presse/vague.ts",
 		resume: "Une vague déformante passe d'une vue à l'autre, depuis l'endroit pressé.",
-		exemple: "presse.html"
+		exemple: "presse.html",
+		parametres: () => import("./vague-B34D37Lp.js")
 	}),
-	O({
+	k({
 		id: "goo",
 		nom: "Goo",
 		categorie: "interface",
@@ -310,13 +438,14 @@ var O = (e) => e, k = [
 		charger: () => import("./goo-B4xd1pEi.js"),
 		armer: (e, t) => e.initGoo(t),
 		rendu: "WebGPU",
+		gpu: "moyen",
 		statut: "stable",
 		module: "src/presse/goo.ts",
 		resume: "Des pièces d'interface qui fusionnent comme une pâte, s'étirent et se séparent en gouttes.",
 		exemple: "goo.html",
-		parametres: () => import("./goo-CIqABoe6.js")
+		parametres: () => import("./goo-DcSpEi0P.js")
 	}),
-	O({
+	k({
 		id: "metal",
 		nom: "Métal",
 		categorie: "matiere",
@@ -335,12 +464,14 @@ var O = (e) => e, k = [
 		charger: () => import("./metal-DhiLXJ8J.js"),
 		armer: (e, t) => e.initMetal(t),
 		rendu: "WebGPU",
+		gpu: "moyen",
 		statut: "stable",
 		module: "src/presse/metal.ts",
 		resume: "Chrome liquide sur une bordure, des lettres ou un badge : reflets qui coulent, franges, halo.",
-		exemple: "metal.html"
+		exemple: "metal.html",
+		parametres: () => import("./metal-Co89IH9s.js")
 	}),
-	O({
+	k({
 		id: "voix",
 		nom: "La voix",
 		categorie: "interface",
@@ -361,12 +492,14 @@ var O = (e) => e, k = [
 		charger: () => import("./voix-CZKU20Od.js"),
 		armer: (e, t) => e.initVoix(t),
 		rendu: "WebGPU",
+		gpu: "léger",
 		statut: "stable",
 		module: "src/presse/voix.ts",
 		resume: "Une lueur qui monte avec le niveau du micro, puis balaie pendant la réponse.",
-		exemple: "voix.html"
+		exemple: "voix.html",
+		parametres: () => import("./voix-Cl6svHQW.js")
 	}),
-	O({
+	k({
 		id: "ruban",
 		nom: "Ruban",
 		categorie: "image",
@@ -382,13 +515,14 @@ var O = (e) => e, k = [
 		charger: () => import("./ruban-DoiNyoNj.js"),
 		armer: (e, t) => e.initRuban(t),
 		rendu: "WebGPU",
+		gpu: "moyen",
 		statut: "stable",
 		module: "src/presse/ruban.ts",
 		resume: "Une bande d'images qui se vrille, se comprime ou se bombe selon la vitesse du défilement.",
 		exemple: "ruban.html",
-		parametres: () => import("./ruban-BL_LNu5V.js")
+		parametres: () => import("./ruban-CiPnCbcQ.js")
 	}),
-	O({
+	k({
 		id: "typo",
 		nom: "Typographie cinétique",
 		categorie: "texte",
@@ -404,13 +538,14 @@ var O = (e) => e, k = [
 		charger: () => import("./typo-ywBhIt1n.js"),
 		armer: (e, t) => e.initTypo(t),
 		rendu: "DOM + WebGPU",
+		gpu: "léger",
 		statut: "stable",
 		module: "src/presse/typo.ts",
 		resume: "Six entrées de texte : éclats, tracé, sphère, étirement, encre, fragments.",
 		exemple: "typo.html",
-		parametres: () => import("./typo-CGI2FDLl.js")
+		parametres: () => import("./typo-CXf96ev6.js")
 	}),
-	O({
+	k({
 		id: "rouleau",
 		nom: "Menu roulant à image-tissu",
 		categorie: "interface",
@@ -429,13 +564,14 @@ var O = (e) => e, k = [
 		charger: () => import("./rouleau-DwhmWLGC.js"),
 		armer: (e, t) => e.initRouleau(t),
 		rendu: "WebGPU",
+		gpu: "moyen",
 		statut: "stable",
 		module: "src/presse/rouleau.ts",
 		resume: "Menu roulant de grands titres ; derrière le titre courant, une photo ondule comme une étoffe.",
 		exemple: "rouleau.html",
-		parametres: () => import("./rouleau-Bxbp6PmY.js")
+		parametres: () => import("./rouleau-D58--TuM.js")
 	}),
-	O({
+	k({
 		id: "couloir",
 		nom: "Couloir",
 		categorie: "image",
@@ -444,13 +580,14 @@ var O = (e) => e, k = [
 		charger: () => import("./couloir-DaYODJEI.js"),
 		armer: (e, t) => e.initCouloir(t),
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/couloir.ts",
 		resume: "Un mur d'images vu en perspective fuyante, qui défile au pointeur, frangé par la vitesse.",
 		exemple: "couloir.html",
 		parametres: () => import("./couloir-CD2KgiQJ.js")
 	}),
-	O({
+	k({
 		id: "logo",
 		nom: "Logo",
 		categorie: "matiere",
@@ -459,12 +596,14 @@ var O = (e) => e, k = [
 		charger: () => import("./logo-DJ6z-YGZ.js"),
 		armer: (e, t) => e.initLogo(t),
 		rendu: "WebGL2",
+		gpu: "lourd",
 		statut: "stable",
 		module: "src/presse/logo.ts",
 		resume: "Une matière animée sur un logo : métal liquide, fumée, chaleur, eau, verre, trames.",
-		exemple: "logos.html"
+		exemple: "logos.html",
+		parametres: () => import("./logo-CRZDCMvk.js")
 	}),
-	O({
+	k({
 		id: "cinetique",
 		nom: "Typographie cinétique en DOM",
 		categorie: "texte",
@@ -474,13 +613,14 @@ var O = (e) => e, k = [
 		armer: (e, t) => e.initCinetique(t),
 		manuel: !0,
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/cinetique.ts",
 		resume: "Texte animé en DOM : dix-huit entrées par ligne, mot ou lettre, et huit composants.",
 		exemple: "cinetique.html",
 		parametres: () => import("./cinetique-CvgKvwOl.js")
 	}),
-	O({
+	k({
 		id: "dechirure",
 		nom: "Déchirure",
 		categorie: "forme",
@@ -500,12 +640,14 @@ var O = (e) => e, k = [
 		armer: (e, t) => e.initDechirure(t),
 		manuel: !0,
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/dechirure.ts",
 		resume: "Un bord de papier déchiré entre deux blocs, ou une déchirure qui suit le pointeur.",
-		exemple: "boutique.html"
+		exemple: "boutique.html",
+		parametres: () => import("./dechirure-6CrqiTMo.js")
 	}),
-	O({
+	k({
 		id: "forme",
 		nom: "Forme-masque",
 		categorie: "forme",
@@ -524,12 +666,14 @@ var O = (e) => e, k = [
 		armer: (e, t) => e.initForme(t),
 		manuel: !0,
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/forme.ts",
 		resume: "Le média vu à travers une forme qui grandit jusqu'à couvrir l'écran.",
-		exemple: "boutique.html"
+		exemple: "boutique.html",
+		parametres: () => import("./forme-DMvOwzIp.js")
 	}),
-	O({
+	k({
 		id: "autocollant",
 		nom: "Autocollant",
 		categorie: "interface",
@@ -546,12 +690,14 @@ var O = (e) => e, k = [
 		armer: (e, t) => e.initAutocollant(t),
 		manuel: !0,
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/autocollant.ts",
 		resume: "Un autocollant suit le pointeur sur les cibles, avec retard et bascule.",
-		exemple: "boutique.html"
+		exemple: "boutique.html",
+		parametres: () => import("./autocollant-1Ci3nmT0.js")
 	}),
-	O({
+	k({
 		id: "rail",
 		nom: "Rail",
 		categorie: "interface",
@@ -563,6 +709,7 @@ var O = (e) => e, k = [
 			"data-rail-precedent",
 			"data-rail-suivant",
 			"data-rail-seuil",
+			"data-rail-aimant",
 			"data-rail-sansfin",
 			"data-rail-vitesse"
 		],
@@ -570,12 +717,14 @@ var O = (e) => e, k = [
 		armer: (e, t) => e.initRail(t),
 		manuel: !0,
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/rail.ts",
 		resume: "Un rail de cartes au glisser, avec inertie, aimantation, flèches et barre de progression.",
-		exemple: "boutique.html"
+		exemple: "boutique.html",
+		parametres: () => import("./rail-BFxC7V-t.js")
 	}),
-	O({
+	k({
 		id: "trace",
 		nom: "Dessin technique",
 		categorie: "dessin",
@@ -600,12 +749,14 @@ var O = (e) => e, k = [
 		armer: (e, t) => e.initTrace(t),
 		manuel: !0,
 		rendu: "DOM",
+		gpu: "aucun",
 		statut: "stable",
 		module: "src/presse/trace.ts",
 		resume: "Un dessin technique qui se trace : construction, formes, cotes, hachures.",
-		exemple: "boutique.html"
+		exemple: "boutique.html",
+		parametres: () => import("./trace-BHahsxl7.js")
 	})
-], A = [
+], j = [
 	{
 		id: "studio",
 		nom: "Studio",
@@ -641,7 +792,7 @@ var O = (e) => e, k = [
 		nom: "Labs",
 		resume: "Essais techniques : simulation, HTML-in-Canvas"
 	}
-], j = [
+], M = [
 	{
 		href: "index.html",
 		name: "WebGPU-demo-UBS",
@@ -918,7 +1069,7 @@ var O = (e) => e, k = [
 	"diapo-createur.html",
 	"courbes.html",
 	"studio-effet.html"
-], M = {
+], N = {
 	texte: "Texte",
 	image: "Image",
 	matiere: "Matière",
@@ -935,7 +1086,7 @@ var O = (e) => e, k = [
 	"forme",
 	"dessin",
 	"page"
-], N = (e) => ({
+], P = (e) => ({
 	id: `page:${e.href}`,
 	nom: e.court ?? e.name,
 	texte: e.text,
@@ -948,7 +1099,7 @@ var O = (e) => e, k = [
 		e.href.replace(/\.html$/, "")
 	]
 });
-function P(e) {
+function F(e) {
 	let t = e.parametres ? `studio-effet.html?effet=${e.id}` : void 0, n = e.exemple ?? t ?? "sampler-presse.html";
 	return {
 		id: `effet:${e.id}`,
@@ -961,35 +1112,35 @@ function P(e) {
 		effet: e.id,
 		mots: [
 			e.id,
-			M[e.categorie],
+			N[e.categorie],
 			...e.attributs.slice(0, 3)
 		]
 	};
 }
-function F(e = j, t = k) {
-	return A.map((n) => {
+function ae(e = M, t = A) {
+	return j.map((n) => {
 		let r = e.filter((e) => e.groupe === n.id), i = [];
 		if (n.id === "studio") {
 			let e = (e) => re.indexOf(e.href) + 1 || 99;
 			i.push({
 				id: "studio",
 				nom: "Éditeurs",
-				entrees: [...r].sort((t, n) => e(t) - e(n)).map(N)
+				entrees: [...r].sort((t, n) => e(t) - e(n)).map(P)
 			});
 		} else if (n.id === "effets" || n.id === "interfaces") {
 			let e = n.id === "effets" ? ie : ["interface"], a = /* @__PURE__ */ new Set();
 			for (let n of e) {
-				let e = t.filter((e) => e.categorie === n).map(P);
+				let e = t.filter((e) => e.categorie === n).map(F);
 				if (e.length) {
 					for (let t of e) a.add(t.page);
 					i.push({
 						id: `categorie:${n}`,
-						nom: M[n],
+						nom: N[n],
 						entrees: e
 					});
 				}
 			}
-			let o = r.filter((e) => !a.has(e.href)).map(N);
+			let o = r.filter((e) => !a.has(e.href)).map(P);
 			o.length && i.push({
 				id: `${n.id}:demos`,
 				nom: "Démos",
@@ -998,7 +1149,7 @@ function F(e = j, t = k) {
 		} else i.push({
 			id: n.id,
 			nom: n.nom,
-			entrees: r.map(N)
+			entrees: r.map(P)
 		});
 		return {
 			id: n.id,
@@ -1008,23 +1159,23 @@ function F(e = j, t = k) {
 		};
 	});
 }
-function ae(e = j, t = k) {
+function oe(e = M, t = A) {
 	let n = /* @__PURE__ */ new Set(), r = [];
-	for (let i of [...e.map(N), ...t.map(P)]) n.has(i.id) || (n.add(i.id), r.push(i));
+	for (let i of [...e.map(P), ...t.map(F)]) n.has(i.id) || (n.add(i.id), r.push(i));
 	return r;
 }
-function oe(e, t, n = j) {
+function se(e, t, n = M) {
 	let r = n.filter((e) => !e.href.startsWith("legacy/")), i = r.findIndex((t) => t.href === e);
 	return r[((i < 0 ? t > 0 ? -1 : 0 : i) + t + r.length) % r.length];
 }
 // src/studio/raccourcis.ts
-var I = "palette de commandes (src/nav/declencheur.ts)", se = [{
+var I = "palette de commandes (src/nav/declencheur.ts)", ce = [{
 	touches: "Mod+K",
 	par: I
 }, {
 	touches: "Mod+Maj+K",
 	par: "réglages Presse (knobs.ts)"
-}], ce = {
+}], le = {
 	echap: "escape",
 	échap: "escape",
 	entree: "enter",
@@ -1037,7 +1188,7 @@ var I = "palette de commandes (src/nav/declencheur.ts)", se = [{
 	suppr: "delete",
 	retour: "backspace",
 	tab: "tab"
-}, le = {
+}, ue = {
 	escape: "Échap",
 	enter: "Entrée",
 	" ": "Espace",
@@ -1088,7 +1239,7 @@ function R(e) {
 			else throw Error(`raccourci « ${e} » : modificateur inconnu « ${r} »`);
 		} else {
 			if (!r) throw Error(`raccourci « ${e} » : touche manquante`);
-			n.touche = ce[a] ?? a;
+			n.touche = le[a] ?? a;
 		}
 	}), L.has(n.touche) && (n.maj = !1), n;
 }
@@ -1102,7 +1253,7 @@ function z(e, t) {
 		e.touche
 	].filter(Boolean).join("+");
 }
-function ue(e) {
+function de(e) {
 	let t = (e.key.length, e.key.toLowerCase());
 	t === "spacebar" && (t = " "), t === "esc" && (t = "escape");
 	let n = !!e.shiftKey && !L.has(t);
@@ -1116,9 +1267,9 @@ function ue(e) {
 }
 function B(e, t) {
 	let n = R(e), r = [];
-	return n.mod && r.push(t ? "⌘" : "Ctrl"), n.ctrl && r.push(t ? "⌃" : "Ctrl"), n.alt && r.push(t ? "⌥" : "Alt"), n.maj && r.push(t ? "⇧" : "Maj"), r.push(le[n.touche] ?? (n.touche.length === 1 ? n.touche.toUpperCase() : n.touche)), r;
+	return n.mod && r.push(t ? "⌘" : "Ctrl"), n.ctrl && r.push(t ? "⌃" : "Ctrl"), n.alt && r.push(t ? "⌥" : "Alt"), n.maj && r.push(t ? "⇧" : "Maj"), r.push(ue[n.touche] ?? (n.touche.length === 1 ? n.touche.toUpperCase() : n.touche)), r;
 }
-function de(e) {
+function fe(e) {
 	let t = e;
 	if (!t || typeof t != "object") return !1;
 	if (t.isContentEditable) return !0;
@@ -1133,7 +1284,7 @@ function de(e) {
 		"color"
 	].includes((t.type ?? "text").toLowerCase());
 }
-function fe(e) {
+function pe(e) {
 	let t = e, n = (t?.tagName ?? "").toUpperCase();
 	return n === "BUTTON" || n === "A" || n === "SUMMARY" || n === "INPUT" && [
 		"checkbox",
@@ -1144,7 +1295,7 @@ function fe(e) {
 		"submit"
 	].includes((t?.type ?? "").toLowerCase());
 }
-var pe = /* @__PURE__ */ new Set([
+var me = /* @__PURE__ */ new Set([
 	"enter",
 	" ",
 	"arrowup",
@@ -1156,8 +1307,8 @@ var pe = /* @__PURE__ */ new Set([
 	"pageup",
 	"pagedown"
 ]);
-function me(e = {}) {
-	let t = e.mac ?? (typeof navigator < "u" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)), n = [], r = se.map((e) => ({
+function he(e = {}) {
+	let t = e.mac ?? (typeof navigator < "u" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)), n = [], r = ce.map((e) => ({
 		...e,
 		cle: z(R(e.touches), t)
 	})), i = (e) => typeof e.actif == "function" ? e.actif() : e.actif !== !1, a = {
@@ -1180,8 +1331,8 @@ function me(e = {}) {
 		lister: () => n,
 		trouver(e) {
 			if (e.isComposing) return null;
-			let t = ue(e), r = de(e.target), a = e.key.toLowerCase(), o = n.filter((e) => e.cle === t && i(e)).sort((e, t) => Number(!!t.portee) - Number(!!e.portee));
-			for (let t of o) if ((!r || t.dansChamp) && (r || !pe.has(a) || !fe(e.target) || e.ctrlKey || e.metaKey || e.altKey)) return t;
+			let t = de(e), r = fe(e.target), a = e.key.toLowerCase(), o = n.filter((e) => e.cle === t && i(e)).sort((e, t) => Number(!!t.portee) - Number(!!e.portee));
+			for (let t of o) if ((!r || t.dansChamp) && (r || !me.has(a) || !pe(e.target) || e.ctrlKey || e.metaKey || e.altKey)) return t;
 			return null;
 		},
 		traiter(e) {
@@ -1201,7 +1352,7 @@ function me(e = {}) {
 	return a;
 }
 // src/registre/stockage.ts
-var he = "presse:", V = /^[a-z][a-z0-9-]*$/;
+var ge = "presse:", V = /^[a-z][a-z0-9-]*$/;
 function H(e) {
 	if (!V.test(e.domaine) || !V.test(e.nom)) throw Error(`stockage : domaine « ${e.domaine} » ou nom « ${e.nom} » mal formé (a-z, 0-9, -)`);
 	let t = e.version ?? 1;
@@ -1213,7 +1364,7 @@ function H(e) {
 		portee: e.portee ?? "local",
 		anciennes: e.anciennes ?? [],
 		conversion: e.conversion,
-		texte: `${he}${e.domaine}.${e.nom}@${t}`
+		texte: `${ge}${e.domaine}.${e.nom}@${t}`
 	};
 }
 var U = {
@@ -1300,7 +1451,7 @@ var G = {
 		} catch {}
 	}
 };
-function ge(e, t = W(e.portee)) {
+function _e(e, t = W(e.portee)) {
 	if (!t || !e.anciennes.length || G.lire(t, e.texte) !== null) return null;
 	for (let n of e.anciennes) {
 		let r = G.lire(t, n);
@@ -1326,7 +1477,7 @@ function ge(e, t = W(e.portee)) {
 	return null;
 }
 function K(e, t = W(e.portee)) {
-	ge(e, t);
+	_e(e, t);
 	let n = G.lire(t, e.texte);
 	if (n === null) for (let n of e.anciennes) {
 		let r = G.lire(t, n);
@@ -1337,11 +1488,11 @@ function K(e, t = W(e.portee)) {
 function q(e, t, n = W(e.portee)) {
 	return G.ecrire(n, e.texte, t);
 }
-function _e(e, t = W(e.portee)) {
+function ve(e, t = W(e.portee)) {
 	G.retirer(t, e.texte);
 	for (let n of e.anciennes) G.retirer(t, n);
 }
-function ve(e, t, n, r) {
+function J(e, t, n, r) {
 	let i = K(e, r === void 0 ? W(e.portee) : r);
 	if (i === null) return t;
 	try {
@@ -1351,7 +1502,7 @@ function ve(e, t, n, r) {
 		return t;
 	}
 }
-function J(e, t, n) {
+function ye(e, t, n) {
 	let r;
 	try {
 		r = JSON.stringify(t);
@@ -1379,8 +1530,8 @@ function $(e = X()) {
 	let t = document.documentElement;
 	e ? t.dataset.presseTheme = e : delete t.dataset.presseTheme;
 }
-function ye() {
+function be() {
 	let e = Q() === "sombre" ? "clair" : "sombre", t = e === Z() ? null : e;
-	return t === null && _e(U.navTheme), Y = t === null || q(U.navTheme, t) ? void 0 : t, $(t), e;
+	return t === null && ve(U.navTheme), Y = t === null || q(U.navTheme, t) ? void 0 : t, $(t), e;
 }
-export { g as C, S, oe as _, U as a, ne as b, I as c, R as d, A as f, ae as g, F as h, Q as i, B as l, j as m, ye as n, J as o, M as p, X as r, ve as s, $ as t, me as u, k as v, h as w, b as x, C as y };
+export { g as C, S, se as _, U as a, ne as b, I as c, R as d, j as f, oe as g, ae as h, Q as i, B as l, M as m, be as n, ye as o, N as p, X as r, J as s, $ as t, he as u, A as v, h as w, b as x, C as y };

@@ -15,7 +15,10 @@
     "valider": "node tools/valider-page.mjs",
     "skill:tableau": "node tools/gen-skill-tableau.mjs",
     "export:diapo": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/export-diapo.mjs",
-    "urls:publiees": "node tools/gen-urls-publiees.mjs"
+    "urls:publiees": "node tools/gen-urls-publiees.mjs",
+    "mesurer:effets": "node tools/mesurer-effets.mjs",
+    "budgets": "node tools/budgets.mjs",
+    "veille:paper": "node tools/veille-paper.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

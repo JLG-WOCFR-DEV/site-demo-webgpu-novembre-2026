@@ -19,6 +19,8 @@ export default defineConfig({
     target: "es2022",
     assetsInlineLimit: 0,
     modulePreload: { polyfill: false },
+    // Le manifeste du build (dist/.vite/manifest.json) : lu par tools/mesurer-effets.mjs et tools/valider/budget.ts.
+    manifest: true,
     // Deux pages : la démo PLI et l'idée Kerguéhennec, 1910.
     rollupOptions: { input: { main: "index.html", kerguehennec: "kerguehennec.html", regards: "kerguehennec-styles.html", sampler: "sampler.html", liquide: "liquide.html", grille: "grille.html", galerie: "galerie.html", atelier: "atelier.html", presse: "presse.html", orbite: "orbite.html", matieres: "matieres.html", defilement: "defilement.html", fluide: "fluide.html", tissu: "tissu.html", lave: "lave.html", createur: "createur.html", "createur-apercu": "createur-apercu.html", "createur-site": "createur-site.html", conference: "conference.html", "diapo-demos": "diapo-demos.html", "diapo-createur": "diapo-createur.html", goo: "goo.html", metal: "metal.html", voix: "voix.html", ruban: "ruban.html", typo: "typo.html", rouleau: "rouleau.html", boutique: "boutique.html", cinetique: "cinetique.html", couloir: "couloir.html", logos: "logos.html", variations: "variations.html", vitrine: "vitrine.html", "vitrine-apercu": "vitrine-apercu.html", "vitrine-maison": "vitrine-maison.html", "vitrine-district": "vitrine-district.html", "vitrine-tribus": "vitrine-tribus.html", courbes: "courbes.html", "sampler-presse": "sampler-presse.html", "studio-effet": "studio-effet.html", "studio-apercu": "studio-apercu.html" } },
   },

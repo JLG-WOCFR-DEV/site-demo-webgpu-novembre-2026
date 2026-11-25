@@ -1,0 +1,148 @@
+{
+  "source": "dist/.vite/manifest.json — node tools/mesurer-effets.mjs (gzip -9, ko)",
+  "effets": {
+    "systeme": {
+      "js": 16.9,
+      "differe": 0.3,
+      "fichiers": [
+        "assets/slide-transition-B2fjF7Mh.js",
+        "assets/state-CqJ8_sSg.js",
+        "assets/systeme-BFKKt_9G.js",
+        "assets/systeme-DZ0LSws_.js",
+        "assets/variations-CvFEfNNV.js"
+      ]
+    },
+    "lightbox": {
+      "js": 9.6,
+      "differe": 0,
+      "fichiers": [
+        "assets/hold-BzG9ibAy.js",
+        "assets/lightbox-D6cWmmNw.js"
+      ]
+    },
+    "vague": {
+      "js": 1.3,
+      "differe": 0,
+      "fichiers": [
+        "assets/vague-COdR6WZo.js"
+      ]
+    },
+    "goo": {
+      "js": 9.9,
+      "differe": 0,
+      "fichiers": [
+        "assets/goo-C5r3P4z6.js",
+        "assets/goo-elj2lMQY.js",
+        "assets/schema-CLVVF78T.js"
+      ]
+    },
+    "metal": {
+      "js": 8.8,
+      "differe": 0,
+      "fichiers": [
+        "assets/metal-CRMFllAd.js",
+        "assets/metal-D-8LwNnf.js"
+      ]
+    },
+    "voix": {
+      "js": 10.4,
+      "differe": 0,
+      "fichiers": [
+        "assets/voix-C7XMXiMq.js",
+        "assets/voix-LlBbLSnY.js"
+      ]
+    },
+    "ruban": {
+      "js": 15.1,
+      "differe": 0,
+      "fichiers": [
+        "assets/gesture-bpaOsbMa.js",
+        "assets/ruban-CHwboKeT.js",
+        "assets/ruban-J26crN0I.js"
+      ]
+    },
+    "typo": {
+      "js": 12.5,
+      "differe": 0,
+      "fichiers": [
+        "assets/typo-CXyut0DE.js",
+        "assets/typo-kAR89SM2.js"
+      ]
+    },
+    "rouleau": {
+      "js": 12.6,
+      "differe": 0,
+      "fichiers": [
+        "assets/gesture-bpaOsbMa.js",
+        "assets/rouleau-BHxfIzvE.js",
+        "assets/rouleau-Coqhf6oB.js"
+      ]
+    },
+    "couloir": {
+      "js": 13.1,
+      "differe": 11.7,
+      "fichiers": [
+        "assets/couloir-yQp-S2Bo.js",
+        "assets/couloir-zV9oWdrd.js",
+        "assets/schema-CLVVF78T.js"
+      ]
+    },
+    "logo": {
+      "js": 12.5,
+      "differe": 68.3,
+      "fichiers": [
+        "assets/logo-BQ6Nm_H_.js",
+        "assets/logo-ycKoFZK8.js"
+      ]
+    },
+    "cinetique": {
+      "js": 17,
+      "differe": 0,
+      "fichiers": [
+        "assets/cinetique-BkfHMhrZ.js",
+        "assets/cinetique-KC51N19c.js"
+      ]
+    },
+    "dechirure": {
+      "js": 4.2,
+      "differe": 0,
+      "fichiers": [
+        "assets/dechirure-5x420fNm.js",
+        "assets/dechirure-BGQoxuXX.js"
+      ]
+    },
+    "forme": {
+      "js": 2.6,
+      "differe": 0,
+      "fichiers": [
+        "assets/forme-CtUVprzS.js",
+        "assets/forme-DNXVEplq.js"
+      ]
+    },
+    "autocollant": {
+      "js": 4.3,
+      "differe": 0,
+      "fichiers": [
+        "assets/autocollant-B7UX8xjT.js",
+        "assets/autocollant-DOlSP2GO.js",
+        "assets/forme-CtUVprzS.js"
+      ]
+    },
+    "rail": {
+      "js": 3.5,
+      "differe": 0,
+      "fichiers": [
+        "assets/rail-B78HP3Sd.js",
+        "assets/rail-BDDMi0hD.js"
+      ]
+    },
+    "trace": {
+      "js": 5.7,
+      "differe": 0,
+      "fichiers": [
+        "assets/trace-C7M2e_sH.js",
+        "assets/trace-DL3sufCt.js"
+      ]
+    }
+  }
+}

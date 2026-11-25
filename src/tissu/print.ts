@@ -1,35 +1,17 @@
 /**
  * Tissu — d'où vient l'image du HTML imprimé sur l'étoffe.
  *
- * 1. HTML-in-Canvas (essai d'origine de Chrome, versions 155 à 160) : le contenu est un enfant d'un canvas
- *    `content="drawable"` ; `GPUQueue.drawElementImageToTexture` le dessine tel que le navigateur le peint (fontes,
- *    soulignés, ombres, tout), et `updateElementGeometry` garde ses zones de clic et son arbre d'accessibilité à leur
- *    place. Repeint à l'événement `paint`.
+ * 1. HTML-in-Canvas (src/html-in-canvas.ts : détection, noms de l'API et statut Chrome) : le contenu est un enfant
+ *    d'un canvas préparé (`content="drawable"`) ; le navigateur le dessine dans la texture tel qu'il le peint (fontes,
+ *    soulignés, ombres, tout), et la géométrie garde ses zones de clic et son arbre d'accessibilité à leur place.
+ *    Repeint à l'événement `paint`. C'est src/tissu/main.ts qui choisit, par `capabilites()` du module.
  * 2. Ailleurs, l'impression du DOM : on relit la mise en page que le navigateur a faite — chaque lettre à sa place
  *    (Range), chaque fond et chaque bordure de boîte — et on la redessine dans un canvas 2D, puis dans une texture. Le
  *    principe de tout Presse (« le DOM compose, le GPU imprime »), en petit : couvre le texte, les fonds, les bordures
  *    unies et arrondies ; pas les images, les dégradés, les ombres, ni les pseudo-éléments.
  */
 
-type DrawQueue = GPUQueue & {
-  drawElementImageToTexture?: (
-    source: { source: Element; sourceX?: number; sourceY?: number; sourceWidth?: number; sourceHeight?: number },
-    dest: { texture: GPUTexture; size?: GPUExtent3DDict },
-  ) => void;
-};
-export type DrawableCanvas = HTMLCanvasElement & {
-  content?: string;
-  updateElementGeometry?: (el: Element, opts: { canvasTransform: DOMMatrix }) => void;
-};
-
-export function supportsHtmlInCanvas() {
-  return typeof GPUQueue !== "undefined" && "drawElementImageToTexture" in GPUQueue.prototype;
-}
-
-/** Le navigateur dessine l'élément dans la texture (HTML-in-Canvas). */
-export function drawWithBrowser(device: GPUDevice, el: Element, texture: GPUTexture) {
-  (device.queue as DrawQueue).drawElementImageToTexture!({ source: el }, { texture, size: { width: texture.width, height: texture.height } });
-}
+// HTML-in-Canvas (détection, dessin par le navigateur, géométrie) : le module unique src/html-in-canvas.ts.
 
 const ascents = new Map<string, number>();
 const measure = document.createElement("canvas").getContext("2d")!;

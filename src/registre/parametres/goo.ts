@@ -9,6 +9,7 @@ import type { FicheParametres } from "./types.ts";
 const OMBRE_DEFAUT = "0 4px 12px rgba(0,0,0,.14)";
 
 export default {
+  rendu: "La pâte (fusion, ponts, gouttes) est un champ de distance WebGPU ; sans carte graphique (l'aperçu ici), le module garde les mêmes ressorts et trajets, sans fusion : des pièces rondes qui s'écartent.",
   parametres: [
     { cle: "ouvert", type: "interrupteur", libelle: "Ouvert", icone: "ouvert", groupe: "État", defaut: false, attribut: "data-goo-ouvert", aide: "Présent : chaque pièce va à son décalage. Le bouton rond de l'aperçu bascule aussi." },
     { cle: "fill", type: "couleur", libelle: "Pâte", icone: "pot", groupe: "Pâte", defaut: "#ffffff", attribut: "data-goo-fill", aide: "Couleur de la pâte (défaut : le fond de la première pièce)." },

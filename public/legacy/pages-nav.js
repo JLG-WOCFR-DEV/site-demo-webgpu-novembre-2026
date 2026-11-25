@@ -1,4 +1,4 @@
-import { C as e, b as t, c as n, h as r, l as i, m as a, t as o, u as s, v as c, w as l, y as u } from "./theme-CgPZubM2.js";
+import { C as e, b as t, c as n, h as r, l as i, m as a, t as o, u as s, v as c, w as l, y as u } from "./theme-Ch4F5iYH.js";
 import { n as d, t as f } from "./motion-lint-EfEMk6cY.js";
 import { i as p, n as m, t as h } from "./tokens-Nj0c2PcI.js";
 import { r as g } from "./look-BnXlF57J.js";
@@ -996,7 +996,7 @@ function nt(e) {
 	}), { pied: o };
 }
 // src/nav/declencheur.ts
-var rt = null, it = () => rt ??= import("./palette-CeZsPH-8.js"), $ = { base: "./" }, at = !1;
+var rt = null, it = () => rt ??= import("./palette-CtL1P5Lv.js"), $ = { base: "./" }, at = !1;
 function ot(e) {
 	let t = e ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 	it().then((e) => e.basculerPalette($, t));

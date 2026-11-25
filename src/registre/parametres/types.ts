@@ -16,6 +16,9 @@
  *   - à son défaut (effectif) : rien ;
  *   - sinon l'attribut, sur la racine de la démo ou sur chaque `cible`.
  *
+ *   - `minimale` (facultatif) : la raison d'une fiche courte ou sans démo ; `rendu` : ce que l'aperçu montre d'un
+ *     effet GPU sans carte graphique (le repli du module) — l'aperçu ne simule rien que le module ne fasse.
+ *
  * Des types seulement (aucun code : une fiche s'écrit `export default { … } satisfies FicheParametres`) ; importable
  * par Node (tests). Les fiches sont dans ce dossier.
  */
@@ -71,6 +74,17 @@ export type Prereglages = {
 
 export type FicheParametres = {
   parametres: readonly Parametre[];
-  demo: Demo;
+  /** La démonstration montée par l'aperçu. Absente (fiche minimale) : `minimale` dit pourquoi, l'aperçu le dit aussi. */
+  demo?: Demo;
   prereglages?: Prereglages;
+  /**
+   * Fiche minimale (moins de quatre paramètres, ou pas de démo) : la raison, en une phrase (le module n'a pas d'autre
+   * attribut réglable, l'effet se pose sur `<html>`…). Affichée par l'inspecteur du Studio.
+   */
+  minimale?: string;
+  /**
+   * Ce que l'aperçu du Studio montre d'un effet GPU (rendu WebGPU / WebGL2 du manifeste, ou moteur Presse) quand la
+   * carte ou le moteur manquent : le repli DOM du module, dit en une phrase. Obligatoire pour un rendu GPU.
+   */
+  rendu?: string;
 };

@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "types": ["vite/client", "@webgpu/types", "node"]
   },
   "include": ["src", "presse", "vite.config.ts"]

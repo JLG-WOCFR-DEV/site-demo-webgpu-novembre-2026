@@ -41,6 +41,7 @@ var e = [
 		"glass"
 	]
 ], t = {
+	rendu: "Le bandeau-tissu est dessiné en WebGPU ; sans carte graphique (l'aperçu ici), chaque bandeau est une image fixe en object-fit: cover, même défilement des titres.",
 	parametres: [
 		{
 			cle: "hauteur",

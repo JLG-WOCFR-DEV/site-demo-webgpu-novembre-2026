@@ -213,14 +213,46 @@ Décisions :
     aux démos ; « Réduire les animations » agit sur ce qui lit `matchMedia` (composants JS), pas sur les `@media` CSS
     (classe `presse-anim-reduite` disponible) ; Ctrl+K pris à Chrome / Firefox (recherche) ; le menu se construit
     encore en JS (sans JS : pas de menu, comme avant) ; coque adoptée par studio-effet seulement.
-- **E7 Veille** : Paper (écart de couverture), HTML-in-Canvas (module unique à partir de `src/html-in-canvas.ts`).
-- Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre, budget JS par page, a11y (priorité mouvement réduit vs `data-diapo-motion`).
+- **E7a Fiches, coûts, veille, HTML-in-Canvas, inspecteur.** **Fait (2026-11-25).**
+  - Fiches Studio des 11 effets restants (`src/registre/parametres/` : systeme, lightbox, vague, metal, voix, logo,
+    dechirure, forme, autocollant, rail, trace) : 17 / 17. Attributs, défauts et bornes lus dans chaque module et
+    vérifiés par `parametres.test.ts` (constantes exportées quand il y en a, sinon le source) ; aucune option inventée.
+    Fiches minimales justifiées (`minimale`) : lightbox (0 réglage : un attribut sans valeur), vague (3), systeme (0,
+    pas de démo : attribut de `<html>`). Note `rendu` obligatoire pour les effets GPU (le repli montré par l'aperçu).
+    Corrections de documentation trouvées en route : `data-rail-aimant` (lu, non documenté), listes de `data-trace-role`,
+    `data-trace-quand` et `data-logo-type` que le catalogue lisait mal (seule la première valeur).
+  - Coût au registre : `cout: { gpu, js, differe }` ; GPU estimé à la main, JS mesuré (`tools/mesurer-effets.mjs` →
+    `src/registre/couts.json`, depuis `dist/.vite/manifest.json`). Mesuré (ko gzip -9, hors pages-nav) : cinetique 17,0,
+    systeme 16,9, ruban 15,1, couloir 13,1 (+ 11,7 différés), rouleau 12,6, typo 12,5, logo 12,5 (+ 68,3 : Paper
+    Shaders), voix 10,4, goo 9,9, lightbox 9,6, metal 8,8, trace 5,7, autocollant 4,3, dechirure 4,2, rail 3,5,
+    forme 2,6, vague 1,3. Puce dans le Sampler Presse et le Studio.
+  - Budget JS par page (`tools/valider/budget.ts`, `budgets.json`, `npm run budgets`, avertissement `budget` du
+    validateur) : 41 pages, toutes sous 250 ko ; les plus lourdes : presse 160,7, createur-apercu 159,1, vitrine 141,0,
+    logos 140,9, sampler 138,9, index 130,5. Aucune dérogation.
+  - Veille Paper (`npm run veille:paper` → `docs/veille-paper.md`) : 0.0.82 installée = dernière publiée (réseau npm
+    joignable) ; 30 shaders, 10 couverts (6 en WGSL + WebGL2, 4 en WebGL2 seul : gem-smoke, heatmap, liquid-metal,
+    paper-texture → P1 : port WGSL), 20 génératifs non couverts (14 à palette → P2 : effet « fond de section »).
+  - HTML-in-Canvas : module unique `src/html-in-canvas.ts` (détection simulable, dessin aux noms 155+ et de l'essai,
+    repli explicite), Tissu migré (plus de détection dans `tissu/print.ts`), puce dans le Studio ; noms et statut
+    documentés dans PRESSE.md.
+  - Inspecteur d'éléments (§9.2) : bouton + `I`, cadres et infobulle `data-*` en direct, Tab en boucle, Échap,
+    mouvement réduit.
+  - Tests : 396 → 412 (`couts.test.ts`, `veille-paper.test.ts`, `html-in-canvas.test.ts`,
+    `inspecteur-elements.test.ts`, fiches E7a). Playwright : studio-effet sur les 11 nouveaux effets × 1440 / 390,
+    sampler-presse × 2, mouvement réduit : 0 erreur console, pas de débordement.
+  - **Limites** : coût GPU estimé, pas mesuré (pas de WebGPU à l'écran ici ; timestamp queries à faire) ; budget :
+    les effets posés par script (cartes de boutique) et les `import()` propres aux pages (palette, éditeurs) ne sont
+    pas comptés ; puce et chemin HTML-in-Canvas jamais vus à « oui » (Chromium 141), statut Chrome 157 / 160 non
+    tranché (chromestatus non lu) ; logo : seuls les 3 réglages « principaux » par matière (le reste dans logos.html) ;
+    déchirure : la forme « coupe » (deux images) n'a pas de démo ; aperçu sans moteur Presse : la vague n'y est qu'un
+    fondu. Reste E7b : serveur MCP + CLI `presse`.
+- Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre (fait, E7a), budget JS par page (fait, E7a), a11y (priorité mouvement réduit vs `data-diapo-motion`).
 
 ## 9. Enseignements de référence (GPUI Kit / gpui-component, skills Longbridge — 2026-11-23)
 
 Retenu, par priorité :
 1. **Comportement sans style / peau** : un seul moteur de rendu de schéma (headless), des peaux Studio, Vitrine, Créateur en CSS. Prolonge E4 (`inspecteur-plan.ts` pur → `inspecteur.ts`) ; à étendre aux knobs et à l'inspecteur Vitrine (E6).
-2. **Galerie de stories = Sampler Presse** (fait, E4) + **mode inspecteur** activable : surligner les éléments armés, lire leurs `data-*` en direct (lot E7).
+2. **Galerie de stories = Sampler Presse** (fait, E4) + **mode inspecteur** activable : surligner les éléments armés, lire leurs `data-*` en direct (fait, E7a).
 3. **Coque à panneaux sérialisable** : mise en page (splits, onglets, tailles) en JSON versionné, comme `#v=` ; base de la coque commune des trois éditeurs (E6).
 4. **Tests UI headless clavier/souris + a11y dans la couche comportement** : Playwright sur le moteur de schéma (Tab, flèches, Échap, focus visible), en plus de `node:test` (E4/E6).
 5. **Distribution agent** : serveur MCP + CLI `presse` branchés sur le registre (`effets`, `valider`, `ajouter`, `parametres`), skill installable, écritures confirmées en deux temps (lot E8, faible coût : le registre s'importe depuis Node).

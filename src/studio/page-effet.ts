@@ -24,7 +24,8 @@ import { monterDemo, ligneAttributs } from "./demo.ts";
 import { monterInspecteur, type Inspecteur } from "./inspecteur.ts";
 import { creerRaccourcis, type Registre } from "./raccourcis.ts";
 import { ic } from "./icones.ts";
-import { majPucesRendu, puceRendu } from "./rendu.ts";
+import { majPucesRendu, puceCout, puceRendu } from "./rendu.ts";
+import { detecter, libelleEtat } from "../html-in-canvas.ts";
 import { monterCoque } from "./coque.ts";
 import { SCHEMA_STUDIO_EFFET } from "./coque-plan.ts";
 import { CLES } from "../registre/stockage.ts";
@@ -78,6 +79,8 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   if (!m?.parametres) return pageIntrouvable(hote, id);
   const fiche: FicheParametres = (await m.parametres()).default;
   const rendu = puceRendu(m, true);
+  const cout = puceCout(m);
+  const hic = libelleEtat(detecter());
   const lu = depuisHash(fiche, location.hash);
   let etat: Etat = lu.etat;
   let appareil: Appareil = "bureau";
@@ -99,6 +102,8 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
     <select id="st-effet" class="st-effet">${reglables.map((x) => `<option value="${x.id}"${x.id === id ? " selected" : ""}>${e(x.nom)}</option>`).join("")}</select>
     <span class="st-puce">${e(NOMS_CATEGORIES[m.categorie] ?? m.categorie)}</span>
     <span class="st-puce ${rendu.classe}" title="${e(rendu.titre)}" data-puce-rendu data-rendu="${e(m.rendu)}">${ic(m.rendu === "DOM" || m.rendu === "canvas 2D" ? "dom" : "gpu", 14)}<span>${e(rendu.texte)}</span></span>
+    <span class="st-puce ${cout.classe}" title="${e(cout.titre)}" data-puce-cout>${ic("poids", 14)}<span>${e(cout.texte)}</span></span>
+    <span class="st-puce st-puce-hic" title="${e(hic.titre)}" data-puce-hic>${ic("hic", 14)}<span>${e(hic.texte)}</span></span>
   </div>
   <div class="st-barre-c" role="toolbar" aria-label="Aperçu">
     <div class="st-segments" role="radiogroup" aria-label="Appareil">${APPAREILS.map(
@@ -106,6 +111,7 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
     ).join("")}</div>
     ${bouton("rejouer", "rejouer", "Rejouer l'aperçu (R)")}
     ${bouton("comparer", "comparer", "Comparer avant / après (B)", ' aria-pressed="false"')}
+    ${bouton("inspecter", "inspecter", fiche.demo ? "Inspecter les éléments armés (I)" : "Inspecter : pas de démonstration pour cet effet", ` aria-pressed="false"${fiche.demo ? "" : " disabled"}`)}
   </div>
   <div class="st-barre-d" role="toolbar" aria-label="Exporter">
     ${bouton("copier-attributs", "copier-attributs", "Copier les attributs (Maj+A)")}
@@ -130,7 +136,8 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
       <iframe title="Aperçu de ${e(m.nom)}"></iframe>
     </figure>
   </div>
-  ${fiche.demo.consigne ? `<p class="st-consigne">${e(fiche.demo.consigne)}</p>` : ""}
+  ${fiche.demo?.consigne ? `<p class="st-consigne">${e(fiche.demo.consigne)}</p>` : ""}
+  ${fiche.rendu ? `<p class="st-consigne st-note-rendu">${ic("gpu", 14)}<span>${e(fiche.rendu)}</span></p>` : ""}
   <section class="st-code" aria-label="Code">
     <div class="st-onglets" role="tablist" aria-label="Format">
       <button type="button" role="tab" id="st-o-html" aria-controls="st-code" aria-selected="true">HTML</button>
@@ -144,6 +151,7 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
     <h2 id="st-t-reglages">Réglages</h2>
     <span class="st-ins-compte" aria-live="polite"></span>
   </div>
+  ${fiche.minimale ? `<p class="st-minimale">${e(fiche.minimale)}${m.exemple ? ` <a href="${e(m.exemple)}">Voir ${e(m.exemple)}</a>.` : ""}</p>` : ""}
   <div class="st-ins-corps"></div>
   <section class="st-attributs" aria-labelledby="st-t-attributs">
     <h2 id="st-t-attributs">Attributs</h2>
@@ -229,9 +237,26 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   /* ── Aperçu ── */
   cadreApres.src = srcApercu(versHash(fiche, etat));
   // Le cadre « avant » ne se charge qu'à la première comparaison.
-  addEventListener("message", (ev: MessageEvent<{ type?: string }>) => {
+  // Mode inspecteur d'éléments (src/studio/inspecteur-elements.ts, dans l'aperçu) : surligne les éléments armés.
+  let inspection = false;
+  const envoyerInspection = () => cadreApres.contentWindow?.postMessage({ type: "studio:inspecter", actif: inspection }, location.origin);
+  const basculerInspection = (oui = !inspection, depuisApercu = false) => {
+    if (oui && !fiche.demo) return;
+    inspection = oui;
+    q('[data-action="inspecter"]').setAttribute("aria-pressed", String(inspection));
+    racine.classList.toggle("st-inspection", inspection);
+    if (!depuisApercu) envoyerInspection();
+    if (inspection && !depuisApercu) cadreApres.focus();
+    if (!inspection && depuisApercu) q<HTMLButtonElement>('[data-action="inspecter"]').focus();
+    dire(inspection ? "Inspecteur : Tab passe d'un élément armé à l'autre, Échap ferme." : "Inspecteur fermé.");
+  };
+  addEventListener("message", (ev: MessageEvent<{ type?: string; n?: number }>) => {
     if (ev.origin !== location.origin || ev.source !== cadreApres.contentWindow) return;
-    if (ev.data?.type === "studio:pret") racine.dataset.pret = "oui";
+    if (ev.data?.type === "studio:pret") {
+      racine.dataset.pret = "oui";
+      if (inspection) envoyerInspection();
+    } else if (ev.data?.type === "studio:inspecteur-ferme") basculerInspection(false, true);
+    else if (ev.data?.type === "studio:inspecteur-compte") dire(`${ev.data.n ?? 0} élément${(ev.data.n ?? 0) > 1 ? "s" : ""} armé${(ev.data.n ?? 0) > 1 ? "s" : ""} dans l'aperçu.`);
   });
 
   const rejouer = () => {
@@ -267,6 +292,7 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   const ACTIONS: Record<string, () => void> = {
     rejouer,
     comparer: () => basculerComparer(),
+    inspecter: () => basculerInspection(),
     reinitialiser,
     "copier-attributs": () => void copierEt(texteAttrs(), "Attributs"),
     "copier-html": () => void copierEt(texteHtml(), "HTML"),
@@ -330,6 +356,7 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   const R = (id: string, touches: string, libelle: string, groupe: string, action: () => void, dansChamp = false) => raccourcis.ajouter({ id, touches, libelle, groupe, action, dansChamp, actif: () => !aide.open || id === "aide" });
   R("rejouer", "R", "Rejouer l'aperçu", "Aperçu", rejouer);
   R("comparer", "B", "Comparer avant / après", "Aperçu", () => basculerComparer());
+  R("inspecter", "I", "Inspecter les éléments armés", "Aperçu", () => basculerInspection());
   R("bureau", "1", "Aperçu bureau", "Aperçu", () => choisirAppareil("bureau"));
   R("tablette", "2", "Aperçu tablette", "Aperçu", () => choisirAppareil("tablette"));
   R("mobile", "3", "Aperçu téléphone", "Aperçu", () => choisirAppareil("mobile"));
@@ -340,6 +367,14 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   R("reinitialiser", "Maj+R", "Réinitialiser les réglages", "Réglages", reinitialiser);
   R("aide", "?", "Afficher les raccourcis", "Général", () => (aide.open ? aide.close() : ouvrirAide()));
   raccourcis.ecouter(document);
+  // Échap ferme l'inspecteur quand le focus est dans la page (dans l'aperçu, c'est l'aperçu qui l'écoute).
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && inspection && !aide.open) {
+      ev.preventDefault();
+      basculerInspection(false, true);
+      envoyerInspection();
+    }
+  });
 
   /* ── Départ ── */
   if (m.rendu.includes("WebGPU")) void majPucesRendu(racine);
@@ -347,5 +382,5 @@ export async function monterPageEffet(hote: HTMLElement, id: string): Promise<vo
   choisirOnglet(coque.onglet("code") === "json" ? "json" : "html");
   if (lu.corrections.length && location.hash.length > 1) dire(`Lien relu avec ${lu.corrections.length} correction${lu.corrections.length > 1 ? "s" : ""} : ${lu.corrections.join(" ; ")}`);
   // Pour les essais (Playwright).
-  (window as unknown as { __studio: object }).__studio = { etat: () => etat, fiche, raccourcis, coque, hash: () => versHash(fiche, etat), attributs: () => ligneAttributs(monterDemo(document, m, fiche, etat).attributsRacine) };
+  (window as unknown as { __studio: object }).__studio = { etat: () => etat, inspection: () => inspection, fiche, raccourcis, coque, hash: () => versHash(fiche, etat), attributs: () => ligneAttributs(monterDemo(document, m, fiche, etat).attributsRacine) };
 }

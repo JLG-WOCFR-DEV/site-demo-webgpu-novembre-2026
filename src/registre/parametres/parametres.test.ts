@@ -18,6 +18,12 @@ import * as cinetique from "../../presse/cinetique.ts";
 import * as typo from "../../presse/typo.ts";
 import * as ruban from "../../presse/ruban.ts";
 import * as couloir from "../../presse/couloir.ts";
+import * as metal from "../../presse/metal.ts";
+import * as voix from "../../presse/voix.ts";
+import * as logo from "../../presse/logo.ts";
+import * as forme from "../../presse/forme.ts";
+import * as trace from "../../presse/trace.ts";
+import fs from "node:fs";
 
 const RACINE = path.resolve(import.meta.dirname, "../../..");
 const cat = lireCatalogue(RACINE);
@@ -25,6 +31,9 @@ const PILOTES = ["goo", "couloir", "cinetique", "typo", "ruban", "rouleau"];
 
 const fiches = new Map<string, { m: Manifeste; f: FicheParametres }>();
 for (const m of EFFETS) if (m.parametres) fiches.set(m.id, { m, f: (await m.parametres()).default });
+/** Les fiches qui ont une démo (toutes, sauf une fiche minimale sans aperçu : systeme). */
+const avecDemo = new Map([...fiches].filter(([, { f }]) => f.demo)) as Map<string, { m: Manifeste; f: FicheParametres & { demo: NonNullable<FicheParametres["demo"]> } }>;
+const source = (id: string) => fs.readFileSync(path.join(RACINE, `src/presse/${id}.ts`), "utf8");
 
 /** Une valeur autre que le défaut, valide, pour chaque genre. */
 export function autreValeur(p: Parametre): Valeur {
@@ -47,19 +56,23 @@ export function autreValeur(p: Parametre): Valeur {
   }
 }
 
-const racineDe = (doc: HTMLElement, m: Manifeste, f: FicheParametres) => doc.querySelector(f.demo.racine ?? m.selecteur.split(",")[0]!.trim());
+const racineDe = (doc: HTMLElement, m: Manifeste, f: FicheParametres) => doc.querySelector(f.demo?.racine ?? m.selecteur.split(",")[0]!.trim());
 const page = (corps: string) => `<!doctype html>\n<html lang="fr">\n<head><meta charset="utf-8" /><title>Essai de fiche</title></head>\n<body><main>\n${corps}\n</main></body>\n</html>`;
 const erreurs = (html: string) => validerHtml(page(html), cat).filter((c) => c.gravite === "erreur" && c.regle !== "armement");
 
-test("fiches : les six effets pilotes en ont une, chargée à la demande", () => {
+test("fiches : les six effets pilotes en ont une, et (E7a) chaque effet du registre ; chargée à la demande", () => {
   for (const id of PILOTES) assert.ok(fiches.has(id), `${id} : pas de fiche`);
+  for (const m of EFFETS) assert.ok(fiches.has(m.id), `${m.id} : pas de fiche (lot E7a : tous les effets)`);
+  // Sans démo : seulement une fiche minimale qui dit pourquoi.
+  for (const [id, { f }] of fiches) if (!f.demo) assert.ok(f.minimale?.trim(), `${id} : ni démo ni raison`);
   for (const { m } of fiches.values()) assert.match(m.parametres!.toString(), new RegExp(`import\\(["']\\./parametres/${m.id}\\.ts["']\\)`), `${m.id} : chemin littéral`);
 });
 
 test("fiches : schéma bien formé (défauts dans les bornes, options, conditions), clés uniques", () => {
   for (const [id, { f }] of fiches) {
     assert.deepEqual(controlerSchema(f.parametres, id), []);
-    assert.ok(f.parametres.length >= 4, `${id} : ${f.parametres.length} paramètres seulement`);
+    if (f.parametres.length < 4) assert.ok(f.minimale?.trim(), `${id} : ${f.parametres.length} paramètres seulement, sans raison (minimale)`);
+    if (f.minimale !== undefined) assert.ok(f.minimale.length <= 240, `${id} : raison trop longue`);
     for (const p of f.parametres) {
       assert.ok(p.libelle.length <= 20, `${id}.${p.cle} : libellé court attendu (« ${p.libelle} »)`);
       if (p.auto !== undefined) assert.ok(p.auto.trim(), `${id}.${p.cle} : texte « auto » vide`);
@@ -79,7 +92,7 @@ test("fiches ⇄ registre ⇄ PRESSE.md : chaque attribut écrit est un attribut
 });
 
 test("fiches : la démo a sa racine (qui répond au sélecteur du manifeste) et chaque cible", () => {
-  for (const [id, { m, f }] of fiches) {
+  for (const [id, { m, f }] of avecDemo) {
     const doc = parse(f.demo.html);
     const r = racineDe(doc, m, f);
     assert.ok(r, `${id} : racine introuvable`);
@@ -89,7 +102,7 @@ test("fiches : la démo a sa racine (qui répond au sélecteur du manifeste) et 
 });
 
 test("fiches : la démo est écrite aux défauts (un attribut réglé ailleurs n'y est pas, ou y vaut le défaut)", () => {
-  for (const [id, { m, f }] of fiches) {
+  for (const [id, { m, f }] of avecDemo) {
     const r = racineDe(parse(f.demo.html), m, f)!;
     const etat = etatInitial(f);
     for (const p of f.parametres) {
@@ -105,7 +118,7 @@ test("fiches : la démo est écrite aux défauts (un attribut réglé ailleurs n
 });
 
 test("fiches : le HTML de la démo passe le validateur, aux défauts et chaque paramètre réglé", () => {
-  for (const [id, { m, f }] of fiches) {
+  for (const [id, { m, f }] of avecDemo) {
     assert.deepEqual(erreurs(f.demo.html), [], `${id} : démo aux défauts`);
     for (const p of f.parametres) {
       let etat = etatInitial(f);
@@ -152,4 +165,83 @@ test("fiches ⇄ modules : listes et défauts tirés du code", () => {
       assert.ok(p, `couloir.${nom} : ${cle} sans paramètre`);
       assert.deepEqual(validerValeur(p!, v).corrections, [], `couloir.${nom}.${cle} = ${String(v)}`);
     }
+});
+
+test("fiches : un effet GPU dit ce que l'aperçu montre sans carte graphique (rendu) ; un effet DOM n'a rien à en dire", () => {
+  for (const [id, { m, f }] of fiches) {
+    const gpu = /WebGPU|WebGL/.test(m.rendu) || id === "vague";
+    if (gpu && f.demo) assert.ok(f.rendu?.trim(), `${id} : rendu ${m.rendu}, sans note de repli (rendu)`);
+    if (m.rendu === "DOM" && id !== "vague") assert.equal(f.rendu, undefined, `${id} : rendu DOM, note de repli inutile`);
+  }
+});
+
+test("fiches E7a ⇄ modules : listes et défauts tirés du code", () => {
+  const F = (id: string) => fiches.get(id)!.f;
+  const P = (id: string, cle: string) => F(id).parametres.find((p) => p.cle === cle)!;
+  const options = (p: Parametre) => (p.type === "selecteur" ? p.options.map((o) => o.valeur).sort() : []);
+  const defaut = (id: string, cle: string) => P(id, cle).defaut;
+  // vague : défauts lus dans `aller` (pas de constante exportée).
+  const sv = source("vague");
+  assert.match(sv, /Number\(el\.dataset\.vagueDuree\) \|\| 1\.1\b/);
+  assert.equal(defaut("vague", "duree"), 1.1);
+  assert.match(sv, new RegExp(`vagueType \\|\\| "${defaut("vague", "type")}"`));
+  assert.match(sv, new RegExp(`vaguePalette \\|\\| "${defaut("vague", "palette")}"`));
+  // métal
+  assert.deepEqual(options(P("metal", "preset")), Object.keys(metal.PRESETS).sort());
+  assert.equal(metal.presetDe(undefined), defaut("metal", "preset"));
+  assert.equal(metal.formeDe(undefined), defaut("metal", "forme"));
+  for (const o of options(P("metal", "forme"))) assert.equal(metal.formeDe(o), o);
+  assert.match(source("metal"), /num\(d\.metalForce, 1\)/);
+  assert.match(source("metal"), /num\(d\.metalEpaisseur, m\.genre === "badge" \? 1\.5 : 3\)/);
+  // voix
+  assert.deepEqual(options(P("voix", "etat")), [...voix.ETATS].sort());
+  assert.deepEqual(options(P("voix", "palette")), [...Object.keys(voix.PALETTES), "mono"].sort());
+  assert.match(source("voix"), /num\(d\.voixForce, 1, 0, 2\)/);
+  assert.match(source("voix"), /num\(d\.voixHauteur, this\.ecran \? 0\.6 : 0\.9, 0\.05, 1\.5\)/);
+  assert.match(source("voix"), /num\(d\.voixDebord, this\.ecran \? 0 : 24, 0, 200\)/);
+  assert.match(source("voix"), /voixCouleur \?\? "#8f5bff"/);
+  // logo : tout vient de la partie pure.
+  assert.deepEqual(options(P("logo", "matiere")), [...logo.MATIERES_NOMS].sort());
+  assert.deepEqual(options(P("logo", "survol")), [...logo.SURVOLS].sort());
+  assert.deepEqual(options(P("logo", "police")), [...logo.POLICES].sort());
+  const c = logo.configParDefaut();
+  assert.equal(defaut("logo", "matiere"), c.matiere);
+  assert.equal(defaut("logo", "vitesse"), c.vitesse);
+  assert.equal(defaut("logo", "marge"), c.marge);
+  assert.equal(defaut("logo", "mouvement"), c.mouvement);
+  for (const m of logo.MATIERES_NOMS) {
+    const pr = F("logo").parametres.find((p) => p.attribut === "data-logo-presets" && p.si?.valeurs?.includes(m))!;
+    assert.deepEqual(options(pr), ["", ...Object.keys(logo.MATIERES[m].presets)].sort(), `logo.${m} : préréglages`);
+    for (const r of logo.MATIERES[m].reglages.filter((x) => x.principal && x.type !== "couleurs")) {
+      const p = F("logo").parametres.find((x) => x.attribut === `data-logo-${r.cle}` && x.si?.valeurs?.includes(m));
+      assert.ok(p, `logo.${m}.${r.cle} : réglage principal absent de la fiche`);
+      assert.deepEqual(p!.defaut, r.defaut, `logo.${m}.${r.cle} : défaut`);
+    }
+  }
+  // déchirure (bord), forme, autocollant, rail : défauts lus dans le code.
+  const sd = source("dechirure");
+  assert.match(sd, new RegExp(`nombre\\(el\\.dataset\\.dechirureAmplitude, ${defaut("dechirure", "amplitude")}\\)`));
+  assert.match(sd, new RegExp(`nombre\\(el\\.dataset\\.dechirureFibre, ${defaut("dechirure", "fibre")}\\)`));
+  assert.match(sd, /: "haut";/);
+  assert.equal(defaut("dechirure", "cote"), "haut");
+  assert.deepEqual(options(P("forme", "forme")), Object.keys(forme.FORMES).sort());
+  assert.deepEqual(options(P("autocollant", "forme")), Object.keys(forme.FORMES).sort());
+  const sf = source("forme");
+  assert.match(sf, new RegExp(`Number\\(el\\.dataset\\.formeTaille\\) \\|\\| ${defaut("forme", "taille")}\\)`));
+  assert.match(sf, new RegExp(`Number\\(el\\.dataset\\.formeDuree\\) \\|\\| ${defaut("forme", "duree")}\\b`));
+  assert.match(sf, /défaut 260vh/);
+  const sa = source("autocollant");
+  assert.match(sa, new RegExp(`autocollantCouleur \\|\\| "${defaut("autocollant", "couleur")}"`));
+  assert.match(sa, new RegExp(`Number\\(zone\\.dataset\\.autocollantTaille\\) \\|\\| ${defaut("autocollant", "taille")}\\)`));
+  assert.match(sa, new RegExp(`zone\\.dataset\\.autocollant \\|\\| "${defaut("autocollant", "texte")}"`));
+  const sr = source("rail");
+  assert.match(sr, new RegExp(`Number\\(root\\.dataset\\.railSeuil\\) \\|\\| ${defaut("rail", "seuil")}\\)`));
+  assert.match(sr, new RegExp(`: ${defaut("rail", "vitesse")};`));
+  assert.match(sr, /railAimant !== "0"/);
+  // tracé
+  assert.equal(defaut("trace", "quand"), trace.DEFAUTS.quand);
+  assert.equal(defaut("trace", "duree"), trace.DEFAUTS.duree);
+  assert.equal(defaut("trace", "delai"), trace.DEFAUTS.delai);
+  assert.equal(defaut("trace", "cascade"), trace.DEFAUTS.cascade);
+  assert.equal(defaut("trace", "rejoue"), trace.DEFAUTS.rejoue);
 });

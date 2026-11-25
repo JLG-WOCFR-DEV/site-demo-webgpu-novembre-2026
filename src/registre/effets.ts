@@ -16,10 +16,32 @@
  */
 
 import type { FicheParametres } from "./parametres/types.ts";
+// Les poids mesurés après build (tools/mesurer-effets.mjs écrit ce fichier depuis dist/.vite/manifest.json).
+import COUTS from "./couts.json" with { type: "json" };
 
 export type Categorie = "texte" | "image" | "matiere" | "interface" | "transition" | "forme" | "dessin" | "page";
 export type Rendu = "DOM" | "canvas 2D" | "WebGL2" | "WebGPU" | "DOM + WebGPU";
 export type Statut = "stable" | "essai";
+/**
+ * Le coût GPU d'un effet, estimé à la main d'après son rendu (pas mesuré : le GPU à l'écran ne se mesure pas ici) :
+ *   aucun   DOM / SVG / canvas 2D, rien sur la carte graphique ;
+ *   léger   un canvas par composant, un shader plein cadre sans texture lourde, dessiné à la demande ;
+ *   moyen   textures (photos, tableaux de textures), maillage engendré ou chaîne d'images continue ;
+ *   lourd   plusieurs étapes de rendu par image ou un rendu WebGL2 externe complet (Paper Shaders).
+ */
+export type CoutGpu = "aucun" | "léger" | "moyen" | "lourd";
+export const COUTS_GPU: readonly CoutGpu[] = ["aucun", "léger", "moyen", "lourd"];
+/** Le coût d'un effet : GPU estimé, et JS mesuré — ko gzip (-9) du morceau de l'effet et de ses imports propres. */
+export type Cout = {
+  gpu: CoutGpu;
+  /** ko gzip chargés quand la page arme l'effet (son morceau + les morceaux statiques qu'il est seul à demander) ; null : pas encore mesuré. */
+  js: number | null;
+  /** ko gzip chargés plus tard par l'effet lui-même (rendu à la demande, `import()` internes) ; 0 s'il n'en a pas. */
+  differe: number | null;
+};
+/** couts.json : `{ effets: { <id>: { js, differe, fichiers } } }`, écrit par `node tools/mesurer-effets.mjs`. */
+type Mesure = { js: number; differe: number; fichiers: string[] };
+const MESURES = (COUTS as { effets: Record<string, Mesure> }).effets;
 
 export type Manifeste<M = unknown> = {
   /** Identifiant : le nom du fichier du module (src/presse/<id>.ts). */
@@ -54,10 +76,15 @@ export type Manifeste<M = unknown> = {
    * cible) : une fiche chargée à la demande, pour ne pas alourdir pages-nav. Chemin littéral, comme `charger`.
    */
   parametres?: () => Promise<{ default: FicheParametres }>;
+  /** Coût GPU (estimé, écrit à la main) et JS (mesuré, tiré de couts.json). */
+  cout: Cout;
 };
 
-/** Garde l'inférence du type du module entre `charger` et `armer`. */
-const effet = <M>(m: Manifeste<M>): Manifeste<M> => m;
+/** Ce qu'on écrit à la main : tout le manifeste, sauf le coût JS (mesuré) ; le coût GPU est le champ `gpu`. */
+type Saisie<M> = Omit<Manifeste<M>, "cout"> & { gpu: CoutGpu };
+
+/** Garde l'inférence du type du module entre `charger` et `armer`, et pose le coût (GPU saisi, JS mesuré). */
+const effet = <M>({ gpu, ...m }: Saisie<M>): Manifeste<M> => ({ ...m, cout: { gpu, js: MESURES[m.id]?.js ?? null, differe: MESURES[m.id]?.differe ?? null } });
 
 /** Modules importés statiquement par src/pages-nav.ts : armés sur chaque page, sans condition (ordre des imports). */
 export const TOUJOURS: readonly string[] = ["presentation", "flight", "cursor", "intro", "look", "scroll", "timeline", "tokens", "sweep", "script"];
@@ -79,10 +106,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     parametre: "systeme",
     tot: true,
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/systeme.ts",
     resume: "Un système de design (couleurs, fontes, look, mouvement) posé sur toute la page, par l'adresse ou un attribut.",
     exemple: "variations.html",
+    parametres: () => import("./parametres/systeme.ts"),
   }),
   effet({
     id: "lightbox",
@@ -95,10 +124,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/lightbox.ts"),
     armer: (m, racine) => m.initLightbox(racine),
     rendu: "WebGPU",
+    gpu: "moyen",
     statut: "stable",
     module: "src/presse/lightbox.ts",
     resume: "Chaque image du groupe s'ouvre en grand, en vol depuis sa place.",
     exemple: "presse.html",
+    parametres: () => import("./parametres/lightbox.ts"),
   }),
   effet({
     id: "vague",
@@ -111,10 +142,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/vague.ts"),
     armer: (m, racine) => m.initVague(racine),
     rendu: "WebGPU",
+    gpu: "moyen",
     statut: "stable",
     module: "src/presse/vague.ts",
     resume: "Une vague déformante passe d'une vue à l'autre, depuis l'endroit pressé.",
     exemple: "presse.html",
+    parametres: () => import("./parametres/vague.ts"),
   }),
   effet({
     id: "goo",
@@ -129,6 +162,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/goo.ts"),
     armer: (m, racine) => m.initGoo(racine),
     rendu: "WebGPU",
+    gpu: "moyen",
     statut: "stable",
     module: "src/presse/goo.ts",
     resume: "Des pièces d'interface qui fusionnent comme une pâte, s'étirent et se séparent en gouttes.",
@@ -147,10 +181,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/metal.ts"),
     armer: (m, racine) => m.initMetal(racine),
     rendu: "WebGPU",
+    gpu: "moyen",
     statut: "stable",
     module: "src/presse/metal.ts",
     resume: "Chrome liquide sur une bordure, des lettres ou un badge : reflets qui coulent, franges, halo.",
     exemple: "metal.html",
+    parametres: () => import("./parametres/metal.ts"),
   }),
   effet({
     id: "voix",
@@ -164,10 +200,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/voix.ts"),
     armer: (m, racine) => m.initVoix(racine),
     rendu: "WebGPU",
+    gpu: "léger",
     statut: "stable",
     module: "src/presse/voix.ts",
     resume: "Une lueur qui monte avec le niveau du micro, puis balaie pendant la réponse.",
     exemple: "voix.html",
+    parametres: () => import("./parametres/voix.ts"),
   }),
   // Ruban (bande d'images en 3D) et typographie, d'après Aristide Benoist.
   effet({
@@ -182,6 +220,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/ruban.ts"),
     armer: (m, racine) => m.initRuban(racine),
     rendu: "WebGPU",
+    gpu: "moyen",
     statut: "stable",
     module: "src/presse/ruban.ts",
     resume: "Une bande d'images qui se vrille, se comprime ou se bombe selon la vitesse du défilement.",
@@ -199,6 +238,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/typo.ts"),
     armer: (m, racine) => m.initTypo(racine),
     rendu: "DOM + WebGPU",
+    gpu: "léger",
     statut: "stable",
     module: "src/presse/typo.ts",
     resume: "Six entrées de texte : éclats, tracé, sphère, étirement, encre, fragments.",
@@ -217,6 +257,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/rouleau.ts"),
     armer: (m, racine) => m.initRouleau(racine),
     rendu: "WebGPU",
+    gpu: "moyen",
     statut: "stable",
     module: "src/presse/rouleau.ts",
     resume: "Menu roulant de grands titres ; derrière le titre courant, une photo ondule comme une étoffe.",
@@ -241,6 +282,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/couloir.ts"),
     armer: (m, racine) => m.initCouloir(racine),
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/couloir.ts",
     resume: "Un mur d'images vu en perspective fuyante, qui défile au pointeur, frangé par la vitesse.",
@@ -275,10 +317,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     charger: () => import("../presse/logo.ts"),
     armer: (m, racine) => m.initLogo(racine),
     rendu: "WebGL2",
+    gpu: "lourd",
     statut: "stable",
     module: "src/presse/logo.ts",
     resume: "Une matière animée sur un logo : métal liquide, fumée, chaleur, eau, verre, trames.",
     exemple: "logos.html",
+    parametres: () => import("./parametres/logo.ts"),
   }),
   // Ses huit composants (roule, marque, défilé…) arment le même module.
   effet({
@@ -297,6 +341,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     armer: (m, racine) => m.initCinetique(racine),
     manuel: true,
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/cinetique.ts",
     resume: "Texte animé en DOM : dix-huit entrées par ligne, mot ou lettre, et huit composants.",
@@ -319,10 +364,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     armer: (m, racine) => m.initDechirure(racine),
     manuel: true,
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/dechirure.ts",
     resume: "Un bord de papier déchiré entre deux blocs, ou une déchirure qui suit le pointeur.",
     exemple: "boutique.html",
+    parametres: () => import("./parametres/dechirure.ts"),
   }),
   effet({
     id: "forme",
@@ -337,10 +384,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     armer: (m, racine) => m.initForme(racine),
     manuel: true,
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/forme.ts",
     resume: "Le média vu à travers une forme qui grandit jusqu'à couvrir l'écran.",
     exemple: "boutique.html",
+    parametres: () => import("./parametres/forme.ts"),
   }),
   effet({
     id: "autocollant",
@@ -355,10 +404,12 @@ export const EFFETS: readonly Manifeste<any>[] = [
     armer: (m, racine) => m.initAutocollant(racine),
     manuel: true,
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/autocollant.ts",
     resume: "Un autocollant suit le pointeur sur les cibles, avec retard et bascule.",
     exemple: "boutique.html",
+    parametres: () => import("./parametres/autocollant.ts"),
   }),
   effet({
     id: "rail",
@@ -367,16 +418,18 @@ export const EFFETS: readonly Manifeste<any>[] = [
     selecteur: "[data-rail]",
     attributs: [
       "data-rail", "data-rail-piste", "data-rail-barre", "data-rail-precedent", "data-rail-suivant",
-      "data-rail-seuil", "data-rail-sansfin", "data-rail-vitesse",
+      "data-rail-seuil", "data-rail-aimant", "data-rail-sansfin", "data-rail-vitesse",
     ],
     charger: () => import("../presse/rail.ts"),
     armer: (m, racine) => m.initRail(racine),
     manuel: true,
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/rail.ts",
     resume: "Un rail de cartes au glisser, avec inertie, aimantation, flèches et barre de progression.",
     exemple: "boutique.html",
+    parametres: () => import("./parametres/rail.ts"),
   }),
   // Dessin technique qui se trace (cotes, hachures, lignes de construction).
   effet({
@@ -393,9 +446,11 @@ export const EFFETS: readonly Manifeste<any>[] = [
     armer: (m, racine) => m.initTrace(racine),
     manuel: true,
     rendu: "DOM",
+    gpu: "aucun",
     statut: "stable",
     module: "src/presse/trace.ts",
     resume: "Un dessin technique qui se trace : construction, formes, cotes, hachures.",
     exemple: "boutique.html",
+    parametres: () => import("./parametres/trace.ts"),
   }),
 ];

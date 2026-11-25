@@ -1,5 +1,6 @@
 // src/registre/parametres/typo.ts
 var e = {
+	rendu: "Encre et Fragments sont dessinés en WebGPU ; sans carte graphique (l'aperçu ici), leur repli CSS (flou, clip-path). Les quatre autres effets sont en DOM et identiques.",
 	parametres: [
 		{
 			cle: "effet",

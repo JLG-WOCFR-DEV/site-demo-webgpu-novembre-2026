@@ -21,11 +21,12 @@ export type DemoMontee = {
 };
 
 /** Le premier sélecteur simple du manifeste (`[data-x]`), pour trouver la racine d'une démo sans `racine`. */
-export const selecteurRacine = (m: Manifeste, f: FicheParametres) => f.demo.racine ?? m.selecteur.split(",")[0]!.trim();
+export const selecteurRacine = (m: Manifeste, f: FicheParametres) => f.demo?.racine ?? m.selecteur.split(",")[0]!.trim();
 
 export function monterDemo(doc: Document, m: Manifeste, f: FicheParametres, etat: Etat): DemoMontee {
   const t = doc.createElement("template");
-  t.innerHTML = f.demo.html;
+  // Une fiche minimale sans démo (systeme) : rien à monter, le gabarit le dit.
+  t.innerHTML = f.demo?.html ?? "";
   const racine = t.content.querySelector<HTMLElement>(selecteurRacine(m, f));
   const ecrits = attributsDe(f, etat);
   if (racine) appliquer(racine, ecrits);

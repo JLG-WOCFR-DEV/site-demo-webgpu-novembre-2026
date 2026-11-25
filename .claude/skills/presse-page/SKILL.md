@@ -19,7 +19,9 @@ erreur.
 | Balises `<x-…>` | `presse/build/validate.ts` (`SCHEMAS`) | `PRESSE.md`, section « Composants » |
 | Pour un agent externe | `llms.txt`, `presse-catalog.json` | écrits par `vite build` (`presse/build/catalog.ts`) |
 | Options fines d'un module | l'en-tête de `src/presse/<module>.ts` | souvent plus complet que PRESSE.md (voir « Pièges ») |
-| Réglages d'un effet (Studio) | `src/registre/parametres/<id>.ts` (fiche : paramètres typés + démo), champ `parametres` du manifeste | `studio-effet.html?effet=<id>` : régler à l'œil, puis « copier les attributs » (Maj+A) ; goo, couloir, cinetique, typo, ruban, rouleau |
+| Réglages d'un effet (Studio) | `src/registre/parametres/<id>.ts` (fiche : paramètres typés + démo), champ `parametres` du manifeste | `studio-effet.html?effet=<id>` : régler à l'œil, puis « copier les attributs » (Maj+A) ; tous les effets du registre (I : inspecteur d'éléments) |
+| Coût d'un effet, budget d'une page | `src/registre/couts.json` (`npm run mesurer:effets` après build), `tools/valider/budgets.json` | `npm run budgets` ; avertissement `budget` de `npm run valider` (250 ko gzip par défaut) |
+| HTML-in-Canvas | `src/html-in-canvas.ts` (seul module qui touche à l'API) | `detecter()` : oui / repli / non ; jamais de test à la main |
 
 ## Procédure
 
@@ -42,9 +44,10 @@ erreur.
    marqués « pages-nav » ; le reste s'importe. Avec `data-presse-manuel`, la page importe et appelle tous les `init…`.
 5. **Boucle de vérification** (plus bas) jusqu'à zéro erreur, puis lire les avertissements un par un.
 6. **Régler un effet à l'œil** : `studio-effet.html?effet=<id>` (effets qui ont une fiche) donne les valeurs, la
-   courbe et les attributs à coller ; le lien `#v=1;…` garde les réglages. Nouvel effet réglable : une fiche dans
-   `src/registre/parametres/<id>.ts` + `parametres: () => import("./parametres/<id>.ts")` dans son manifeste, puis
-   `npm test` (`parametres.test.ts` : attributs documentés, démo aux défauts, démo validée).
+   courbe et les attributs à coller ; le lien `#v=1;…` garde les réglages. Nouvel effet : une fiche dans
+   `src/registre/parametres/<id>.ts` + `parametres: () => import("./parametres/<id>.ts")` et `gpu: "aucun"|"léger"|"moyen"|"lourd"`
+   dans son manifeste, `npm run build && npm run mesurer:effets`, puis `npm test` (`parametres.test.ts` : attributs
+   documentés, démo aux défauts, démo validée, `rendu` pour un effet GPU, `minimale` si moins de quatre réglages).
 7. **Navigation et mémoire** : la page apparaît d'elle-même dans le menu Pages et la palette Ctrl+K (⌘K) par son
    `groupe` ; ne pas prendre Ctrl+K / ⌘K ni ⌘⇧K dans un script de page (réservés, `src/studio/raccourcis.ts`). Une
    préférence gardée dans le navigateur passe par `src/registre/stockage.ts` (une clé `cle({ domaine, nom })` dans
@@ -200,7 +203,7 @@ Régénérer après toute modification de PRESSE.md ou de `src/registre/effets.t
 | **Composants de la typographie cinétique** — mêmes déclencheurs — data-cinetique-quand, data-cinetique-delai, data-cinetique-duree, data-cinetique-rejoue,… | `data-roule`, `data-marque`, `data-defile`, `data-reflet`, `data-cercle`, `data-coupe`, `data-brouille`, `data-frappe` | — | DOM | pages-nav, sauf `data-presse-manuel` | cinetique.html |
 | Mot peint à la bombe dans un canvas 2D : bord flou, brume, grain, éclaboussures à graine fixe, coulures | `data-graffiti` | — | canvas 2D | à importer : `src/presse/graffiti.ts` | boutique.html |
 | Empile [data-derriere-fond], [data-derriere-sujet] et [data-derriere-devant] : le mot passe derrière la silhouette | `data-derriere` | — | DOM | à importer : `src/presse/derriere.ts` | boutique.html |
-| Dessin technique qui se trace, une étape à la fois : data-trace-role construction → formes → cote → hachure | `data-trace` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
+| Dessin technique qui se trace, une étape à la fois : data-trace-role : construction, forme, cote, hachure, dans cet… | `data-trace` | — | DOM | pages-nav, sauf `data-presse-manuel` | boutique.html |
 | **Couloir** — les panneaux vus en perspective fuyante, comme un mur très long vu de côté — immenses et coupés au premier plan,… | `data-couloir` | — | DOM | pages-nav | couloir.html |
 | **Logo** — une matière animée sur un logo | `data-logo` | liquide-metal, gemme-fumee, chaleur, eau, verre-cannele, trame-cmjn, trame-points, tramage… | WebGL2 | pages-nav | logos.html |
 | **Menu roulant à image-tissu** — les liens défilent à la verticale, aimantés sur un titre | `data-rouleau` | — | WebGPU | pages-nav | rouleau.html |

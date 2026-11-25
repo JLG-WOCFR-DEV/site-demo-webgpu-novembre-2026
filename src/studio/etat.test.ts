@@ -52,6 +52,7 @@ test("lien : aux défauts, le fragment est « v=1 » et se relit à l'identique"
 
 test("lien : aller-retour exact, tous les paramètres réglés (chaque fiche)", () => {
   for (const [id, f] of fiches) {
+    if (!f.parametres.length) continue; // fiche minimale sans réglage (lightbox, systeme) : rien à régler
     const e = toutRegle(f);
     const h = versHash(f, e);
     assert.match(h, /^v=1;/, id);

@@ -29,6 +29,9 @@ const P: Record<string, string> = {
   studio: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M17.5 8h1M17.5 11h1M17.5 14h1"/>',
   gpu: '<rect x="4" y="7" width="16" height="10" rx="1.5"/><path d="M8 7V4M12 7V4M16 7V4M8 20v-3M12 20v-3M16 20v-3"/><rect x="9" y="10" width="6" height="4" rx=".5"/>',
   dom: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>',
+  inspecter: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M10 9l6 3-2.6 1L12 16z"/>',
+  poids: '<path d="M7 9h10l2 11H5z"/><circle cx="12" cy="6" r="2.4"/>',
+  hic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h6M7 12h10M7 15h4"/>',
   attention: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01" stroke-width="1.8"/>',
   // Paramètres.
   ouvert: '<circle cx="12" cy="16" r="3.5"/><circle cx="6" cy="8" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="18" cy="8" r="2"/>',

@@ -1,5 +1,6 @@
 // src/registre/parametres/goo.ts
 var e = "0 4px 12px rgba(0,0,0,.14)", t = {
+	rendu: "La pâte (fusion, ponts, gouttes) est un champ de distance WebGPU ; sans carte graphique (l'aperçu ici), le module garde les mêmes ressorts et trajets, sans fusion : des pièces rondes qui s'écartent.",
 	parametres: [
 		{
 			cle: "ouvert",
