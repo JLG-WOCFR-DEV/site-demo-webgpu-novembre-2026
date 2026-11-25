@@ -347,9 +347,9 @@ var O = {
 			fichiers: ["assets/trace-C7M2e_sH.js", "assets/trace-DL3sufCt.js"]
 		},
 		douceur: {
-			js: 4.9,
+			js: 5,
 			differe: 0,
-			fichiers: ["assets/douceur-DR35TnLW.js"]
+			fichiers: ["assets/douceur-W_MUKAA-.js"]
 		}
 	}
 }.effets, k = ({ gpu: e, ...t }) => ({
