@@ -14,6 +14,9 @@ import { creerReordonner } from "../presse/comportements/reordonner.ts";
 import { creerPopup } from "../presse/comportements/popup.ts";
 import { creerPanoramiqueZoom, facteurMolette } from "../presse/comportements/panoramique-zoom.ts";
 import { ecouterPalette } from "../nav/declencheur.ts";
+import { monterCoque } from "../studio/coque.ts";
+import { SCHEMA_CREATEUR } from "../studio/coque-plan.ts";
+import { CLES } from "../registre/stockage.ts";
 
 // Ctrl+K / ⌘K : la palette de commandes (src/nav/), chargée à la demande — pas dans un cadre d'aperçu.
 if (window.top === window) ecouterPalette({ base: "./" });
@@ -78,6 +81,26 @@ let coalesceT = 0;
 const doc = (): SitePage => site.pages.find((p) => p.id === ui.page) ?? site.pages[0]!;
 const blockById = (id: string) => doc().blocks.find((b) => b.id === id);
 const saveUi = () => store.set(UI_KEY, JSON.stringify(ui));
+
+/*
+ * La coque commune (src/studio/coque.ts) : à gauche une colonne pages / calques (poignée entre les deux), l'aperçu,
+ * l'inspecteur ; trois poignées (pointeur, clavier), les onglets Calques / Ajouter et Bloc / Site, gardés en JSON
+ * versionné. Sous le seuil étroit : des onglets Calques / Aperçu / Réglages, une vue à la fois. Le site (pages, blocs,
+ * historique) reste le modèle du Créateur.
+ */
+const coque = monterCoque(document.body, {
+  schema: SCHEMA_CREATEUR,
+  cle: CLES.coqueCreateur,
+  poignees: [
+    { decoupe: "corps", index: 0, panneau: "gauche", libelle: "Largeur des calques", zone: "stage", cible: $(".cr-left") },
+    { decoupe: "corps", index: 1, panneau: "inspecteur", libelle: "Largeur de l'inspecteur", zone: "right", cible: $(".cr-right") },
+    { decoupe: "gauche", index: 0, panneau: "pages", libelle: "Hauteur de la liste des pages", zone: "calques", cible: $(".cr-zone--pages"), hote: $("#cr-pane-layers") },
+  ],
+  vues: { gauche: $(".cr-left"), apercu: $(".cr-stage"), inspecteur: $(".cr-right") },
+  libelleVues: "Panneaux du Créateur",
+  apres: $(".cr-bar"),
+});
+rtab = coque.onglet("inspecteur") === "page" ? "page" : "block";
 
 /**
  * Le seul chemin de modification. `key` regroupe les changements rapprochés d'un même champ (un curseur qu'on tire, un
@@ -246,6 +269,8 @@ function renderZoom() {
 function layout() {
   const w = DEVICES[ui.device] ?? 1440;
   const r = stage.getBoundingClientRect();
+  // Aperçu caché (mode étroit, autre onglet) : rien à mesurer ; le ResizeObserver rappelle à son retour.
+  if (!r.width) return;
   const pad = 32;
   const s = Math.min(1, (r.width - pad * 2) / w);
   const h = (r.height - pad * 2 - 18) / s;
@@ -505,10 +530,11 @@ $("[data-cr-lib]").addEventListener("dragstart", (e) => {
 function setTab(t: "layers" | "add") {
   for (const b of $$<HTMLButtonElement>("[data-cr-tab]")) b.setAttribute("aria-selected", String(b.dataset.crTab === t));
   for (const p of $$("[data-cr-pane]")) p.hidden = p.dataset.crPane !== t;
+  coque.choisirOnglet("gauche", t);
 }
 for (const b of $$<HTMLButtonElement>("[data-cr-tab]")) b.addEventListener("click", () => setTab(b.dataset.crTab as "layers" | "add"));
 // Onglets : ← → (en boucle), Début, Fin ; arriver sur un onglet l'ouvre ; seul l'onglet ouvert est un arrêt de Tab.
-for (const t of $$("[role=tablist]")) creerFocusItinerant(t, { elements: "[role=tab]", orientation: "horizontal", activation: "auto", cle: (el) => el.dataset.crTab ?? el.dataset.crRtab ?? "" });
+for (const t of $$(".cr-tabs[role=tablist]")) creerFocusItinerant(t, { elements: "[role=tab]", orientation: "horizontal", activation: "auto", cle: (el) => el.dataset.crTab ?? el.dataset.crRtab ?? "" });
 $("[data-cr-tab-go]").addEventListener("click", () => setTab("add"));
 
 /* ───────────────────────── Inspecteur ───────────────────────── */
@@ -673,6 +699,7 @@ function renderInspector() {
 for (const b of $$<HTMLButtonElement>("[data-cr-rtab]"))
   b.addEventListener("click", () => {
     rtab = b.dataset.crRtab as "block" | "page";
+    coque.choisirOnglet("inspecteur", rtab);
     renderInspector();
   });
 
@@ -1061,6 +1088,7 @@ function renderStatus() {
 renderLibrary();
 renderPages();
 renderLayers();
+if (coque.onglet("gauche") === "add") setTab("add");
 renderInspector();
 renderTitle();
 setMode(ui.edit);

@@ -37,12 +37,16 @@
         <button type="button" role="tab" data-cr-tab="layers" aria-selected="true" aria-controls="cr-pane-layers">Calques</button>
         <button type="button" role="tab" data-cr-tab="add" aria-selected="false" aria-controls="cr-pane-add">Ajouter</button>
       </div>
-      <div class="cr-pane" data-cr-pane="layers" id="cr-pane-layers" role="tabpanel">
-        <div class="cr-sub"><h3>Pages</h3><button type="button" class="cr-mini cr-mini--txt" data-cr-addpage title="Ajouter une page">+ Page</button></div>
-        <ol class="cr-pages" data-cr-pages aria-label="Pages du site"></ol>
-        <div class="cr-sub"><h3>Calques de la page</h3></div>
-        <ol class="cr-layers" data-cr-layers role="listbox" aria-label="Blocs de la page"></ol>
-        <button type="button" class="cr-add-wide" data-cr-tab-go="add">+ Ajouter un bloc</button>
+      <div class="cr-pane cr-pane--decoupe" data-cr-pane="layers" id="cr-pane-layers" role="tabpanel">
+        <section class="cr-zone cr-zone--pages" aria-labelledby="cr-h-pages">
+          <div class="cr-sub"><h3 id="cr-h-pages">Pages</h3><button type="button" class="cr-mini cr-mini--txt" data-cr-addpage title="Ajouter une page">+ Page</button></div>
+          <ol class="cr-pages" data-cr-pages aria-label="Pages du site"></ol>
+        </section>
+        <section class="cr-zone cr-zone--calques" aria-labelledby="cr-h-calques">
+          <div class="cr-sub"><h3 id="cr-h-calques">Calques de la page</h3></div>
+          <ol class="cr-layers" data-cr-layers role="listbox" aria-label="Blocs de la page"></ol>
+          <button type="button" class="cr-add-wide" data-cr-tab-go="add">+ Ajouter un bloc</button>
+        </section>
       </div>
       <div class="cr-pane" data-cr-pane="add" id="cr-pane-add" role="tabpanel" hidden>
         <div class="cr-lib" data-cr-lib></div>

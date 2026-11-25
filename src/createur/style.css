@@ -40,10 +40,61 @@ body.cr {
   color: var(--fg);
   font: 13px/1.4 var(--sans);
 }
+/* La coque commune (src/studio/coque.ts) : --coque-gauche, --coque-pages, --coque-inspecteur, data-coque-mode / -replie. */
 body.cr {
+  --coque-accent: var(--accent);
+  --coque-filet: var(--line);
+  --coque-panneau: var(--panel);
+  --coque-actif: var(--panel-2);
   display: grid;
-  grid-template: var(--bar) 1fr / var(--left) 1fr var(--right);
+  grid-template: var(--bar) minmax(0, 1fr) / var(--coque-gauche, var(--left)) minmax(0, 1fr) var(--coque-inspecteur, var(--right));
   grid-template-areas: "bar bar bar" "left stage right";
+}
+body.cr[data-coque-mode="large"][data-coque-replie~="gauche"] .cr-left,
+body.cr[data-coque-mode="large"][data-coque-replie~="inspecteur"] .cr-right,
+body.cr[data-coque-replie~="pages"] .cr-zone--pages {
+  display: none;
+}
+body.cr .coque-vues {
+  grid-area: vues;
+}
+body.cr[data-coque-mode="etroit"] {
+  grid-template: auto auto minmax(0, 1fr) / minmax(0, 1fr);
+  grid-template-areas: "bar" "vues" "vue";
+}
+body.cr[data-coque-mode="etroit"] .cr-left,
+body.cr[data-coque-mode="etroit"] .cr-stage,
+body.cr[data-coque-mode="etroit"] .cr-right {
+  grid-area: vue;
+  border: 0;
+}
+/* Pages / calques : une découpe en colonne, la poignée entre les deux (zone « calques »). */
+.cr-pane--decoupe {
+  display: grid;
+  grid-template-rows: var(--coque-pages, 160px) minmax(0, 1fr);
+  grid-template-areas: "pages" "calques";
+  padding: 0;
+  overflow: hidden;
+}
+.cr-pane--decoupe[hidden] {
+  display: none;
+}
+body.cr[data-coque-replie~="pages"] .cr-pane--decoupe {
+  grid-template-rows: 0 minmax(0, 1fr);
+}
+.cr-zone {
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+.cr-zone--pages {
+  grid-area: pages;
+  border-bottom: 1px solid var(--line);
+}
+.cr-zone--calques {
+  grid-area: calques;
 }
 .sr-only {
   position: absolute;
@@ -1067,25 +1118,13 @@ body[data-cr-mode="try"] .cr-frame {
 
 /* Petit écran : l'outil se replie (l'aperçu d'abord). */
 @media (max-width: 1100px) {
-  :root {
-    --left: 230px;
-    --right: 280px;
-  }
   .cr-saved,
   .cr-name {
     display: none;
   }
 }
-@media (max-width: 820px) {
-  body.cr {
-    grid-template: var(--bar) 58svh auto auto / 1fr;
-    grid-template-areas: "bar" "stage" "right" "left";
-    overflow: auto;
-    height: auto;
-  }
-  html {
-    overflow: auto;
-  }
+/* Étroit : la barre passe sur deux lignes ; les panneaux, en onglets (la coque, sous 860 px). */
+@media (max-width: 860px) {
   .cr-bar {
     flex-wrap: wrap;
     height: auto;
@@ -1096,16 +1135,6 @@ body[data-cr-mode="try"] .cr-frame {
     width: 100%;
     margin: 0;
     justify-content: space-between;
-  }
-  .cr-left,
-  .cr-right {
-    border: 0;
-    border-top: 1px solid var(--line);
-    max-height: none;
-  }
-  .cr-pane,
-  .cr-insp {
-    overflow: visible;
   }
   .cr-hint {
     display: none;
@@ -1182,9 +1211,8 @@ body[data-cr-mode="try"] .cr-frame {
 .cr-pages {
   display: grid;
   gap: 2px;
-  margin: 0 0 14px;
-  padding: 0 0 12px;
-  border-bottom: 1px solid var(--line);
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 .cr-page {
