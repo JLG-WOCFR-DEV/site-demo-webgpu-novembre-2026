@@ -14,7 +14,13 @@
  *   - les bornes (min, max, défaut) sont données par l'application, par panneau, pas par le JSON (un JSON ancien ou
  *     retouché à la main est ramené dans les bornes, et la lecture dit ce qu'elle a corrigé) ;
  *   - un JSON d'une autre forme (panneaux inconnus ou manquants, version future) est refusé : on garde le défaut ;
- *   - `v` monte quand la forme change ; `MIGRATIONS[v]` passe de v à v + 1.
+ *   - `v` monte quand la forme change ; `MIGRATIONS[v]` passe de v à v + 1 ;
+ *   - forme courte `{ "v": 1, "tailles": { "diapos": 240 } }` (sans `racine`) : le défaut, avec ces tailles (bornées) —
+ *     c'est ce qu'écrit la `conversion` d'une ancienne clé de largeur (src/registre/stockage.ts), sans rien connaître
+ *     de l'arbre ;
+ *   - étroit (`etroit`, facultatif) : sous `seuil` px de large, un seul panneau à la fois, choisi par des onglets
+ *     (groupe `etroit.groupe` de `onglets`, une vue par enfant de la racine) ; tailles et replis sont gardés pour le
+ *     retour au large. Le choix de la vue est gardé comme les autres onglets.
  */
 
 export const VERSION = 1;
@@ -34,7 +40,11 @@ export type Bornes = Record<string, { min: number; max: number; defaut?: number 
 /** Les onglets possibles par groupe (le premier est le défaut). */
 export type OngletsPossibles = Record<string, readonly string[]>;
 
-export type Schema = { defaut: MiseEnPage; bornes: Bornes; onglets: OngletsPossibles };
+/** Une vue du mode étroit : un enfant de la racine (panneau ou découpe), son nom et son icône (src/studio/icones.ts). */
+export type Vue = { id: string; libelle: string; icone: string };
+export type Etroit = { seuil: number; groupe: string; vues: readonly Vue[] };
+export type Schema = { defaut: MiseEnPage; bornes: Bornes; onglets: OngletsPossibles; etroit?: Etroit };
+export type Mode = "large" | "etroit";
 
 const MIGRATIONS: Record<number, (m: Record<string, unknown>) => Record<string, unknown>> = {};
 
@@ -86,6 +96,24 @@ export function lireMiseEnPage(brut: unknown, s: Schema): { mep: MiseEnPage; cor
     if (!f) return { mep: copie(s.defaut), corrections: [`version ${v} sans migration : mise en page par défaut`] };
     o = f(o);
     v++;
+  }
+  if (o.racine === undefined && o.tailles && typeof o.tailles === "object" && !Array.isArray(o.tailles)) {
+    // Forme courte (migration d'une ancienne clé) : le défaut, avec ces tailles.
+    let mep = copie(s.defaut);
+    for (const [id, t] of Object.entries(o.tailles as Record<string, unknown>)) {
+      if (tailleDe(mep, id) === null) {
+        corrections.push(`${id} : pas un panneau de taille fixe, ignoré`);
+        continue;
+      }
+      if (typeof t !== "number" || !Number.isFinite(t)) {
+        corrections.push(`${id} : taille illisible, défaut`);
+        continue;
+      }
+      const b = borne(s.bornes[id], t);
+      if (b !== Math.round(t)) corrections.push(`${id} : ${Math.round(t)} px ramené à ${b} px`);
+      mep = fixerTaille(mep, id, b, s.bornes);
+    }
+    return { mep, corrections };
   }
   if (!memeForme(o.racine, s.defaut.racine)) return { mep: copie(s.defaut), corrections: ["panneaux différents de ceux du Studio : mise en page par défaut"] };
   const mep = copie(s.defaut);
@@ -195,4 +223,130 @@ export const SCHEMA_STUDIO_EFFET: Schema = {
   },
   bornes: { inspecteur: { min: 260, max: 560, defaut: 328 } },
   onglets: { code: ["html", "json"] },
+};
+
+/* ───────────────────────── Mode étroit ───────────────────────── */
+
+/** Large ou étroit, pour une largeur de fenêtre (CSS px). */
+export function modeDe(s: Schema, largeur: number): Mode {
+  return s.etroit && largeur <= s.etroit.seuil ? "etroit" : "large";
+}
+
+/** La vue montrée en mode étroit (la première si rien n'est choisi). */
+export function vueDe(m: MiseEnPage, s: Schema): string {
+  if (!s.etroit) return "";
+  const v = m.onglets[s.etroit.groupe];
+  return v && s.etroit.vues.some((x) => x.id === v) ? v : s.etroit.vues[0]!.id;
+}
+
+/** Les panneaux montrés : en large, tous sauf les repliés ; en étroit, ceux de la vue choisie (repliés compris). */
+export function panneauxMontres(m: MiseEnPage, s: Schema, mode: Mode): string[] {
+  if (mode === "large" || !s.etroit) return panneauxDe(m.racine).filter((p) => !m.replies.includes(p));
+  const v = vueDe(m, s);
+  const n = m.racine.type === "decoupe" ? m.racine.enfants.find((e) => e.id === v) : m.racine;
+  return n ? panneauxDe(n) : [];
+}
+
+/** La vue voisine (flèches du clavier dans les onglets), en boucle. */
+export function vueVoisine(s: Schema, actuelle: string, pas: number): string {
+  const vs = s.etroit?.vues ?? [];
+  if (!vs.length) return actuelle;
+  const i = Math.max(0, vs.findIndex((v) => v.id === actuelle));
+  return vs[(((i + pas) % vs.length) + vs.length) % vs.length]!.id;
+}
+
+/** Vérifie un schéma d'application : le plan, les bornes (min ≤ défaut ≤ max), les vues du mode étroit. */
+export function verifierSchema(s: Schema): string[] {
+  const fautes = verifierPlan(s.defaut);
+  const fixes = new Set<string>();
+  for (const d of decoupesDe(s.defaut.racine)) d.enfants.forEach((e, j) => d.tailles[j] !== null && fixes.add(e.id));
+  for (const id of fixes) {
+    const b = s.bornes[id];
+    if (!b) fautes.push(`${id} : taille fixe sans bornes`);
+    else {
+      const t = tailleDe(s.defaut, id)!;
+      if (!(b.min <= t && t <= b.max)) fautes.push(`${id} : défaut ${t} hors de [${b.min}, ${b.max}]`);
+      if (b.defaut !== undefined && b.defaut !== t) fautes.push(`${id} : bornes.defaut ${b.defaut} ≠ plan ${t}`);
+    }
+  }
+  if (s.etroit) {
+    const e = s.etroit;
+    const enfants = s.defaut.racine.type === "decoupe" ? s.defaut.racine.enfants.map((x) => x.id) : [s.defaut.racine.id];
+    const ids = e.vues.map((v) => v.id);
+    if (ids.join() !== enfants.join()) fautes.push(`étroit : une vue par enfant de la racine, dans l'ordre (${enfants.join(", ")})`);
+    if ((s.onglets[e.groupe] ?? []).join() !== ids.join()) fautes.push(`étroit : onglets.${e.groupe} doit lister les vues`);
+    if (!(e.seuil > 0)) fautes.push("étroit : seuil > 0");
+  }
+  for (const [g, v] of Object.entries(s.defaut.onglets)) if (!s.onglets[g]?.includes(v)) fautes.push(`onglet par défaut « ${v} » inconnu dans ${g}`);
+  return fautes;
+}
+
+/* ───────────────────────── Les trois éditeurs (E8) ───────────────────────── */
+
+/** Sous ce seuil (une tablette en portrait, un téléphone), les éditeurs passent en onglets. */
+export const SEUIL_ETROIT = 860;
+
+const trois = (o: { gauche: Noeud; tailles: [number, number]; onglets?: Record<string, string> }): MiseEnPage => ({
+  v: VERSION,
+  racine: { type: "decoupe", id: "corps", sens: "ligne", enfants: [o.gauche, { type: "panneau", id: "apercu" }, { type: "panneau", id: "inspecteur" }], tailles: [o.tailles[0], null, o.tailles[1]] },
+  onglets: { vue: "apercu", ...(o.onglets ?? {}) },
+  replies: [],
+});
+
+/**
+ * Créateur de diaporama : diapos (200 px) | aperçu | inspecteur (300 px). La taille des diapos reprend l'ancienne clé
+ * `presse:diapo-createur.largeur@1` (« 240px », bornée autrefois à [130, moitié de la fenêtre]).
+ */
+export const SCHEMA_DIAPO_CREATEUR: Schema = {
+  defaut: trois({ gauche: { type: "panneau", id: "diapos" }, tailles: [200, 300] }),
+  bornes: { diapos: { min: 130, max: 640, defaut: 200 }, inspecteur: { min: 240, max: 560, defaut: 300 } },
+  onglets: { vue: ["diapos", "apercu", "inspecteur"] },
+  etroit: {
+    seuil: SEUIL_ETROIT,
+    groupe: "vue",
+    vues: [
+      { id: "diapos", libelle: "Diapos", icone: "pages" },
+      { id: "apercu", libelle: "Aperçu", icone: "bureau" },
+      { id: "inspecteur", libelle: "Réglages", icone: "reglages" },
+    ],
+  },
+};
+
+/** Vitrine : sections (300 px) | aperçu | inspecteur (340 px, onglets Section / Style). */
+export const SCHEMA_VITRINE: Schema = {
+  defaut: trois({ gauche: { type: "panneau", id: "sections" }, tailles: [300, 340], onglets: { inspecteur: "section" } }),
+  bornes: { sections: { min: 220, max: 520, defaut: 300 }, inspecteur: { min: 280, max: 600, defaut: 340 } },
+  onglets: { vue: ["sections", "apercu", "inspecteur"], inspecteur: ["section", "style"] },
+  etroit: {
+    seuil: SEUIL_ETROIT,
+    groupe: "vue",
+    vues: [
+      { id: "sections", libelle: "Sections", icone: "pages" },
+      { id: "apercu", libelle: "Aperçu", icone: "bureau" },
+      { id: "inspecteur", libelle: "Réglages", icone: "reglages" },
+    ],
+  },
+};
+
+/**
+ * Créateur : à gauche, une colonne pages (160 px) / calques (souple) ; puis l'aperçu ; l'inspecteur (312 px, onglets
+ * Bloc / Site). L'onglet de gauche (Calques / Ajouter) est gardé aussi.
+ */
+export const SCHEMA_CREATEUR: Schema = {
+  defaut: trois({
+    gauche: { type: "decoupe", id: "gauche", sens: "colonne", enfants: [{ type: "panneau", id: "pages" }, { type: "panneau", id: "calques" }], tailles: [160, null] },
+    tailles: [272, 312],
+    onglets: { gauche: "layers", inspecteur: "block" },
+  }),
+  bornes: { gauche: { min: 220, max: 480, defaut: 272 }, pages: { min: 72, max: 480, defaut: 160 }, inspecteur: { min: 260, max: 560, defaut: 312 } },
+  onglets: { vue: ["gauche", "apercu", "inspecteur"], gauche: ["layers", "add"], inspecteur: ["block", "page"] },
+  etroit: {
+    seuil: SEUIL_ETROIT,
+    groupe: "vue",
+    vues: [
+      { id: "gauche", libelle: "Calques", icone: "calques" },
+      { id: "apercu", libelle: "Aperçu", icone: "bureau" },
+      { id: "inspecteur", libelle: "Réglages", icone: "reglages" },
+    ],
+  },
 };

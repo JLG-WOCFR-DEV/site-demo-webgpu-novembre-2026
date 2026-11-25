@@ -57,17 +57,31 @@ export function cle(o: { domaine: string; nom: string; version?: number; portee?
 
 /* ───────────────────────── Inventaire ───────────────────────── */
 
+/**
+ * Conversion d'une ancienne largeur (« 240px », « 240 ») vers la forme courte de la coque (src/studio/coque-plan.ts :
+ * `{ v: 1, tailles: { <panneau>: 240 } }`, relue avec les bornes du panneau). Illisible : abandonnée.
+ */
+export function largeurVersCoque(panneau: string): (ancienne: string) => string | null {
+  return (ancienne) => {
+    const n = Number.parseFloat(ancienne);
+    return Number.isFinite(n) && n > 0 ? JSON.stringify({ v: 1, tailles: { [panneau]: Math.round(n) } }) : null;
+  };
+}
+
 /** Les clés gérées par ce module (lecture, écriture, migration) ; ce que chacune garde : stockage-inventaire.ts. */
 export const CLES = {
   navRecents: cle({ domaine: "nav", nom: "recents" }),
   navTheme: cle({ domaine: "nav", nom: "theme" }),
   coqueStudioEffet: cle({ domaine: "coque", nom: "studio-effet" }),
+  // E8 : la largeur de la liste des diapos (« 240px ») devient la taille du panneau `diapos` de la coque.
+  coqueDiapoCreateur: cle({ domaine: "coque", nom: "diapo-createur", anciennes: ["presse:diapo-createur.largeur@1", "presse-diapo-createur:largeur"], conversion: largeurVersCoque("diapos") }),
+  coqueVitrine: cle({ domaine: "coque", nom: "vitrine" }),
+  coqueCreateur: cle({ domaine: "coque", nom: "createur" }),
   douceurNiveau: cle({ domaine: "douceur", nom: "niveau" }),
   couloirAttributs: cle({ domaine: "couloir", nom: "attributs", anciennes: ["couloir:attributs"] }),
   logosInstantanes: cle({ domaine: "logos", nom: "instantanes", anciennes: ["logos:instantanes"] }),
   diapoNotes: cle({ domaine: "diapo-createur", nom: "notes", anciennes: ["presse-diapo-createur:notes"] }),
   diapoBande: cle({ domaine: "diapo-createur", nom: "bande", anciennes: ["presse-diapo-createur:bande"] }),
-  diapoLargeur: cle({ domaine: "diapo-createur", nom: "largeur", anciennes: ["presse-diapo-createur:largeur"] }),
   diapoExport: cle({ domaine: "diapo-createur", nom: "export", anciennes: ["presse-diapo-createur:export"] }),
   orbiteCourant: cle({ domaine: "orbite", nom: "courant", anciennes: ["presse:orbite:courant"] }),
   orbiteReglages: cle({ domaine: "orbite", nom: "reglages", anciennes: ["presse:orbite:reglages"] }),

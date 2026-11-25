@@ -1,7 +1,7 @@
 /** La coque commune : mise en page en JSON versionné (lecture, bornes, onglets, repli, redimension, lien). */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SCHEMA_STUDIO_EFFET as S, VERSION, basculerRepli, choisirOnglet, decoder, encoder, fixerTaille, lireMiseEnPage, redimensionner, serialiser, tailleDe, verifierPlan, type Schema } from "./coque-plan.ts";
+import { SCHEMA_CREATEUR, SCHEMA_DIAPO_CREATEUR, SCHEMA_STUDIO_EFFET as S, SCHEMA_VITRINE, SEUIL_ETROIT, VERSION, basculerRepli, choisirOnglet, decoder, encoder, fixerTaille, lireMiseEnPage, modeDe, panneauxDe, panneauxMontres, redimensionner, serialiser, tailleDe, verifierPlan, verifierSchema, vueDe, vueVoisine, type Schema } from "./coque-plan.ts";
 
 test("coque : le plan du Studio d'effet est bien formé ; aller-retour JSON sans correction", () => {
   assert.deepEqual(verifierPlan(S.defaut), []);
@@ -83,4 +83,107 @@ test("coque : lien base64url, accents compris", () => {
   assert.match(t, /^[A-Za-z0-9_-]+$/);
   assert.deepEqual(decoder(t), m);
   assert.equal(decoder("@@@"), undefined);
+});
+
+/* ───────── E8 : les trois éditeurs ───────── */
+
+const EDITEURS: Record<string, { s: Schema; gauche: string; tailles: Record<string, number>; panneaux: string[] }> = {
+  "diapo-createur": { s: SCHEMA_DIAPO_CREATEUR, gauche: "diapos", tailles: { diapos: 200, inspecteur: 300 }, panneaux: ["diapos", "apercu", "inspecteur"] },
+  vitrine: { s: SCHEMA_VITRINE, gauche: "sections", tailles: { sections: 300, inspecteur: 340 }, panneaux: ["sections", "apercu", "inspecteur"] },
+  createur: { s: SCHEMA_CREATEUR, gauche: "gauche", tailles: { gauche: 272, pages: 160, inspecteur: 312 }, panneaux: ["pages", "calques", "apercu", "inspecteur"] },
+};
+
+test("coque E8 : chaque schéma d'éditeur est bien formé (plan, bornes, vues du mode étroit) ; studio-effet aussi", () => {
+  for (const [nom, { s }] of Object.entries(EDITEURS)) assert.deepEqual(verifierSchema(s), [], nom);
+  assert.deepEqual(verifierSchema(S), []);
+  const faux: Schema = { ...SCHEMA_VITRINE, bornes: { ...SCHEMA_VITRINE.bornes, sections: { min: 400, max: 500, defaut: 300 } } };
+  assert.match(verifierSchema(faux).join(), /sections : défaut 300 hors de \[400, 500\]/);
+  const vues: Schema = { ...SCHEMA_VITRINE, etroit: { ...SCHEMA_VITRINE.etroit!, vues: SCHEMA_VITRINE.etroit!.vues.slice(1) } };
+  assert.match(verifierSchema(vues).join(), /une vue par enfant de la racine/);
+});
+
+test("coque E8 : présélections — ligne [gauche, aperçu souple, inspecteur], tailles par défaut, aperçu en étroit", () => {
+  for (const [nom, e] of Object.entries(EDITEURS)) {
+    const { mep, corrections } = lireMiseEnPage(null, e.s);
+    assert.deepEqual(corrections, [], nom);
+    assert.deepEqual(panneauxDe(mep.racine), e.panneaux, nom);
+    for (const [p, t] of Object.entries(e.tailles)) assert.equal(tailleDe(mep, p), t, `${nom}.${p}`);
+    assert.equal(tailleDe(mep, "apercu"), null, `${nom} : aperçu souple`);
+    assert.equal(vueDe(mep, e.s), "apercu", `${nom} : en étroit, l'aperçu d'abord`);
+    assert.deepEqual(lireMiseEnPage(serialiser(mep), e.s), { mep, corrections: [] }, `${nom} : aller-retour`);
+  }
+  // Créateur : la colonne de gauche est une découpe (pages fixe, calques souple), redimensionnable à part.
+  const c = SCHEMA_CREATEUR;
+  let m = redimensionner(c.defaut, "gauche", 0, 40, c.bornes);
+  assert.equal(tailleDe(m, "pages"), 200, "pages au-dessus de la poignée : vers le bas il grandit");
+  assert.equal(tailleDe(m, "calques"), null);
+  m = redimensionner(m, "corps", 0, 30, c.bornes);
+  assert.equal(tailleDe(m, "gauche"), 302);
+  m = choisirOnglet(choisirOnglet(m, "gauche", "add", c.onglets), "inspecteur", "page", c.onglets);
+  assert.deepEqual([m.onglets.gauche, m.onglets.inspecteur], ["add", "page"]);
+  assert.equal(choisirOnglet(m, "inspecteur", "style", c.onglets).onglets.inspecteur, "page", "onglet inconnu refusé");
+  assert.equal(choisirOnglet(SCHEMA_VITRINE.defaut, "inspecteur", "style", SCHEMA_VITRINE.onglets).onglets.inspecteur, "style");
+});
+
+test("coque E8 : bornes de chaque panneau (tirer au-delà, clavier Début / Fin, JSON retouché)", () => {
+  for (const [nom, e] of Object.entries(EDITEURS)) {
+    for (const [p, b] of Object.entries(e.s.bornes)) {
+      assert.equal(tailleDe(fixerTaille(e.s.defaut, p, -5, e.s.bornes), p), b.min, `${nom}.${p} min`);
+      assert.equal(tailleDe(fixerTaille(e.s.defaut, p, 99999, e.s.bornes), p), b.max, `${nom}.${p} max`);
+    }
+    // Poignée 0 (gauche | aperçu) et 1 (aperçu | inspecteur), très loin dans les deux sens.
+    const g = e.gauche;
+    assert.equal(tailleDe(redimensionner(e.s.defaut, "corps", 0, 5000, e.s.bornes), g), e.s.bornes[g]!.max, nom);
+    assert.equal(tailleDe(redimensionner(e.s.defaut, "corps", 0, -5000, e.s.bornes), g), e.s.bornes[g]!.min, nom);
+    assert.equal(tailleDe(redimensionner(e.s.defaut, "corps", 1, 5000, e.s.bornes), "inspecteur"), e.s.bornes.inspecteur!.min, nom);
+    assert.equal(tailleDe(redimensionner(e.s.defaut, "corps", 1, -5000, e.s.bornes), "inspecteur"), e.s.bornes.inspecteur!.max, nom);
+    const brut = JSON.parse(serialiser(e.s.defaut));
+    brut.racine.tailles[2] = 10;
+    const r = lireMiseEnPage(brut, e.s);
+    assert.equal(tailleDe(r.mep, "inspecteur"), e.s.bornes.inspecteur!.min);
+    assert.match(r.corrections.join(), /inspecteur : 10 px ramené/);
+  }
+});
+
+test("coque E8 : bascule étroit — seuil inclusif, une vue à la fois, tailles et replis gardés pour le retour au large", () => {
+  for (const [nom, e] of Object.entries(EDITEURS)) {
+    const s = e.s;
+    assert.equal(modeDe(s, 1440), "large");
+    assert.equal(modeDe(s, SEUIL_ETROIT + 1), "large");
+    assert.equal(modeDe(s, SEUIL_ETROIT), "etroit");
+    assert.equal(modeDe(s, 390), "etroit");
+    let m = basculerRepli(redimensionner(s.defaut, "corps", 1, -40, s.bornes), "inspecteur");
+    assert.deepEqual(panneauxMontres(m, s, "large"), e.panneaux.filter((p) => p !== "inspecteur"), nom);
+    assert.deepEqual(panneauxMontres(m, s, "etroit"), ["apercu"], nom);
+    m = choisirOnglet(m, "vue", "inspecteur", s.onglets);
+    assert.deepEqual(panneauxMontres(m, s, "etroit"), ["inspecteur"], `${nom} : un panneau replié se montre quand même en étroit`);
+    m = choisirOnglet(m, "vue", e.gauche, s.onglets);
+    assert.deepEqual(panneauxMontres(m, s, "etroit"), nom === "createur" ? ["pages", "calques"] : [e.gauche], nom);
+    // Rechargement : la vue, la taille et le repli reviennent.
+    const relu = lireMiseEnPage(serialiser(m), s).mep;
+    assert.equal(vueDe(relu, s), e.gauche);
+    assert.equal(tailleDe(relu, "inspecteur"), 0);
+    assert.equal(tailleDe(basculerRepli(relu, "inspecteur"), "inspecteur"), s.bornes.inspecteur!.defaut! + 40);
+    assert.equal(vueVoisine(s, "apercu", 1), "inspecteur");
+    assert.equal(vueVoisine(s, "inspecteur", 1), e.gauche, "en boucle");
+    assert.equal(vueVoisine(s, e.gauche, -1), "inspecteur");
+    const vueInconnue = lireMiseEnPage({ ...JSON.parse(serialiser(s.defaut)), onglets: { vue: "notes" } }, s);
+    assert.equal(vueDe(vueInconnue.mep, s), "apercu");
+    assert.match(vueInconnue.corrections.join(), /onglet « notes » inconnu dans vue/);
+  }
+  assert.equal(modeDe(S, 390), "large", "studio-effet n'a pas de mode étroit en onglets (une colonne qui défile)");
+  assert.equal(vueDe(S.defaut, S), "");
+});
+
+test("coque E8 : forme courte (migration d'une ancienne largeur) — défaut + tailles bornées, le reste dit", () => {
+  const s = SCHEMA_DIAPO_CREATEUR;
+  const r = lireMiseEnPage('{"v":1,"tailles":{"diapos":240}}', s);
+  assert.deepEqual(r.corrections, []);
+  assert.equal(tailleDe(r.mep, "diapos"), 240);
+  assert.equal(tailleDe(r.mep, "inspecteur"), 300);
+  assert.deepEqual(r.mep.onglets, s.defaut.onglets);
+  const r2 = lireMiseEnPage({ v: 1, tailles: { diapos: 9000, apercu: 10, notes: 3, inspecteur: "x" } }, s);
+  assert.equal(tailleDe(r2.mep, "diapos"), 640);
+  assert.equal(tailleDe(r2.mep, "apercu"), null);
+  assert.deepEqual(r2.corrections, ["diapos : 9000 px ramené à 640 px", "apercu : pas un panneau de taille fixe, ignoré", "notes : pas un panneau de taille fixe, ignoré", "inspecteur : taille illisible, défaut"]);
 });

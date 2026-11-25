@@ -1,0 +1,35 @@
+/* Studio — la coque commune (src/studio/coque.ts) : poignées de redimension, onglets du mode étroit, panneaux cachés.
+   Couleurs par variables, chaque éditeur les accorde à sa peau : --coque-accent, --coque-filet, --coque-panneau,
+   --coque-actif. Mouvement : seule la poignée change de couleur au survol (jetons --presse-ease-*), rien n'est animé
+   au clavier ; mouvement réduit : rien. */
+@import "../presse/jetons-mouvement.css";
+
+.coque-poignee { position: relative; z-index: 4; justify-self: start; align-self: stretch; width: 10px; margin-left: -5px; padding: 0; border: 0; background: transparent; cursor: col-resize; touch-action: none; }
+.coque-poignee::after { content: ""; position: absolute; inset: 0 4px; background: transparent; }
+.coque-poignee:focus-visible::after, .coque-poignee[data-tire]::after { background: var(--coque-accent, #5b8cff); }
+.coque-poignee:focus-visible { outline: none; }
+.coque-poignee:focus-visible::before { content: ""; position: absolute; inset: 0 1px; border-radius: 3px; box-shadow: 0 0 0 2px var(--coque-accent, #5b8cff); }
+@media (hover: hover) and (pointer: fine) {
+  .coque-poignee::after { transition: background-color 120ms var(--presse-ease-sortie); }
+  .coque-poignee:hover::after { background: var(--coque-accent, #5b8cff); }
+  .coque-vue:hover { opacity: 1; }
+}
+.coque-poignee[aria-orientation="horizontal"] { justify-self: stretch; align-self: start; width: auto; height: 10px; margin: -5px 0 0; cursor: row-resize; }
+.coque-poignee[aria-orientation="horizontal"]::after { inset: 4px 0; }
+.coque-poignee[aria-orientation="horizontal"]:focus-visible::before { inset: 1px 0; }
+body.coque-tire { cursor: col-resize; user-select: none; }
+body.coque-tire iframe { pointer-events: none; }
+
+/* Onglets du mode étroit : une icône par vue, le nom en infobulle et pour les lecteurs d'écran. */
+.coque-vues { display: none; }
+[data-coque-mode="etroit"] > .coque-vues { display: flex; gap: 4px; padding: 4px 8px; background: var(--coque-panneau, transparent); border-bottom: 1px solid var(--coque-filet, rgba(128, 128, 128, 0.3)); min-width: 0; }
+.coque-vue { flex: 1 1 0; display: inline-grid; place-items: center; min-width: 0; min-height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: inherit; opacity: 0.72; cursor: pointer; }
+.coque-vue[aria-selected="true"] { opacity: 1; background: var(--coque-actif, rgba(128, 128, 128, 0.18)); box-shadow: inset 0 -2px 0 var(--coque-accent, #5b8cff); }
+.coque-vue:focus-visible { outline: 2px solid var(--coque-accent, #5b8cff); outline-offset: -2px; }
+.coque-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+[data-coque-mode="etroit"] .coque-poignee { display: none; }
+[data-coque-mode="etroit"] [data-coque-cache] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .coque-poignee::after { transition: none; }
+}

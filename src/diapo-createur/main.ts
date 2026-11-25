@@ -26,7 +26,9 @@ import { SLIDE_TRANSITIONS } from "../gpu/slide-transition.ts";
 import { TRANSITIONS } from "../state.ts";
 import { PRESETS } from "../presse/timeline.ts";
 import { monterExport } from "./exporter.ts";
-import { CLES, ecrire as ecrireStock, lire as lireStock, retirer as retirerStock } from "../registre/stockage.ts";
+import { CLES, ecrire as ecrireStock, lire as lireStock } from "../registre/stockage.ts";
+import { monterCoque } from "../studio/coque.ts";
+import { SCHEMA_DIAPO_CREATEUR } from "../studio/coque-plan.ts";
 import { ecouterPalette } from "../nav/declencheur.ts";
 
 // Ctrl+K / ⌘K : la palette de commandes (src/nav/), chargée à la demande — pas dans un cadre d'aperçu.
@@ -1428,56 +1430,35 @@ document.addEventListener("fullscreenchange", () => {
   if (!document.fullscreenElement && mode === "try") setMode("edit");
 });
 
-/* La colonne des diapos s'élargit : on tire sa bordure droite (double-clic : largeur d'origine ; flèches au clavier). */
-{
-  const grip = document.createElement("div");
-  grip.className = "dc-grip";
-  grip.tabIndex = 0;
-  grip.setAttribute("role", "separator");
-  grip.setAttribute("aria-orientation", "vertical");
-  grip.setAttribute("aria-label", "Largeur de la liste des diapos");
-  grip.title = "Tirer pour élargir la liste (double-clic : largeur d'origine)";
-  $(".dc-left").append(grip);
-  const set = (w: number | null, keep = true) => {
-    if (w === null) document.body.style.removeProperty("--dc-left");
-    else document.body.style.setProperty("--dc-left", `${Math.round(Math.max(130, Math.min(innerWidth * 0.5, w)))}px`);
-    if (!keep) return;
-    if (w === null) retirerStock(CLES.diapoLargeur);
-    else ecrireStock(CLES.diapoLargeur, document.body.style.getPropertyValue("--dc-left"));
-  };
-  const w = Number.parseFloat(lireStock(CLES.diapoLargeur) ?? "");
-  if (w) set(w, false);
-  grip.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    grip.setPointerCapture(e.pointerId);
-    // Les iframes avaleraient le geste : elles se taisent pendant qu'on tire.
-    document.body.classList.add("dc--resizing");
-    const move = (ev: PointerEvent) => set(ev.clientX - $(".dc-left").getBoundingClientRect().left, false);
-    const up = (ev: PointerEvent) => {
-      set(ev.clientX - $(".dc-left").getBoundingClientRect().left);
-      document.body.classList.remove("dc--resizing");
-      grip.removeEventListener("pointermove", move);
-    };
-    grip.addEventListener("pointermove", move);
-    grip.addEventListener("pointerup", up, { once: true });
-    grip.addEventListener("pointercancel", up, { once: true });
-  });
-  grip.addEventListener("dblclick", () => set(null));
-  grip.addEventListener("keydown", (e) => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    e.preventDefault();
-    set($(".dc-left").getBoundingClientRect().width + (e.key === "ArrowRight" ? 24 : -24));
-  });
-}
+/*
+ * La coque commune (src/studio/coque.ts) : diapos | aperçu | inspecteur, deux poignées (pointeur, clavier, double-clic,
+ * Entrée replie), la mise en page gardée en JSON versionné (l'ancienne largeur de la liste y est reprise). Sous le
+ * seuil étroit : des onglets Diapos / Aperçu / Réglages, une vue à la fois (la bande de vignettes y est suspendue).
+ */
+const coque = monterCoque(document.body, {
+  schema: SCHEMA_DIAPO_CREATEUR,
+  cle: CLES.coqueDiapoCreateur,
+  poignees: [
+    { decoupe: "corps", index: 0, panneau: "diapos", libelle: "Largeur de la liste des diapos", zone: "apercu", cible: $(".dc-left") },
+    { decoupe: "corps", index: 1, panneau: "inspecteur", libelle: "Largeur de l'inspecteur", zone: "ins", cible: $(".dc-right") },
+  ],
+  vues: { diapos: $(".dc-left"), apercu: $(".dc-stage"), inspecteur: $(".dc-right") },
+  libelleVues: "Panneaux du créateur",
+  apres: $(".dc-bar"),
+  auMode: (mode) => {
+    setStrip(mode === "large" && lireStock(CLES.diapoBande) === "1", false);
+    $('[data-dc-slides] [aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
+  },
+});
 
 /** Les vignettes : en colonne à gauche, ou en bande sous l'aperçu (comme une table lumineuse). */
-function setStrip(on: boolean) {
+function setStrip(on: boolean, garder = true) {
   document.body.classList.toggle("dc--strip", on);
   $("[data-dc-strip]").setAttribute("aria-pressed", String(on));
-  ecrireStock(CLES.diapoBande, on ? "1" : "");
+  if (garder) ecrireStock(CLES.diapoBande, on ? "1" : "");
   $('[data-dc-slides] [aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
 }
-setStrip(lireStock(CLES.diapoBande) === "1");
+setStrip(coque.mode() === "large" && lireStock(CLES.diapoBande) === "1", false);
 
 /* ── Barre ── */
 document.addEventListener("click", (e) => {

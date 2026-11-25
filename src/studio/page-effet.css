@@ -2,6 +2,7 @@
    jetons.css. */
 /* ───────── Coque (src/studio/coque.ts : --coque-inspecteur, data-coque-replie, poignée) ───────── */
 .st {
+  --coque-accent: var(--st-accent);
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--coque-inspecteur, 328px);
   grid-template-rows: auto minmax(0, 1fr);

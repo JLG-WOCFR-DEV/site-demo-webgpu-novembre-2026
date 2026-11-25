@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { GARDEES, ROLES } from "./stockage-inventaire.ts";
-import { CLES, cle, ecrire, ecrireJson, lire, lireJson, magasinMemoire, migrer, migrerTout, retirer, type Magasin } from "./stockage.ts";
+import { CLES, cle, ecrire, ecrireJson, largeurVersCoque, lire, lireJson, magasinMemoire, migrer, migrerTout, retirer, type Magasin } from "./stockage.ts";
+import { SCHEMA_DIAPO_CREATEUR, lireMiseEnPage, tailleDe } from "../studio/coque-plan.ts";
 
 const RACINE = path.resolve(import.meta.dirname, "../..");
 
@@ -33,6 +34,10 @@ test("stockage : migration paresseuse, sans perte, idempotente, sans écraser la
 
 test("stockage : stockage plein, l'ancienne reste et se lit encore ; stockage absent ou qui lève : valeurs par défaut", () => {
   const plein = magasinMemoire({ "presse-diapo-createur:notes": "0" }, true);
+  const pleinL = magasinMemoire({ "presse:diapo-createur.largeur@1": "260px" }, true);
+  assert.equal(migrer(CLES.coqueDiapoCreateur, pleinL)?.resultat, "echec");
+  assert.equal(pleinL.donnees.get("presse:diapo-createur.largeur@1"), "260px", "largeur gardée");
+  assert.equal(tailleDe(lireMiseEnPage(lire(CLES.coqueDiapoCreateur, pleinL), SCHEMA_DIAPO_CREATEUR).mep, "diapos"), 260, "et lue convertie");
   assert.deepEqual(migrer(CLES.diapoNotes, plein), { cle: "presse:diapo-createur.notes@1", depuis: "presse-diapo-createur:notes", resultat: "echec" });
   assert.equal(plein.donnees.get("presse-diapo-createur:notes"), "0", "rien perdu");
   assert.equal(lire(CLES.diapoNotes, plein), "0");
@@ -99,4 +104,43 @@ test("stockage : chaque clé littérale du dépôt est dans l'inventaire ; une c
     }
   }
   assert.deepEqual(fautes, []);
+});
+
+test("stockage E8 : la largeur des diapos (deux générations de clés) devient la taille du panneau diapos de la coque", () => {
+  for (const [ancienne, valeur, attendu] of [
+    ["presse:diapo-createur.largeur@1", "240px", 240],
+    ["presse-diapo-createur:largeur", "312.6px", 313],
+    ["presse:diapo-createur.largeur@1", "131px", 131],
+  ] as const) {
+    const m = magasinMemoire({ [ancienne]: valeur });
+    const r = migrer(CLES.coqueDiapoCreateur, m);
+    assert.deepEqual(r, { cle: "presse:coque.diapo-createur@1", depuis: ancienne, resultat: "recopiee" });
+    assert.ok(!m.donnees.has(ancienne), "ancienne retirée après recopie");
+    const { mep, corrections } = lireMiseEnPage(m.donnees.get("presse:coque.diapo-createur@1"), SCHEMA_DIAPO_CREATEUR);
+    assert.deepEqual(corrections, [], `${valeur} : sans perte`);
+    assert.equal(tailleDe(mep, "diapos"), attendu);
+    assert.equal(tailleDe(mep, "inspecteur"), 300, "le reste au défaut");
+  }
+  // La plus récente des deux gagne ; les deux sont retirées.
+  const deux = magasinMemoire({ "presse:diapo-createur.largeur@1": "250px", "presse-diapo-createur:largeur": "180px" });
+  migrer(CLES.coqueDiapoCreateur, deux);
+  assert.equal(tailleDe(lireMiseEnPage(deux.donnees.get("presse:coque.diapo-createur@1"), SCHEMA_DIAPO_CREATEUR).mep, "diapos"), 250);
+  assert.deepEqual([...deux.donnees.keys()], ["presse:coque.diapo-createur@1"]);
+  // Une mise en page déjà là n'est pas écrasée par une vieille largeur.
+  const deja = magasinMemoire({ "presse:coque.diapo-createur@1": '{"v":1,"tailles":{"diapos":400}}', "presse-diapo-createur:largeur": "180px" });
+  assert.equal(migrer(CLES.coqueDiapoCreateur, deja), null);
+  assert.equal(tailleDe(lireMiseEnPage(lire(CLES.coqueDiapoCreateur, deja), SCHEMA_DIAPO_CREATEUR).mep, "diapos"), 400);
+  // Illisible : abandonnée (rien à reprendre), la mise en page reste au défaut.
+  const abime = magasinMemoire({ "presse:diapo-createur.largeur@1": "large" });
+  assert.equal(migrer(CLES.coqueDiapoCreateur, abime)?.resultat, "abandonnee");
+  assert.equal(abime.donnees.size, 0);
+  assert.equal(largeurVersCoque("diapos")("0px"), null);
+  assert.equal(largeurVersCoque("sections")("320"), '{"v":1,"tailles":{"sections":320}}');
+});
+
+test("stockage E8 : une clé de coque par éditeur, nommée presse:coque.<éditeur>@1", () => {
+  assert.deepEqual(
+    [CLES.coqueStudioEffet, CLES.coqueDiapoCreateur, CLES.coqueVitrine, CLES.coqueCreateur].map((c) => c.texte),
+    ["presse:coque.studio-effet@1", "presse:coque.diapo-createur@1", "presse:coque.vitrine@1", "presse:coque.createur@1"],
+  );
 });

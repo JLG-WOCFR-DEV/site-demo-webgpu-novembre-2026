@@ -1414,6 +1414,15 @@ function H(e) {
 		texte: `${ge}${e.domaine}.${e.nom}@${t}`
 	};
 }
+function _e(e) {
+	return (t) => {
+		let n = Number.parseFloat(t);
+		return Number.isFinite(n) && n > 0 ? JSON.stringify({
+			v: 1,
+			tailles: { [e]: Math.round(n) }
+		}) : null;
+	};
+}
 var U = {
 	navRecents: H({
 		domaine: "nav",
@@ -1426,6 +1435,20 @@ var U = {
 	coqueStudioEffet: H({
 		domaine: "coque",
 		nom: "studio-effet"
+	}),
+	coqueDiapoCreateur: H({
+		domaine: "coque",
+		nom: "diapo-createur",
+		anciennes: ["presse:diapo-createur.largeur@1", "presse-diapo-createur:largeur"],
+		conversion: _e("diapos")
+	}),
+	coqueVitrine: H({
+		domaine: "coque",
+		nom: "vitrine"
+	}),
+	coqueCreateur: H({
+		domaine: "coque",
+		nom: "createur"
 	}),
 	douceurNiveau: H({
 		domaine: "douceur",
@@ -1450,11 +1473,6 @@ var U = {
 		domaine: "diapo-createur",
 		nom: "bande",
 		anciennes: ["presse-diapo-createur:bande"]
-	}),
-	diapoLargeur: H({
-		domaine: "diapo-createur",
-		nom: "largeur",
-		anciennes: ["presse-diapo-createur:largeur"]
 	}),
 	diapoExport: H({
 		domaine: "diapo-createur",
@@ -1502,7 +1520,7 @@ var G = {
 		} catch {}
 	}
 };
-function _e(e, t = W(e.portee)) {
+function ve(e, t = W(e.portee)) {
 	if (!t || !e.anciennes.length || G.lire(t, e.texte) !== null) return null;
 	for (let n of e.anciennes) {
 		let r = G.lire(t, n);
@@ -1528,7 +1546,7 @@ function _e(e, t = W(e.portee)) {
 	return null;
 }
 function K(e, t = W(e.portee)) {
-	_e(e, t);
+	ve(e, t);
 	let n = G.lire(t, e.texte);
 	if (n === null) for (let n of e.anciennes) {
 		let r = G.lire(t, n);
@@ -1543,7 +1561,7 @@ function J(e, t = W(e.portee)) {
 	G.retirer(t, e.texte);
 	for (let n of e.anciennes) G.retirer(t, n);
 }
-function ve(e, t, n, r) {
+function ye(e, t, n, r) {
 	let i = K(e, r === void 0 ? W(e.portee) : r);
 	if (i === null) return t;
 	try {
@@ -1553,7 +1571,7 @@ function ve(e, t, n, r) {
 		return t;
 	}
 }
-function ye(e, t, n) {
+function be(e, t, n) {
 	let r;
 	try {
 		r = JSON.stringify(t);
@@ -1581,8 +1599,8 @@ function $(e = X()) {
 	let t = document.documentElement;
 	e ? t.dataset.presseTheme = e : delete t.dataset.presseTheme;
 }
-function be() {
+function xe() {
 	let e = Q() === "sombre" ? "clair" : "sombre", t = e === Z() ? null : e;
 	return t === null && J(U.navTheme), Y = t === null || q(U.navTheme, t) ? void 0 : t, $(t), e;
 }
-export { ne as C, h as D, g as E, C as S, S as T, M as _, U as a, se as b, K as c, I as d, B as f, N as g, j as h, Q as i, ve as l, R as m, be as n, q as o, he as p, X as r, ye as s, $ as t, J as u, ae as v, b as w, A as x, oe as y };
+export { ne as C, h as D, g as E, C as S, S as T, M as _, U as a, se as b, K as c, I as d, B as f, N as g, j as h, Q as i, ye as l, R as m, xe as n, q as o, he as p, X as r, be as s, $ as t, J as u, ae as v, b as w, A as x, oe as y };

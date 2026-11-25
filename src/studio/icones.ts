@@ -33,6 +33,9 @@ const P: Record<string, string> = {
   poids: '<path d="M7 9h10l2 11H5z"/><circle cx="12" cy="6" r="2.4"/>',
   douceur: '<path d="M4 16c3-6 5-6 8 0s5 6 8 0"/><circle cx="12" cy="7" r="1.6"/>',
   hic: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h6M7 12h10M7 15h4"/>',
+  // Vues de la coque, en étroit (src/studio/coque.ts).
+  reglages: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  calques: '<path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/>',
   attention: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01" stroke-width="1.8"/>',
   // Paramètres.
   ouvert: '<circle cx="12" cy="16" r="3.5"/><circle cx="6" cy="8" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="18" cy="8" r="2"/>',

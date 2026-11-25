@@ -1,21 +1,28 @@
 /**
  * Studio — la coque commune des éditeurs (DOM) : applique une mise en page (src/studio/coque-plan.ts) à un conteneur
- * en grille, pose les poignées de redimension, garde la mise en page dans le navigateur (registre du stockage) et la
- * rend exportable en JSON versionné.
+ * en grille, pose les poignées de redimension, bascule en onglets sous le seuil étroit, garde la mise en page dans le
+ * navigateur (registre du stockage) et la rend exportable en JSON versionné.
  *
- *   const coque = monterCoque(racine, { schema: SCHEMA_STUDIO_EFFET, cle: CLES.coqueStudioEffet,
- *     poignees: [{ decoupe: "corps", index: 0, panneau: "inspecteur", libelle: "Largeur de l'inspecteur", zone: "ins" }] });
- *   coque.onglet("code"); coque.choisirOnglet("code", "json");
+ *   const coque = monterCoque(racine, { schema: SCHEMA_DIAPO_CREATEUR, cle: CLES.coqueDiapoCreateur,
+ *     poignees: [{ decoupe: "corps", index: 0, panneau: "diapos", libelle: "Largeur des diapos", zone: "apercu" }],
+ *     vues: { diapos: elDiapos, apercu: elApercu, inspecteur: elInspecteur } });
+ *   coque.onglet("inspecteur"); coque.choisirOnglet("inspecteur", "style"); coque.choisirVue("apercu");
  *
- * Le conteneur lit `--coque-<panneau>` (taille en px) dans sa grille, et `data-coque-replie` (liste des panneaux
- * repliés). Poignée : `role="separator"` (aria-valuenow / min / max, aria-controls), au pointeur, au clavier
- * (← → : 16 px, Maj : 64 px, Début / Fin : bornes, Entrée : replier / rouvrir), double-clic : taille par défaut.
+ * Le conteneur lit `--coque-<panneau>` (taille en px) dans sa grille, `data-coque-replie` (panneaux repliés),
+ * `data-coque-mode` (`large` | `etroit`) et, en étroit, `data-coque-vue` (la vue montrée) ; il range les onglets du
+ * mode étroit (`.coque-vues`, enfant direct, `grid-area: vues`) où il veut. Seule la mise en page vit ici : chaque
+ * éditeur garde son modèle de document.
  *
- * Adoption par les trois éditeurs (Créateur, Vitrine, diapo-createur) : chacun décrit SON plan (colonnes gauche /
- * aperçu / inspecteur, onglets d'inspecteur) dans un `Schema`, garde son modèle de document, et remplace ses
- * redimensions maison (diapo-createur : `--dc-left` et sa poignée) par `monterCoque` — voir docs/ROADMAP-STUDIO.md, E6.
+ * Poignée : `role="separator"` (aria-valuenow / min / max, aria-controls), au pointeur, au clavier (← → ou ↑ ↓ :
+ * 16 px, Maj : 64 px, Début / Fin : bornes, Entrée : replier / rouvrir), double-clic : taille par défaut. Elle se pose
+ * dans la grille du conteneur (`zone`), ou dans celle d'un autre élément (`hote` : une découpe imbriquée).
+ * Onglets du mode étroit : `role="tablist"`, une icône par vue (nom en `aria-label` et en infobulle), ← → Début Fin
+ * (activation automatique, focus itinérant) ; chaque vue reçoit `role="tabpanel"` et `aria-labelledby` le temps du
+ * mode étroit. Aucun raccourci global : les touches ne jouent que sur la poignée ou l'onglet qui a le focus.
  */
-import { basculerRepli, choisirOnglet as choisir, fixerTaille, lireMiseEnPage, panneauxDe, redimensionner, serialiser, tailleDe, type MiseEnPage, type Schema } from "./coque-plan.ts";
+import "./coque.css";
+import { basculerRepli, choisirOnglet as choisir, fixerTaille, lireMiseEnPage, modeDe, panneauxDe, redimensionner, serialiser, tailleDe, vueDe, vueVoisine, type MiseEnPage, type Mode, type Schema } from "./coque-plan.ts";
+import { ic } from "./icones.ts";
 import { ecrire, lire, type Cle } from "../registre/stockage.ts";
 
 export type Poignee = {
@@ -29,12 +36,18 @@ export type Poignee = {
   zone: string;
   /** L'élément du panneau (aria-controls). */
   cible?: HTMLElement;
+  /** La grille où poser la poignée (défaut : le conteneur de la coque) — pour une découpe imbriquée. */
+  hote?: HTMLElement;
 };
 
 export type Coque = {
   mep(): MiseEnPage;
+  mode(): Mode;
   onglet(groupe: string): string;
   choisirOnglet(groupe: string, onglet: string): void;
+  /** La vue montrée en mode étroit. */
+  vue(): string;
+  choisirVue(id: string, focus?: boolean): void;
   /** Le JSON versionné de la mise en page (à copier, à joindre à un export). */
   exporter(): string;
   /** Recharge depuis un JSON ; rend les corrections faites. */
@@ -42,28 +55,28 @@ export type Coque = {
   reinitialiser(): void;
 };
 
-export const CSS_COQUE = `
-.coque-poignee { position: relative; z-index: 4; justify-self: start; align-self: stretch; width: 10px; margin-left: -5px; padding: 0; border: 0; background: transparent; cursor: col-resize; touch-action: none; }
-.coque-poignee::after { content: ""; position: absolute; inset: 0 4px; background: transparent; transition: background-color 0.12s; }
-.coque-poignee:hover::after, .coque-poignee:focus-visible::after, .coque-poignee[data-tire]::after { background: var(--st-accent, #5b8cff); }
-.coque-poignee:focus-visible { outline: none; }
-.coque-poignee[aria-orientation="horizontal"] { justify-self: stretch; align-self: start; width: auto; height: 10px; margin: -5px 0 0; cursor: row-resize; }
-.coque-poignee[aria-orientation="horizontal"]::after { inset: 4px 0; }
-body.coque-tire iframe { pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .coque-poignee::after { transition: none; } }
-`;
+export type OptionsCoque = {
+  schema: Schema;
+  cle: Cle;
+  poignees: Poignee[];
+  /** Les éléments des vues du mode étroit (un par enfant de la racine du plan). */
+  vues?: Record<string, HTMLElement>;
+  /** Libellé du groupe d'onglets du mode étroit. */
+  libelleVues?: string;
+  /** Les onglets du mode étroit se posent juste après cet élément (la barre d'outils : ordre de tabulation) ; défaut : en tête. */
+  apres?: HTMLElement;
+  auChangement?: (m: MiseEnPage) => void;
+  /** Le mode a changé (large ⇄ étroit), ou la vue montrée en étroit. */
+  auMode?: (mode: Mode, vue: string) => void;
+  /** Largeur de fenêtre (essais) ; défaut : `innerWidth`, suivi par `matchMedia`. */
+  largeur?: () => number;
+};
 
-let styleColle = false;
-
-export function monterCoque(racine: HTMLElement, o: { schema: Schema; cle: Cle; poignees: Poignee[]; auChangement?: (m: MiseEnPage) => void }): Coque {
-  if (!styleColle) {
-    styleColle = true;
-    const st = document.createElement("style");
-    st.textContent = CSS_COQUE;
-    document.head.append(st);
-  }
+export function monterCoque(racine: HTMLElement, o: OptionsCoque): Coque {
   const s = o.schema;
   let mep = lireMiseEnPage(lire(o.cle), s).mep;
+  const largeur = o.largeur ?? (() => window.innerWidth);
+  let mode: Mode = modeDe(s, largeur());
   let minuteur = 0;
   const garder = () => {
     clearTimeout(minuteur);
@@ -90,8 +103,9 @@ export function monterCoque(racine: HTMLElement, o: { schema: Schema; cle: Cle; 
     // Une découpe en ligne (côte à côte) a une poignée verticale.
     el.setAttribute("aria-orientation", d === "colonne" ? "horizontal" : "vertical");
     el.setAttribute("aria-label", p.libelle);
-    el.title = `${p.libelle} — tirer, ou ← → ; double-clic : par défaut ; Entrée : replier`;
+    el.title = `${p.libelle} — tirer, ou ${d === "colonne" ? "↑ ↓" : "← →"} ; double-clic : par défaut ; Entrée : replier`;
     el.style.gridArea = p.zone;
+    el.dataset.panneau = p.panneau;
     if (p.cible) {
       if (!p.cible.id) p.cible.id = `coque-${p.panneau}`;
       el.setAttribute("aria-controls", p.cible.id);
@@ -101,7 +115,7 @@ export function monterCoque(racine: HTMLElement, o: { schema: Schema; cle: Cle; 
       el.setAttribute("aria-valuemin", String(b.min));
       el.setAttribute("aria-valuemax", String(b.max));
     }
-    racine.append(el);
+    (p.hote ?? racine).append(el);
     const q = { ...p, el };
     brancher(q);
     return q;
@@ -162,24 +176,124 @@ export function monterCoque(racine: HTMLElement, o: { schema: Schema; cle: Cle; 
     });
   }
 
+  /* ── Mode étroit : des onglets, une vue à la fois ── */
+  const e = s.etroit;
+  const vuesEl = o.vues ?? {};
+  let liste: HTMLElement | null = null;
+  const onglets = new Map<string, HTMLButtonElement>();
+  if (e) {
+    liste = document.createElement("div");
+    liste.className = "coque-vues";
+    liste.setAttribute("role", "tablist");
+    liste.setAttribute("aria-label", o.libelleVues ?? "Panneaux");
+    for (const v of e.vues) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "coque-vue";
+      b.id = `coque-vue-${v.id}`;
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-label", v.libelle);
+      b.title = v.libelle;
+      b.dataset.vue = v.id;
+      b.innerHTML = ic(v.icone, 22);
+      const el = vuesEl[v.id];
+      if (el) {
+        if (!el.id) el.id = `coque-panneau-${v.id}`;
+        b.setAttribute("aria-controls", el.id);
+      }
+      b.addEventListener("click", () => choisirVue(v.id));
+      liste.append(b);
+      onglets.set(v.id, b);
+    }
+    liste.addEventListener("keydown", (ev) => {
+      const actuelle = (ev.target as HTMLElement).closest<HTMLElement>("[data-vue]")?.dataset.vue;
+      if (!actuelle) return;
+      let v: string | null = null;
+      if (ev.key === "ArrowRight") v = vueVoisine(s, actuelle, 1);
+      else if (ev.key === "ArrowLeft") v = vueVoisine(s, actuelle, -1);
+      else if (ev.key === "Home") v = e.vues[0]!.id;
+      else if (ev.key === "End") v = e.vues[e.vues.length - 1]!.id;
+      if (!v) return;
+      ev.preventDefault();
+      choisirVue(v, true);
+    });
+    if (o.apres) o.apres.after(liste);
+    else racine.prepend(liste);
+  }
+
+  function majVues() {
+    racine.dataset.coqueMode = mode;
+    if (!e) return;
+    const v = vueDe(mep, s);
+    racine.dataset.coqueVue = v;
+    for (const [id, b] of onglets) {
+      const sel = id === v;
+      b.setAttribute("aria-selected", String(sel));
+      b.tabIndex = sel ? 0 : -1;
+    }
+    for (const [id, el] of Object.entries(vuesEl)) {
+      if (mode === "etroit") {
+        el.setAttribute("role", "tabpanel");
+        el.setAttribute("aria-labelledby", `coque-vue-${id}`);
+        el.toggleAttribute("data-coque-cache", id !== v);
+      } else if (el.getAttribute("role") === "tabpanel") {
+        el.removeAttribute("role");
+        el.removeAttribute("aria-labelledby");
+        el.removeAttribute("data-coque-cache");
+      }
+    }
+  }
+
+  function choisirVue(id: string, focus = false) {
+    if (!e) return;
+    const avant = vueDe(mep, s);
+    mep = choisir(mep, e.groupe, id, s.onglets);
+    majVues();
+    if (focus) onglets.get(vueDe(mep, s))?.focus();
+    if (vueDe(mep, s) !== avant) {
+      garder();
+      o.auMode?.(mode, vueDe(mep, s));
+    }
+  }
+
+  if (e) {
+    // Le seuil est inclusif (≤ seuil : étroit), comme modeDe.
+    const mq = window.matchMedia(`(max-width: ${e.seuil}px)`);
+    const suivre = () => {
+      const m = o.largeur ? modeDe(s, largeur()) : mq.matches ? "etroit" : "large";
+      if (m === mode) return;
+      mode = m;
+      majVues();
+      o.auMode?.(mode, vueDe(mep, s));
+    };
+    mq.addEventListener("change", suivre);
+    if (!o.largeur) mode = mq.matches ? "etroit" : "large";
+  }
+
   appliquer(false);
+  majVues();
   return {
     mep: () => mep,
+    mode: () => mode,
     onglet: (g) => mep.onglets[g] ?? s.onglets[g]?.[0] ?? "",
     choisirOnglet(g, v) {
       mep = choisir(mep, g, v, s.onglets);
       garder();
     },
+    vue: () => vueDe(mep, s),
+    choisirVue,
     exporter: () => JSON.stringify(mep, null, 2),
     importer(json) {
       const r = lireMiseEnPage(json, s);
       mep = r.mep;
       appliquer();
+      majVues();
       return r.corrections;
     },
     reinitialiser() {
       mep = lireMiseEnPage(null, s).mep;
       appliquer();
+      majVues();
     },
   };
 }
