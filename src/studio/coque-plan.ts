@@ -51,6 +51,10 @@ const MIGRATIONS: Record<number, (m: Record<string, unknown>) => Record<string, 
 export function panneauxDe(n: Noeud): string[] {
   return n.type === "panneau" ? [n.id] : n.enfants.flatMap(panneauxDe);
 }
+/** Les nœuds qui ont une taille dans leur découpe (panneaux et découpes imbriquées ; pas la racine). */
+export function noeudsDe(n: Noeud): string[] {
+  return n.type === "panneau" ? [] : n.enfants.flatMap((e) => [e.id, ...noeudsDe(e)]);
+}
 function decoupesDe(n: Noeud): Decoupe[] {
   return n.type === "panneau" ? [] : [n, ...n.enfants.flatMap(decoupesDe)];
 }
@@ -137,7 +141,7 @@ export function lireMiseEnPage(brut: unknown, s: Schema): { mep: MiseEnPage; cor
     if (typeof x === "string" && possibles.includes(x)) mep.onglets[g] = x;
     else corrections.push(`onglet « ${String(x)} » inconnu dans ${g}`);
   }
-  const panneaux = new Set(panneauxDe(mep.racine));
+  const panneaux = new Set(noeudsDe(mep.racine));
   mep.replies = Array.isArray(o.replies) ? [...new Set((o.replies as unknown[]).filter((x): x is string => typeof x === "string" && panneaux.has(x)))] : [];
   return { mep, corrections };
 }
@@ -241,7 +245,10 @@ export function vueDe(m: MiseEnPage, s: Schema): string {
 
 /** Les panneaux montrés : en large, tous sauf les repliés ; en étroit, ceux de la vue choisie (repliés compris). */
 export function panneauxMontres(m: MiseEnPage, s: Schema, mode: Mode): string[] {
-  if (mode === "large" || !s.etroit) return panneauxDe(m.racine).filter((p) => !m.replies.includes(p));
+  if (mode === "large" || !s.etroit) {
+    const voir = (n: Noeud): string[] => (m.replies.includes(n.id) ? [] : n.type === "panneau" ? [n.id] : n.enfants.flatMap(voir));
+    return voir(m.racine);
+  }
   const v = vueDe(m, s);
   const n = m.racine.type === "decoupe" ? m.racine.enfants.find((e) => e.id === v) : m.racine;
   return n ? panneauxDe(n) : [];

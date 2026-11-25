@@ -187,3 +187,14 @@ test("coque E8 : forme courte (migration d'une ancienne largeur) — défaut + t
   assert.equal(tailleDe(r2.mep, "apercu"), null);
   assert.deepEqual(r2.corrections, ["diapos : 9000 px ramené à 640 px", "apercu : pas un panneau de taille fixe, ignoré", "notes : pas un panneau de taille fixe, ignoré", "inspecteur : taille illisible, défaut"]);
 });
+
+test("coque E8 : une découpe imbriquée a sa taille et se replie comme un panneau (gauche du Créateur), gardée à la relecture", () => {
+  const c = SCHEMA_CREATEUR;
+  const m = basculerRepli(c.defaut, "gauche");
+  assert.equal(tailleDe(m, "gauche"), 0);
+  const relu = lireMiseEnPage(serialiser(m), c).mep;
+  assert.deepEqual(relu.replies, ["gauche"]);
+  assert.deepEqual(panneauxMontres(relu, c, "large"), ["apercu", "inspecteur"]);
+  assert.deepEqual(panneauxMontres(relu, c, "etroit"), ["apercu"]);
+  assert.equal(tailleDe(basculerRepli(relu, "gauche"), "gauche"), 272);
+});

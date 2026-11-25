@@ -21,7 +21,7 @@
  * mode étroit. Aucun raccourci global : les touches ne jouent que sur la poignée ou l'onglet qui a le focus.
  */
 import "./coque.css";
-import { basculerRepli, choisirOnglet as choisir, fixerTaille, lireMiseEnPage, modeDe, panneauxDe, redimensionner, serialiser, tailleDe, vueDe, vueVoisine, type MiseEnPage, type Mode, type Schema } from "./coque-plan.ts";
+import { basculerRepli, choisirOnglet as choisir, fixerTaille, lireMiseEnPage, modeDe, noeudsDe, redimensionner, serialiser, tailleDe, vueDe, vueVoisine, type MiseEnPage, type Mode, type Schema } from "./coque-plan.ts";
 import { ic } from "./icones.ts";
 import { ecrire, lire, type Cle } from "../registre/stockage.ts";
 
@@ -83,7 +83,7 @@ export function monterCoque(racine: HTMLElement, o: OptionsCoque): Coque {
     minuteur = window.setTimeout(() => ecrire(o.cle, serialiser(mep)), 200);
   };
   const appliquer = (persister = true) => {
-    for (const id of panneauxDe(mep.racine)) {
+    for (const id of noeudsDe(mep.racine)) {
       const t = tailleDe(mep, id);
       if (t === null) racine.style.removeProperty(`--coque-${id}`);
       else racine.style.setProperty(`--coque-${id}`, `${t}px`);
