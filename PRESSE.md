@@ -474,7 +474,8 @@ Une clé renommée déclare ses `anciennes` : à la première lecture, l'ancienn
 retirée — seulement si l'écriture a réussi, jamais par-dessus une neuve. Migrées en E6 : `couloir:attributs`,
 `logos:instantanes`, `presse-diapo-createur:{notes,bande,largeur,export}`, `presse:orbite:{courant,reglages}` ;
 nouvelles : `presse:nav.recents@1`, `presse:nav.theme@1`, `presse:coque.studio-effet@1`, `presse:douceur.niveau@1`
-(M2, relue aussi par le script en tête de page). Les clés lues par un script
+(M2, relue aussi par le script en tête de page), `presse:coque.{diapo-createur,vitrine,createur}@1` (E8 ; la largeur
+`presse:diapo-createur.largeur@1` y est reprise comme taille du panneau des diapos, sans perte). Les clés lues par un script
 en tête de page, par l'export autonome des boutiques ou partagées par plusieurs modules sont gardées telles quelles et
 inventoriées (`src/registre/stockage-inventaire.ts`, avec la raison) ; `stockage.test.ts` échoue si une clé littérale
 du dépôt n'est pas inventoriée.
@@ -488,7 +489,22 @@ redirection déclarée dans `src/nav/redirections.ts`, écrite au build par `pre
 (découpes, tailles en px avec un enfant souple, onglets, panneaux repliés) en JSON versionné `{ "v": 1, … }`, bornée
 par l'application, gardée dans le navigateur ; poignées `role="separator"` au pointeur et au clavier (← → 16 px, Maj
 64 px, Début / Fin, Entrée replie, double-clic : défaut). Le Studio d'effet s'en sert (largeur de l'inspecteur, onglet
-HTML / JSON).
+HTML / JSON), et les trois éditeurs (E8) : Créateur de diaporama `ligne [diapos 200, aperçu, inspecteur 300]`, Vitrine
+`ligne [sections 300, aperçu, inspecteur 340]` (+ onglet Section / Style), Créateur `ligne [pages 160 / calques en
+colonne, aperçu, inspecteur 312]` (+ onglets Calques / Ajouter, Bloc / Site). Sous 860 px de large, un éditeur passe
+en **onglets** (`role="tablist"`, une icône par vue, ← → Début Fin) : une vue à la fois, la dernière choisie gardée ;
+tailles et replis reviennent au large. Le conteneur lit `--coque-<panneau>`, `data-coque-mode` (`large` | `etroit`),
+`data-coque-replie` ; couleurs par `--coque-accent`, `--coque-filet`, `--coque-panneau`, `--coque-actif`. La coque ne
+porte que la mise en page : chaque éditeur garde son modèle de document.
+
+**Rendu de schéma unique** (`src/studio/inspecteur-plan.ts` sans tête → `inspecteur.ts` → `inspecteur.css`) : un seul
+moteur pour l'inspecteur du Studio d'effet, l'inspecteur de Vitrine et les réglages live (`?presse-knobs`, ⌘⇧K).
+`planChamps(champs, valeurs)` (schéma partagé) ou `planInspecteur(fiche, état)` décrivent ; le même HTML habille les
+onze genres (curseur / temps / angle avec valeur exacte, plage, sélecteur en segments natifs ou liste — options de
+`source` —, bascule `role="switch"`, couleur + hexadécimal, texte ou zone `multiligne`, courbe avec l'éditeur de
+courbe chargé au premier dépliage, image et sa photothèque, liste à éléments repliables) ; deux habillages, `large`
+(libellé au-dessus) et `compact` (libellé à gauche) ; une peau = des variables `--st-*` sur l'hôte. Un champ réglé
+porte un point et un bouton « défaut » ; rien ne s'anime au clavier ni sous mouvement réduit.
 
 ## Composants
 

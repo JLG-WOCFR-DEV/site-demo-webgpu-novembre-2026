@@ -97,7 +97,7 @@ Chaque étape est livrable seule, avec `tsc`, tests, `valider` (0 erreur), build
 | E5 | 1.1 + 1.2 navigation unifiée + palette Ctrl+K | moyen (touche toutes les pages) |
 | E6 | 2.1 gabarit page d'effet + 3 effets pilotes | moyen |
 | E7 | 2.2 migration par lots | long |
-| E8 | 3.x Studio unifié | gros |
+| E8 | 3.x Studio unifié (coque + rendu de schéma dans les trois éditeurs : fait, §8) | gros |
 | E9 | 4.3 export PPTX | moyen |
 | E10 | 5.1/5.2 veille Paper, module HTML-in-Canvas | faible à moyen |
 
@@ -195,7 +195,7 @@ Décisions :
     onglets, replis, JSON `v: 1` + migrations, bornes par l'application, lien base64url) et DOM `src/studio/coque.ts`
     (poignées `role="separator"` pointeur + clavier, persistance). **studio-effet migré** : largeur de l'inspecteur
     (260–560 px), repli, onglet HTML / JSON gardés.
-  - Adoption par les trois éditeurs (à faire, E8) : **diapo-createur** remplace `--dc-left` et sa poignée maison par
+  - Adoption par les trois éditeurs (**fait en E8**, ci-dessous) : **diapo-createur** remplace `--dc-left` et sa poignée maison par
     un plan `ligne [diapos 200, aperçu souple, inspecteur 300]` (la clé `presse:diapo-createur.largeur@1` devient la
     taille du panneau, migration par `conversion`) ; **Vitrine** : `ligne [sections, aperçu, inspecteur]` + onglets
     d'inspecteur ; **Créateur** : `ligne [calques/pages en colonne, aperçu, inspecteur]`. Chacun garde son modèle de
@@ -212,7 +212,8 @@ Décisions :
   - **Limites** : le thème clair / sombre ne s'applique qu'à l'interface (menu, palette, Studio, Sampler Presse), pas
     aux démos ; « Réduire les animations » agit sur ce qui lit `matchMedia` (composants JS), pas sur les `@media` CSS
     (classe `presse-anim-reduite` disponible) ; Ctrl+K pris à Chrome / Firefox (recherche) ; le menu se construit
-    encore en JS (sans JS : pas de menu, comme avant) ; coque adoptée par studio-effet seulement.
+    encore en JS (sans JS : pas de menu, comme avant) ; coque adoptée par studio-effet seulement (les trois éditeurs :
+    E8).
 - **E7a Fiches, coûts, veille, HTML-in-Canvas, inspecteur.** **Fait (2026-11-25).**
   - Fiches Studio des 11 effets restants (`src/registre/parametres/` : systeme, lightbox, vague, metal, voix, logo,
     dechirure, forme, autocollant, rail, trace) : 17 / 17. Attributs, défauts et bornes lus dans chaque module et
@@ -289,14 +290,57 @@ Décisions :
   laissé (`data-douceur-cede` : 19 sur la Vitrine) ; la copie des onglets double le texte pour la recherche dans la
   page ; démo du Studio avec trois `onclick` ; pas encore d'adoption au-delà de la page d'essai ; M3 (opportunités dans
   le Studio) et M4 (lectures complémentaires) restent.
+- **E8 Coque et rendu de schéma dans les trois éditeurs.** **Fait (2026-11-25).**
+  - Coque (`coque-plan.ts`) : mode **étroit** (≤ 860 px, `SEUIL_ETROIT`) en onglets, une vue par enfant de la racine,
+    vue gardée comme un onglet ; forme courte `{ v, tailles }` pour migrer une ancienne largeur ; `verifierSchema`
+    (plan, bornes, vues) ; une découpe imbriquée a sa variable et se replie (`noeudsDe`). DOM (`coque.ts`, CSS dans
+    `coque.css`) : `role="tablist"` / `tab` / `tabpanel` le temps du mode étroit, icônes (nom en `aria-label` et en
+    infobulle), ← → Début Fin à activation automatique, poignée posable dans une grille imbriquée (`hote`) ; aucun
+    écouteur global (les raccourcis du registre ne bougent pas : Ctrl+K vérifié sur les trois éditeurs).
+  - **Créateur de diaporama** : `ligne [diapos 200 (130–640), aperçu, inspecteur 300 (240–560)]` ; `--dc-left` et sa
+    poignée maison supprimés ; `presse:diapo-createur.largeur@1` (et `presse-diapo-createur:largeur`) migrée par
+    `conversion` vers `presse:coque.diapo-createur@1`, sans perte (testé : 240, 312,6 → 313, 131, stockage plein,
+    neuve déjà là, illisible) ; bande de vignettes et trieuse gardées (zones de grille nommées). À 390 px : onglets
+    Diapos / Aperçu / Réglages, débordement **110 px → 0** (la barre d'outils défile en elle-même).
+  - **Vitrine** : `ligne [sections 300 (220–520), aperçu, inspecteur 340 (280–600)]`, onglet Section / Style gardé ;
+    l'empilement sous 1100 px remplacé par les onglets sous 860 px ; le lien d'évitement ouvre l'inspecteur.
+  - **Créateur** : `ligne [gauche 272 (220–480) = pages 160 (72–480) / calques en colonne, aperçu, inspecteur 312
+    (260–560)]`, trois poignées dont une horizontale, onglets Calques / Ajouter et Bloc / Site gardés ; l'empilement
+    sous 820 px remplacé par les onglets.
+  - **Rendu de schéma unique** (§8 décision 5, §9.1) : `inspecteur-plan.ts` (sans tête : `planChamps`,
+    `planInspecteur`, `planElement`, `htmlChamp`, `htmlGroupes`) → `inspecteur.ts` (`monterChamps`, un branchement ;
+    `monterInspecteur` du Studio en est un adaptateur) → `inspecteur.css` (habillages `large` et `compact`, peau
+    `--st-*`). Onze genres ; Vitrine : son inspecteur (207 lignes) devient un adaptateur de 50 lignes (icônes,
+    sources, photothèque, `inspecteur-rendu.ts`), styles `vi-*` retirés, le nom de la marque est un champ du schéma ;
+    knobs : chaque réglage devient un champ, habillage compact, moteur chargé à la première ouverture (⌘⇧K).
+  - Tests : 467 → 481 (`coque.test.ts` : plans des trois éditeurs, bornes, bascule étroit, forme courte, découpe
+    repliée ; `stockage.test.ts` : migration de la largeur ; `rendu-schema.test.ts` : chaque genre, chaque section et
+    variante de Vitrine, jetons, compact ; `diapo-export/empreintes.test.ts` : SHA-256 du modèle, du PPTX et du HTML
+    autonome de diapo-demos et conference, relevées avant E8, inchangées). Playwright : 145 vérifications (3 éditeurs +
+    studio-effet × 1440 / 390 × clair / sombre) : 0 erreur console, 0 débordement, poignées clavier et pointeur, repli
+    et restauration après rechargement, onglets en étroit au clavier et au pointeur, vue gardée, retour au large.
+    Référence visuelle `createur-sans-webgpu` réécrite (960 px : colonnes de la coque au lieu de 230 / 280).
+  - Poids (JS gzip, `npm run budgets`, avant → après) : diapo-createur 51,2 → 57,5 ; Vitrine 141,9 → 155,0 ;
+    Créateur 93,6 → 101,4 ; studio-effet 77,9 → 77,3 (éditeur de courbe différé) ; lave 69,7 → 70,3 (knobs différés).
+    Tous sous 250 ko. Coque + plans : 3,8 ko ; icônes du Studio : 2,5 ko ; rendu de schéma : 6,4 ko + état 1,7 ko.
+    Avertissements du validateur : 466 → 458.
+  - **Limites** : les éditeurs gardent leurs couleurs propres (clair / sombre de l'interface non appliqué à Vitrine,
+    au Créateur ni au Créateur de diaporama) ; à 390 px, la barre du Créateur de diaporama défile horizontalement (les
+    outils de l'élément ne se replient pas) ; tailles par défaut identiques de 861 à 1440 px (à 960 px l'aperçu du
+    Créateur rétrécit : 376 px) ; Vitrine marque maintenant « réglé » un champ qui diffère du défaut du schéma, même
+    s'il vient d'un préréglage ; aria-valuetext d'un curseur dans un élément de liste sans unité pendant le geste.
+  - **Dette restante** : le menu Exporter du Créateur de diaporama (`exporter.ts`) et l'inspecteur du Créateur
+    (`model.ts`, champs `Field`) ont encore leur propre rendu de schéma ; l'adaptateur Studio (`planInspecteur`,
+    `etat.ts`) part avec Vitrine (1,7 ko) ; icônes de la coque prises dans tout `icones.ts` ; ni annuler / rétablir ni
+    palette communs (§8 décision 5).
 - Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre (fait, E7a), budget JS par page (fait, E7a), a11y (priorité mouvement réduit vs `data-diapo-motion`).
 
 ## 9. Enseignements de référence (GPUI Kit / gpui-component, skills Longbridge — 2026-11-23)
 
 Retenu, par priorité :
-1. **Comportement sans style / peau** : un seul moteur de rendu de schéma (headless), des peaux Studio, Vitrine, Créateur en CSS. Prolonge E4 (`inspecteur-plan.ts` pur → `inspecteur.ts`) ; à étendre aux knobs et à l'inspecteur Vitrine (E6).
+1. **Comportement sans style / peau** : un seul moteur de rendu de schéma (headless), des peaux Studio, Vitrine, Créateur en CSS. Prolonge E4 (`inspecteur-plan.ts` pur → `inspecteur.ts`) ; étendu aux knobs et à l'inspecteur Vitrine (fait, E8 ; reste l'inspecteur du Créateur et le menu Exporter du diaporama).
 2. **Galerie de stories = Sampler Presse** (fait, E4) + **mode inspecteur** activable : surligner les éléments armés, lire leurs `data-*` en direct (fait, E7a).
-3. **Coque à panneaux sérialisable** : mise en page (splits, onglets, tailles) en JSON versionné, comme `#v=` ; base de la coque commune des trois éditeurs (E6).
+3. **Coque à panneaux sérialisable** : mise en page (splits, onglets, tailles) en JSON versionné, comme `#v=` ; base de la coque commune des trois éditeurs (E6 ; adoptée par les trois en E8, onglets en étroit).
 4. **Tests UI headless clavier/souris + a11y dans la couche comportement** : Playwright sur le moteur de schéma (Tab, flèches, Échap, focus visible), en plus de `node:test` (E4/E6).
 5. **Distribution agent** : serveur MCP + CLI `presse` branchés sur le registre (`effets`, `valider`, `ajouter`, `parametres`), skill installable, écritures confirmées en deux temps (fait en E7b, §8).
 6. **Recettes exécutables** (site éditorial, diaporama, boutique) vérifiées par `npm run valider` en CI pour ne pas dériver de PRESSE.md.
