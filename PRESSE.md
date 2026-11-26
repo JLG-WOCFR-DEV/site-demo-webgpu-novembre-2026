@@ -648,6 +648,33 @@ disent où mènent cartes et collections ; événements `vitrine:ajout`, `vitrin
 (`ouvrirPanier`, `ouvrirProduit`, `magasin`) ; `formulaireAchat` (sections/avant.ts) et `carte` (sections/produits.ts)
 se réemploient tels quels.
 
+## Vérificateur GPU : `npm run gpu:verifier`
+
+Compile, dans le vrai Dawn (paquet `webgpu`, WebGPU natif sans navigateur), **tous les shaders WGSL que les pages du
+build créent au chargement** : donc après le minifieur WGSL (`presse/build/wgsl.ts`), gabarits interpolés compris.
+Chaque page de `dist/` est chargée dans Chromium avec un faux `navigator.gpu` qui enregistre le code de chaque
+`createShaderModule` ; les sources sont dédoublonnées puis compilées ; le rapport donne l'extrait fautif (le WGSL du
+build tient sur une ligne : l'extrait est pris autour du décalage signalé par Dawn, pas par numéro de ligne).
+
+```
+npm run build && npm run gpu:verifier          # 54 modules uniques sur ~120 créés, ~40 s
+npm run gpu:verifier -- --pages lave.html,grille.html --json
+```
+
+Codes de sortie : 0 (tout compile, ou **sauté** faute d'adaptateur, avec la marche à suivre), 1 (erreur de compilation),
+3 (pas de build), 4 (erreur interne), 5 (pas d'adaptateur avec `--exiger`, pour une CI qui doit réellement vérifier).
+
+Il faut un adaptateur : le GPU de la machine, sinon un pilote Vulkan logiciel (lavapipe). Sous Linux, le vérificateur le
+cherche tout seul : `VK_ICD_FILENAMES` déjà fixé, Mesa du système (`apt install mesa-vulkan-drivers`), ou le cache de
+`npx vgpu install-software-renderer` (≈ 20 Mo, sha256 vérifié, `VGPU_CACHE_DIR` pour le déplacer).
+
+**Limites.** Seuls sont vus les shaders créés au chargement ou au défilement (pas ceux qui naissent d'une interaction) ;
+une compilation réussie ne prouve pas que l'effet s'affiche juste (le rendu d'une image par effet, avec des textures
+synthétiques, reste à faire) ; le WebGPU *dans* Chromium sans écran n'est pas utilisable ici (adaptateur SwiftShader
+présent avec le Chromium complet, mais le canvas reste vide : « A valid external Instance reference no longer exists »).
+Piège : ouvrir Dawn puis lancer Chromium dans le même processus fait avorter Node ; la sonde (`sonde.mjs`) et l'essai
+(`essai-dawn.mjs`) tournent donc à part, et Dawn ne s'ouvre qu'après la capture.
+
 ## Contrôler une page : `npm run check`
 
 `tools/presse-check.mjs` (serveur de prévisualisation lancé) passe chaque page au crible, et écrit

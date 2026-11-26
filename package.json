@@ -11,7 +11,7 @@
     "bake": "node tools/bake.mjs && python3 tools/msdf.py && node tools/bake.mjs",
     "preview": "vite preview --host 0.0.0.0 --port 8080",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test 'src/**/*.test.ts' 'tools/presse/*.test.ts'",
+    "test": "node --experimental-strip-types --test 'src/**/*.test.ts' 'tools/presse/*.test.ts' 'tools/gpu-verifier/*.test.ts'",
     "images": "python3 tools/images.py",
     "test:visual": "node tools/visual/run.mjs",
     "check": "node tools/presse-check.mjs",
@@ -24,7 +24,8 @@
     "veille:paper": "node tools/veille-paper.mjs",
     "mouvement:audit": "node tools/mouvement-audit.mjs",
     "presse": "node tools/presse/cli.mjs",
-    "presse:mcp": "node tools/presse/mcp.mjs"
+    "presse:mcp": "node tools/presse/mcp.mjs",
+    "gpu:verifier": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/gpu-verifier.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
@@ -41,7 +42,8 @@
     "playwright": "1.62",
     "pngjs": "^7.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "webgpu": "^0.6.2"
   },
   "dependencies": {
     "@paper-design/shaders": "0.0.82",

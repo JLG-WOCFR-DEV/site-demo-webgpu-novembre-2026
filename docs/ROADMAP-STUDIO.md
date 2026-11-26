@@ -247,6 +247,16 @@ Décisions :
     tranché (chromestatus non lu) ; logo : seuls les 3 réglages « principaux » par matière (le reste dans logos.html) ;
     déchirure : la forme « coupe » (deux images) n'a pas de démo ; aperçu sans moteur Presse : la vague n'y est qu'un
     fondu. E7b (serveur MCP + CLI `presse`) : fait, ci-dessous.
+- **Vérificateur GPU (suite du regard sur vgpu et UI SDK, 2026-11-26).** **Fait.** `npm run gpu:verifier` : capture du
+  WGSL créé par les 41 pages du build (faux `navigator.gpu` dans Chromium), dédoublonnage, compilation dans Dawn
+  (`webgpu` en devDependency, pilote logiciel lavapipe hors dépôt). Mesuré : 54 modules uniques sur 123 créés,
+  54 compilent, 0 avertissement, ~37 s ; une faute injectée (`vec4q`) est signalée avec son extrait, code 1 ; sans
+  adaptateur : saut, code 0 (5 avec `--exiger`). Tests : `tools/gpu-verifier/*.test.ts` (cœur pur ; essai Dawn dans
+  un processus à part, sauté sans adaptateur). **Pas fait** : rendu d'une image par effet avec textures synthétiques ;
+  WebGPU à l'écran dans Chromium (canvas vide avec SwiftShader) ; primitives de comportement partagées (roving focus,
+  listbox + typeahead, reorder, viewport) extraites de l'existant ; contrat ARIA / actions du Studio avec tests par
+  rôles ; `presse doctor` ; comparaison avec `@vgpu/wgsl-std`. UI SDK (bêta) : à lire comme spécification, pas comme
+  dépendance.
 - **E7b CLI `presse` et serveur MCP.** **Fait (2026-11-25).**
   - Cœur commun `tools/presse/coeur.ts` (pur : lecture du dépôt seulement) : `listerEffets`, `decrireEffet`,
     `chercher` (la recherche floue de la palette), `parametresEffet`, `valider` (tools/valider), `courbes` /

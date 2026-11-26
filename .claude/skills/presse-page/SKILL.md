@@ -21,6 +21,7 @@ erreur.
 | Options fines d'un module | l'en-tête de `src/presse/<module>.ts` | souvent plus complet que PRESSE.md (voir « Pièges ») |
 | Réglages d'un effet (Studio) | `src/registre/parametres/<id>.ts` (fiche : paramètres typés + démo), champ `parametres` du manifeste | `studio-effet.html?effet=<id>` : régler à l'œil, puis « copier les attributs » (Maj+A) ; tous les effets du registre (I : inspecteur d'éléments) |
 | Coût d'un effet, budget d'une page | `src/registre/couts.json` (`npm run mesurer:effets` après build), `tools/valider/budgets.json` | `npm run budgets` ; avertissement `budget` de `npm run valider` (250 ko gzip par défaut) |
+| Compilation des shaders du build | `tools/gpu-verifier.mjs`, `tools/gpu-verifier/` (PRESSE.md, « Vérificateur GPU ») | `npm run build && npm run gpu:verifier` : compile dans Dawn le WGSL créé par chaque page (saute sans adaptateur) |
 | HTML-in-Canvas | `src/html-in-canvas.ts` (seul module qui touche à l'API) | `detecter()` : oui / repli / non ; jamais de test à la main |
 | Tout cela, sans lire la doc | CLI `presse` et serveur MCP (`tools/presse/`, cœur `coeur.ts` sur le registre ; PRESSE.md, « CLI et MCP ») | `npm run -s presse -- effet <id>` / `parametres <id>` / `chercher <texte>` / `valider <page>` (`--json`) ; ajouter un effet : `presse ajouter <page> <effet> --option cle=valeur` montre le diff, `--ecrire` écrit (refusé si l'ajout introduit une erreur) ; en MCP : `ajouter_preparer` → montrer le diff → `ajouter_confirmer(jeton)` |
 

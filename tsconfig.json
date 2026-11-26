@@ -13,5 +13,5 @@
     "resolveJsonModule": true,
     "types": ["vite/client", "@webgpu/types", "node"]
   },
-  "include": ["src", "presse", "tools/presse", "vite.config.ts"]
+  "include": ["src", "presse", "tools/presse", "tools/gpu-verifier/coeur.ts", "tools/gpu-verifier/coeur.test.ts", "vite.config.ts"]
 }
