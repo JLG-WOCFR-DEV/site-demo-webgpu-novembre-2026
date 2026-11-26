@@ -131,7 +131,7 @@ test("mcp : ressources — skill presse-page, catalogue, registre", async () => 
   const cat = JSON.parse((await serveur.requete("resources/read", { uri: "presse://catalogue" })).result.contents[0].text);
   assert.equal(cat.version, 1);
   assert.ok(cat.attributes.some((a: { name: string }) => a.name.includes("data-goo")));
-  assert.equal(JSON.parse((await serveur.requete("resources/read", { uri: "presse://registre" })).result.contents[0].text).length, 18);
+  assert.equal(JSON.parse((await serveur.requete("resources/read", { uri: "presse://registre" })).result.contents[0].text).length, 19);
   assert.equal((await serveur.requete("resources/read", { uri: "presse://rien" })).error?.code, -32002);
   assert.deepEqual((await serveur.requete("resources/templates/list")).result, { resourceTemplates: [] });
 });

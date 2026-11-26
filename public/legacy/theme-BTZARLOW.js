@@ -260,9 +260,9 @@ var O = {
 			js: 9.9,
 			differe: 0,
 			fichiers: [
-				"assets/goo-BquMH6sv.js",
-				"assets/goo-CgCgnBwj.js",
-				"assets/schema-CGStE9UC.js"
+				"assets/goo-CIfO9mcB.js",
+				"assets/goo-DLCvLggT.js",
+				"assets/schema-BXzSrKdr.js"
 			]
 		},
 		metal: {
@@ -302,9 +302,9 @@ var O = {
 			js: 13.1,
 			differe: 11.7,
 			fichiers: [
-				"assets/couloir-CNAatuys.js",
-				"assets/couloir-DBbrB7gs.js",
-				"assets/schema-CGStE9UC.js"
+				"assets/couloir-BdG38inA.js",
+				"assets/couloir-Cyv7Fj7S.js",
+				"assets/schema-BXzSrKdr.js"
 			]
 		},
 		logo: {
@@ -350,6 +350,11 @@ var O = {
 			js: 5,
 			differe: 0,
 			fichiers: ["assets/douceur-W_MUKAA-.js"]
+		},
+		verre: {
+			js: 3.2,
+			differe: 0,
+			fichiers: ["assets/verre-BkugyQcy.js"]
 		}
 	}
 }.effets, k = ({ gpu: e, ...t }) => ({
@@ -802,6 +807,33 @@ var O = {
 		resume: "Micro-interactions légères et optionnelles : appui, entrée, survol, cascade, révélation, onglets, flou, maintien.",
 		exemple: "vitrine-maison.html",
 		parametres: () => import("./douceur-DCcHFbRA.js")
+	}),
+	k({
+		id: "verre",
+		nom: "Verre",
+		categorie: "interface",
+		selecteur: "[data-verre], [data-verre-groupe]",
+		attributs: [
+			"data-verre",
+			"data-verre-groupe",
+			"data-verre-refraction",
+			"data-verre-flou",
+			"data-verre-biseau",
+			"data-verre-ressort",
+			"data-verre-teinte",
+			"data-verre-etat",
+			"data-verre-appui",
+			"data-verre-arme"
+		],
+		charger: () => import("./verre-D2Dolm9P.js"),
+		armer: (e, t) => e.initVerre(t),
+		manuel: !0,
+		rendu: "DOM",
+		gpu: "aucun",
+		statut: "essai",
+		module: "src/presse/verre.ts",
+		resume: "Verre liquide : un bouton, des onglets, une carte qui réfractent le fond, avec reflet de bord et ressort à l'appui.",
+		parametres: () => import("./verre-BsImQ5Ql.js")
 	})
 ], j = [
 	{

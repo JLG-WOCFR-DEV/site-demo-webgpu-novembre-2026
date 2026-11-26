@@ -345,6 +345,21 @@ Décisions :
     palette communs (§8 décision 5).
 - Transverse : versions `v` dans `?systeme=` et `#v=`, coût GPU dans le registre (fait, E7a), budget JS par page (fait, E7a), a11y (priorité mouvement réduit vs `data-diapo-motion`).
 
+### Verre liquide (Liquid Glass UI, onemorethink.dev, 2026-11-26)
+
+**Fait.** Effet « Verre » (`data-verre`, `src/presse/verre.ts` + `verre.css`, fiche Studio, PRESSE.md « Verre ») : réfraction sur le
+bord (`backdrop-filter: url(#filtre)`, SVG `feDisplacementMap`, carte de déplacement `carte()` calculée par taille), flou,
+reflet de bord qui suit le pointeur, retour d'appui à ressort (`ressort()` → `linear()`), matériau clair ou teinté, groupe
+`data-verre-groupe` qui règle ses verres, états `refracte` / `flou` / `plat` (moteur sans filtre SVG : flou ; moins de
+transparence : plat). 3,2 ko de JS, aucun coût GPU.
+**Retenu de la bibliothèque :** la réfraction concentrée sur le bord (le centre laisse passer), le ressort réglé par ζ, le
+repli quand le moteur ne sait pas, les matériaux clair / teinté, la doc faite pour les agents (nous l'avons déjà : `llms.txt`,
+CLI, MCP, skill). **Pas repris :** le renderer WebGL2 partagé et les composants React (le fond y est dessiné, pas celui du DOM ;
+son code n'est pas documenté dans ce que j'ai pu lire), le copier-coller shadcn. **Non vu sur un écran réel** : mesuré par
+capture Chromium (centre identique à réfraction 0, bord différent) ; la déformation est discrète sous le flou par défaut.
+**Reste :** une variante « goutte » (bouton qui fond), l'indicateur d'onglet en lentille, le verre sur un canvas WebGPU (coût du
+`backdrop-filter` par image, à mesurer), un contraste vérifié automatiquement sous le verre.
+
 ## 9. Enseignements de référence (GPUI Kit / gpui-component, skills Longbridge — 2026-11-23)
 
 Retenu, par priorité :

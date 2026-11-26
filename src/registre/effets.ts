@@ -479,4 +479,24 @@ export const EFFETS: readonly Manifeste<any>[] = [
     exemple: "vitrine-maison.html",
     parametres: () => import("./parametres/douceur.ts"),
   }),
+  // Surfaces de verre qui réfractent le fond (d'après Liquid Glass UI, MIT) : CSS et SVG, aucun canvas.
+  effet({
+    id: "verre",
+    nom: "Verre",
+    categorie: "interface",
+    selecteur: "[data-verre], [data-verre-groupe]",
+    attributs: [
+      "data-verre", "data-verre-groupe", "data-verre-refraction", "data-verre-flou", "data-verre-biseau", "data-verre-ressort",
+      "data-verre-teinte", "data-verre-etat", "data-verre-appui", "data-verre-arme",
+    ],
+    charger: () => import("../presse/verre.ts"),
+    armer: (m, racine) => m.initVerre(racine),
+    manuel: true,
+    rendu: "DOM",
+    gpu: "aucun",
+    statut: "essai",
+    module: "src/presse/verre.ts",
+    resume: "Verre liquide : un bouton, des onglets, une carte qui réfractent le fond, avec reflet de bord et ressort à l'appui.",
+    parametres: () => import("./parametres/verre.ts"),
+  }),
 ];
