@@ -352,9 +352,9 @@ var O = {
 			fichiers: ["assets/douceur-W_MUKAA-.js"]
 		},
 		verre: {
-			js: 3.2,
-			differe: 0,
-			fichiers: ["assets/verre-BkugyQcy.js"]
+			js: 3.6,
+			differe: 32.5,
+			fichiers: ["assets/verre-DNJzX7Y0.js"]
 		}
 	}
 }.effets, k = ({ gpu: e, ...t }) => ({
@@ -816,24 +816,28 @@ var O = {
 		attributs: [
 			"data-verre",
 			"data-verre-groupe",
+			"data-verre-moteur",
+			"data-verre-vivant",
+			"data-verre-voile",
 			"data-verre-refraction",
 			"data-verre-flou",
 			"data-verre-biseau",
 			"data-verre-ressort",
 			"data-verre-teinte",
 			"data-verre-etat",
+			"data-verre-mat",
 			"data-verre-appui",
 			"data-verre-arme"
 		],
-		charger: () => import("./verre-D2Dolm9P.js"),
+		charger: () => import("./verre-ahqpndC2.js"),
 		armer: (e, t) => e.initVerre(t),
 		manuel: !0,
 		rendu: "DOM",
 		gpu: "aucun",
 		statut: "essai",
 		module: "src/presse/verre.ts",
-		resume: "Verre liquide : un bouton, des onglets, une carte qui réfractent le fond, avec reflet de bord et ressort à l'appui.",
-		parametres: () => import("./verre-BsImQ5Ql.js")
+		resume: "Verre qui réfracte le fond : reflet de bord, ressort à l'appui ; en option, le moteur WebGL2 de Liquid Glass UI.",
+		parametres: () => import("./verre-DA1djhXL.js")
 	})
 ], j = [
 	{

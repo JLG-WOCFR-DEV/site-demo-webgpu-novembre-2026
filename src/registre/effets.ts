@@ -479,15 +479,16 @@ export const EFFETS: readonly Manifeste<any>[] = [
     exemple: "vitrine-maison.html",
     parametres: () => import("./parametres/douceur.ts"),
   }),
-  // Surfaces de verre qui réfractent le fond (d'après Liquid Glass UI, MIT) : CSS et SVG, aucun canvas.
+  // Surfaces de verre qui réfractent le fond (d'après Liquid Glass UI, MIT) : CSS et SVG ; en option, leur moteur WebGL2.
   effet({
     id: "verre",
     nom: "Verre",
     categorie: "interface",
     selecteur: "[data-verre], [data-verre-groupe]",
     attributs: [
-      "data-verre", "data-verre-groupe", "data-verre-refraction", "data-verre-flou", "data-verre-biseau", "data-verre-ressort",
-      "data-verre-teinte", "data-verre-etat", "data-verre-appui", "data-verre-arme",
+      "data-verre", "data-verre-groupe", "data-verre-moteur", "data-verre-vivant", "data-verre-voile", "data-verre-refraction", "data-verre-flou",
+      "data-verre-biseau", "data-verre-ressort", "data-verre-teinte", "data-verre-etat", "data-verre-mat", "data-verre-appui",
+      "data-verre-arme",
     ],
     charger: () => import("../presse/verre.ts"),
     armer: (m, racine) => m.initVerre(racine),
@@ -496,7 +497,7 @@ export const EFFETS: readonly Manifeste<any>[] = [
     gpu: "aucun",
     statut: "essai",
     module: "src/presse/verre.ts",
-    resume: "Verre liquide : un bouton, des onglets, une carte qui réfractent le fond, avec reflet de bord et ressort à l'appui.",
+    resume: "Verre qui réfracte le fond : reflet de bord, ressort à l'appui ; en option, le moteur WebGL2 de Liquid Glass UI.",
     parametres: () => import("./parametres/verre.ts"),
   }),
 ];

@@ -360,6 +360,17 @@ capture Chromium (centre identique à réfraction 0, bord différent) ; la défo
 **Reste :** une variante « goutte » (bouton qui fond), l'indicateur d'onglet en lentille, le verre sur un canvas WebGPU (coût du
 `backdrop-filter` par image, à mesurer), un contraste vérifié automatiquement sous le verre.
 
+**Moteur Liquid Glass en option (2026-11-28). Fait.** `data-verre-moteur="liquide"` (sur le verre ou son groupe) pose la couche
+WebGL2 de la bibliothèque elle-même : `engine.ts` et `dom-snapshot.ts` repris octet pour octet (commit `96b14d1`, empreintes
+vérifiées par `src/vendor/liquid-glass/vendor.test.ts`, une ligne `@ts-nocheck` ajoutée), le corps de `GlassLayer` sans React
+généré par `tools/vendor-liquid-glass.py` (remplacements vérifiés), une enveloppe Presse `monterCouche()`. Chargée à la demande :
+32,5 ko gzip différés, 0 pour les pages qui ne la demandent pas. Correspondance des réglages `optionsLiquide` (réfraction ÷ 44,
+biseau ÷ 18, flou, teinte, `-voile` → tint, `-vivant` → live ; le ressort ζ reste au moteur CSS). Vu dans Chromium (WebGL2
+SwiftShader) : réfraction de bord, lueur et gonflement à l'appui, retour au CSS propre ; sans WebGL2 ou avec moins de
+transparence, le verre CSS reste. Corrigé au passage : le matériau hérité d'un groupe ne teintait pas (`data-verre-mat`).
+**Pas repris :** les 14 composants React (Tabs en lentille, Slide to Confirm, Search à couches, menus qui se déploient, Switch,
+Slider, Checkbox) : React 19 + UI SDK bêta + three.js. Candidats à porter un par un sur la couche, Search et Tabs d'abord.
+
 ## 9. Enseignements de référence (GPUI Kit / gpui-component, skills Longbridge — 2026-11-23)
 
 Retenu, par priorité :

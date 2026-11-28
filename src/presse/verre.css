@@ -4,6 +4,9 @@
  *   [data-verre-etat="refracte"]  le moteur accepte un filtre SVG dans backdrop-filter : fond déformé au bord ;
  *   [data-verre-etat="flou"]      repli : flou, saturation, teinte et reflet, sans déformation ;
  *   [data-verre-etat="plat"]      moins de transparence demandé, ou pas de backdrop-filter : fond plein ;
+ *   [data-verre-etat="liquide"]   moteur Liquid Glass (option) : la couche WebGL2 dessine tout dès sa première image
+ *                                 (`data-glass-ready` ; sa feuille GLASS_CSS retire fond, bordure, ombre et flou) ;
+ *   [data-verre-mat]              le matériau résolu (l'élément, ou son groupe) : clair, teinte ;
  *   [data-verre-appui]            le pointeur appuie : scale .96, 120 ms ; au relâchement le ressort (linear()).
  * Variables (posées par le module d'après les attributs) : --verre-filtre, --verre-flou, --verre-teinte,
  * --verre-ressort, --verre-duree-ressort, --verre-lx / --verre-ly (reflet) ; à écrire dans la page : --verre-encre.
@@ -32,7 +35,7 @@
   transition-timing-function: var(--verre-ressort, var(--presse-ease-sortie));
 }
 
-:where([data-verre="teinte"]) {
+:where([data-verre="teinte"], [data-verre-mat="teinte"]) {
   background: color-mix(in srgb, var(--verre-teinte, #7aa8ff) 30%, transparent);
 }
 
@@ -73,7 +76,7 @@
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
-:where([data-verre-etat="plat"][data-verre="teinte"]) {
+:where([data-verre-etat="plat"]:is([data-verre="teinte"], [data-verre-mat="teinte"])) {
   background: color-mix(in srgb, var(--verre-teinte, #7aa8ff) 70%, #fff);
 }
 :where([data-verre-etat="plat"])::after {
@@ -87,4 +90,13 @@
     scale: none;
     transition-property: none;
   }
+}
+
+/* Moteur liquide : avant la première image de la couche, le verre CSS fait l'attente ; ensuite la couche dessine le
+ * reflet de bord elle-même. Elle écrit l'échelle de l'hôte à chaque image : aucune transition ne doit la lisser. */
+:where([data-verre-etat="liquide"]) {
+  transition-property: none;
+}
+:where([data-verre-etat="liquide"][data-glass-ready])::after {
+  display: none;
 }

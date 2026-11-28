@@ -19,6 +19,56 @@ var e = {
 			aide: "Clair : le fond traverse. Teinté : un voile de couleur, utile pour la lisibilité du texte."
 		},
 		{
+			cle: "moteur",
+			type: "selecteur",
+			libelle: "Moteur",
+			groupe: "Verre",
+			affichage: "segments",
+			options: [{
+				valeur: "css",
+				libelle: "CSS"
+			}, {
+				valeur: "liquide",
+				libelle: "Liquid Glass"
+			}],
+			defaut: "css",
+			attribut: "data-verre-moteur",
+			aide: "CSS : backdrop-filter et filtre SVG, aucun canvas. Liquid Glass : le moteur WebGL2 de Liquid Glass UI (MIT), chargé à la demande ; sans WebGL2, le verre CSS reste."
+		},
+		{
+			cle: "vivant",
+			type: "interrupteur",
+			libelle: "Fond animé",
+			groupe: "Verre",
+			defaut: !1,
+			attribut: "data-verre-vivant",
+			si: {
+				champ: "moteur",
+				valeurs: ["liquide"]
+			},
+			ecriture: {
+				oui: "",
+				non: null
+			},
+			aide: "Repeint le fond à chaque image (vidéo, canvas qui bouge derrière le verre). Plus coûteux."
+		},
+		{
+			cle: "voile",
+			type: "curseur",
+			libelle: "Voile",
+			groupe: "Verre",
+			min: 0,
+			max: 1,
+			pas: .02,
+			defaut: .6,
+			attribut: "data-verre-voile",
+			si: {
+				champ: "moteur",
+				valeurs: ["liquide"]
+			},
+			aide: "Couvrance du voile du verre clair : 0 laisse tout passer, 1 couvre. Blanc sur une page claire, noir sur une page sombre (ou la teinte)."
+		},
+		{
 			cle: "teinte",
 			type: "couleur",
 			libelle: "Teinte",
@@ -80,6 +130,10 @@ var e = {
 			pas: .02,
 			defaut: .42,
 			attribut: "data-verre-ressort",
+			si: {
+				champ: "moteur",
+				valeurs: ["css"]
+			},
 			aide: "Amortissement du retour d'appui : 0,2 rebondit, 1 revient sans dépasser. Fréquence fixe (4 Hz)."
 		}
 	],

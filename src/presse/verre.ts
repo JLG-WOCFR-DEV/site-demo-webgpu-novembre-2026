@@ -14,7 +14,17 @@
  * Réglages (`reglagesDe`, pure) : `-refraction` (px de déplacement au bord, 0 à 80 : 44), `-flou` (px, 0 à 24 : 6),
  * `-biseau` (px : largeur de la bande qui réfracte, 6 à 48 : 18), `-ressort` (ζ, amortissement du retour d'appui,
  * 0,2 à 1 : 0,42), `-teinte` (couleur du verre teinté). Le rayon est celui de l'élément (`border-radius` calculé).
- * États posés (ne pas les écrire) : `data-verre-etat` (`refracte`, `flou`, `plat`), `data-verre-appui`.
+ * États posés (ne pas les écrire) : `data-verre-etat` (`refracte`, `flou`, `plat`, `liquide`), `data-verre-mat`
+ * (matériau résolu : l'élément ou son groupe), `data-verre-appui` ;
+ * moteur liquide : `data-glass-host`, `data-glass-ready`, `data-glass-tone` (posés par la couche reprise).
+ *
+ * Moteur Liquid Glass, EN OPTION : `data-verre-moteur="liquide"` (sur le verre ou son groupe) pose la couche WebGL2 de
+ * Liquid Glass UI (src/vendor/liquid-glass/, MIT, reprise telle quelle) : lentille, dispersion, reflets du voisinage,
+ * gonflement au survol, ressorts et étirement à l'appui, le tout dessiné par un seul contexte WebGL2 partagé, arrêté au
+ * repos. Chargée à la demande (un morceau à part) ; sans WebGL2, avant sa première image ou si l'utilisateur demande
+ * moins de transparence, le verre CSS reste. `data-verre-vivant` : le fond bouge (vidéo, canvas) et se repeint à
+ * chaque image ; `data-verre-voile` (0 à 1) : couvrance du voile du verre clair. Correspondance des réglages :
+ * `optionsLiquide` (pure, testée).
  *
  * Accessibilité : le module ne change ni rôle ni nom ni ordre de focus ; il n'écoute que le pointeur (jamais
  * d'animation après une action au clavier, comme la douceur). Mouvement réduit : plus d'échelle ni de ressort.
@@ -29,6 +39,9 @@
 
 export const MATERIAUX = ["clair", "teinte"] as const;
 export type Materiau = (typeof MATERIAUX)[number];
+/** `css` : backdrop-filter + SVG (défaut, aucun canvas) ; `liquide` : la couche WebGL2 de Liquid Glass UI (option). */
+export const MOTEURS = ["css", "liquide"] as const;
+export type Moteur = (typeof MOTEURS)[number];
 
 export const DEFAUTS = {
   refraction: 44,
@@ -49,7 +62,7 @@ export const BORNES = {
   ressort: [0.2, 1],
 } as const;
 
-export type Reglages = { materiau: Materiau; refraction: number; flou: number; biseau: number; ressort: number; teinte: string };
+export type Reglages = { materiau: Materiau; moteur: Moteur; vivant: boolean; refraction: number; flou: number; biseau: number; ressort: number; teinte: string };
 
 const borne = (n: number, [a, b]: readonly [number, number]): number => Math.min(b, Math.max(a, n));
 const nombre = (brut: string | null | undefined, repli: number, b: readonly [number, number]): number => {
@@ -61,8 +74,12 @@ const nombre = (brut: string | null | undefined, repli: number, b: readonly [num
 export function reglagesDe(lire: (attribut: string) => string | null | undefined): Reglages {
   const m = (lire("data-verre") ?? "").trim().toLowerCase();
   const teinte = (lire("data-verre-teinte") ?? "").trim();
+  const mo = (lire("data-verre-moteur") ?? "").trim().toLowerCase();
+  const vivant = lire("data-verre-vivant");
   return {
     materiau: (MATERIAUX as readonly string[]).includes(m) ? (m as Materiau) : "clair",
+    moteur: (MOTEURS as readonly string[]).includes(mo) ? (mo as Moteur) : "css",
+    vivant: vivant != null && vivant.trim().toLowerCase() !== "non",
     refraction: nombre(lire("data-verre-refraction"), DEFAUTS.refraction, BORNES.refraction),
     flou: nombre(lire("data-verre-flou"), DEFAUTS.flou, BORNES.flou),
     biseau: nombre(lire("data-verre-biseau"), DEFAUTS.biseau, BORNES.biseau),
@@ -85,6 +102,43 @@ export function lectureDe(el: Lisible): (attribut: string) => string | null {
       return propre ? propre : (el.closest('[data-verre-groupe]:not([data-verre-groupe=""])')?.getAttribute("data-verre-groupe") ?? null);
     }
     return el.closest(`[${a}]`)?.getAttribute(a) ?? null;
+  };
+}
+
+/* ───────────────────────── Moteur Liquid Glass : correspondance (pure) ───────────────────────── */
+
+/** Ce que reçoit la couche reprise (le sous-ensemble des options de GlassLayer que Presse règle). */
+export type OptionsLiquide = {
+  material: "clear" | "tinted";
+  live: boolean;
+  blur: number;
+  /** Couvrance du voile du verre clair (0 invisible, 1 plein) ; absente : celle de la bibliothèque (0,6). */
+  tint?: number;
+  optics: { refraction?: number; bendDepth?: number; tintColor?: string };
+};
+
+/**
+ * Réglages Presse → options de la couche Liquid Glass. Un réglage laissé à son défaut garde l'allure de la bibliothèque
+ * (son verre est net : flou 0 ; sa réfraction de bord vaut 44 px, comme notre défaut) ; écrit, il la règle :
+ * `-refraction` en px → multiplicateur (÷ 44), `-biseau` → profondeur de la courbure (÷ 18), `-flou` → `blur` (px),
+ * `-teinte` → couleur du voile du verre clair, `-voile` (0 à 1) → sa couvrance (`tint` ; la bibliothèque voile en blanc
+ * sur une page claire, en noir sur une page sombre, à 0,6). Le verre teinté prend la couleur de fond de l'hôte (celle que la
+ * feuille pose d'après `--verre-teinte`). Le ressort (ζ) ne passe pas : les ressorts de la bibliothèque sont les siens.
+ */
+export function optionsLiquide(lire: (attribut: string) => string | null | undefined): OptionsLiquide {
+  const r = reglagesDe(lire);
+  const ecrit = (a: string): boolean => (lire(a) ?? "").trim() !== "";
+  const optics: OptionsLiquide["optics"] = {};
+  if (ecrit("data-verre-refraction")) optics.refraction = r.refraction / DEFAUTS.refraction;
+  if (ecrit("data-verre-biseau")) optics.bendDepth = r.biseau / DEFAUTS.biseau;
+  if (ecrit("data-verre-teinte") && r.materiau === "clair") optics.tintColor = r.teinte;
+  const voile = nombre(lire("data-verre-voile"), NaN, [0, 1]);
+  return {
+    material: r.materiau === "teinte" ? "tinted" : "clear",
+    live: r.vivant,
+    blur: ecrit("data-verre-flou") ? r.flou : 0,
+    ...(Number.isFinite(voile) ? { tint: voile } : {}),
+    optics,
   };
 }
 
@@ -189,7 +243,7 @@ export function moteurRefracte(nav: { userAgent?: string; userAgentData?: { bran
   return /\bChrome\//.test(ua) && !/\bFirefox\//.test(ua);
 }
 
-export type EtatVerre = "refracte" | "flou" | "plat";
+export type EtatVerre = "refracte" | "flou" | "plat" | "liquide";
 export function etatDe(moteur: boolean, peuFlouter: boolean, moinsTransparent: boolean, refraction: number): EtatVerre {
   if (moinsTransparent || !peuFlouter) return "plat";
   return moteur && refraction > 0 ? "refracte" : "flou";
@@ -206,11 +260,25 @@ export type CtrlVerre = {
 };
 
 let feuille: Promise<unknown> | null = null;
+type ModuleLiquide = typeof import("../vendor/liquid-glass/couche.ts");
+/** La couche Liquid Glass, chargée à la première demande (un morceau à part) ; `null` : pas de WebGL2. */
+let liquide: Promise<ModuleLiquide | null> | null = null;
+let liquideCharge: ModuleLiquide | null | undefined;
+function chargerLiquide(): Promise<ModuleLiquide | null> {
+  liquide ??= import("../vendor/liquid-glass/couche.ts")
+    .then((m) => (m.moteurDisponible() ? m : null))
+    .catch((e: unknown) => {
+      console.warn("[verre] moteur liquide indisponible", e);
+      return null;
+    })
+    .then((m) => (liquideCharge = m));
+  return liquide;
+}
 let instance: CtrlVerre | null = null;
 let compteur = 0;
 
 const SVG = "http://www.w3.org/2000/svg";
-const ATTRS = ["data-verre", "data-verre-groupe", "data-verre-refraction", "data-verre-flou", "data-verre-biseau", "data-verre-ressort", "data-verre-teinte"];
+const ATTRS = ["data-verre", "data-verre-groupe", "data-verre-moteur", "data-verre-vivant", "data-verre-voile", "data-verre-refraction", "data-verre-flou", "data-verre-biseau", "data-verre-ressort", "data-verre-teinte"];
 
 export function initVerre(racine: ParentNode = document): CtrlVerre {
   instance?.detruire();
@@ -224,6 +292,12 @@ export function initVerre(racine: ParentNode = document): CtrlVerre {
   type Filtre = { id: string; filtre: SVGFilterElement; image: SVGFEImageElement; deplacement: SVGFEDisplacementMapElement; taille: string };
   /** Un filtre par élément qui réfracte ; une écoute par élément armé. */
   const filtres = new Map<HTMLElement, Filtre>();
+  /** Une couche Liquid Glass par élément en moteur liquide. */
+  const couches = new Map<HTMLElement, ReturnType<ModuleLiquide["monterCouche"]>>();
+  const retirerCouche = (el: HTMLElement): void => {
+    couches.get(el)?.detruire();
+    couches.delete(el);
+  };
   const armes = new Map<HTMLElement, () => void>();
   const PROPRIETES = ["--verre-filtre", "--verre-flou", "--verre-teinte", "--verre-ressort", "--verre-duree-ressort", "--verre-lx", "--verre-ly"];
   let hote: SVGSVGElement | null = null;
@@ -271,9 +345,23 @@ export function initVerre(racine: ParentNode = document): CtrlVerre {
 
   /** Réglages, état, carte de déplacement (recalculée seulement quand la taille, le rayon ou le biseau changent). */
   const poser = (el: HTMLElement): void => {
-    const r = reglagesDe(lectureDe(el));
-    const etat = etatDe(moteur, peuFlouter, mqPlat.matches, r.refraction);
+    const lire = lectureDe(el);
+    const r = reglagesDe(lire);
+    let etat = etatDe(moteur, peuFlouter, mqPlat.matches, r.refraction);
+    // Moteur liquide (option) : chargé à la demande ; tant qu'il ne l'est pas, ou sans WebGL2, le verre CSS reste.
+    if (r.moteur === "liquide" && !mqPlat.matches) {
+      if (liquideCharge === undefined) void chargerLiquide().then(planifier);
+      else if (liquideCharge) {
+        const options = optionsLiquide(lire);
+        const c = couches.get(el);
+        if (c) c.regler(options);
+        else couches.set(el, liquideCharge.monterCouche(el, options));
+        etat = "liquide";
+      }
+    }
+    if (etat !== "liquide") retirerCouche(el);
     el.setAttribute("data-verre-etat", etat);
+    el.setAttribute("data-verre-mat", r.materiau);
     el.style.setProperty("--verre-flou", `${r.flou}px`);
     el.style.setProperty("--verre-teinte", r.teinte);
     el.style.setProperty("--verre-ressort", ressortCss(r.ressort));
@@ -312,7 +400,8 @@ export function initVerre(racine: ParentNode = document): CtrlVerre {
     el.setAttribute("data-verre-arme", "");
     let lacher: (() => void) | null = null;
     const bas = (e: PointerEvent): void => {
-      if (e.button > 0 || el.matches(":disabled, [aria-disabled='true']")) return;
+      // Moteur liquide : la couche reprise gère l'appui (elle écrit l'échelle de l'hôte).
+      if (e.button > 0 || el.matches(":disabled, [aria-disabled='true']") || couches.has(el)) return;
       lacher?.();
       el.setAttribute("data-verre-appui", "");
       const fin = (): void => {
@@ -327,7 +416,7 @@ export function initVerre(racine: ParentNode = document): CtrlVerre {
     };
     let image = 0;
     const bouge = (e: PointerEvent): void => {
-      if (image || (e.pointerType !== "mouse" && e.pointerType !== "pen")) return;
+      if (image || couches.has(el) || (e.pointerType !== "mouse" && e.pointerType !== "pen")) return;
       const { clientX, clientY } = e;
       image = requestAnimationFrame(() => {
         image = 0;
@@ -345,6 +434,7 @@ export function initVerre(racine: ParentNode = document): CtrlVerre {
       lacher?.();
       el.removeAttribute("data-verre-arme");
       el.removeAttribute("data-verre-etat");
+      el.removeAttribute("data-verre-mat");
       for (const p of PROPRIETES) el.style.removeProperty(p);
     };
   };
@@ -370,6 +460,7 @@ export function initVerre(racine: ParentNode = document): CtrlVerre {
       if (vus.has(el)) continue;
       nettoyer();
       retirerFiltre(el);
+      retirerCouche(el);
       ro.unobserve(el);
       armes.delete(el);
     }
@@ -398,6 +489,7 @@ export function initVerre(racine: ParentNode = document): CtrlVerre {
       for (const [el, nettoyer] of armes) {
         nettoyer();
         retirerFiltre(el);
+        retirerCouche(el);
       }
       armes.clear();
       hote?.remove();

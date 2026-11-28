@@ -1,0 +1,41 @@
+// @ts-nocheck — code d'amont (voir README.md) : notre tsconfig a noUncheckedIndexedAccess, pas le leur.
+// Couche de verre, partie d'amont — `glass-layer.tsx` (bilalgursen/liquid-glass, MIT) sans React.
+// FICHIER GÉNÉRÉ par tools/vendor-liquid-glass.py depuis couche-amont.gabarit : modifier le gabarit, pas ce fichier ;
+// l'enveloppe propre à Presse (vérifiée par tsc) est dans couche.ts.
+//
+// Le corps de l'effet React (`useEffect` de GlassLayer) est repris tel quel : seules les références React sont
+// remplacées (`dropletRef.current` → `etat.droplet`, `tuneRef.current` → `etat`, `pokeRef/nodRef/pulseRef` → `liens`),
+// chaque remplacement vérifié par le script. Les types, les constantes et GLASS_CSS sont repris tels quels.
+
+import { drawAround, drawDom } from './dom-snapshot.ts'
+import {
+  BUD,
+  DESIGN_HEIGHT,
+  PULL,
+  SPRINGS,
+  clamp,
+  cohesionSoftness,
+  getGlassEngine,
+  lerp,
+  mixRgb,
+  rgbCss,
+  smooth,
+  stepSpring,
+  surfaceColorOf,
+  type GlassView,
+  type Rgb,
+  type Spring,
+} from './engine.ts'
+
+/*TYPES*/
+
+/** L'état lu à chaque image, les rappels posés par l'effet, les options de construction (couche.ts les tient). */
+export type Etat = { droplet: GlassDroplet; tint: number; blur: number; optics: GlassOptics | undefined; restHeight: number | undefined; pulseHold: number | undefined }
+export type Liens = { poke: (() => void) | null; nod: (() => void) | null; pulse: (() => void) | null }
+export type Construction = Required<Pick<GlassLayerProps, 'material' | 'live' | 'disabled' | 'swell' | 'pull'>> & Pick<GlassLayerProps, 'backdrop' | 'trigger'>
+
+/** Le corps de l'effet de GlassLayer : monte la vue dans le moteur, rend la fonction qui la démonte. */
+export function construire(canvasEl: HTMLCanvasElement, p: Construction, etat: Etat, liens: Liens): (() => void) | undefined {
+  const { material, backdrop, live, trigger, disabled, swell, pull } = p
+/*CORPS*/
+}

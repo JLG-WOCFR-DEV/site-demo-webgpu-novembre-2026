@@ -1,0 +1,8 @@
+{
+  "depot": "https://github.com/bilalgursen/liquid-glass",
+  "commit": "96b14d1532fd20517763b7aa1479091a5e4803d4 2026-11-28T11:48:08+03:00",
+  "sha256": {
+    "engine.ts": "d79d40c6444682e7926120f02bf745255ec6e72b61ac6d6adc3f6cc3fbc364df",
+    "dom-snapshot.ts": "8a310d62a75b19f423451311f66765ee80f95d2f1e4ed37cca7c636a8bbe8731"
+  }
+}

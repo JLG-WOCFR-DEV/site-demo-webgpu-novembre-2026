@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { parse } from "node-html-parser";
-import { BORNES, carte, DEFAUTS, echelleCarte, etatDe, lectureDe, MATERIAUX, moteurRefracte, reglagesDe, ressort, ressortCss, type Lisible } from "./verre.ts";
+import { BORNES, carte, DEFAUTS, echelleCarte, etatDe, lectureDe, MATERIAUX, MOTEURS, moteurRefracte, optionsLiquide, reglagesDe, ressort, ressortCss, type Lisible } from "./verre.ts";
 import { lintCss } from "../../tools/valider/mouvement-statique.ts";
 import { EFFETS } from "../registre/effets.ts";
 import fiche from "../registre/parametres/verre.ts";
@@ -19,7 +19,11 @@ const PRESSE = fs.readFileSync(path.join(RACINE, "PRESSE.md"), "utf8");
 const attrs = (o: Record<string, string>) => (a: string) => o[a] ?? null;
 
 test("verre : réglages par défaut, bornés, valeurs inconnues ou illisibles ramenées au défaut", () => {
-  assert.deepEqual(reglagesDe(attrs({})), { materiau: "clair", refraction: 44, flou: 6, biseau: 18, ressort: 0.42, teinte: "#7aa8ff" });
+  assert.deepEqual(reglagesDe(attrs({})), { materiau: "clair", moteur: "css", vivant: false, refraction: 44, flou: 6, biseau: 18, ressort: 0.42, teinte: "#7aa8ff" });
+  assert.equal(reglagesDe(attrs({ "data-verre-moteur": "Liquide" })).moteur, "liquide");
+  assert.equal(reglagesDe(attrs({ "data-verre-moteur": "webgpu" })).moteur, "css", "moteur inconnu : css");
+  assert.equal(reglagesDe(attrs({ "data-verre-vivant": "" })).vivant, true, "vivant sans valeur : oui");
+  assert.equal(reglagesDe(attrs({ "data-verre-vivant": "non" })).vivant, false);
   assert.equal(reglagesDe(attrs({ "data-verre": "" })).materiau, "clair", "sans valeur : clair");
   assert.equal(reglagesDe(attrs({ "data-verre": "Teinte" })).materiau, "teinte");
   assert.equal(reglagesDe(attrs({ "data-verre": "givre" })).materiau, "clair", "inconnu : clair");
@@ -43,6 +47,27 @@ test("verre : un groupe règle ses verres ; l'élément passe devant, le matéri
   assert.equal(r("c").materiau, "teinte", "un groupe sans valeur n'efface pas le matériau de celui du dessus");
   assert.equal(r("d").materiau, "clair", "hors groupe : défaut");
   assert.equal(r("d").flou, 6);
+});
+
+test("verre : moteur liquide — un réglage laissé au défaut garde l'allure de la bibliothèque, écrit il la règle", () => {
+  assert.deepEqual(optionsLiquide(attrs({})), { material: "clear", live: false, blur: 0, optics: {} }, "défauts : verre net, optique d'origine");
+  assert.deepEqual(optionsLiquide(attrs({ "data-verre": "teinte", "data-verre-vivant": "" })), { material: "tinted", live: true, blur: 0, optics: {} });
+  const o = optionsLiquide(attrs({ "data-verre-refraction": "66", "data-verre-biseau": "36", "data-verre-flou": "4", "data-verre-teinte": "#ff0000" }));
+  assert.equal(o.optics.refraction, 1.5, "66 px ÷ 44");
+  assert.equal(o.optics.bendDepth, 2, "36 px ÷ 18");
+  assert.equal(o.blur, 4);
+  assert.equal(o.optics.tintColor, "#ff0000", "verre clair : voile de cette couleur");
+  assert.equal(optionsLiquide(attrs({ "data-verre": "teinte", "data-verre-teinte": "#ff0000" })).optics.tintColor, undefined, "verre teinté : la couleur passe par le fond de l'hôte");
+  assert.equal(optionsLiquide(attrs({ "data-verre-refraction": "500" })).optics.refraction, 80 / 44, "bornes de Presse d'abord");
+  assert.equal(optionsLiquide(attrs({ "data-verre-voile": "0,2" })).tint, 0.2, "voile");
+  assert.equal(optionsLiquide(attrs({ "data-verre-voile": "3" })).tint, 1, "voile borné");
+  assert.equal("tint" in optionsLiquide(attrs({ "data-verre-voile": "beaucoup" })), false, "voile illisible : celui de la bibliothèque");
+  // Par un groupe.
+  const d = parse(`<nav data-verre-groupe="teinte" data-verre-moteur="liquide" data-verre-flou="3"><button id="a" data-verre>a</button></nav>`);
+  const lire = lectureDe(d.querySelector("#a")! as unknown as Lisible);
+  assert.equal(reglagesDe(lire).moteur, "liquide", "le moteur s'hérite du groupe");
+  assert.deepEqual(optionsLiquide(lire), { material: "tinted", live: false, blur: 3, optics: {} });
+  assert.deepEqual([...MOTEURS], ["css", "liquide"]);
 });
 
 test("verre : le ressort dépasse 1 quand ζ < 1, ne dépasse pas quand ζ ≥ 1, finit exactement à 1", () => {
@@ -115,6 +140,8 @@ test("verre : la feuille passe le lint de mouvement sans avertissement et tient 
   assert.doesNotMatch(CSS, /transition:\s*all/);
   assert.match(CSS, /var\(--verre-filtre\) blur\(/, "la déformation passe avant le flou");
   assert.match(CSS, /\[data-verre-etat="plat"\]/);
+  assert.match(CSS, /\[data-verre-etat="liquide"\][^{]*\{\s*transition-property: none/, "moteur liquide : aucune transition ne lisse l'échelle écrite par la couche");
+  assert.match(CSS, /\[data-verre-mat="teinte"\]/, "le matériau hérité d'un groupe teinte aussi");
 });
 
 test("verre : la fiche suit le module (défauts, bornes, attributs, matériaux) et le registre", () => {
@@ -131,6 +158,10 @@ test("verre : la fiche suit le module (défauts, bornes, attributs, matériaux) 
   assert.equal(mat.type, "selecteur");
   if (mat.type === "selecteur") assert.deepEqual(mat.options.map((o) => o.valeur), [...MATERIAUX]);
   assert.equal(par.get("teinte")!.defaut, DEFAUTS.teinte);
+  const mot = par.get("moteur")!;
+  assert.equal(mot.type, "selecteur");
+  if (mot.type === "selecteur") assert.deepEqual(mot.options.map((o) => o.valeur), [...MOTEURS]);
+  assert.deepEqual(par.get("vivant")!.si, { champ: "moteur", valeurs: ["liquide"] });
 
   const e = EFFETS.find((x) => x.id === "verre")!;
   assert.ok(e, "effet « verre » dans le registre");
