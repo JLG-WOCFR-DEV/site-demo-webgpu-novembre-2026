@@ -1,4 +1,21 @@
-# PLI
+# Presse-WebGPU
+
+**Presse** : un framework de pages WebGPU par attributs, une sorte de « Webflow » GPU. On écrit du HTML ordinaire, des
+attributs `data-*` disent au GPU ce qu'il doit en faire, une ligne de script lance le moteur. Le HTML reste la source de
+vérité (mise en page, liens, sélection, lecteurs d'écran) ; sans WebGPU, la page reste son HTML.
+
+Le dépôt contient le framework (`src/presse/`, registre des effets `src/registre/`), ses outils (Studio, Sampler,
+Créateur, Vitrine, diaporamas, CLI et serveur MCP `presse`) et le site de démonstration qui les montre (PLI, chapitres
+sur l'impression, l'accessibilité, les matières, etc.).
+
+| Lire d'abord | Pour |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | Agents IA (ChatGPT, Codex, Gemini, Claude) : règles du dépôt, commandes, où chercher |
+| [`PRESSE.md`](PRESSE.md) | La référence : chaque attribut, chaque module, le Studio, le mouvement, la CLI et le MCP |
+| [`docs/ROADMAP-STUDIO.md`](docs/ROADMAP-STUDIO.md) | Ce qui est fait, ce qui reste, les décisions |
+| [`.claude/skills/presse-page/SKILL.md`](.claude/skills/presse-page/SKILL.md) | Construire ou vérifier une page Presse, pas à pas |
+
+## La démo PLI
 
 Démo et guide d'un site rendu en **WebGPU natif**, en direction « éditorial imprimé ».
 
